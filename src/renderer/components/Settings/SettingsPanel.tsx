@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Eye, EyeOff, Save, RotateCcw, AlertCircle, CheckCircle, X, Key, FolderOpen, Sliders, Cog, Settings } from 'lucide-react';
 import { Toggle } from './Toggle';
+import { FileSelector } from './FileSelector';
 
 // Types and Interfaces
 interface SettingsObject {
@@ -318,102 +319,64 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         <h3 className="text-lg font-medium text-gray-900">File Paths</h3>
         <FolderOpen className="h-5 w-5 text-gray-400" />
       </div>
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="output-directory" className="block text-sm font-medium text-gray-700 mb-2">
-            Output Directory
-          </label>
-          <input
-            id="output-directory"
-            ref={(el) => { inputRefs.current['filePaths-outputDirectory'] = el; }}
-            type="text"
-            defaultValue={settings.filePaths.outputDirectory}
-            onChange={handleInputChange('filePaths', 'outputDirectory')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="./pictures/toupload"
-          />
-          <p className="text-xs text-gray-500 mt-1">Directory for processed images</p>
-        </div>
+      <div className="space-y-6">
+        <FileSelector
+          label="Output Directory"
+          value={settings.filePaths.outputDirectory}
+          onChange={(path: string) => handleInputChange('filePaths', 'outputDirectory')({ target: { value: path } } as any)}
+          type="directory"
+          placeholder="Select directory for processed images"
+          required={false}
+        />
 
-        <div>
-          <label htmlFor="temp-directory" className="block text-sm font-medium text-gray-700 mb-2">
-            Temp Directory
-          </label>
-          <input
-            id="temp-directory"
-            ref={(el) => { inputRefs.current['filePaths-tempDirectory'] = el; }}
-            type="text"
-            defaultValue={settings.filePaths.tempDirectory}
-            onChange={handleInputChange('filePaths', 'tempDirectory')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="./pictures/generated"
-          />
-          <p className="text-xs text-gray-500 mt-1">Directory for temporary files</p>
-        </div>
+        <FileSelector
+          label="Temp Directory"
+          value={settings.filePaths.tempDirectory}
+          onChange={(path: string) => handleInputChange('filePaths', 'tempDirectory')({ target: { value: path } } as any)}
+          type="directory"
+          placeholder="Select directory for temporary files"
+          required={false}
+        />
 
-        <div>
-          <label htmlFor="system-prompt-file" className="block text-sm font-medium text-gray-700 mb-2">
-            System Prompt File
-          </label>
-          <input
-            id="system-prompt-file"
-            ref={(el) => { inputRefs.current['filePaths-systemPromptFile'] = el; }}
-            type="text"
-            defaultValue={settings.filePaths.systemPromptFile}
-            onChange={handleInputChange('filePaths', 'systemPromptFile')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="path/to/system_prompt.txt"
-          />
-          <p className="text-xs text-gray-500 mt-1">Custom system prompt for Midjourney generation</p>
-        </div>
+        <FileSelector
+          label="System Prompt File"
+          value={settings.filePaths.systemPromptFile}
+          onChange={(path: string) => handleInputChange('filePaths', 'systemPromptFile')({ target: { value: path } } as any)}
+          type="file"
+          fileTypes={['.txt']}
+          placeholder="Select system prompt file (.txt only)"
+          required={false}
+        />
 
-        <div>
-          <label htmlFor="keywords-file" className="block text-sm font-medium text-gray-700 mb-2">
-            Keywords File
-          </label>
-          <input
-            id="keywords-file"
-            ref={(el) => { inputRefs.current['filePaths-keywordsFile'] = el; }}
-            type="text"
-            defaultValue={settings.filePaths.keywordsFile}
-            onChange={handleInputChange('filePaths', 'keywordsFile')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="path/to/keywords.txt or keywords.csv"
-          />
-          <p className="text-xs text-gray-500 mt-1">Keywords file (.txt or .csv) for prompt generation</p>
-        </div>
+        <FileSelector
+          label="Keywords File"
+          value={settings.filePaths.keywordsFile}
+          onChange={(path: string) => handleInputChange('filePaths', 'keywordsFile')({ target: { value: path } } as any)}
+          type="file"
+          fileTypes={['.txt', '.csv']}
+          placeholder="Select keywords file (.txt or .csv)"
+          required={false}
+        />
 
-        <div>
-          <label htmlFor="quality-check-prompt-file" className="block text-sm font-medium text-gray-700 mb-2">
-            Quality Check Prompt File
-          </label>
-          <input
-            id="quality-check-prompt-file"
-            ref={(el) => { inputRefs.current['filePaths-qualityCheckPromptFile'] = el; }}
-            type="text"
-            defaultValue={settings.filePaths.qualityCheckPromptFile}
-            onChange={handleInputChange('filePaths', 'qualityCheckPromptFile')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="path/to/quality_check_prompt.txt"
-          />
-          <p className="text-xs text-gray-500 mt-1">Custom quality check prompt template</p>
-        </div>
+        <FileSelector
+          label="Quality Check Prompt File"
+          value={settings.filePaths.qualityCheckPromptFile}
+          onChange={(path: string) => handleInputChange('filePaths', 'qualityCheckPromptFile')({ target: { value: path } } as any)}
+          type="file"
+          fileTypes={['.txt']}
+          placeholder="Select quality check prompt file (.txt only)"
+          required={false}
+        />
 
-        <div>
-          <label htmlFor="metadata-prompt-file" className="block text-sm font-medium text-gray-700 mb-2">
-            Metadata Prompt File
-          </label>
-          <input
-            id="metadata-prompt-file"
-            ref={(el) => { inputRefs.current['filePaths-metadataPromptFile'] = el; }}
-            type="text"
-            defaultValue={settings.filePaths.metadataPromptFile}
-            onChange={handleInputChange('filePaths', 'metadataPromptFile')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="path/to/metadata_prompt.txt"
-          />
-          <p className="text-xs text-gray-500 mt-1">Custom metadata generation prompt template</p>
-        </div>
+        <FileSelector
+          label="Metadata Prompt File"
+          value={settings.filePaths.metadataPromptFile}
+          onChange={(path: string) => handleInputChange('filePaths', 'metadataPromptFile')({ target: { value: path } } as any)}
+          type="file"
+          fileTypes={['.txt']}
+          placeholder="Select metadata prompt file (.txt only)"
+          required={false}
+        />
       </div>
     </div>
   );

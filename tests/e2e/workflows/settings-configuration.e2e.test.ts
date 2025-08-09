@@ -55,38 +55,38 @@ test.describe('Settings Configuration E2E Tests', () => {
     await page.locator('[data-testid="files-tab"]').click();
     await expect(page.locator('[data-testid="file-paths-section"]').first()).toBeVisible();
 
-    // Test output directory input
-    const outputDirInput = page.locator('#output-directory');
+    // Test output directory FileSelector
+    const outputDirInput = page.locator('input[placeholder*="Select directory for processed images"]');
     await expect(outputDirInput).toBeVisible();
     await outputDirInput.fill('./pictures/toupload');
     await expect(outputDirInput).toHaveValue('./pictures/toupload');
 
-    // Test generated directory input
-    const generatedDirInput = page.locator('#temp-directory');
-    await expect(generatedDirInput).toBeVisible();
-    await generatedDirInput.fill('./pictures/generated');
-    await expect(generatedDirInput).toHaveValue('./pictures/generated');
+    // Test temp directory FileSelector
+    const tempDirInput = page.locator('input[placeholder*="Select directory for temporary files"]');
+    await expect(tempDirInput).toBeVisible();
+    await tempDirInput.fill('./pictures/generated');
+    await expect(tempDirInput).toHaveValue('./pictures/generated');
 
-    // Test system prompt file input
-    const systemPromptInput = page.locator('#system-prompt-file');
+    // Test system prompt file FileSelector
+    const systemPromptInput = page.locator('input[placeholder*="Select system prompt file"]');
     await expect(systemPromptInput).toBeVisible();
     await systemPromptInput.fill('./templates/system_prompt.txt');
     await expect(systemPromptInput).toHaveValue('./templates/system_prompt.txt');
 
-    // Test keywords file input
-    const keywordsInput = page.locator('#keywords-file');
+    // Test keywords file FileSelector
+    const keywordsInput = page.locator('input[placeholder*="Select keywords file"]');
     await expect(keywordsInput).toBeVisible();
     await keywordsInput.fill('./keywords.txt');
     await expect(keywordsInput).toHaveValue('./keywords.txt');
 
-    // Test quality check prompt file input
-    const qualityCheckInput = page.locator('#quality-check-prompt-file');
+    // Test quality check prompt file FileSelector
+    const qualityCheckInput = page.locator('input[placeholder*="Select quality check prompt file"]');
     await expect(qualityCheckInput).toBeVisible();
     await qualityCheckInput.fill('./templates/quality_check.txt');
     await expect(qualityCheckInput).toHaveValue('./templates/quality_check.txt');
 
-    // Test metadata prompt file input
-    const metadataInput = page.locator('#metadata-prompt-file');
+    // Test metadata prompt file FileSelector
+    const metadataInput = page.locator('input[placeholder*="Select metadata prompt file"]');
     await expect(metadataInput).toBeVisible();
     await metadataInput.fill('./templates/metadata.txt');
     await expect(metadataInput).toHaveValue('./templates/metadata.txt');

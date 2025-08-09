@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Folder, FolderOpen, File, Files, CheckCircle, AlertCircle, AlertTriangle, Loader2, HardDrive, Shield, ShieldAlert } from 'lucide-react';
+import { FileSelector } from './FileSelector';
 
 // Types and Interfaces
 interface FilePathsSectionProps {
   inputDirectory: string;
   outputDirectory: string;
-  templateFiles: string[];
+  templateFile: string;
   onInputDirectoryChange?: (path: string) => void;
   onOutputDirectoryChange?: (path: string) => void;
-  onTemplateFilesChange?: (files: string[]) => void;
+  onTemplateFileChange?: (file: string) => void;
   onValidation?: (isValid: boolean) => void;
   isLoading?: boolean;
   error?: string | null;
@@ -52,10 +53,10 @@ const FILE_TYPE_CONFIGS: Record<string, FileTypeConfig> = {
 export const FilePathsSection: React.FC<FilePathsSectionProps> = ({
   inputDirectory,
   outputDirectory,
-  templateFiles,
+  templateFile,
   onInputDirectoryChange,
   onOutputDirectoryChange,
-  onTemplateFilesChange,
+  onTemplateFileChange,
   onValidation,
   isLoading = false,
   error = null
@@ -90,7 +91,7 @@ export const FilePathsSection: React.FC<FilePathsSectionProps> = ({
   // Validate paths when they change
   useEffect(() => {
     validatePaths();
-  }, [inputDirectory, outputDirectory, templateFiles]);
+  }, [inputDirectory, outputDirectory, templateFile]);
 
   // Notify parent of overall validation status
   useEffect(() => {
@@ -131,13 +132,13 @@ export const FilePathsSection: React.FC<FilePathsSectionProps> = ({
         });
       }
 
-      // Validate template files
-      if (templateFiles.length > 0) {
-        const templateResult = await validateTemplateFiles(templateFiles);
+      // Validate template file
+      if (templateFile) {
+        const templateResult = await validatePath(templateFile, 'file', ['read']);
         setTemplateValidation(templateResult);
       } else {
         setTemplateValidation({
-          isValid: true, // Template files are optional
+          isValid: true, // Template file is optional
           hasReadPermission: false,
           hasWritePermission: false,
           exists: false,
@@ -149,7 +150,7 @@ export const FilePathsSection: React.FC<FilePathsSectionProps> = ({
     } finally {
       setIsValidating(false);
     }
-  }, [inputDirectory, outputDirectory, templateFiles]);
+  }, [inputDirectory, outputDirectory, templateFile]);
 
   // Validate a single path
   const validatePath = async (path: string, type: 'file' | 'directory', permissions: string[]): Promise<PathValidation> => {
@@ -187,184 +188,16 @@ export const FilePathsSection: React.FC<FilePathsSectionProps> = ({
     }
   };
 
-  // Validate template files
-  const validateTemplateFiles = async (files: string[]): Promise<PathValidation> => {
-    try {
-      const validationResults = await Promise.all(
-        files.map(file => validatePath(file, 'file', ['read']))
-      );
 
-      const allValid = validationResults.every(result => result.isValid);
-      const allExist = validationResults.every(result => result.exists);
-      const allAccessible = validationResults.every(result => result.isAccessible);
 
-      const invalidFiles = files.filter((_, index) => !validationResults[index].isValid);
-      const errorMessage = invalidFiles.length > 0 
-        ? `Invalid files: ${invalidFiles.join(', ')}`
-        : undefined;
-
-      return {
-        isValid: allValid,
-        hasReadPermission: validationResults.some(result => result.hasReadPermission),
-        hasWritePermission: false,
-        exists: allExist,
-        isAccessible: allAccessible,
-        errorMessage
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        hasReadPermission: false,
-        hasWritePermission: false,
-        exists: false,
-        isAccessible: false,
-        errorMessage: 'Failed to validate template files'
-      };
-    }
-  };
-
-  // Handle directory selection
-  const handleDirectorySelect = useCallback(async (type: 'input' | 'output') => {
-    try {
-      if (window.electronAPI?.showOpenDialog) {
-        const result = await window.electronAPI.showOpenDialog({
-          type: 'directory',
-          defaultPath: type === 'input' ? inputDirectory : outputDirectory
-        });
-
-        if (result.filePaths && result.filePaths.length > 0) {
-          const selectedPath = result.filePaths[0];
-          
-          if (type === 'input') {
-            onInputDirectoryChange?.(selectedPath);
-          } else {
-            onOutputDirectoryChange?.(selectedPath);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error selecting directory:', error);
-    }
-  }, [inputDirectory, outputDirectory, onInputDirectoryChange, onOutputDirectoryChange]);
-
-  // Handle template files selection
-  const handleTemplateFilesSelect = useCallback(async () => {
-    try {
-      if (window.electronAPI?.showOpenDialog) {
-        const result = await window.electronAPI.showOpenDialog({
-          type: 'multiple',
-          fileTypes: FILE_TYPE_CONFIGS.template.extensions
-        });
-
-        if (result.filePaths && result.filePaths.length > 0) {
-          onTemplateFilesChange?.(result.filePaths);
-        }
-      }
-    } catch (error) {
-      console.error('Error selecting template files:', error);
-    }
-  }, [onTemplateFilesChange]);
-
-  // File Selector Component
-  const FileSelector: React.FC<{
-    label: string;
-    value: string | string[];
-    type: 'directory' | 'multiple';
-    placeholder: string;
-    helpText: string;
-    validation: PathValidation;
-    onSelect: () => void;
-    onClear: () => void;
-  }> = ({ label, value, type, placeholder, helpText, validation, onSelect, onClear }) => {
-    const displayValue = Array.isArray(value) ? value.join('; ') : (value || '');
-    const hasValue = Array.isArray(value) ? (value && value.length > 0) : (value && value.length > 0);
-
-    return (
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {label}
-        </label>
-        
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={displayValue}
-            readOnly
-            className={`flex-1 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors ${
-              hasValue && !validation.isValid
-                ? 'border-red-300 bg-red-50 text-red-900'
-                : hasValue && validation.isValid
-                ? 'border-green-300 bg-green-50 text-green-900'
-                : 'border-gray-300 bg-gray-50 text-gray-500'
-            }`}
-            placeholder={placeholder}
-          />
-          
-          <button
-            type="button"
-            onClick={onSelect}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors flex items-center gap-2"
-          >
-            {type === 'directory' ? <FolderOpen className="w-4 h-4" /> : <Files className="w-4 h-4" />}
-            Browse
-          </button>
-          
-          {hasValue && (
-            <button
-              type="button"
-              onClick={onClear}
-              className="px-3 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-
-        {/* Validation Status */}
-        {hasValue && (
-          <div className="flex items-center gap-2 text-sm">
-            {isValidating ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                <span className="text-blue-600">Validating...</span>
-              </>
-            ) : validation.isValid ? (
-              <>
-                <CheckCircle className="w-4 h-4 text-green-500" />
-                <span className="text-green-600">Valid path</span>
-                <div className="flex items-center gap-1 ml-2">
-                  {validation.hasReadPermission && <Shield className="w-3 h-3 text-green-500" title="Read permission" />}
-                  {validation.hasWritePermission && <Shield className="w-3 h-3 text-blue-500" title="Write permission" />}
-                </div>
-              </>
-            ) : (
-              <>
-                <AlertCircle className="w-4 h-4 text-red-500" />
-                <span className="text-red-600">
-                  {validation.errorMessage || 'Invalid path'}
-                </span>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Warning Messages */}
-        {validation.warningMessage && (
-          <div className="flex items-center gap-2 text-sm text-yellow-600">
-            <AlertTriangle className="w-4 h-4" />
-            <span>{validation.warningMessage}</span>
-          </div>
-        )}
-
-        {/* Help Text */}
-        <p className="text-xs text-gray-500">{helpText}</p>
-      </div>
-    );
+  // Handle template file change
+  const handleTemplateFileChange = (filePath: string) => {
+    onTemplateFileChange?.(filePath);
   };
 
   // Validation Summary Component
   const ValidationSummary = () => {
-    const hasAnyPath = inputDirectory || outputDirectory || (templateFiles && templateFiles.length > 0);
+    const hasAnyPath = inputDirectory || outputDirectory || templateFile;
     const allValid = inputValidation.isValid && outputValidation.isValid && templateValidation.isValid;
 
     if (!hasAnyPath) return null;
@@ -402,7 +235,7 @@ export const FilePathsSection: React.FC<FilePathsSectionProps> = ({
           <div className="flex items-center gap-2">
             <Files className="w-4 h-4 text-gray-400" />
             <span className={templateValidation.isValid ? 'text-green-600' : 'text-gray-500'}>
-              Template Files: {templateFiles.length > 0 ? `${templateFiles.length} files` : 'None selected'}
+              Template File: {templateFile || 'None selected'}
             </span>
           </div>
         </div>
@@ -435,34 +268,38 @@ export const FilePathsSection: React.FC<FilePathsSectionProps> = ({
         <FileSelector
           label="Input Directory"
           value={inputDirectory}
+          onChange={onInputDirectoryChange || (() => {})}
           type="directory"
           placeholder="Select directory containing your input files"
-          helpText="Directory containing keyword files, CSV data, and other input materials"
-          validation={inputValidation}
-          onSelect={() => handleDirectorySelect('input')}
-          onClear={() => onInputDirectoryChange?.('')}
+          required={false}
+          onValidation={(isValid) => {
+            setInputValidation(prev => ({ ...prev, isValid }));
+          }}
         />
 
         <FileSelector
           label="Output Directory"
           value={outputDirectory}
+          onChange={onOutputDirectoryChange || (() => {})}
           type="directory"
           placeholder="Select directory for generated output"
-          helpText="Directory where generated images and results will be saved"
-          validation={outputValidation}
-          onSelect={() => handleDirectorySelect('output')}
-          onClear={() => onOutputDirectoryChange?.('')}
+          required={false}
+          onValidation={(isValid) => {
+            setOutputValidation(prev => ({ ...prev, isValid }));
+          }}
         />
 
         <FileSelector
-          label="Template Files (Optional)"
-          value={templateFiles}
-          type="multiple"
-          placeholder="Select template files for custom prompts"
-          helpText="Template files containing prompt templates, configurations, and custom settings"
-          validation={templateValidation}
-          onSelect={handleTemplateFilesSelect}
-          onClear={() => onTemplateFilesChange?.([])}
+          label="Template File (Optional)"
+          value={templateFile}
+          onChange={handleTemplateFileChange}
+          type="file"
+          fileTypes={['.txt']}
+          placeholder="Select template file for custom prompts"
+          required={false}
+          onValidation={(isValid) => {
+            setTemplateValidation(prev => ({ ...prev, isValid }));
+          }}
         />
       </div>
 

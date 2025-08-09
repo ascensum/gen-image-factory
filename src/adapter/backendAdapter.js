@@ -69,14 +69,6 @@ class BackendAdapter {
         return await this.validatePath(path, type, fileTypes);
       });
 
-      ipcMain.handle('get-recent-paths', async (event, type) => {
-        return await this.getRecentPaths(type);
-      });
-
-      ipcMain.handle('save-recent-path', async (event, path, type) => {
-        return await this.saveRecentPath(path, type);
-      });
-
       // Job Control
       ipcMain.handle('job:start', async (event, config) => {
         return await this.startJob(config);
@@ -354,13 +346,24 @@ class BackendAdapter {
         : ['openFile'];
       
       // Set up filters for file selection only
-      let filters = options.filters;
-      if (!filters && options.type !== 'directory') {
-        filters = [
-          { name: 'All Files', extensions: ['*'] },
-          { name: 'Text Files', extensions: ['txt', 'csv'] },
-          { name: 'Prompt Files', extensions: ['txt', 'md'] }
-        ];
+      let filters = [];
+      if (options.type !== 'directory') {
+        if (options.fileTypes && options.fileTypes.length > 0) {
+          // Convert fileTypes array to filters format
+          const extensions = options.fileTypes.map(ext => 
+            ext.startsWith('.') ? ext.substring(1) : ext
+          );
+          filters = [
+            { name: 'Supported Files', extensions },
+            { name: 'All Files', extensions: ['*'] }
+          ];
+        } else {
+          filters = [
+            { name: 'All Files', extensions: ['*'] },
+            { name: 'Text Files', extensions: ['txt', 'csv'] },
+            { name: 'Prompt Files', extensions: ['txt', 'md'] }
+          ];
+        }
       }
       
       const result = await dialog.showOpenDialog({
@@ -422,26 +425,7 @@ class BackendAdapter {
     }
   }
 
-  async getRecentPaths(type) {
-    try {
-      // For now, return empty array - can be enhanced with persistent storage
-      return { success: true, paths: [] };
-    } catch (error) {
-      console.error('Error getting recent paths:', error);
-      return { success: false, error: error.message };
-    }
-  }
 
-  async saveRecentPath(path, type) {
-    try {
-      // For now, just log - can be enhanced with persistent storage
-      console.log('Recent path saved:', { path, type });
-      return { success: true };
-    } catch (error) {
-      console.error('Error saving recent path:', error);
-      return { success: false, error: error.message };
-    }
-  }
 
   // Job Control Methods
   async startJob(config) {

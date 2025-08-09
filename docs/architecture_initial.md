@@ -1,3 +1,6 @@
+
+# NB! This document is not beeng maintain with any updates and chages for actual updated documentation split into separate docs always use docs/architecture/
+
 # rb-auto-midjourney-adobe-stock Brownfield Enhancement Architecture
 
 ## 1. Introduction

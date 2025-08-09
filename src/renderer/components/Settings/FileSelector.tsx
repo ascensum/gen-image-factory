@@ -7,7 +7,7 @@ interface FileSelectorProps {
   value: string;
   onChange: (path: string) => void;
   onValidation?: (isValid: boolean) => void;
-  type: 'file' | 'directory' | 'multiple';
+  type: 'file' | 'directory';
   fileTypes?: string[];
   accept?: string;
   placeholder?: string;
@@ -77,14 +77,15 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
     return fileTypes;
   }, [accept, fileTypes]);
 
-  // Load recent paths on mount
+  // Load recent paths on mount - DISABLED to prevent crashes
   useEffect(() => {
-    loadRecentPaths();
+    // Disable recent paths functionality to prevent white screen crashes
+    return;
   }, []);
 
   // Validate path when value changes
   useEffect(() => {
-    if (value) {
+    if (value && window.electronAPI?.validatePath) {
       validatePath(value);
     } else {
       setValidationState('idle');
@@ -117,16 +118,10 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
     }
   };
 
-  // Save path to recent paths
+  // Save path to recent paths - DISABLED to prevent crashes
   const saveToRecentPaths = async (path: string) => {
-    try {
-      if (window.electronAPI?.saveRecentPath) {
-        await window.electronAPI.saveRecentPath(path, type);
-        await loadRecentPaths();
-      }
-    } catch (error) {
-      console.error('Error saving recent path:', error);
-    }
+    // Disable recent paths functionality to prevent white screen crashes
+    return;
   };
 
   // Validate file/directory path
@@ -175,18 +170,20 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
     try {
       setIsDialogOpen(true);
 
-      const result = await window.electronAPI.selectFile({
-        type: type,  // ← Add this line
-        filters: processedFileTypes.length > 0 ? [
-          { name: 'Supported Files', extensions: processedFileTypes.map(ext => ext.replace('.', '')) },
-          { name: 'All Files', extensions: ['*'] }
-        ] : undefined,
-        title: `Select ${type === 'directory' ? 'Directory' : 'File'}`
-      });
+      if (window.electronAPI?.selectFile) {
+        const result = await window.electronAPI.selectFile({
+          type: type,
+          fileTypes: processedFileTypes.length > 0 ? processedFileTypes : undefined,
+          title: `Select ${type === 'directory' ? 'Directory' : 'File'}`
+        });
 
-      if (result.success && result.filePath) {
-        onChange(result.filePath);
-        await saveToRecentPaths(result.filePath);
+        if (result.success && result.filePath) {
+          onChange(result.filePath);
+          await saveToRecentPaths(result.filePath);
+        }
+      } else {
+        // Fallback for testing environment
+        console.warn('Electron API not available - file dialog not supported in test environment');
       }
     } catch (error) {
       console.error('Error opening file dialog:', error);
@@ -249,13 +246,23 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
         }
       }
 
-      if (type === 'multiple') {
-        const paths = files.map(file => (file as any).path).join(';');
-        onChange(paths);
+      const file = files[0];
+      
+      // In Electron environment, try to get the file path
+      if (window.electronAPI?.selectFile) {
+        // For drag-and-drop in Electron, we need to use the file dialog
+        // since we can't directly access the file path from the dropped file
+        console.log('Drag-and-drop detected, but using file dialog for path selection');
+        // Don't automatically set the path - let user use browse button instead
+        setErrorMessage('Please use the Browse button to select files');
+        onValidation?.(false);
+        return;
       } else {
-        const file = files[0];
-        onChange((file as any).path);
-        await saveToRecentPaths((file as any).path);
+        // In web environment, we can't get the file path
+        console.log('Drag-and-drop not supported in web environment');
+        setErrorMessage('Drag-and-drop not supported in this environment');
+        onValidation?.(false);
+        return;
       }
     } catch (error) {
       console.error('Error handling dropped files:', error);
@@ -311,46 +318,10 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
     return `${baseClasses} border-gray-300 hover:border-gray-400 text-gray-500 hover:text-gray-600`;
   };
 
-  // Recent Paths Dropdown Component
+  // Recent Paths Dropdown Component - DISABLED due to causing white screen crashes
   const RecentPathsDropdown = () => {
-    if (recentPaths.length === 0) return null;
-
-    return (
-      <div className="relative" ref={recentPathsRef}>
-        <button
-          type="button"
-          onClick={() => setShowRecentPaths(!showRecentPaths)}
-          disabled={disabled}
-          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <span>Recent paths</span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showRecentPaths ? 'rotate-180' : ''}`} />
-        </button>
-
-        {showRecentPaths && (
-          <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-            {recentPaths.map((recentPath, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => handleRecentPathSelect(recentPath.path)}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none flex items-center gap-2"
-              >
-                {recentPath.type === 'directory' ? (
-                  <Folder className="w-4 h-4 text-blue-500" />
-                ) : (
-                  <File className="w-4 h-4 text-gray-500" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="truncate font-medium">{recentPath.name}</div>
-                  <div className="truncate text-xs text-gray-500">{recentPath.path}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
+    // Disable recent paths functionality to prevent white screen crashes
+    return null;
   };
 
   // Validation Message Component
@@ -440,32 +411,9 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
         </button>
       </div>
 
-      {/* Drag and Drop Zone */}
-      <div
-        ref={dropZoneRef}
-        className={getDropZoneStyling()}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onClick={!disabled ? openFileDialog : undefined}
-        role="button"
-        tabIndex={disabled ? -1 : 0}
-        aria-label="Drag and drop files here or click to browse"
-        data-testid="file-drop-zone"
-      >
-        <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-        <p className="text-sm">
-          {dragState === 'dragover' 
-            ? 'Drop files here' 
-            : 'Drag and drop files here or click to browse'
-          }
-        </p>
-        {processedFileTypes.length > 0 && (
-          <p className="text-xs text-gray-400 mt-1">
-            Supported types: {processedFileTypes.join(', ')}
-          </p>
-        )}
-      </div>
+      {/* Drag and Drop Zone - DISABLED due to Electron path access limitations */}
+      {/* Drag-and-drop functionality is complex in Electron due to file path access restrictions */}
+      {/* Users should use the Browse button for file selection */}
 
       {/* Recent Paths Dropdown */}
       <RecentPathsDropdown />
@@ -486,9 +434,7 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
         id={`${label}-help`}
         className="text-xs text-gray-500"
       >
-        {type === 'multiple' 
-          ? 'Select multiple files (paths will be separated by semicolons)'
-          : type === 'directory'
+        {type === 'directory'
           ? 'Select a directory'
           : 'Select a file'
         }
@@ -501,17 +447,17 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
 declare global {
   interface Window {
     electronAPI?: {
-      showOpenDialog: (options: {
-        type: 'file' | 'directory' | 'multiple';
+      selectFile: (options: {
+        type: 'file' | 'directory';
         fileTypes?: string[];
-        defaultPath?: string;
-      }) => Promise<{ filePaths: string[]; canceled: boolean }>;
-      validatePath: (path: string, type: 'file' | 'directory' | 'multiple', fileTypes?: string[]) => Promise<{
+        title?: string;
+      }) => Promise<{ success: boolean; filePath?: string; canceled?: boolean }>;
+      validatePath: (path: string, type: 'file' | 'directory', fileTypes?: string[]) => Promise<{
         isValid: boolean;
         message?: string;
       }>;
-      getRecentPaths: (type: 'file' | 'directory' | 'multiple') => Promise<RecentPath[]>;
-      saveRecentPath: (path: string, type: 'file' | 'directory' | 'multiple') => Promise<void>;
+      getRecentPaths: (type: 'file' | 'directory') => Promise<RecentPath[]>;
+      saveRecentPath: (path: string, type: 'file' | 'directory') => Promise<void>;
     };
   }
 }

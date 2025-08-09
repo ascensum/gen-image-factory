@@ -29,7 +29,7 @@ describe('FileSelector', () => {
     vi.clearAllMocks()
     
     // Reset mock implementations
-    mockElectronAPI.selectFile.mockResolvedValue({ success: false, filePath: null })
+    mockElectronAPI.selectFile.mockResolvedValue({ success: false, canceled: true })
     mockElectronAPI.validatePath.mockResolvedValue({ isValid: true, message: '' })
     mockElectronAPI.getRecentPaths.mockResolvedValue([])
     mockElectronAPI.saveRecentPath.mockResolvedValue()
@@ -56,12 +56,10 @@ describe('FileSelector', () => {
     const browseButton = browseButtons[0] // Get the actual browse button
     fireEvent.click(browseButton)
     
+    // The component now uses selectFile instead of showOpenDialog
     expect(mockElectronAPI.selectFile).toHaveBeenCalledWith({
       type: 'file',
-      filters: [
-        { name: 'Supported Files', extensions: ['txt', 'csv'] },
-        { name: 'All Files', extensions: ['*'] }
-      ],
+      fileTypes: ['.txt', '.csv'],
       title: 'Select File'
     })
   })
@@ -75,8 +73,8 @@ describe('FileSelector', () => {
     
     // Mock successful file selection
     mockElectronAPI.selectFile.mockResolvedValueOnce({ 
-      success: true, 
-      filePath: '/path/to/file.txt' 
+      success: true,
+      filePath: '/path/to/file.txt'
     })
     
     fireEvent.click(browseButton)
@@ -102,8 +100,8 @@ describe('FileSelector', () => {
     
     // Mock dialog cancellation
     mockElectronAPI.selectFile.mockResolvedValueOnce({ 
-      success: false, 
-      filePath: null 
+      success: false,
+      canceled: true
     })
     
     fireEvent.click(browseButton)
@@ -113,63 +111,7 @@ describe('FileSelector', () => {
     })
   })
 
-  test('supports drag and drop file selection', async () => {
-    const onChange = vi.fn()
-    render(<FileSelector {...defaultProps} onChange={onChange} />)
-    
-    const dropZone = screen.getByTestId('file-drop-zone')
-    
-    // Create a file
-    const file = new File(['test content'], 'test.txt', { type: 'text/plain' })
-    Object.defineProperty(file, 'path', { value: 'test.txt' })
-    
-    // Simulate drop
-    const dropEvent = new Event('drop', { bubbles: true })
-    Object.defineProperty(dropEvent, 'dataTransfer', {
-      value: {
-        files: [file]
-      }
-    })
-    
-    fireEvent(dropZone, dropEvent)
-    
-    await waitFor(() => {
-      expect(onChange).toHaveBeenCalledWith('test.txt')
-    })
-  })
-
-  test('shows drag over state when file is dragged over', async () => {
-    render(<FileSelector {...defaultProps} />)
-    
-    const dropZone = screen.getByTestId('file-drop-zone')
-    
-    // Simulate drag over
-    const dragOverEvent = new Event('dragover', { bubbles: true })
-    fireEvent(dropZone, dragOverEvent)
-    
-    await waitFor(() => {
-      expect(dropZone).toHaveClass('border-blue-400')
-    })
-  })
-
-  test('validates file type on drop', async () => {
-    render(<FileSelector {...defaultProps} fileTypes={['.txt', '.csv']} />)
-    
-    const dropZone = screen.getByTestId('file-drop-zone')
-    
-    // Create a mock file with unsupported type
-    const file = new File(['test content'], 'test.pdf', { type: 'application/pdf' })
-    const dropEvent = new Event('drop', { bubbles: true })
-    Object.defineProperty(dropEvent, 'dataTransfer', {
-      value: { files: [file] }
-    })
-    
-    fireEvent(dropZone, dropEvent)
-    
-    // The component should show validation error - but the current implementation doesn't show it immediately
-    // This test is checking for behavior that may not be implemented in the test environment
-    // The actual component works correctly in the application
-  })
+  // Drag-and-drop tests removed - functionality disabled to prevent crashes
 
   test('clears file path when clear button is clicked', async () => {
     const onChange = vi.fn()
@@ -210,10 +152,7 @@ describe('FileSelector', () => {
     
     expect(mockElectronAPI.selectFile).toHaveBeenCalledWith({
       type: 'file',
-      filters: [
-        { name: 'Supported Files', extensions: ['txt', 'csv', 'pdf'] },
-        { name: 'All Files', extensions: ['*'] }
-      ],
+      fileTypes: ['.txt', '.csv', '.pdf'],
       title: 'Select File'
     })
   })
@@ -234,18 +173,7 @@ describe('FileSelector', () => {
     expect(browseButton).toBeInTheDocument()
   })
 
-  test('prevents default behavior on drop', () => {
-    render(<FileSelector {...defaultProps} />)
-    
-    const dropZone = screen.getByTestId('file-drop-zone')
-    const dropEvent = new Event('drop', { bubbles: true })
-    const preventDefault = vi.fn()
-    dropEvent.preventDefault = preventDefault
-    
-    fireEvent(dropZone, dropEvent)
-    
-    expect(preventDefault).toHaveBeenCalled()
-  })
+  // Drag-and-drop test removed - functionality disabled to prevent crashes
 
   test('handles disabled state correctly', () => {
     render(<FileSelector {...defaultProps} disabled={true} />)

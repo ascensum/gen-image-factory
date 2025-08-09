@@ -22,8 +22,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // File Selection Enhancement
   validatePath: (path, type, fileTypes) => ipcRenderer.invoke('validate-path', path, type, fileTypes),
-  getRecentPaths: (type) => ipcRenderer.invoke('get-recent-paths', type),
-  saveRecentPath: (path, type) => ipcRenderer.invoke('save-recent-path', path, type),
   
   // Job Control
   jobStart: (config) => ipcRenderer.invoke('job:start', config),
@@ -66,8 +64,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'set-api-key',
       'select-file',
       'validate-path',
-      'get-recent-paths', 
-      'save-recent-path',
       'job:start',
       'job:stop',
       'job:force-stop',
