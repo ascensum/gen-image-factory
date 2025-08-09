@@ -1,0 +1,119 @@
+Generate ONLY the SecureInput.tsx React component file. Do not create any other files, folders, or project structure.
+
+Create a single TypeScript React component file named SecureInput.tsx with the following requirements:
+
+TECH STACK:
+- React 18+ with TypeScript
+- Tailwind CSS for styling
+- Lucide React for icons
+- Electron IPC for secure storage
+
+COMPONENT: SecureInput.tsx
+LOCATION: src/renderer/components/Settings/SecureInput.tsx
+
+REQUIREMENTS:
+- Masked input field for API keys with show/hide toggle
+- Real-time validation with visual feedback
+- Secure storage integration using keytar library
+- Error states and success confirmation
+- Handle cases where native credential manager is unavailable
+- Show secure storage status indicator
+
+FEATURES:
+- Password-style input with masking
+- Show/hide toggle button
+- Real-time validation
+- Secure storage status indicator
+- Error message display
+- Success confirmation
+- Loading state during validation
+
+COMPONENT STRUCTURE:
+<SecureInput>
+  <div className="space-y-2">
+    <label className="block text-sm font-medium text-gray-700">
+      {label}
+    </label>
+    <div className="relative">
+      <input
+        type={isVisible ? "text" : "password"}
+        value={value}
+        onChange={handleChange}
+        className="w-full pr-10"
+        placeholder="Enter API key"
+      />
+      <button
+        type="button"
+        onClick={toggleVisibility}
+        className="absolute right-2 top-1/2 -translate-y-1/2"
+      >
+        <EyeIcon or EyeOffIcon />
+      </button>
+    </div>
+    <div className="flex items-center justify-between">
+      <ValidationStatus />
+      <SecureStorageStatus />
+    </div>
+    <ErrorMessage />
+  </div>
+</SecureInput>
+
+PROPS INTERFACE:
+interface SecureInputProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onValidation?: (isValid: boolean) => void;
+  serviceName: string;
+  placeholder?: string;
+  disabled?: boolean;
+  required?: boolean;
+}
+
+STATE MANAGEMENT:
+- Input value state
+- Visibility toggle state
+- Validation state (validating, valid, invalid)
+- Error message state
+- Secure storage availability state
+
+VALIDATION:
+- Check API key format based on service
+- Real-time validation with debounce
+- Visual feedback for validation status
+- Error messages for invalid keys
+
+SECURE STORAGE:
+- Check if native credential manager is available
+- Show secure storage status indicator
+- Handle cases where secure storage is unavailable
+- Provide fallback behavior
+
+STYLING:
+- Use Tailwind CSS classes
+- Proper focus states and focus rings
+- Error state styling (red border, error text)
+- Success state styling (green border, success text)
+- Loading state styling
+- Disabled state styling
+
+ACCESSIBILITY:
+- Proper ARIA labels and descriptions
+- Keyboard navigation support
+- Screen reader announcements for validation
+- Focus management
+- Error message announcements
+
+SECURITY FEATURES:
+- Never log or display API keys in plain text
+- Use secure storage when available
+- Proper input sanitization
+- Secure clipboard handling
+
+DO NOT INCLUDE:
+- External validation libraries
+- Complex animations
+- Server-side validation calls
+- External UI libraries
+
+Generate ONLY the complete SecureInput.tsx file with all imports, interfaces, and implementation. Do not create any other files or project structure. 

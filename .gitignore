@@ -1,0 +1,71 @@
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+test-*.db
+data/*.db
+
+# Build outputs
+/dist
+/build
+/out
+/.next
+/.nuxt
+/.output
+
+# Coverage reports
+/coverage
+*.lcov
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+
+# User data and generated content
+/pictures/
+/user_data/
+/test-results/
+/playwright-report/
+
+# Excel files
+*.xlsx
+*.xls
+
+# Backup files
+*.backup
+*.bak
