@@ -1,6 +1,36 @@
 import React, { useState } from 'react';
+import * as XLSX from 'xlsx';
 import { GeneratedImage } from './DashboardPanel';
 import QuickActions from './QuickActions';
+import ImageModal from './ImageModal';
+
+// Excel export configuration
+const EXCEL_COLUMN_WIDTHS = [
+  { wch: 5 },   // Row
+  { wch: 15 },  // Image ID
+  { wch: 15 },  // Job Execution ID
+  { wch: 25 },  // File Name
+  { wch: 40 },  // File Path
+  { wch: 12 },  // QC Status
+  { wch: 30 },  // QC Reason
+  { wch: 50 },  // Generation Prompt
+  { wch: 12 },  // Seed
+  { wch: 20 },  // Created At
+  { wch: 30 },  // AI Title
+  { wch: 50 },  // AI Description
+  { wch: 40 },  // AI Tags
+  { wch: 15 },  // Image Enhancement
+  { wch: 15 },  // Sharpening Level
+  { wch: 15 },  // Saturation Level
+  { wch: 12 },  // Image Convert
+  { wch: 12 },  // Convert to JPG
+  { wch: 12 },  // JPG Quality
+  { wch: 12 },  // PNG Quality
+  { wch: 15 },  // Remove Background
+  { wch: 15 },  // Remove BG Size
+  { wch: 15 },  // Trim Transparent
+  { wch: 15 }   // JPG Background
+];
 
 interface ImageGalleryProps {
   images: GeneratedImage[];
@@ -36,6 +66,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name' | 'status'>('newest');
   const [showImageModal, setShowImageModal] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Get unique job IDs for filtering
   const uniqueJobIds = Array.from(new Set((images || []).map(img => img.executionId)));
@@ -173,30 +205,122 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     }
   };
 
-  const handleExport = () => {
-    if (selectedImages.size === 0) {
-      // Export all filtered images
-      const imagesToExport = filteredAndSortedImages;
-      onImageAction('export', 'bulk', { 
-        images: imagesToExport, 
-        includeMetadata: true,
-        format: 'zip' 
-      });
-    } else {
-      // Export selected images
-      const imagesToExport = Array.from(selectedImages).map(id => 
-        images.find(img => img.id === id)
-      ).filter(Boolean);
-      onImageAction('export', 'selected', { 
-        images: imagesToExport, 
-        includeMetadata: true,
-        format: 'zip' 
-      });
+  // Helper function to transform image data for Excel export
+  const transformImageForExport = (image: GeneratedImage, index: number) => {
+    const processingSettings = image.processingSettings || {};
+    const metadata = image.metadata || {};
+    
+    return {
+      'Row': index + 1,
+      'Image ID': image.id,
+      'Job Execution ID': image.executionId,
+      'File Name': image.finalImagePath ? image.finalImagePath.split('/').pop() : 'N/A',
+      'File Path': image.finalImagePath || 'N/A',
+      'QC Status': image.qcStatus || 'pending',
+      'QC Reason': image.qcReason || '',
+      'Generation Prompt': image.generationPrompt || '',
+      'Seed': image.seed || 'N/A',
+      'Created At': image.createdAt ? new Date(image.createdAt).toLocaleString() : 'N/A',
+      
+      // AI-Generated Metadata
+      'AI Title': metadata.title || '',
+      'AI Description': metadata.description || '',
+      'AI Tags': Array.isArray(metadata.tags) ? metadata.tags.join(', ') : (metadata.tags || ''),
+      
+      // Processing Settings
+      'Image Enhancement': processingSettings.imageEnhancement ? 'Yes' : 'No',
+      'Sharpening Level': processingSettings.sharpening || 0,
+      'Saturation Level': processingSettings.saturation || 1,
+      'Image Convert': processingSettings.imageConvert ? 'Yes' : 'No',
+      'Convert to JPG': processingSettings.convertToJpg ? 'Yes' : 'No',
+      'JPG Quality': processingSettings.jpgQuality || 'N/A',
+      'PNG Quality': processingSettings.pngQuality || 'N/A',
+      'Remove Background': processingSettings.removeBg ? 'Yes' : 'No',
+      'Remove BG Size': processingSettings.removeBgSize || 'N/A',
+      'Trim Transparent': processingSettings.trimTransparentBackground ? 'Yes' : 'No',
+      'JPG Background': processingSettings.jpgBackground || 'N/A'
+    };
+  };
+
+  const handleExcelExport = async () => {
+    try {
+      setIsExporting(true);
+      setExportError(null);
+
+      // Determine which images to export
+      const imagesToExport = selectedImages.size === 0 
+        ? filteredAndSortedImages 
+        : Array.from(selectedImages)
+            .map(id => images.find(img => img.id === id))
+            .filter((img): img is GeneratedImage => img !== undefined);
+
+      if (imagesToExport.length === 0) {
+        setExportError('No images to export');
+        return;
+      }
+
+      // Prepare Excel data with comprehensive metadata
+      const excelData = imagesToExport.map(transformImageForExport);
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths for better readability
+      const columnWidths = EXCEL_COLUMN_WIDTHS;
+      ws['!cols'] = columnWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Generated Images');
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+      const filename = `generated-images-export-${timestamp}.xlsx`;
+
+      // Write and download file
+      XLSX.writeFile(wb, filename);
+
+      // Show success feedback (following the pattern from other components)
+      console.log(`Excel export completed: ${imagesToExport.length} images exported to ${filename}`);
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Excel export failed:', error);
+      setExportError(`Export failed: ${errorMessage}`);
+    } finally {
+      setIsExporting(false);
     }
   };
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString() + ' ' + new Date(date).toLocaleTimeString();
+  };
+
+  // Modal navigation functions
+  const handleModalNavigation = (direction: 'next' | 'previous') => {
+    if (!showImageModal) return;
+    
+    const currentIndex = filteredAndSortedImages.findIndex(img => img.id === showImageModal);
+    if (currentIndex === -1) return;
+    
+    let newIndex;
+    if (direction === 'next') {
+      newIndex = currentIndex + 1 < filteredAndSortedImages.length ? currentIndex + 1 : currentIndex;
+    } else {
+      newIndex = currentIndex - 1 >= 0 ? currentIndex - 1 : currentIndex;
+    }
+    
+    setShowImageModal(filteredAndSortedImages[newIndex].id);
+  };
+
+  const getModalNavigationProps = () => {
+    if (!showImageModal) return { hasPrevious: false, hasNext: false };
+    
+    const currentIndex = filteredAndSortedImages.findIndex(img => img.id === showImageModal);
+    return {
+      hasPrevious: currentIndex > 0,
+      hasNext: currentIndex < filteredAndSortedImages.length - 1
+    };
   };
 
   return (
@@ -381,15 +505,62 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
             Clear
           </button>
 
-          {/* Export Button */}
+          {/* Excel Export Button */}
           <button
-            onClick={handleExport}
-            className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            onClick={handleExcelExport}
+            disabled={isExporting || filteredAndSortedImages.length === 0}
+            className={`px-3 py-1 text-sm rounded-md transition-colors flex items-center space-x-1 ${
+              isExporting || filteredAndSortedImages.length === 0
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-green-600 text-white hover:bg-green-700'
+            }`}
+            title={selectedImages.size > 0 
+              ? `Export ${selectedImages.size} selected images to Excel` 
+              : `Export ${filteredAndSortedImages.length} images to Excel`}
+            aria-label={selectedImages.size > 0 
+              ? `Export ${selectedImages.size} selected images to Excel` 
+              : `Export ${filteredAndSortedImages.length} images to Excel`}
           >
-            Export
+            {isExporting ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Exporting...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Export Excel</span>
+              </>
+            )}
           </button>
         </div>
       </div>
+
+      {/* Export Error Display */}
+      {exportError && (
+        <div className="mx-6 mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex items-center">
+            <svg className="w-4 h-4 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm text-red-800">{exportError}</span>
+            <button
+              onClick={() => setExportError(null)}
+              className="ml-auto text-red-600 hover:text-red-800"
+              aria-label="Dismiss error"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Image Grid/List - SCROLLABLE AREA */}
       <div className="flex-1 overflow-y-auto min-h-0">
@@ -498,10 +669,83 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                     </div>
                   </div>
 
-                  {/* Image Info */}
-                  <div className="p-3">
-                    <div className="text-xs text-gray-600 truncate">{image.generationPrompt}</div>
-                    <div className="text-xs text-gray-500">{formatDate(image.createdAt)}</div>
+                  {/* Enhanced Image Info */}
+                  <div className="p-3 space-y-2">
+                    {/* AI-Generated Title (Primary) */}
+                    {image.metadata?.title ? (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900 truncate" title={image.metadata.title}>
+                          {image.metadata.title}
+                        </h4>
+                        <div className="text-xs text-gray-500 truncate mt-1" title={image.generationPrompt}>
+                          {image.generationPrompt}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-600 truncate" title={image.generationPrompt}>
+                        {image.generationPrompt}
+                      </div>
+                    )}
+
+                    {/* Processing Settings Indicators */}
+                    {image.processingSettings && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {image.processingSettings.imageEnhancement && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Image Enhancement Applied">
+                            ✨ Enhanced
+                          </span>
+                        )}
+                        {image.processingSettings.removeBg && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="Background Removed">
+                            🖼️ No BG
+                          </span>
+                        )}
+                        {image.processingSettings.convertToJpg && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title="Converted to JPG">
+                            📄 JPG
+                          </span>
+                        )}
+                        {image.processingSettings.sharpening && image.processingSettings.sharpening > 0 && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800" title={`Sharpening: ${image.processingSettings.sharpening}`}>
+                            🔍 Sharp
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* AI Tags (if available) */}
+                    {image.metadata?.tags && Array.isArray(image.metadata.tags) && image.metadata.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {image.metadata.tags.slice(0, 3).map((tag: string, index: number) => (
+                          <span 
+                            key={index}
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700"
+                            title={tag}
+                          >
+                            {tag.length > 8 ? `${tag.slice(0, 8)}...` : tag}
+                          </span>
+                        ))}
+                        {image.metadata.tags.length > 3 && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
+                            +{image.metadata.tags.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Seed and Creation Date */}
+                    <div className="flex items-center justify-between text-xs text-gray-500 mt-2">
+                      <div className="flex items-center space-x-2">
+                        {image.seed && (
+                          <span className="font-mono" title={`Seed: ${image.seed}`}>
+                            🎲 {image.seed}
+                          </span>
+                        )}
+                      </div>
+                      <div title={formatDate(image.createdAt)}>
+                        {new Date(image.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
                     
                     {/* QC Status Dropdown */}
                     <select
@@ -573,39 +817,14 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       </div>
 
       {/* Image Modal */}
-      {showImageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
-          <div className="relative max-w-4xl max-h-full">
-            <button
-              onClick={() => setShowImageModal(null)}
-              className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-75"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            
-            {showImageModal && (
-              <div className="bg-white rounded-lg overflow-hidden">
-                <img
-                  src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik01MCA1MEgxNTBWNzVINzVWMTI1SDUwVjUwWiIgZmlsbD0iI0QxRDVEM0EiLz4KPHN2ZyB4PSI3NSIgeT0iODAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI0NSIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNMTkgM0g1QzMuOSAzIDMgMy45IDMgNVYxOUMzIDIwLjEgMy45IDIxIDUgMjFIMTlDMjAuMSAyMSAyMSAyMC4xIDIxIDE5VjVDMjEgMy45IDIwLjEgMyAxOSAzWk0xOSAxOUg1VjVIMTlWMTlaIiBmaWxsPSIjOUI5QkEwIi8+CjxwYXRoIGQ9Ik0xNCAxM0gxMFYxN0gxNFYxM1oiIGZpbGw9IiM5QjlCQTAiLz4KPC9zdmc+Cjwvc3ZnPgo="
-                  alt="Full size image"
-                  className="max-w-full max-h-[80vh] object-contain"
-                />
-                <div className="p-4">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-2">Image Details</h2>
-                  <h3 className="text-lg font-medium text-gray-900">
-                    {images.find(img => img.id === showImageModal)?.generationPrompt}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Created: {images.find(img => img.id === showImageModal) && formatDate(images.find(img => img.id === showImageModal)!.createdAt)}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <ImageModal
+        image={showImageModal ? images.find(img => img.id === showImageModal) || null : null}
+        isOpen={!!showImageModal}
+        onClose={() => setShowImageModal(null)}
+        onNext={() => handleModalNavigation('next')}
+        onPrevious={() => handleModalNavigation('previous')}
+        {...getModalNavigationProps()}
+      />
     </div>
   );
 };

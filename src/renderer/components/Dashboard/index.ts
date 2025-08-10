@@ -6,6 +6,7 @@ export { default as JobHistory } from './JobHistory';
 export { default as ImageGallery } from './ImageGallery';
 export { default as QuickActions } from './QuickActions';
 export { default as ForceStopButton } from './ForceStopButton';
+export { default as ImageModal } from './ImageModal';
 
 // Export types
 export type {
