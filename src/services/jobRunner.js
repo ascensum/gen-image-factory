@@ -401,6 +401,108 @@ class JobRunner extends EventEmitter {
 
     return Math.round((completedWeight / totalWeight) * 100);
   }
+
+  /**
+   * Get current job status
+   * @returns {Object} Job status object
+   */
+  getJobStatus() {
+    const currentStepConfig = PROGRESS_STEPS.find(s => s.name === this.jobState.currentStep);
+    const currentStepIndex = PROGRESS_STEPS.findIndex(s => s.name === this.jobState.currentStep);
+    
+    return {
+      state: this.jobState.status,
+      currentJob: this.currentJob ? {
+        id: this.jobState.id,
+        status: this.jobState.status,
+        startTime: this.jobState.startTime,
+        progress: this.jobState.progress,
+        currentStep: currentStepIndex + 1,
+        totalSteps: PROGRESS_STEPS.length
+      } : null,
+      progress: this.jobState.progress / 100,
+      currentStep: currentStepIndex + 1,
+      totalSteps: PROGRESS_STEPS.length,
+      startTime: this.jobState.startTime,
+      estimatedTimeRemaining: this.calculateEstimatedTimeRemaining()
+    };
+  }
+
+  /**
+   * Get current job progress
+   * @returns {Object} Job progress object
+   */
+  getJobProgress() {
+    const currentStepConfig = PROGRESS_STEPS.find(s => s.name === this.jobState.currentStep);
+    const currentStepIndex = PROGRESS_STEPS.findIndex(s => s.name === this.jobState.currentStep);
+    
+    return {
+      progress: this.jobState.progress / 100,
+      currentStep: currentStepIndex + 1,
+      totalSteps: PROGRESS_STEPS.length,
+      stepName: currentStepConfig ? currentStepConfig.description : '',
+      estimatedTimeRemaining: this.calculateEstimatedTimeRemaining()
+    };
+  }
+
+  /**
+   * Get job logs
+   * @param {string} mode - 'standard' or 'debug'
+   * @returns {Array} Array of log entries
+   */
+  getJobLogs(mode = 'standard') {
+    // This would typically come from a log service
+    // For now, return mock logs based on current state
+    const logs = [];
+    
+    if (this.jobState.status === 'running' && this.jobState.currentStep) {
+      const currentStepConfig = PROGRESS_STEPS.find(s => s.name === this.jobState.currentStep);
+      logs.push({
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        level: 'info',
+        message: `Currently executing: ${currentStepConfig ? currentStepConfig.description : this.jobState.currentStep}`,
+        source: 'job-runner'
+      });
+    }
+
+    if (this.jobState.error) {
+      logs.push({
+        id: (Date.now() + 1).toString(),
+        timestamp: new Date(),
+        level: 'error',
+        message: this.jobState.error,
+        source: 'job-runner'
+      });
+    }
+
+    // Filter logs based on mode
+    if (mode === 'standard') {
+      return logs.filter(log => log.level !== 'debug');
+    }
+    
+    return logs;
+  }
+
+  /**
+   * Calculate estimated time remaining
+   * @returns {number|null} Estimated time remaining in seconds
+   */
+  calculateEstimatedTimeRemaining() {
+    if (this.jobState.status !== 'running' || !this.jobState.startTime) {
+      return null;
+    }
+
+    const elapsed = (Date.now() - this.jobState.startTime.getTime()) / 1000;
+    const progress = this.jobState.progress / 100;
+    
+    if (progress <= 0) {
+      return null;
+    }
+
+    const totalEstimatedTime = elapsed / progress;
+    return Math.max(0, totalEstimatedTime - elapsed);
+  }
 }
 
 module.exports = { JobRunner };

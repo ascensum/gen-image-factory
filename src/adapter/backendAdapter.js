@@ -41,6 +41,26 @@ class BackendAdapter {
   setupIpcHandlers() {
     // Only set up IPC handlers if we're in an Electron environment
     if (typeof ipcMain !== 'undefined' && ipcMain) {
+      // Remove existing handlers to prevent duplicates
+      const handlers = [
+        'get-api-key', 'set-api-key', 'get-settings', 'save-settings', 'settings:get-configuration',
+        'select-file', 'validate-path', 'job:start', 'job:stop', 'job:force-stop-all',
+        'job:get-status', 'job:get-progress', 'job:get-logs', 'get-security-status',
+        'job-execution:save', 'job-execution:get', 'job-execution:get-all', 'job-execution:update',
+        'job-execution:delete', 'job-execution:statistics', 'job-execution:export-to-excel',
+        'job-execution:history', 'generated-image:save', 'generated-image:get',
+        'generated-image:get-by-execution', 'generated-image:get-all', 'generated-image:update',
+        'generated-image:delete', 'generated-image:get-by-qc-status', 'generated-image:update-qc-status',
+        'generated-image:metadata', 'generated-image:statistics', 'generated-image:manual-approve'
+      ];
+      
+      handlers.forEach(handler => {
+        try {
+          ipcMain.removeHandler(handler);
+        } catch (error) {
+          // Handler might not exist, ignore error
+        }
+      });
       // API Key Management
       ipcMain.handle('get-api-key', async (event, serviceName) => {
         return await this.getApiKey(serviceName);
@@ -57,6 +77,10 @@ class BackendAdapter {
 
       ipcMain.handle('save-settings', async (event, settingsObject) => {
         return await this.saveSettings(settingsObject);
+      });
+
+      ipcMain.handle('settings:get-configuration', async () => {
+        return await this.getSettings();
       });
 
       // File Selection
@@ -78,8 +102,20 @@ class BackendAdapter {
         return await this.stopJob();
       });
 
-      ipcMain.handle('job:force-stop', async () => {
+      ipcMain.handle('job:force-stop-all', async () => {
         return await this.forceStopAll();
+      });
+
+      ipcMain.handle('job:get-status', async () => {
+        return await this.getJobStatus();
+      });
+
+      ipcMain.handle('job:get-progress', async () => {
+        return await this.getJobProgress();
+      });
+
+      ipcMain.handle('job:get-logs', async (event, mode = 'standard') => {
+        return await this.getJobLogs(mode);
       });
 
       // Security Status
@@ -96,24 +132,28 @@ class BackendAdapter {
         return await this.getJobExecution(id);
       });
 
-      ipcMain.handle('job-execution:get-all', async () => {
-        return await this.getAllJobExecutions();
+      ipcMain.handle('job-execution:get-all', async (event, options = {}) => {
+        return await this.getAllJobExecutions(options);
       });
 
       ipcMain.handle('job-execution:update', async (event, id, execution) => {
         return await this.updateJobExecution(id, execution);
       });
 
-      ipcMain.handle('job-execution:delete', async (event, id) => {
-        return await this.deleteJobExecution(id);
-      });
-
-      ipcMain.handle('job-execution:history', async (event, limit) => {
-        return await this.getJobHistory(limit);
+      ipcMain.handle('job-execution:delete', async (event, { jobId }) => {
+        return await this.deleteJobExecution(jobId);
       });
 
       ipcMain.handle('job-execution:statistics', async () => {
         return await this.getJobStatistics();
+      });
+
+      ipcMain.handle('job-execution:export-to-excel', async (event, { jobId }) => {
+        return await this.exportJobToExcel(jobId);
+      });
+
+      ipcMain.handle('job-execution:history', async (event, limit) => {
+        return await this.getJobHistory(limit);
       });
 
       // Generated Image Management
@@ -129,24 +169,24 @@ class BackendAdapter {
         return await this.getGeneratedImagesByExecution(executionId);
       });
 
-      ipcMain.handle('generated-image:get-all', async (event, limit) => {
-        return await this.getAllGeneratedImages(limit);
+      ipcMain.handle('generated-image:get-all', async (event, options = {}) => {
+        return await this.getAllGeneratedImages(options.limit || 100);
       });
 
       ipcMain.handle('generated-image:update', async (event, id, image) => {
         return await this.updateGeneratedImage(id, image);
       });
 
-      ipcMain.handle('generated-image:delete', async (event, id) => {
-        return await this.deleteGeneratedImage(id);
+      ipcMain.handle('generated-image:delete', async (event, { imageId }) => {
+        return await this.deleteGeneratedImage(imageId);
       });
 
       ipcMain.handle('generated-image:get-by-qc-status', async (event, qcStatus) => {
         return await this.getImagesByQCStatus(qcStatus);
       });
 
-      ipcMain.handle('generated-image:update-qc-status', async (event, id, qcStatus, qcReason) => {
-        return await this.updateQCStatus(id, qcStatus, qcReason);
+      ipcMain.handle('generated-image:update-qc-status', async (event, { imageId, status }) => {
+        return await this.updateQCStatus(imageId, status);
       });
 
       ipcMain.handle('generated-image:metadata', async (event, executionId) => {
@@ -155,6 +195,11 @@ class BackendAdapter {
 
       ipcMain.handle('generated-image:statistics', async () => {
         return await this.getImageStatistics();
+      });
+
+      // Manual approval handler
+      ipcMain.handle('generated-image:manual-approve', async (event, { imageId }) => {
+        return await this.manualApproveImage(imageId);
       });
     }
   }
@@ -484,6 +529,70 @@ class BackendAdapter {
     }
   }
 
+  async getJobStatus() {
+    try {
+      const status = await this.jobRunner.getJobStatus();
+      return {
+        state: status.state || 'idle',
+        currentJob: status.currentJob || null,
+        progress: status.progress || 0,
+        currentStep: status.currentStep || 0,
+        totalSteps: status.totalSteps || 0,
+        startTime: status.startTime || null,
+        estimatedTimeRemaining: status.estimatedTimeRemaining || null
+      };
+    } catch (error) {
+      console.error('Error getting job status:', error);
+      return {
+        state: 'idle',
+        currentJob: null,
+        progress: 0,
+        currentStep: 0,
+        totalSteps: 0,
+        startTime: null,
+        estimatedTimeRemaining: null
+      };
+    }
+  }
+
+  async getJobProgress() {
+    try {
+      const progress = await this.jobRunner.getJobProgress();
+      return {
+        progress: progress.progress || 0,
+        currentStep: progress.currentStep || 0,
+        totalSteps: progress.totalSteps || 0,
+        stepName: progress.stepName || '',
+        estimatedTimeRemaining: progress.estimatedTimeRemaining || null
+      };
+    } catch (error) {
+      console.error('Error getting job progress:', error);
+      return {
+        progress: 0,
+        currentStep: 0,
+        totalSteps: 0,
+        stepName: '',
+        estimatedTimeRemaining: null
+      };
+    }
+  }
+
+  async getJobLogs(mode = 'standard') {
+    try {
+      const logs = await this.jobRunner.getJobLogs(mode);
+      return logs.map(log => ({
+        id: log.id || Date.now().toString(),
+        timestamp: log.timestamp || new Date(),
+        level: log.level || 'info',
+        message: log.message || '',
+        source: log.source || 'system'
+      }));
+    } catch (error) {
+      console.error('Error getting job logs:', error);
+      return [];
+    }
+  }
+
   // Job Execution Management Methods
   async saveJobExecution(execution) {
     try {
@@ -507,10 +616,10 @@ class BackendAdapter {
     }
   }
 
-  async getAllJobExecutions() {
+  async getAllJobExecutions(options = {}) {
     try {
       await this.ensureInitialized();
-      const result = await this.jobExecution.getAllJobExecutions();
+      const result = await this.jobExecution.getAllJobExecutions(options.limit || 50);
       return result;
     } catch (error) {
       console.error('Error getting all job executions:', error);
@@ -544,10 +653,15 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       const result = await this.jobExecution.getJobHistory(limit);
-      return result;
+      if (result && result.success && result.history) {
+        return result.history;
+      } else {
+        console.warn('getJobHistory returned unexpected format:', result);
+        return [];
+      }
     } catch (error) {
       console.error('Error getting job history:', error);
-      return { success: false, error: error.message };
+      return [];
     }
   }
 
@@ -555,9 +669,60 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       const result = await this.jobExecution.getJobStatistics();
-      return result;
+      if (result && result.success && result.statistics) {
+        return result.statistics;
+      } else {
+        console.warn('getJobStatistics returned unexpected format:', result);
+        return {
+          totalJobs: 0,
+          completedJobs: 0,
+          failedJobs: 0,
+          averageExecutionTime: 0,
+          totalImagesGenerated: 0,
+          successRate: 0
+        };
+      }
     } catch (error) {
       console.error('Error getting job statistics:', error);
+      return {
+        totalJobs: 0,
+        completedJobs: 0,
+        failedJobs: 0,
+        averageExecutionTime: 0,
+        totalImagesGenerated: 0,
+        successRate: 0
+      };
+    }
+  }
+
+  async exportJobToExcel(jobId) {
+    try {
+      await this.ensureInitialized();
+      const job = await this.jobExecution.getJobExecution(jobId);
+      const images = await this.generatedImage.getGeneratedImagesByExecution(jobId);
+      
+      // Create Excel export logic here
+      const exportData = {
+        job: job,
+        images: images,
+        timestamp: new Date().toISOString()
+      };
+      
+      // For now, return success - actual Excel generation would be implemented here
+      return { success: true, data: exportData };
+    } catch (error) {
+      console.error('Error exporting job to Excel:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async manualApproveImage(imageId) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.updateQCStatus(imageId, 'approved', 'Manually approved by user');
+      return result;
+    } catch (error) {
+      console.error('Error manually approving image:', error);
       return { success: false, error: error.message };
     }
   }
@@ -600,10 +765,15 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       const result = await this.generatedImage.getAllGeneratedImages(limit);
-      return result;
+      if (result && result.success && result.images) {
+        return result.images;
+      } else {
+        console.warn('getAllGeneratedImages returned unexpected format:', result);
+        return [];
+      }
     } catch (error) {
       console.error('Error getting all generated images:', error);
-      return { success: false, error: error.message };
+      return [];
     }
   }
 

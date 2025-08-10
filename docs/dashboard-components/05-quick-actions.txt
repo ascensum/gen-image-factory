@@ -1,0 +1,268 @@
+# Quick Actions Component Specification
+
+## Component Purpose
+The Quick Actions component provides immediate access to common operations for jobs and images. It includes both job-specific actions (view details, export, delete, rerun) and image-specific actions (QC status update, delete, manual approve, view metadata).
+
+## Layout Structure
+```
+┌─────────────────────────────────────┐
+│ Quick Actions                      │
+├─────────────────────────────────────┤
+│ Job Actions:                       │
+│ [View Details] [Export] [Delete] [Rerun] │
+│                                     │
+│ Image Actions:                      │
+│ [Update QC] [Delete] [Approve] [Metadata] │
+│                                     │
+│ Bulk Actions:                       │
+│ [Select All] [Bulk QC] [Bulk Delete] │
+└─────────────────────────────────────┘
+```
+
+## Core Components
+
+### 1. Job Quick Actions
+- **View Details**: Opens modal with detailed job results
+- **Export to Excel**: Downloads Excel file with job data
+- **Delete Job**: Confirmation dialog with job details
+- **Rerun Job**: Start new job with same configuration
+- **Context**: Available on job cards and job details
+
+### 2. Image Quick Actions
+- **Update QC Status**: Dropdown with Pass/Fail/Pending options
+- **Delete Image**: Confirmation dialog with image details
+- **Manual Approve**: Only for failed images
+- **View Metadata**: Modal with detailed image information
+- **Download**: Direct download of full-size image
+- **Context**: Available on image cards and image details
+
+### 3. Bulk Actions
+- **Select All**: Select all visible items
+- **Bulk QC Update**: Apply same QC status to multiple images
+- **Bulk Delete**: Delete multiple items with confirmation
+- **Bulk Export**: Export multiple items as batch
+- **Context**: Available when multiple items are selected
+
+### 4. Context Menus
+- **Right-click**: Context menu with relevant actions
+- **Keyboard**: Context menu via keyboard shortcut
+- **Dynamic**: Actions change based on item type and state
+- **Accessibility**: Full keyboard navigation support
+
+## Visual Design
+
+### Typography
+- **Primary Font**: System default (San Francisco on macOS, Segoe UI on Windows)
+- **Button Text**: 14px, font-weight: 500
+- **Dropdown Text**: 12px, font-weight: 400
+- **Confirmation Text**: 14px, font-weight: 600
+- **Error Text**: 12px, color: Red-500
+
+### Spacing
+- **Button Spacing**: 8px between action buttons
+- **Group Spacing**: 16px between action groups
+- **Modal Padding**: 24px on all sides
+- **Dropdown Padding**: 8px for dropdown items
+
+### Colors
+- **Primary Actions**: Blue-500 (#3B82F6) - View, Export
+- **Secondary Actions**: Gray-500 (#6B7280) - Metadata, Download
+- **Danger Actions**: Red-500 (#EF4444) - Delete
+- **Success Actions**: Green-500 (#10B981) - Approve, QC Pass
+- **Warning Actions**: Orange-500 (#F59E0B) - QC Pending
+- **Disabled State**: Gray-300 (#D1D5DB) with 50% opacity
+
+## Interactive Elements
+
+### Button States
+- **Enabled**: Full opacity, hover effects, click feedback
+- **Disabled**: 50% opacity, no hover effects, clear messaging
+- **Loading**: Spinner animation, disabled state
+- **Success**: Green color with checkmark icon
+- **Error**: Red color with X icon
+
+### Dropdown Interactions
+- **Click**: Open dropdown with action options
+- **Hover**: Highlight dropdown items
+- **Keyboard**: Navigate with arrow keys
+- **Escape**: Close dropdown without action
+
+### Confirmation Dialogs
+- **Delete Confirmation**: Show item details and warning
+- **Bulk Confirmation**: Show count and item types
+- **Export Confirmation**: Show file size and format
+- **QC Confirmation**: Show status change and reason
+
+### Context Menu
+- **Right-click**: Open context menu
+- **Keyboard**: Shift+F10 or context menu key
+- **Position**: Appear near cursor or selection
+- **Auto-close**: Close when clicking outside
+
+## Backend Integration
+
+### Job Actions Integration
+- **View Details**: `getJobResults(jobExecutionId)` - Get detailed job results
+- **Export to Excel**: `exportToExcel(jobExecutionId)` - Download Excel file
+- **Delete Job**: `deleteJobExecution(id)` - Delete job and associated images
+- **Rerun Job**: Uses job configuration to start new job
+
+### Image Actions Integration
+- **Update QC Status**: `generated-image:update-qc-status` - Update image QC status
+- **Delete Image**: `deleteGeneratedImage(id)` - Delete specific image
+- **Manual Approve**: `manualApproveImage(imageId)` - Manual approval for failed images
+- **View Metadata**: Get detailed image information
+- **Download**: Direct file download
+
+### Bulk Actions Integration
+- **Bulk QC Update**: Batch call to `generated-image:update-qc-status`
+- **Bulk Delete**: Batch call to `deleteGeneratedImage`
+- **Bulk Export**: Create zip file with multiple images
+- **Select All**: Toggle selection state for all visible items
+
+### Error Handling
+- **Action Failed**: Clear error message with retry option
+- **Network Error**: Offline indicator with retry button
+- **Partial Success**: Show success count with error details
+- **Validation Error**: Clear error message with correction guidance
+
+## State Management
+
+### Selection State
+- **Single Selection**: One item can be selected
+- **Multi Selection**: Multiple items for bulk actions
+- **Select All**: Toggle selection for all visible items
+- **Selection Feedback**: Visual highlight and action bar
+
+### Action States
+- **Idle**: No action in progress
+- **Loading**: Action in progress with spinner
+- **Success**: Action completed with success feedback
+- **Error**: Action failed with error message
+- **Confirmation**: Waiting for user confirmation
+
+### Context States
+- **Job Context**: Job-specific actions available
+- **Image Context**: Image-specific actions available
+- **Bulk Context**: Bulk actions available when multiple selected
+- **Mixed Context**: Actions for mixed item types
+
+## Accessibility
+
+### Keyboard Navigation
+- **Tab Order**: Action buttons → Dropdowns → Modals
+- **Arrow Keys**: Navigate dropdown items
+- **Enter/Space**: Activate buttons and actions
+- **Escape**: Close dropdowns and modals
+
+### Screen Reader Support
+- **ARIA Labels**: Clear descriptions for all actions
+- **Action Announcements**: Announce action results
+- **Error Messages**: Clear error descriptions
+- **Confirmation**: Announce confirmation dialogs
+
+### Focus Management
+- **Button Focus**: Visible focus indicators on action buttons
+- **Dropdown Focus**: Focus management in dropdown menus
+- **Modal Focus**: Trap focus in confirmation dialogs
+- **Context Menu Focus**: Focus management in context menus
+
+## Responsive Design
+
+### Desktop (800px+)
+- **Button Layout**: Horizontal arrangement
+- **Button Size**: Standard size (32px height)
+- **Text Labels**: Full text labels on buttons
+- **Context Menus**: Full context menu functionality
+
+### Tablet (600px-800px)
+- **Button Layout**: Compressed horizontal
+- **Button Size**: Medium size (28px height)
+- **Text Labels**: Abbreviated text labels
+- **Context Menus**: Simplified context menu
+
+### Mobile (<600px)
+- **Button Layout**: Vertical stack
+- **Button Size**: Large size (44px height) for touch
+- **Text Labels**: Icon-only with tooltips
+- **Context Menus**: Bottom sheet style
+
+## Performance Considerations
+
+### Action Optimization
+- **Debouncing**: Debounce rapid action clicks
+- **Loading States**: Show loading feedback immediately
+- **Caching**: Cache action results when appropriate
+- **Batch Operations**: Group multiple actions when possible
+
+### Memory Management
+- **Event Listeners**: Cleanup on unmount
+- **Modal Cleanup**: Clear modal state on close
+- **Selection Cleanup**: Clear selection on context change
+- **Timer Cleanup**: Clear action timers
+
+### Optimization
+- **React.memo**: Memoize action components
+- **useCallback**: Memoize action handlers
+- **useMemo**: Memoize action calculations
+- **Lazy Loading**: Load action modals on demand
+
+## Testing Requirements
+
+### Unit Tests
+- **Button Rendering**: Correct display of action buttons
+- **State Changes**: Proper state transitions
+- **Action Handlers**: Correct action execution
+- **Error Handling**: Proper error state management
+
+### Integration Tests
+- **Backend Integration**: Real API calls for actions
+- **Error Scenarios**: Network failure and error handling
+- **Confirmation Dialogs**: Proper dialog functionality
+- **Context Menus**: Context menu behavior
+
+### E2E Tests
+- **Action Workflows**: Complete action workflows
+- **Bulk Operations**: Multi-item action workflows
+- **Error Recovery**: Action failure and recovery
+- **Responsive Design**: Cross-device functionality
+
+## Error Scenarios
+
+### Action Errors
+- **Network Failure**: Retry button with offline indicator
+- **Backend Error**: Error message with technical details
+- **Validation Error**: Clear error with correction guidance
+- **Permission Error**: Clear error with access information
+
+### User Recovery
+- **Retry Mechanisms**: Automatic and manual retry options
+- **Fallback Actions**: Alternative ways to accomplish tasks
+- **Error Guidance**: Clear instructions for error resolution
+- **Support Information**: Contact information for persistent issues
+
+### Confirmation Scenarios
+- **Delete Confirmation**: Show item details and warning
+- **Bulk Confirmation**: Show count and item types
+- **Destructive Actions**: Clear warning for destructive operations
+- **Data Loss**: Warning about potential data loss
+
+## Security Considerations
+
+### Action Validation
+- **Input Validation**: Validate all action parameters
+- **Permission Checks**: Verify user permissions for actions
+- **Data Sanitization**: Sanitize data before backend calls
+- **Error Sanitization**: Don't expose sensitive information in errors
+
+### Confirmation Requirements
+- **Destructive Actions**: Require confirmation for delete operations
+- **Bulk Operations**: Require confirmation for bulk actions
+- **Data Export**: Confirm export format and size
+- **System Changes**: Confirm system-impacting actions
+
+### Audit Trail
+- **Action Logging**: Log all user actions for audit
+- **Error Logging**: Log errors for debugging
+- **Performance Monitoring**: Monitor action performance
+- **Usage Analytics**: Track action usage patterns

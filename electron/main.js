@@ -30,9 +30,19 @@ function createWindow() {
   // Load the app
   if (isDev) {
     // In development, load from Vite dev server
+    console.log('Loading from Vite dev server: http://localhost:5173');
     mainWindow.loadURL('http://localhost:5173');
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
+    
+    // Add error handling for page load
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+      console.error('Failed to load URL:', validatedURL, 'Error:', errorDescription);
+    });
+    
+    mainWindow.webContents.on('did-finish-load', () => {
+      console.log('Successfully loaded page');
+    });
   } else {
     // In production, load the built files
     mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
@@ -49,10 +59,13 @@ function createWindow() {
   });
 }
 
+// Initialize Backend Adapter once
+let backendAdapter;
+
 // This method will be called when Electron has finished initialization
 app.whenReady().then(() => {
-  // Initialize Backend Adapter
-  new BackendAdapter();
+  // Initialize Backend Adapter only once
+  backendAdapter = new BackendAdapter();
   createWindow();
 });
 

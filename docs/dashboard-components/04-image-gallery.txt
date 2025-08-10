@@ -1,0 +1,284 @@
+# Image Gallery Component Specification
+
+## Component Purpose
+The Image Gallery displays generated images in a grid layout with QC status management, filtering capabilities, and quick actions. It provides users with comprehensive image review and management functionality.
+
+## Layout Structure
+```
+┌─────────────────────────────────────────────────────────┐
+│ Results & History View (Bottom Panel)                 │
+├─────────────────────────────────────────────────────────┤
+│ [Filter by QC] [Filter by Job] [Search] [Export]     │
+├─────────────────────────────────────────────────────────┤
+│ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐     │
+│ │ IMG │ │ IMG │ │ IMG │ │ IMG │ │ IMG │ │ IMG │     │
+│ │ [QC]│ │ [QC]│ │ [QC]│ │ [QC]│ │ [QC]│ │ [QC]│     │
+│ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘     │
+│ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐     │
+│ │ IMG │ │ IMG │ │ IMG │ │ IMG │ │ IMG │ │ IMG │     │
+│ │ [QC]│ │ [QC]│ │ [QC]│ │ [QC]│ │ [QC]│ │ [QC]│     │
+│ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘     │
+│                                                     │
+│ Image Statistics: 45 Total | 38 Pass | 5 Fail | 2 Pending │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Core Components
+
+### 1. Image Grid
+- **Layout**: Responsive grid with 200px thumbnail size
+- **Source**: `generated-image:get-all` backend method
+- **Pagination**: Load more on scroll (100 images per page)
+- **Loading**: Skeleton loaders while fetching images
+- **Empty State**: "No images generated yet" message
+
+### 2. Image Cards
+- **Size**: 200px × 200px thumbnails
+- **Content**: Image thumbnail, QC status, job ID, timestamp
+- **QC Status**: Color-coded borders and icons
+- **Hover**: Show quick actions and image details
+- **Click**: Open full-size image modal
+
+### 3. QC Status Management
+- **Status Types**: Pass (green), Fail (red), Pending (yellow), No QC (gray)
+- **Update Method**: `generated-image:update-qc-status` backend call
+- **Dropdown**: Quick QC status update on image click
+- **Bulk Actions**: Select multiple images for batch QC updates
+
+### 4. Filtering System
+- **QC Filter**: Filter by Pass/Fail/Pending/All
+- **Job Filter**: Filter by specific job execution ID
+- **Search**: Text search across image metadata
+- **Clear Filters**: Reset all active filters
+
+### 5. Image Statistics
+- **Content**: Total images, QC breakdown, success rate
+- **Source**: Calculated from `generated-image:get-all` data
+- **Updates**: Real-time updates when QC status changes
+- **Position**: Bottom of gallery
+
+### 6. Quick Actions
+- **Update QC Status**: Dropdown with Pass/Fail/Pending options
+- **Delete Image**: Confirmation dialog with image details
+- **Manual Approve**: Only for failed images
+- **View Metadata**: Modal with detailed image information
+- **Download**: Direct download of full-size image
+
+## Visual Design
+
+### Typography
+- **Primary Font**: System default (San Francisco on macOS, Segoe UI on Windows)
+- **Image ID**: 12px, font-weight: 600, monospace
+- **Timestamp**: 10px, color: Gray-500
+- **QC Status**: 12px, font-weight: 500
+- **Statistics**: 14px, color: Gray-600
+
+### Spacing
+- **Grid Gap**: 16px between images
+- **Card Padding**: 8px on all sides
+- **Filter Spacing**: 12px between filter controls
+- **Panel Padding**: 24px on all sides
+
+### Colors
+- **QC Pass**: Green border (#10B981) with checkmark icon
+- **QC Fail**: Red border (#EF4444) with X icon
+- **QC Pending**: Yellow border (#F59E0B) with clock icon
+- **No QC**: Gray border (#6B7280) with no icon
+- **Hover State**: Subtle elevation and action visibility
+- **Selected State**: Blue background with blue border
+
+## Interactive Elements
+
+### Image Interactions
+- **Hover**: Show quick actions and image details
+- **Click**: Open full-size image modal
+- **Right-click**: Context menu with actions
+- **Selection**: Visual feedback for selected images
+
+### QC Status Interactions
+- **Dropdown**: Click to update QC status
+- **Bulk Update**: Select multiple images for batch update
+- **Confirmation**: Confirm QC status changes
+- **Real-time**: Immediate visual feedback
+
+### Filter Interactions
+- **QC Filter**: Dropdown with status options
+- **Job Filter**: Dropdown with job execution IDs
+- **Search**: Real-time text filtering
+- **Clear**: Reset all active filters
+
+### Quick Action Buttons
+- **Size**: 32px height, 8px padding
+- **Icons**: Lucide React icons
+- **Hover**: Scale 1.05, color change
+- **Click**: Immediate feedback with loading state
+
+## Backend Integration
+
+### Data Fetching
+- **Initial Load**: `generated-image:get-all` with limit 100
+- **Load More**: Pagination for additional images
+- **Filtered Load**: `generated-image:get-by-qc-status` for QC filtering
+- **Job Filtered**: `generated-image:get-by-execution` for job filtering
+
+### QC Status Management
+- **Update QC**: `generated-image:update-qc-status` with status and reason
+- **Bulk Update**: Batch QC status updates
+- **Real-time**: Immediate UI updates after QC changes
+- **Validation**: Ensure valid QC status values
+
+### Quick Actions Integration
+- **Delete Image**: `deleteGeneratedImage(id)` - Delete specific image
+- **Manual Approve**: `manualApproveImage(imageId)` - Manual approval for failed images
+- **View Metadata**: Get detailed image information
+- **Download**: Direct file download
+
+### Error Handling
+- **Load Failed**: Retry button with error message
+- **QC Update Failed**: Error message with retry option
+- **Delete Failed**: Error message with retry option
+- **Network Error**: Offline indicator with cached data
+
+## State Management
+
+### Loading States
+- **Initial Load**: Skeleton loader for image grid
+- **Load More**: Loading spinner at bottom
+- **QC Update**: Button loading state
+- **Filter Loading**: Skeleton for filtered results
+
+### Empty States
+- **No Images**: "No images generated yet" with illustration
+- **No Results**: "No images match your filter" with clear filters button
+- **Error State**: Error message with retry button
+
+### Selection State
+- **Single Selection**: One image can be selected
+- **Multi Selection**: Multiple images for bulk actions
+- **Selection Feedback**: Visual highlight and action bar
+
+### Filter State
+- **QC Filter**: Active QC status filter
+- **Job Filter**: Active job execution filter
+- **Search Filter**: Active text search
+- **Combined Filters**: Multiple active filters
+
+## Accessibility
+
+### Keyboard Navigation
+- **Tab Order**: Filter controls → Image grid → Quick actions
+- **Arrow Keys**: Navigate between images
+- **Enter**: Open image modal or activate actions
+- **Space**: Select image for bulk actions
+
+### Screen Reader Support
+- **ARIA Labels**: Clear descriptions for images
+- **QC Status**: Announce QC status changes
+- **Action Descriptions**: Clear descriptions for quick actions
+- **Filter Announcements**: Announce filter changes
+
+### Focus Management
+- **Image Focus**: Visible focus indicator on images
+- **Action Focus**: Focus moves to action buttons on hover
+- **Modal Focus**: Trap focus in image modal
+- **Filter Focus**: Clear focus indicators on filter controls
+
+## Responsive Design
+
+### Desktop (800px+)
+- **Grid Columns**: 4-6 columns depending on container width
+- **Image Size**: 200px × 200px thumbnails
+- **Action Visibility**: Always visible on hover
+- **Statistics**: Full statistics display
+
+### Tablet (600px-800px)
+- **Grid Columns**: 3-4 columns
+- **Image Size**: 180px × 180px thumbnails
+- **Action Visibility**: Icon-only actions
+- **Statistics**: Abbreviated statistics
+
+### Mobile (<600px)
+- **Grid Columns**: 2-3 columns
+- **Image Size**: 160px × 160px thumbnails
+- **Action Visibility**: Always visible
+- **Statistics**: Essential statistics only
+
+## Performance Considerations
+
+### Image Loading
+- **Lazy Loading**: Load images as they come into view
+- **Thumbnail Optimization**: Compress thumbnails for fast loading
+- **Progressive Loading**: Show placeholder while loading
+- **Caching**: Cache image data in memory
+
+### Memory Management
+- **Event Listeners**: Cleanup on unmount
+- **Image Cleanup**: Clear image cache on unmount
+- **State Cleanup**: Clear selected state on unmount
+- **Timer Cleanup**: Clear refresh timers
+
+### Optimization
+- **React.memo**: Memoize image cards
+- **useCallback**: Memoize action handlers
+- **useMemo**: Memoize filtered image list
+- **Virtual Scrolling**: For large datasets (1000+ images)
+
+## Testing Requirements
+
+### Unit Tests
+- **Image Card Rendering**: Correct display of image data
+- **QC Status**: Proper color and icon for each status
+- **Quick Actions**: Proper action button functionality
+- **Filter System**: Correct filtering logic
+
+### Integration Tests
+- **Backend Integration**: Real API calls for image data
+- **QC Updates**: Real backend method calls
+- **Error Scenarios**: Network failure handling
+- **Real-time Updates**: QC status change handling
+
+### E2E Tests
+- **Image Gallery Workflow**: View → QC Update → Verify
+- **Filter Workflow**: Apply filter → verify results → clear
+- **Bulk Actions**: Select multiple → bulk update → verify
+- **Responsive Design**: Cross-device functionality
+
+## Error Scenarios
+
+### Data Loading Errors
+- **Network Failure**: Retry button with offline indicator
+- **Backend Error**: Error message with technical details
+- **Empty Response**: Empty state with helpful message
+- **Partial Load**: Show loaded data with error indicator
+
+### Action Errors
+- **QC Update Failed**: Error message with retry option
+- **Delete Failed**: Error message with retry option
+- **Download Failed**: Clear error with alternative download
+- **Bulk Action Failed**: Partial success with error details
+
+### User Recovery
+- **Retry Mechanisms**: Automatic and manual retry options
+- **Fallback Actions**: Alternative ways to accomplish tasks
+- **Error Guidance**: Clear instructions for error resolution
+- **Support Information**: Contact information for persistent issues
+
+## QC Status Workflow
+
+### Status Transitions
+- **Pending → Pass**: User approves image quality
+- **Pending → Fail**: User rejects image quality
+- **Fail → Pass**: Manual approval for failed images
+- **Pass → Fail**: Re-evaluation of previously approved images
+
+### Bulk Operations
+- **Select Multiple**: Checkbox selection for multiple images
+- **Bulk QC Update**: Apply same QC status to multiple images
+- **Bulk Delete**: Delete multiple images with confirmation
+- **Bulk Export**: Export multiple images as batch
+
+### QC Statistics
+- **Real-time Updates**: Statistics update immediately on QC changes
+- **Success Rate**: Percentage of passed images
+- **Failure Analysis**: Common reasons for failed images
+- **Trend Analysis**: QC performance over time

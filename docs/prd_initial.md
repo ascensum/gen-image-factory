@@ -1,3 +1,6 @@
+
+# NB! This document is not beeng maintain with any updates and chages for actual updated documentation split into separate docs always use docs/prd/
+
 # rb-auto-midjourney-adobe-stock Brownfield Enhancement PRD
 
 ## 1. Intro Project Analysis and Context

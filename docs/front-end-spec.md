@@ -292,4 +292,331 @@ graph TD
 - **Integration Tests:** Test component interactions
 - **E2E Tests:** Test complete user workflows
 - **Accessibility Tests:** Verify WCAG compliance
-- **Cross-platform Tests:** Test on Windows, macOS, and Linux 
+- **Cross-platform Tests:** Test on Windows, macOS, and Linux
+
+---
+
+# Gen Image Factory - Dashboard UI Specification
+
+## Introduction
+
+This document defines the user experience goals, information architecture, user flows, and visual design specifications for the Dashboard UI in Gen Image Factory - an Electron desktop application. The dashboard serves as the main control center for job execution, progress monitoring, and results management through an intuitive graphical interface that provides real-time feedback and comprehensive job management capabilities.
+
+## UX Goals & Principles
+
+### Target User Personas
+- **Job Operator:** Users who need to start, monitor, and manage image generation jobs
+- **Quality Controller:** Users who review and approve generated images with QC status management
+- **Data Analyst:** Users who need to export results and analyze job statistics
+- **System Administrator:** Users who need to manage job history and system resources
+
+### Usability Goals
+- **Ease of operation:** Users can start and monitor jobs within 30 seconds
+- **Real-time awareness:** Users always know the current job status and progress
+- **Error recovery:** Clear error messages and recovery options for failed jobs
+- **Data management:** Easy access to job history, results, and export capabilities
+
+### Design Principles
+1. **Single job focus** - Only one job can run at a time, UI clearly communicates this constraint
+2. **Real-time feedback** - Immediate visual feedback for all job operations
+3. **Progressive disclosure** - Show essential information first, details on demand
+4. **Action-oriented** - Primary actions (start, stop) are prominent and accessible
+5. **Data-driven** - All displays are based on real backend data and statistics
+6. **Error prevention** - Confirmation dialogs for destructive actions
+7. **Accessibility first** - Full keyboard navigation and screen reader support
+8. **Responsive design** - Works across different screen sizes and orientations
+
+## Information Architecture
+
+### Site Map
+```mermaid
+graph TD
+    A[Main Application] --> B[Dashboard Panel]
+    B --> C[Job History Section]
+    B --> D[Current Job Section]
+    B --> E[Results & History Section]
+    C --> C1[Job Executions List]
+    C --> C2[Job Statistics]
+    C --> C3[Quick Actions]
+    D --> D1[Progress Indicator]
+    D --> D2[Real-time Logs]
+    D --> D3[Control Buttons]
+    E --> E1[Generated Images Gallery]
+    E --> E2[QC Status Management]
+    E --> E3[Image Quick Actions]
+    E --> E4[Export Functions]
+```
+
+### Navigation Structure
+- **Primary Navigation:** Dashboard tab in main application navigation
+- **Secondary Navigation:** Job history, current job, results sections
+- **Breadcrumb Strategy:** Dashboard > [Current Section]
+
+## User Flows
+
+### Flow 1: Job Execution Workflow
+**User Goal:** Start and monitor an image generation job
+**Entry Points:** Dashboard tab, "Start New Job" button
+**Success Criteria:** Job starts successfully, progress is visible, results are accessible
+
+**Flow Diagram:**
+```mermaid
+graph TD
+    A[Open Dashboard] --> B[Click Start New Job]
+    B --> C[Job Configuration Modal]
+    C --> D[Validate Configuration]
+    D -->|Valid| E[Start Job]
+    D -->|Invalid| F[Show Errors]
+    F --> C
+    E --> G[Job Running State]
+    G --> H[Monitor Progress]
+    H --> I{Job Complete?}
+    I -->|No| H
+    I -->|Yes| J[View Results]
+    J --> K[QC Status Management]
+    K --> L[Export or Archive]
+```
+
+**Edge Cases & Error Handling:**
+- Job already running (single job constraint)
+- Configuration validation errors
+- Network connectivity issues during job execution
+- Job failure with error recovery options
+
+### Flow 2: Job History Management
+**User Goal:** View and manage completed job history
+**Entry Points:** Dashboard > Job History section
+**Success Criteria:** Job history is accessible, quick actions work, data is accurate
+
+**Flow Diagram:**
+```mermaid
+graph TD
+    A[Job History Section] --> B[View Job List]
+    B --> C[Select Job]
+    C --> D[View Job Details]
+    D --> E{Action Required?}
+    E -->|View Results| F[Show Generated Images]
+    E -->|Export Data| G[Export to Excel]
+    E -->|Delete Job| H[Confirmation Dialog]
+    E -->|Rerun Job| I[Start New Job]
+    H -->|Confirm| J[Delete Job]
+    H -->|Cancel| D
+    F --> K[QC Status Management]
+    G --> L[Download Excel File]
+    I --> M[Job Configuration]
+    J --> N[Update Job List]
+```
+
+### Flow 3: Image Quality Control
+**User Goal:** Review and manage generated image quality
+**Entry Points:** Dashboard > Results & History section
+**Success Criteria:** QC status is updated, images are properly categorized
+
+**Flow Diagram:**
+```mermaid
+graph TD
+    A[Results & History Section] --> B[View Image Gallery]
+    B --> C[Select Image]
+    C --> D[View Image Details]
+    D --> E[Update QC Status]
+    E --> F{Status Selection}
+    F -->|Pass| G[Mark as Passed]
+    F -->|Fail| H[Mark as Failed]
+    F -->|Pending| I[Mark as Pending]
+    G --> J[Update Database]
+    H --> K[Add Failure Reason]
+    I --> L[Mark for Review]
+    J --> M[Update Gallery]
+    K --> N[Save Failure Details]
+    L --> O[Add to Pending List]
+```
+
+### Flow 4: Emergency Job Control
+**User Goal:** Stop a running job in emergency situations
+**Entry Points:** Dashboard > Current Job section
+**Success Criteria:** Job stops safely, system returns to ready state
+
+**Flow Diagram:**
+```mermaid
+graph TD
+    A[Job Running] --> B[Click Stop Job]
+    B --> C[Graceful Stop Request]
+    C --> D{Stop Successful?}
+    D -->|Yes| E[Job Stopped]
+    D -->|No| F[Force Stop Required]
+    F --> G[Force Stop Confirmation]
+    G -->|Confirm| H[Force Stop All]
+    G -->|Cancel| I[Return to Monitoring]
+    H --> J[Emergency Termination]
+    E --> K[Update Job Status]
+    J --> L[System Reset]
+    K --> M[Show Results]
+    L --> N[Ready State]
+```
+
+## Visual Design Specifications
+
+### Color Palette (Consistent with Settings UI)
+- **Primary Blue:** #3B82F6 (Blue-500) - Main actions, links
+- **Success Green:** #10B981 (Emerald-500) - Success states, validations
+- **Warning Orange:** #F59E0B (Amber-500) - Warnings, cost indicators
+- **Error Red:** #EF4444 (Red-500) - Errors, destructive actions
+- **Neutral Gray:** #6B7280 (Gray-500) - Secondary text, borders
+- **Background:** #F9FAFB (Gray-50) - Page background
+- **Surface:** #FFFFFF (White) - Card backgrounds
+
+### Typography (Consistent with Settings UI)
+- **Primary Font:** System default (San Francisco on macOS, Segoe UI on Windows)
+- **Heading Sizes:** 
+  - H1: 24px, font-weight: 600
+  - H2: 20px, font-weight: 600
+  - H3: 18px, font-weight: 500
+- **Body Text:** 14px, line-height: 1.5
+- **Caption Text:** 12px, color: Gray-500
+
+### Component Specifications
+
+#### **Dashboard Layout**
+- **Width:** 800px maximum (consistent with Settings UI)
+- **Padding:** 24px on all sides
+- **Section Spacing:** 32px between sections
+- **Card Background:** White with subtle shadow
+- **Border Radius:** 8px for cards, 6px for inputs
+
+#### **Job Control Buttons**
+- **Start Job Button:** Large primary blue button (48px height), disabled when job running
+- **Stop Job Button:** Secondary red button, only enabled when job is running
+- **Force Stop Button:** Emergency red button with confirmation dialog
+- **Button States:** Loading states, disabled states, hover effects
+
+#### **Progress Indicators**
+- **Circular Progress:** 120px diameter, animated progress ring
+- **Step Timeline:** Horizontal timeline with step indicators
+- **Progress Text:** Real-time percentage and step name
+- **Time Remaining:** Estimated completion time display
+
+#### **Job History Cards**
+- **Card Size:** 300px width, auto height
+- **Status Badges:** Color-coded badges (green=completed, blue=running, red=failed, gray=stopped)
+- **Quick Actions:** Small action buttons (view, export, delete, rerun)
+- **Hover Effects:** Subtle elevation and action button visibility
+
+#### **Image Gallery**
+- **Grid Layout:** Responsive grid with 200px thumbnail size
+- **QC Status Indicators:** Color-coded borders (green=pass, red=fail, yellow=pending)
+- **Image Actions:** Context menu with QC status update, delete, metadata view
+- **Loading States:** Skeleton loaders for image loading
+
+### Layout Specifications
+
+#### **Dashboard Panel Layout**
+- **Header Section:** Job controls and status indicators
+- **Main Content:** Two-column layout (40% job history, 60% current job)
+- **Bottom Section:** Full-width results and history view
+- **Responsive Breakpoints:** Stack layout on smaller screens
+
+#### **Responsive Design**
+- **Desktop:** Full two-column layout with sidebar
+- **Tablet:** Stacked layout with tab navigation
+- **Mobile:** Single column with accordion sections
+
+### Accessibility Compliance
+
+#### **WCAG 2.1 AA Standards**
+- **Color Contrast:** Minimum 4.5:1 for normal text, 3:1 for large text
+- **Keyboard Navigation:** Full keyboard accessibility for all controls
+- **Screen Reader Support:** Proper ARIA labels and descriptions
+- **Focus Management:** Clear focus indicators and logical tab order
+- **Error Handling:** Clear error messages and validation feedback
+
+#### **Keyboard Shortcuts**
+- **Tab:** Navigate between dashboard sections
+- **Space/Enter:** Activate buttons and controls
+- **Arrow Keys:** Navigate job history and image gallery
+- **Escape:** Close modals and cancel actions
+- **Ctrl+S:** Quick save/export functionality
+
+### Interactive Elements
+
+#### **Job Control Behavior**
+- **Start Job:** Opens configuration modal, validates settings, starts job
+- **Stop Job:** Graceful shutdown with progress indication
+- **Force Stop:** Emergency termination with confirmation dialog
+- **Real-time Updates:** Live progress updates via IPC events
+
+#### **Job History Interaction**
+- **Job Selection:** Click to view details, right-click for context menu
+- **Quick Actions:** Hover to reveal action buttons
+- **Export Function:** Downloads Excel file with job results
+- **Delete Confirmation:** Shows job details before deletion
+
+#### **Image Gallery Interaction**
+- **Image Selection:** Click to view full size, right-click for actions
+- **QC Status Update:** Dropdown with pass/fail/pending options
+- **Metadata View:** Modal with detailed image information
+- **Bulk Actions:** Select multiple images for batch operations
+
+## Implementation Guidelines
+
+### Component Architecture
+- **React Components:** TypeScript with proper prop interfaces
+- **State Management:** Centralized dashboard state with real-time updates
+- **Backend Integration:** All actions connect to real backend methods
+- **Error Handling:** Comprehensive error handling with user-friendly messages
+
+### Performance Considerations
+- **Real-time Updates:** Efficient polling and event-based updates
+- **Image Loading:** Lazy loading for image gallery
+- **Data Caching:** Cache job history and statistics
+- **Optimized Rendering:** Use React.memo for expensive components
+
+### Backend Integration
+- **Job Control:** `job:start`, `job:stop`, `job:force-stop`
+- **Job History:** `job-execution:get-all`, `job-execution:history`
+- **Job Statistics:** `job-execution:statistics`
+- **Image Management:** `generated-image:get-all`, `generated-image:update-qc-status`
+- **Quick Actions:** `deleteJobExecution`, `exportToExcel`, `manualApproveImage`
+
+### Security Implementation
+- **Action Confirmation:** Confirmation dialogs for destructive actions
+- **Error Sanitization:** Don't expose sensitive information in errors
+- **Access Control:** Proper permission checks for all operations
+- **Data Validation:** Validate all user inputs and backend responses
+
+### Testing Strategy
+- **Unit Tests:** Test individual dashboard components
+- **Integration Tests:** Test backend integration and IPC communication
+- **E2E Tests:** Test complete job execution workflows
+- **Accessibility Tests:** Verify WCAG compliance
+- **Performance Tests:** Test real-time updates and large data sets
+
+## Real Backend Integration Points
+
+### Job Control Methods
+- **`job:start`** - Start new job with configuration
+- **`job:stop`** - Graceful job shutdown
+- **`job:force-stop`** - Emergency process termination
+
+### Job History Methods
+- **`job-execution:get-all`** - Get all job executions
+- **`job-execution:history`** - Get limited job history
+- **`job-execution:statistics`** - Get job statistics
+- **`job-execution:delete`** - Delete job execution
+
+### Image Management Methods
+- **`generated-image:get-all`** - Get all generated images
+- **`generated-image:get-by-execution`** - Get images by job execution
+- **`generated-image:update-qc-status`** - Update image QC status
+- **`generated-image:delete`** - Delete generated image
+
+### Quick Actions Methods
+- **`deleteJobExecution`** - Delete job and associated images
+- **`exportToExcel`** - Export job results to Excel
+- **`manualApproveImage`** - Manual approval for failed images
+- **`getJobResults`** - Get detailed job results
+
+### Real-time Updates
+- **Progress Events:** Live progress updates via IPC
+- **Log Streaming:** Real-time log updates
+- **Status Changes:** Job status updates
+- **Error Events:** Error notifications and handling 

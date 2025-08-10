@@ -94,4 +94,34 @@ select:focus {
   outline-offset: 2px;
 }
 
- 
+/* Custom scrollbar styles for better UX */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Ensure proper flexbox behavior for scrolling */
+.flex-1.min-h-0 {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Job history and logs scrolling containers */
+.job-history-scroll,
+.logs-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}

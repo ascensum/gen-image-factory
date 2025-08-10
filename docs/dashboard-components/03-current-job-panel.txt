@@ -1,0 +1,263 @@
+# Current Job Panel Component Specification
+
+## Component Purpose
+The Current Job Panel displays real-time information about the actively running job, including progress indicators, step-by-step timeline, and control buttons. It provides users with detailed monitoring capabilities for ongoing job execution.
+
+## Layout Structure
+```
+┌─────────────────────────────────────┐
+│ Current Job Status (Right - 60%)   │
+├─────────────────────────────────────┤
+│ ┌─────────────────────────────┐     │
+│ │     Progress Indicator      │     │
+│ │    [Circular Progress]      │     │
+│ │     60% Complete           │     │
+│ └─────────────────────────────┘     │
+│                                     │
+│ ┌─────────────────────────────┐     │
+│ │     Step Timeline           │     │
+│ │ [✓] [✓] [●] [○] [○]       │     │
+│ │ Step 1  Step 2  Step 3     │     │
+│ └─────────────────────────────┘     │
+│                                     │
+│ ┌─────────────────────────────┐     │
+│ │     Real-time Logs          │     │
+│ │ [Standard] [Debug] Toggle   │     │
+│ │ Log content...              │     │
+│ └─────────────────────────────┘     │
+│                                     │
+│ [Stop] [Pause] [Resume] [Force]    │
+└─────────────────────────────────────┘
+```
+
+## Core Components
+
+### 1. Progress Indicator
+- **Type**: Circular progress ring (120px diameter)
+- **Animation**: Smooth progress updates
+- **Display**: Percentage and current step name
+- **Color**: Blue for progress, Gray for background
+- **Updates**: Real-time via IPC events
+
+### 2. Step Timeline
+- **Layout**: Horizontal timeline with step indicators
+- **States**: Completed (✓), Current (●), Pending (○)
+- **Labels**: Step names below indicators
+- **Animation**: Smooth transitions between states
+- **Responsive**: Collapse to vertical on small screens
+
+### 3. Real-time Logs
+- **Dual Mode**: Standard (user-friendly) and Debug (technical)
+- **Toggle**: Switch between log modes
+- **Auto-scroll**: Automatically scroll to latest entries
+- **Search**: Filter log entries by text
+- **Export**: Download log file functionality
+
+### 4. Control Buttons
+- **Stop**: Graceful job shutdown
+- **Pause**: Pause job execution (if supported)
+- **Resume**: Resume paused job
+- **Force Stop**: Emergency termination with confirmation
+- **States**: Enabled/disabled based on job status
+
+### 5. Job Details
+- **Job ID**: Unique job identifier
+- **Start Time**: Job start timestamp
+- **Duration**: Elapsed time since start
+- **Estimated Completion**: Time remaining estimate
+- **Status**: Current job status with details
+
+## Visual Design
+
+### Typography
+- **Primary Font**: System default (San Francisco on macOS, Segoe UI on Windows)
+- **Progress Text**: 18px, font-weight: 600
+- **Step Labels**: 14px, font-weight: 500
+- **Log Text**: 12px, monospace font
+- **Button Text**: 14px, font-weight: 500
+
+### Spacing
+- **Panel Padding**: 24px on all sides
+- **Component Spacing**: 24px between components
+- **Step Spacing**: 16px between step indicators
+- **Button Spacing**: 12px between control buttons
+
+### Colors
+- **Progress Ring**: Blue-500 (#3B82F6) for progress, Gray-200 for background
+- **Step Completed**: Green-500 (#10B981)
+- **Step Current**: Blue-500 (#3B82F6)
+- **Step Pending**: Gray-300 (#D1D5DB)
+- **Log Background**: Gray-50 (#F9FAFB)
+- **Button Colors**: Blue (primary), Gray (secondary), Red (danger)
+
+## Interactive Elements
+
+### Progress Animation
+- **Smooth Updates**: Animated progress ring updates
+- **Pulse Effect**: Subtle pulse for active progress
+- **Completion**: Celebration animation on 100%
+- **Error State**: Red progress ring for failed jobs
+
+### Step Timeline Interactions
+- **Hover**: Show step details on hover
+- **Click**: Focus on specific step (if supported)
+- **Animation**: Smooth transitions between step states
+- **Responsive**: Collapse to vertical layout on small screens
+
+### Log Viewer Interactions
+- **Mode Toggle**: Switch between Standard and Debug modes
+- **Auto-scroll**: Toggle auto-scroll functionality
+- **Search**: Real-time log filtering
+- **Export**: Download current log file
+- **Clear**: Clear log display
+
+### Control Button States
+- **Enabled**: Full opacity, hover effects
+- **Disabled**: 50% opacity, no hover effects
+- **Loading**: Spinner animation during action
+- **Danger**: Red color for destructive actions
+
+## Backend Integration
+
+### Real-time Updates
+- **Progress Polling**: Poll every 500ms for progress updates
+- **Step Updates**: Real-time step completion notifications
+- **Log Streaming**: Live log updates via IPC events
+- **Status Changes**: Immediate status update handling
+
+### Control Actions
+- **Stop Job**: `job:stop` - Graceful job shutdown
+- **Force Stop**: `job:force-stop` - Emergency termination
+- **Pause/Resume**: Future implementation (if backend supports)
+- **Log Export**: Download current log file
+
+### Error Handling
+- **Job Failed**: Clear error display with recovery options
+- **Network Error**: Offline indicator with retry button
+- **Backend Unavailable**: Graceful degradation with cached data
+- **Force Stop Required**: Warning when graceful stop fails
+
+## State Management
+
+### Job States
+- **Idle**: No active job, show "No active job" message
+- **Running**: Active job with progress and controls
+- **Paused**: Paused job with resume option
+- **Completed**: Job finished, show results
+- **Failed**: Job failed, show error and recovery options
+- **Stopping**: Job being stopped, disable controls
+
+### Loading States
+- **Initial Load**: Skeleton loader for job details
+- **Progress Update**: Smooth progress animation
+- **Step Transition**: Animated step state changes
+- **Action Loading**: Button loading states
+
+### Log States
+- **Standard Mode**: User-friendly log messages
+- **Debug Mode**: Technical log messages
+- **Auto-scroll**: Automatic scrolling to latest entries
+- **Search Active**: Filtered log display
+
+## Accessibility
+
+### Keyboard Navigation
+- **Tab Order**: Progress → Timeline → Logs → Controls
+- **Arrow Keys**: Navigate step timeline
+- **Enter**: Activate buttons and controls
+- **Escape**: Close modals and cancel actions
+
+### Screen Reader Support
+- **Progress Announcements**: Announce progress updates
+- **Step Changes**: Announce step completion
+- **Log Updates**: Announce new log entries
+- **Status Changes**: Announce job status changes
+
+### Focus Management
+- **Progress Focus**: Clear focus indicator on progress ring
+- **Step Focus**: Focus indicator on current step
+- **Log Focus**: Focus management in log viewer
+- **Button Focus**: Clear focus indicators on control buttons
+
+## Responsive Design
+
+### Desktop (800px+)
+- **Panel Width**: 60% of dashboard width
+- **Progress Size**: 120px diameter
+- **Timeline**: Horizontal layout
+- **Logs**: Full height log viewer
+- **Controls**: Horizontal button layout
+
+### Tablet (600px-800px)
+- **Panel Width**: 50% of dashboard width
+- **Progress Size**: 100px diameter
+- **Timeline**: Compressed horizontal layout
+- **Logs**: Medium height log viewer
+- **Controls**: Horizontal button layout
+
+### Mobile (<600px)
+- **Panel Width**: Full width (stacked layout)
+- **Progress Size**: 80px diameter
+- **Timeline**: Vertical layout
+- **Logs**: Small height log viewer
+- **Controls**: Vertical button layout
+
+## Performance Considerations
+
+### Real-time Updates
+- **Throttling**: Throttle progress updates to prevent excessive re-renders
+- **Debouncing**: Debounce log updates for smooth scrolling
+- **Memoization**: Memoize expensive calculations
+- **Cleanup**: Clear timers and intervals on unmount
+
+### Memory Management
+- **Log Buffer**: Limit log buffer size to prevent memory leaks
+- **Event Listeners**: Cleanup IPC event listeners
+- **State Cleanup**: Clear job state on component unmount
+- **Image Loading**: Lazy load job-related images
+
+### Optimization
+- **React.memo**: Memoize progress and timeline components
+- **useCallback**: Memoize event handlers
+- **useMemo**: Memoize calculated values
+- **Virtual Scrolling**: For large log outputs
+
+## Testing Requirements
+
+### Unit Tests
+- **Progress Rendering**: Correct progress display and animation
+- **Step Timeline**: Proper step state transitions
+- **Log Viewer**: Correct log display and filtering
+- **Control Buttons**: Proper button states and actions
+
+### Integration Tests
+- **Backend Integration**: Real API calls for job control
+- **IPC Communication**: Real-time update handling
+- **Error Scenarios**: Network failure and error handling
+- **Log Streaming**: Real-time log update handling
+
+### E2E Tests
+- **Job Monitoring**: Start job → monitor → complete
+- **Control Workflow**: Stop → confirm → verify
+- **Error Recovery**: Failed job → error → recovery
+- **Responsive Design**: Cross-device functionality
+
+## Error Scenarios
+
+### Job Execution Errors
+- **Job Failed**: Clear error display with retry option
+- **Step Failed**: Highlight failed step with error details
+- **Progress Stuck**: Timeout indicator with manual refresh
+- **Backend Crash**: Connection lost indicator with reconnection
+
+### User Recovery
+- **Retry Mechanisms**: Automatic and manual retry options
+- **Force Stop**: Emergency termination when graceful stop fails
+- **Log Analysis**: Detailed logs for troubleshooting
+- **Support Information**: Contact information for persistent issues
+
+### Network Issues
+- **Connection Lost**: Offline indicator with reconnection
+- **Slow Connection**: Progress indicator for slow updates
+- **Partial Data**: Show available data with error indicators
+- **Reconnection**: Automatic reconnection with user notification

@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gen Image Factory Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <style>
+        :root {
+            /* Color System */
+            --primary: #3B82F6;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --error: #EF4444;
+            --neutral: #6B7280;
+            --background: #F9FAFB;
+            --surface: #FFFFFF;
+            
+            /* Typography - Using system fonts for native feel */
+            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Mono", monospace;
+            
+            /* Component Sizes - Optimized for desktop */
+            --header-height: 48px;
+            --border-radius: 6px;
+            --border-radius-lg: 8px;
+            
+            /* Fixed Dimensions for Desktop App */
+            --sidebar-width: 40%;
+            --main-content-width: 60%;
+            
+            /* Spacing */
+            --spacing-base: 16px;
+            --spacing-lg: 24px;
+            
+            /* Transitions - Snappy for desktop */
+            --transition-base: 100ms cubic-bezier(0.4, 0, 0.2, 1);
+            
+            /* Native-looking shadows */
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+            --shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+            --shadow-lg: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Desktop App Base Styles */
+        html, body {
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-sans);
+            background-color: var(--background);
+            color: var(--neutral);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            user-select: none; /* Prevent text selection by default */
+        }
+
+        /* Main Container */
+        .dashboard-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Dashboard Header - Fixed height */
+        .dashboard-header {
+            background: var(--surface);
+            padding: var(--spacing-base);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+        }
+
+        /* Main Content Area - Scrollable */
+        .dashboard-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Job History Panel - Fixed width */
+        .job-history {
+            width: var(--sidebar-width);
+            background: var(--surface);
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            padding: var(--spacing-base);
+        }
+
+        /* Current Job Status - Takes remaining width */
+        .job-status {
+            width: var(--main-content-width);
+            background: var(--surface);
+            overflow-y: auto;
+            padding: var(--spacing-base);
+        }
+
+        /* Native-looking Components */
+        .job-card {
+            padding: var(--spacing-base);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: var(--border-radius);
+            margin-bottom: var(--spacing-base);
+            background: var(--surface);
+            cursor: pointer;
+        }
+
+        .job-card:hover {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .job-card:active {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        /* Native-style Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: var(--border-radius);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-badge.ready { 
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .status-badge.running { 
+            background-color: var(--primary);
+            color: white;
+        }
+        
+        .status-badge.error { 
+            background-color: var(--error);
+            color: white;
+        }
+
+        /* Native-style Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* Loading States */
+        .skeleton {
+            background: linear-gradient(
+                90deg,
+                rgba(0, 0, 0, 0.03) 25%,
+                rgba(0, 0, 0, 0.08) 37%,
+                rgba(0, 0, 0, 0.03) 63%
+            );
+            background-size: 400% 100%;
+            animation: skeleton-loading 1.4s ease infinite;
+        }
+
+        @keyframes skeleton-loading {
+            0% { background-position: 100% 50%; }
+            100% { background-position: 0 50%; }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Focus States */
+        :focus {
+            outline: 2px solid var(--primary);
+            outline-offset: -1px;
+        }
+
+        /* Quick Actions */
+        .quick-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: var(--border-radius);
+            font-size: 14px;
+            font-weight: 500;
+            transition: all var(--transition-base);
+            background: transparent;
+            border: 1px solid transparent;
+        }
+
+        .quick-action:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .quick-action:active {
+            transform: scale(0.98);
+        }
+
+        .quick-action.primary {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .quick-action.danger {
+            color: var(--error);
+            border-color: var(--error);
+        }
+
+        .quick-action.success {
+            color: var(--success);
+            border-color: var(--success);
+        }
+
+        .quick-action.warning {
+            color: var(--warning);
+            border-color: var(--warning);
+        }
+
+        .quick-action.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-lg);
+            min-width: 180px;
+            z-index: 1000;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .context-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: default;
+            color: var(--neutral);
+            transition: background var(--transition-base);
+        }
+
+        .context-menu-item:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .context-menu-item.danger {
+            color: var(--error);
+        }
+
+        .context-menu-separator {
+            height: 1px;
+            background: rgba(0, 0, 0, 0.1);
+            margin: 4px 0;
+        }
+
+        /* Bulk Actions Bar */
+        .bulk-actions-bar {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-lg);
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            z-index: 100;
+        }
+
+        .bulk-actions-bar.hidden {
+            display: none;
+        }
+
+        /* Button States */
+        button {
+            -webkit-app-region: no-drag;
+            cursor: default;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        /* Confirmation Dialog */
+        .confirmation-dialog {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .confirmation-dialog-content {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .confirmation-dialog.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Dashboard Header -->
+        <header class="dashboard-header">
+            <!-- Single Job Constraint Communication -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <!-- Start Job Button with Constraint Message -->
+                    <div class="relative group">
+                        <button 
+                            class="h-[var(--header-height)] px-6 bg-[var(--primary)] text-white rounded-[var(--border-radius)] font-semibold 
+                                   transition-all hover:bg-[var(--primary)] hover:opacity-90 
+                                   disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--neutral)]
+                                   flex items-center justify-center"
+                            id="startJobBtn"
+                        >
+                            <span class="flex items-center justify-center gap-2">
+                                <i data-lucide="play" class="w-4 h-4"></i>
+                                <span id="startBtnText">Start New Job</span>
+                            </span>
+                        </button>
+                        <!-- Constraint Tooltip -->
+                        <div class="absolute left-0 top-full mt-2 bg-white rounded-[var(--border-radius)] shadow-lg p-3 w-64 
+                                  invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all z-10"
+                             id="constraintTooltip">
+                            <div class="text-sm font-medium mb-1">Only one job can run at a time</div>
+                            <div class="text-xs text-[var(--neutral)]">This ensures optimal performance and resource management</div>
+                        </div>
+                    </div>
+
+                    <!-- Status Badge with Enhanced States -->
+                    <div class="flex items-center gap-3">
+                        <div class="status-badge ready" id="statusBadge">
+                            <i data-lucide="check-circle" class="w-4 h-4 mr-2"></i>
+                            Ready
+                        </div>
+                        <!-- Active Job Information -->
+                        <div class="flex flex-col" id="activeJobInfo">
+                            <div class="text-sm font-medium" id="jobIdDisplay"></div>
+                            <div class="text-xs text-[var(--neutral)]" id="jobProgressDisplay"></div>
+                        </div>
+                    </div>
+
+                    <!-- Constraint Message -->
+                    <div class="text-sm text-[var(--neutral)] hidden" id="constraintMessage">
+                        Only one job can run at a time
+                    </div>
+                </div>
+
+                <!-- Right Section -->
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center text-sm">
+                        <i data-lucide="shield-check" class="w-4 h-4 mr-1 text-[var(--success)]"></i>
+                        Secure Mode
+                    </div>
+                    <button class="p-2 rounded-[var(--border-radius)] hover:bg-[rgba(0,0,0,0.05)]">
+                        <i data-lucide="settings" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Job Error Message (hidden by default) -->
+            <div class="mt-4 p-3 bg-red-50 border border-red-100 rounded-[var(--border-radius)] hidden" id="jobErrorMessage">
+                <div class="flex items-start gap-3">
+                    <i data-lucide="alert-circle" class="w-5 h-5 text-[var(--error)]"></i>
+                    <div>
+                        <div class="text-sm font-medium text-red-800" id="errorTitle"></div>
+                        <div class="text-sm text-red-600 mt-1" id="errorDescription"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Job Statistics -->
+            <div class="grid grid-cols-3 gap-4 mt-4">
+                <div class="bg-[rgba(0,0,0,0.02)] p-3 rounded-[var(--border-radius)]">
+                    <div class="text-sm">Total Jobs</div>
+                    <div class="text-lg font-semibold mt-1" id="totalJobs">-</div>
+                </div>
+                <div class="bg-[rgba(0,0,0,0.02)] p-3 rounded-[var(--border-radius)]">
+                    <div class="text-sm">Success Rate</div>
+                    <div class="text-lg font-semibold mt-1" id="successRate">-</div>
+                </div>
+                <div class="bg-[rgba(0,0,0,0.02)] p-3 rounded-[var(--border-radius)]">
+                    <div class="text-sm">Avg Duration</div>
+                    <div class="text-lg font-semibold mt-1" id="avgDuration">-</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="dashboard-content">
+            <!-- Job History Panel -->
+            <section class="job-history">
+                <h2 class="text-lg font-semibold mb-4">Job History</h2>
+                <div class="text-sm mb-4">Only one job can run at a time</div>
+                
+                <div class="overflow-y-auto max-h-[500px]" id="jobList">
+                    <!-- Loading State -->
+                    <div id="jobListLoading">
+                        <div class="skeleton h-24 rounded-[var(--border-radius)] mb-3"></div>
+                        <div class="skeleton h-24 rounded-[var(--border-radius)] mb-3"></div>
+                        <div class="skeleton h-24 rounded-[var(--border-radius)]"></div>
+                    </div>
+
+                    <!-- Job Cards will be inserted here -->
+                    <div id="jobCards" class="hidden"></div>
+                </div>
+            </section>
+
+            <!-- Current Job Status -->
+            <section class="job-status">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold">Current Job Status</h2>
+                    <div id="jobDetails" class="text-sm text-[var(--neutral)] hidden">
+                        <div class="flex items-center gap-4">
+                            <span id="jobId">Job #123</span>
+                            <span id="jobDuration">Duration: 2m 30s</span>
+                            <span id="jobEstimate">Est. completion: 5m</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- No Active Job State -->
+                <div id="noJobState" class="text-center py-12">
+                    <i data-lucide="coffee" class="w-16 h-16 mx-auto mb-4 text-[var(--neutral)]"></i>
+                    <h3 class="text-lg font-medium mb-2">No Active Job</h3>
+                    <p class="text-[var(--neutral)]">Start a new job to begin processing</p>
+                </div>
+
+                <!-- Active Job State (hidden initially) -->
+                <div id="activeJobState" class="hidden">
+                    <!-- Progress Ring -->
+                    <div class="flex items-start gap-8">
+                        <div class="progress-ring relative">
+                            <svg width="120" height="120" viewBox="0 0 120 120">
+                                <circle 
+                                    class="progress-ring__circle"
+                                    stroke="var(--neutral)"
+                                    stroke-width="8"
+                                    fill="transparent"
+                                    r="52"
+                                    cx="60"
+                                    cy="60"
+                                    style="opacity: 0.2"
+                                />
+                                <circle 
+                                    class="progress-ring__circle"
+                                    stroke="var(--primary)"
+                                    stroke-width="8"
+                                    fill="transparent"
+                                    r="52"
+                                    cx="60"
+                                    cy="60"
+                                    id="progressRing"
+                                    stroke-dasharray="326.73 326.73"
+                                    stroke-dashoffset="326.73"
+                                />
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div class="text-center">
+                                    <div class="text-2xl font-bold" id="progressPercentage">0%</div>
+                                    <div class="text-sm" id="progressLabel">Complete</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1">
+                            <h3 class="font-medium mb-2" id="currentStep">Initializing...</h3>
+                            <p class="text-sm text-[var(--neutral)]" id="timeRemaining">Calculating time remaining...</p>
+
+                            <!-- Control Buttons -->
+                            <div class="flex flex-wrap gap-3 mt-4">
+                                <button class="px-4 py-2 bg-[var(--neutral)] text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-50" id="pauseJobBtn">
+                                    <i data-lucide="pause" class="w-4 h-4 mr-2 inline-block"></i>
+                                    Pause
+                                </button>
+                                <button class="px-4 py-2 bg-[var(--primary)] text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 hidden" id="resumeJobBtn">
+                                    <i data-lucide="play" class="w-4 h-4 mr-2 inline-block"></i>
+                                    Resume
+                                </button>
+                                <button class="px-4 py-2 bg-[var(--neutral)] text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-50" id="stopJobBtn">
+                                    <i data-lucide="square" class="w-4 h-4 mr-2 inline-block"></i>
+                                    Stop
+                                </button>
+                                <button class="px-4 py-2 bg-[var(--error)] text-white rounded-md hover:opacity-90 transition-opacity disabled:opacity-50" id="forceStopBtn">
+                                    <i data-lucide="octagon" class="w-4 h-4 mr-2 inline-block"></i>
+                                    Force Stop
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline -->
+                    <div class="mt-8 relative">
+                        <div class="flex items-center justify-between mb-8" id="stepTimeline">
+                            <div class="step-indicator completed" data-step="1">
+                                <div class="w-8 h-8 rounded-full bg-[var(--success)] flex items-center justify-center text-white">
+                                    <i data-lucide="check" class="w-5 h-5"></i>
+                                </div>
+                                <div class="text-sm font-medium mt-2">Initialize</div>
+                                <div class="text-xs text-[var(--neutral)]">2s</div>
+                            </div>
+                            <div class="step-indicator completed" data-step="2">
+                                <div class="w-8 h-8 rounded-full bg-[var(--success)] flex items-center justify-center text-white">
+                                    <i data-lucide="check" class="w-5 h-5"></i>
+                                </div>
+                                <div class="text-sm font-medium mt-2">Validate</div>
+                                <div class="text-xs text-[var(--neutral)]">1s</div>
+                            </div>
+                            <div class="step-indicator current" data-step="3">
+                                <div class="w-8 h-8 rounded-full bg-[var(--primary)] flex items-center justify-center text-white">
+                                    <div class="w-3 h-3 bg-white rounded-full"></div>
+                                </div>
+                                <div class="text-sm font-medium mt-2">Process</div>
+                                <div class="text-xs text-[var(--neutral)]">In progress</div>
+                            </div>
+                            <div class="step-indicator" data-step="4">
+                                <div class="w-8 h-8 rounded-full border-2 border-[var(--neutral)] border-opacity-20 flex items-center justify-center">
+                                    <div class="w-2 h-2 rounded-full bg-[var(--neutral)] opacity-20"></div>
+                                </div>
+                                <div class="text-sm font-medium mt-2">Generate</div>
+                                <div class="text-xs text-[var(--neutral)]">Pending</div>
+                            </div>
+                            <div class="step-indicator" data-step="5">
+                                <div class="w-8 h-8 rounded-full border-2 border-[var(--neutral)] border-opacity-20 flex items-center justify-center">
+                                    <div class="w-2 h-2 rounded-full bg-[var(--neutral)] opacity-20"></div>
+                                </div>
+                                <div class="text-sm font-medium mt-2">Complete</div>
+                                <div class="text-xs text-[var(--neutral)]">Pending</div>
+                            </div>
+                            <!-- Progress Line -->
+                            <div class="absolute top-4 left-0 right-0 h-[2px] bg-[var(--neutral)] bg-opacity-20 -z-10"></div>
+                            <div class="absolute top-4 left-0 h-[2px] bg-[var(--success)] transition-all duration-500" style="width: 40%" id="timelineProgress"></div>
+                        </div>
+                    </div>
+
+                    <!-- Log Viewer -->
+                    <div class="mt-8">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-4">
+                                <h3 class="font-medium">Logs</h3>
+                                <div class="flex rounded-md overflow-hidden border border-[var(--neutral)] border-opacity-20">
+                                    <button class="px-3 py-1 text-sm bg-[var(--primary)] text-white" id="standardLogBtn">Standard</button>
+                                    <button class="px-3 py-1 text-sm text-[var(--neutral)]" id="debugLogBtn">Debug</button>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="relative">
+                                    <input type="text" 
+                                           placeholder="Search logs..." 
+                                           class="pl-8 pr-3 py-1 text-sm border border-[var(--neutral)] border-opacity-20 rounded-md"
+                                           id="logSearch">
+                                    <i data-lucide="search" class="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-[var(--neutral)]"></i>
+                                </div>
+                                <button class="text-sm text-[var(--primary)]" id="exportLogs">
+                                    <i data-lucide="download" class="w-4 h-4 inline-block mr-1"></i>
+                                    Export
+                                </button>
+                                <button class="text-sm text-[var(--neutral)]" id="clearLogs">Clear</button>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <div class="bg-gray-900 text-gray-100 rounded-md p-4 font-mono text-sm h-[200px] overflow-y-auto" id="logViewer">
+                                <div class="log-entry">[INFO] Initializing job #123...</div>
+                                <div class="log-entry">[INFO] Loading configuration...</div>
+                                <div class="log-entry debug">[DEBUG] Config validation passed</div>
+                                <div class="log-entry">[INFO] Processing started...</div>
+                            </div>
+                            <!-- Auto-scroll Toggle -->
+                            <button class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded" id="autoScrollToggle">
+                                Auto-scroll: ON
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Error State (hidden by default) -->
+                    <div id="errorState" class="hidden mt-4 bg-red-50 border border-red-200 rounded-md p-4">
+                        <div class="flex items-start">
+                            <i data-lucide="alert-circle" class="w-5 h-5 text-[var(--error)] mr-3 mt-0.5"></i>
+                            <div>
+                                <h4 class="text-sm font-medium text-red-800" id="errorTitle">Job Execution Failed</h4>
+                                <p class="text-sm text-red-700 mt-1" id="errorMessage">An error occurred during job execution.</p>
+                                <div class="mt-3">
+                                    <button class="text-sm bg-white px-3 py-1.5 rounded border border-red-300 text-red-700 hover:bg-red-50" id="retryButton">
+                                        Retry Job
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Results Panel -->
+        <section class="results-panel">
+            <!-- Filter Controls -->
+            <div class="flex items-center justify-between mb-6 gap-4">
+                <div class="flex items-center gap-3 flex-1">
+                    <!-- QC Status Filter -->
+                    <select class="px-3 py-2 bg-[rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.1)] rounded-[var(--border-radius)] min-w-[120px]"
+                            id="qcFilter">
+                        <option value="all">All Status</option>
+                        <option value="pass">QC Pass</option>
+                        <option value="fail">QC Fail</option>
+                        <option value="pending">Pending</option>
+                    </select>
+
+                    <!-- Job Filter -->
+                    <select class="px-3 py-2 bg-[rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.1)] rounded-[var(--border-radius)] min-w-[120px]"
+                            id="jobFilter">
+                        <option value="all">All Jobs</option>
+                    </select>
+
+                    <!-- Search -->
+                    <div class="relative flex-1 max-w-md">
+                        <input type="text" 
+                               placeholder="Search images..."
+                               class="w-full px-3 py-2 pl-9 bg-[rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.1)] rounded-[var(--border-radius)]"
+                               id="imageSearch">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--neutral)]"></i>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center gap-2">
+                    <button class="px-3 py-2 text-[var(--neutral)] hover:bg-[rgba(0,0,0,0.05)] rounded-[var(--border-radius)]"
+                            id="clearFilters">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                        Clear
+                    </button>
+                    <button class="px-3 py-2 bg-[var(--primary)] text-white rounded-[var(--border-radius)] flex items-center gap-2"
+                            id="exportImages">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        Export
+                    </button>
+                </div>
+            </div>
+
+            <!-- Image Grid -->
+            <div class="grid grid-cols-5 gap-4 mb-6" id="imageGrid">
+                <!-- Loading State (initially shown) -->
+                <div class="skeleton aspect-square rounded-[var(--border-radius)]"></div>
+                <div class="skeleton aspect-square rounded-[var(--border-radius)]"></div>
+                <div class="skeleton aspect-square rounded-[var(--border-radius)]"></div>
+                <div class="skeleton aspect-square rounded-[var(--border-radius)]"></div>
+                <div class="skeleton aspect-square rounded-[var(--border-radius)]"></div>
+            </div>
+
+            <!-- Empty State (hidden initially) -->
+            <div class="hidden text-center py-12" id="emptyState">
+                <i data-lucide="image" class="w-16 h-16 mx-auto mb-4 text-[var(--neutral)]"></i>
+                <h3 class="text-lg font-medium mb-2">No Images Found</h3>
+                <p class="text-[var(--neutral)]">No images match your current filters</p>
+            </div>
+
+            <!-- Error State (hidden initially) -->
+            <div class="hidden" id="errorState">
+                <div class="text-center py-12">
+                    <i data-lucide="alert-circle" class="w-16 h-16 mx-auto mb-4 text-[var(--error)]"></i>
+                    <h3 class="text-lg font-medium mb-2">Failed to Load Images</h3>
+                    <p class="text-[var(--neutral)] mb-4">There was an error loading the images</p>
+                    <button class="px-4 py-2 bg-[var(--primary)] text-white rounded-[var(--border-radius)]"
+                            onclick="loadImages()">
+                        Retry
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="flex items-center justify-between pt-4 border-t border-[rgba(0,0,0,0.1)]">
+                <div class="text-sm text-[var(--neutral)]">
+                    <span id="totalImages">0</span> Total Images
+                </div>
+                <div class="flex items-center gap-4 text-sm">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-[var(--success)]"></div>
+                        <span id="passCount">0</span> Pass
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-[var(--error)]"></div>
+                        <span id="failCount">0</span> Fail
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-[var(--warning)]"></div>
+                        <span id="pendingCount">0</span> Pending
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Image Modal -->
+        <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg max-w-4xl w-full mx-4">
+                <div class="flex items-center justify-between p-4 border-b">
+                    <h3 class="text-lg font-semibold">Image Details</h3>
+                    <button onclick="closeImageModal()" class="text-[var(--neutral)] hover:text-black">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <div class="p-4">
+                    <div class="flex gap-6">
+                        <!-- Image Preview -->
+                        <div class="flex-1">
+                            <img id="modalImage" src="" alt="Full size preview" class="w-full rounded-lg">
+                        </div>
+                        <!-- Image Details -->
+                        <div class="w-64">
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">QC Status</label>
+                                <select class="w-full px-3 py-2 bg-[rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.1)] rounded-[var(--border-radius)]"
+                                        id="modalQcStatus">
+                                    <option value="pass">Pass</option>
+                                    <option value="fail">Fail</option>
+                                    <option value="pending">Pending</option>
+                                </select>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Job ID</label>
+                                <div id="modalJobId" class="text-sm text-[var(--neutral)]"></div>
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Generated</label>
+                                <div id="modalTimestamp" class="text-sm text-[var(--neutral)]"></div>
+                            </div>
+                            <div class="flex flex-col gap-2 mt-6">
+                                <button class="w-full px-4 py-2 bg-[var(--primary)] text-white rounded-[var(--border-radius)]">
+                                    <i data-lucide="download" class="w-4 h-4 inline-block mr-2"></i>
+                                    Download
+                                </button>
+                                <button class="w-full px-4 py-2 text-[var(--error)] border border-[var(--error)] rounded-[var(--border-radius)]">
+                                    <i data-lucide="trash-2" class="w-4 h-4 inline-block mr-2"></i>
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="contextMenu" class="context-menu hidden">
+        <!-- Menu items will be dynamically inserted -->
+    </div>
+
+    <!-- Bulk Actions Bar -->
+    <div id="bulkActionsBar" class="bulk-actions-bar hidden">
+        <span class="text-sm"><span id="selectedCount">0</span> items selected</span>
+        <button class="quick-action" onclick="selectAll()">
+            <i data-lucide="check-square" class="w-4 h-4"></i>
+            Select All
+        </button>
+        <button class="quick-action primary" onclick="showBulkQcDialog()">
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            Update QC Status
+        </button>
+        <button class="quick-action" onclick="bulkExport()">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            Export
+        </button>
+        <button class="quick-action danger" onclick="showBulkDeleteDialog()">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+            Delete
+        </button>
+    </div>
+
+    <!-- Confirmation Dialog -->
+    <div id="confirmationDialog" class="confirmation-dialog hidden">
+        <div class="confirmation-dialog-content">
+            <h3 class="text-lg font-semibold mb-4" id="confirmationTitle"></h3>
+            <p class="text-[var(--neutral)] mb-6" id="confirmationMessage"></p>
+            <div class="flex justify-end gap-3">
+                <button class="quick-action" onclick="closeConfirmationDialog()">Cancel</button>
+                <button class="quick-action danger" id="confirmButton">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Quick Actions State
+        let selectedItems = new Set();
+        let contextMenuTarget = null;
+
+        // Context Menu Functions
+        function showContextMenu(event, type, id) {
+            event.preventDefault();
+            
+            const menu = document.getElementById('contextMenu');
+            const items = type === 'job' ? getJobContextMenuItems(id) : getImageContextMenuItems(id);
+            
+            menu.innerHTML = items;
+            menu.style.left = `${event.pageX}px`;
+            menu.style.top = `${event.pageY}px`;
+            menu.classList.remove('hidden');
+            contextMenuTarget = { type, id };
+            
+            // Initialize icons
+            lucide.createIcons();
+
+            // Close menu when clicking outside
+            document.addEventListener('click', closeContextMenu);
+        }
+
+        function closeContextMenu() {
+            document.getElementById('contextMenu').classList.add('hidden');
+            document.removeEventListener('click', closeContextMenu);
+            contextMenuTarget = null;
+        }
+
+        function getJobContextMenuItems(jobId) {
+            return `
+                <div class="context-menu-item" onclick="viewJobDetails(${jobId})">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                    View Details
+                </div>
+                <div class="context-menu-item" onclick="exportJob(${jobId})">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    Export to Excel
+                </div>
+                <div class="context-menu-item" onclick="rerunJob(${jobId})">
+                    <i data-lucide="repeat" class="w-4 h-4"></i>
+                    Rerun Job
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item danger" onclick="deleteJob(${jobId})">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    Delete Job
+                </div>
+            `;
+        }
+
+        function getImageContextMenuItems(imageId) {
+            return `
+                <div class="context-menu-item" onclick="viewImage(${imageId})">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                    View Details
+                </div>
+                <div class="context-menu-item" onclick="showQcStatusMenu(${imageId})">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                    Update QC Status
+                </div>
+                <div class="context-menu-item" onclick="downloadImage(${imageId})">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    Download
+                </div>
+                <div class="context-menu-separator"></div>
+                <div class="context-menu-item danger" onclick="deleteImage(${imageId})">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    Delete Image
+                </div>
+            `;
+        }
+
+        // Selection Functions
+        function toggleSelection(id, type) {
+            const key = `${type}-${id}`;
+            if (selectedItems.has(key)) {
+                selectedItems.delete(key);
+            } else {
+                selectedItems.add(key);
+            }
+            updateBulkActionsBar();
+        }
+
+        function selectAll() {
+            const items = document.querySelectorAll('[data-selectable]');
+            if (selectedItems.size === items.length) {
+                selectedItems.clear();
+            } else {
+                items.forEach(item => {
+                    const type = item.dataset.type;
+                    const id = item.dataset.id;
+                    selectedItems.add(`${type}-${id}`);
+                });
+            }
+            updateBulkActionsBar();
+        }
+
+        function updateBulkActionsBar() {
+            const bar = document.getElementById('bulkActionsBar');
+            const count = document.getElementById('selectedCount');
+            
+            if (selectedItems.size > 0) {
+                count.textContent = selectedItems.size;
+                bar.classList.remove('hidden');
+            } else {
+                bar.classList.add('hidden');
+            }
+        }
+
+        // Bulk Actions
+        async function bulkUpdateQcStatus(status) {
+            try {
+                const imageIds = Array.from(selectedItems)
+                    .filter(key => key.startsWith('image-'))
+                    .map(key => parseInt(key.split('-')[1]));
+
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Update images
+                for (const id of imageIds) {
+                    const image = imageCache.get(id);
+                    if (image) {
+                        image.qcStatus = status;
+                    }
+                }
+
+                // Clear selection and refresh
+                selectedItems.clear();
+                await loadImages(currentPage, currentFilters);
+                updateBulkActionsBar();
+
+            } catch (error) {
+                console.error('Failed to update QC status:', error);
+                showError('Failed to update QC status');
+            }
+        }
+
+        async function bulkDelete() {
+            try {
+                const items = Array.from(selectedItems);
+                
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Delete items
+                for (const key of items) {
+                    const [type, id] = key.split('-');
+                    if (type === 'image') {
+                        imageCache.delete(parseInt(id));
+                    }
+                }
+
+                // Clear selection and refresh
+                selectedItems.clear();
+                await loadImages(currentPage, currentFilters);
+                updateBulkActionsBar();
+
+            } catch (error) {
+                console.error('Failed to delete items:', error);
+                showError('Failed to delete items');
+            }
+        }
+
+        async function bulkExport() {
+            try {
+                const items = Array.from(selectedItems);
+                
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Show success message
+                showSuccess('Items exported successfully');
+                
+                // Clear selection
+                selectedItems.clear();
+                updateBulkActionsBar();
+
+            } catch (error) {
+                console.error('Failed to export items:', error);
+                showError('Failed to export items');
+            }
+        }
+
+        // Confirmation Dialog
+        function showConfirmationDialog(title, message, onConfirm) {
+            const dialog = document.getElementById('confirmationDialog');
+            const titleEl = document.getElementById('confirmationTitle');
+            const messageEl = document.getElementById('confirmationMessage');
+            const confirmBtn = document.getElementById('confirmButton');
+            
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            confirmBtn.onclick = () => {
+                onConfirm();
+                closeConfirmationDialog();
+            };
+            
+            dialog.classList.remove('hidden');
+        }
+
+        function closeConfirmationDialog() {
+            document.getElementById('confirmationDialog').classList.add('hidden');
+        }
+
+        function showBulkDeleteDialog() {
+            showConfirmationDialog(
+                'Delete Selected Items',
+                `Are you sure you want to delete ${selectedItems.size} items? This action cannot be undone.`,
+                bulkDelete
+            );
+        }
+
+        function showBulkQcDialog() {
+            // Implementation for bulk QC status update dialog
+        }
+
+        // Error/Success Messages
+        function showError(message) {
+            // Implementation for error toast/notification
+            console.error(message);
+        }
+
+        function showSuccess(message) {
+            // Implementation for success toast/notification
+            console.log(message);
+        }
+
+        // State Management
+        let jobRunning = false;
+        let jobPaused = false;
+        let currentJobId = null;
+        let currentProgress = 0;
+        let currentStep = 0;
+        let autoScrollEnabled = true;
+        let debugMode = false;
+        let startTime = null;
+        let logBuffer = [];
+
+        // Backend Service Simulation
+        const backend = {
+            // Job status polling interval (ms)
+            POLL_INTERVAL: 500,
+            
+            // Job steps configuration
+            STEPS: [
+                { name: 'Initialize', duration: 2000 },
+                { name: 'Validate', duration: 1000 },
+                { name: 'Process', duration: 10000 },
+                { name: 'Generate', duration: 5000 },
+                { name: 'Complete', duration: 1000 }
+            ],
+            async getJobStatistics() {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        resolve({
+                            totalJobs: 45,
+                            successRate: '92%',
+                            avgDuration: '2.3min'
+                        });
+                    }, 1000);
+                });
+            },
+
+            async getJobs() {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        resolve([
+                            {
+                                id: 124,
+                                status: 'completed',
+                                timestamp: '2 mins ago',
+                                duration: '4m 12s'
+                            },
+                            {
+                                id: 123,
+                                status: 'failed',
+                                timestamp: '15 mins ago',
+                                duration: '2m 45s'
+                            }
+                        ]);
+                    }, 1500);
+                });
+            },
+
+            async startJob() {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        resolve({ success: true, jobId: Date.now() });
+                    }, 1000);
+                });
+            }
+        };
+
+        // UI Update Functions
+        function updateJobState(running, error = false) {
+            jobRunning = running;
+            const startButton = document.getElementById('startJobBtn');
+            const startBtnText = document.getElementById('startBtnText');
+            const statusBadge = document.getElementById('statusBadge');
+            const noJobState = document.getElementById('noJobState');
+            const activeJobState = document.getElementById('activeJobState');
+            const jobDetails = document.getElementById('jobDetails');
+            const errorState = document.getElementById('errorState');
+            const constraintMessage = document.getElementById('constraintMessage');
+            const jobIdDisplay = document.getElementById('jobIdDisplay');
+            const jobProgressDisplay = document.getElementById('jobProgressDisplay');
+            const jobErrorMessage = document.getElementById('jobErrorMessage');
+            const errorTitle = document.getElementById('errorTitle');
+            const errorDescription = document.getElementById('errorDescription');
+            const pauseBtn = document.getElementById('pauseJobBtn');
+            const resumeBtn = document.getElementById('resumeJobBtn');
+            const stopBtn = document.getElementById('stopJobBtn');
+            const forceStopBtn = document.getElementById('forceStopBtn');
+
+            // Update start button state
+            startButton.disabled = running;
+            startBtnText.textContent = running ? 'Job Running' : 'Start New Job';
+            
+            if (running) {
+                // Update status badge
+                statusBadge.className = 'status-badge running';
+                statusBadge.innerHTML = `
+                    <i data-lucide="loader" class="w-4 h-4 mr-2 animate-spin"></i>
+                    Running
+                `;
+
+                // Show constraint message
+                constraintMessage.classList.remove('hidden');
+                
+                // Update job information
+                jobIdDisplay.textContent = `Job #${currentJobId}`;
+                jobProgressDisplay.textContent = `Step ${currentStep + 1}/5 - ${currentProgress}% Complete`;
+                
+                // Update panel states
+                noJobState.classList.add('hidden');
+                activeJobState.classList.remove('hidden');
+                jobDetails.classList.remove('hidden');
+                errorState.classList.add('hidden');
+                jobErrorMessage.classList.add('hidden');
+                
+                // Enable control buttons
+                pauseBtn.disabled = false;
+                stopBtn.disabled = false;
+                forceStopBtn.disabled = false;
+                
+                // Start time tracking
+                if (!startTime) {
+                    startTime = Date.now();
+                    updateJobDuration();
+                }
+            } else {
+                // Update status badge
+                statusBadge.className = error ? 'status-badge error' : 'status-badge ready';
+                statusBadge.innerHTML = error ? `
+                    <i data-lucide="alert-circle" class="w-4 h-4 mr-2"></i>
+                    Error
+                ` : `
+                    <i data-lucide="check-circle" class="w-4 h-4 mr-2"></i>
+                    Ready
+                `;
+
+                // Hide constraint message
+                constraintMessage.classList.add('hidden');
+                
+                // Clear job information
+                jobIdDisplay.textContent = '';
+                jobProgressDisplay.textContent = '';
+                
+                // Update panel states
+                noJobState.classList.remove('hidden');
+                activeJobState.classList.add('hidden');
+                jobDetails.classList.add('hidden');
+                errorState.classList.toggle('hidden', !error);
+                
+                // Show error message if needed
+                if (error) {
+                    jobErrorMessage.classList.remove('hidden');
+                    errorTitle.textContent = 'Job Execution Error';
+                    errorDescription.textContent = 'There was an error executing the job. Please try again.';
+                } else {
+                    jobErrorMessage.classList.add('hidden');
+                }
+                
+                // Reset state
+                startTime = null;
+                currentProgress = 0;
+                currentStep = 0;
+                
+                // Disable control buttons
+                pauseBtn.disabled = true;
+                resumeBtn.disabled = true;
+                stopBtn.disabled = true;
+                forceStopBtn.disabled = true;
+            }
+
+            // Update tooltip content
+            const constraintTooltip = document.getElementById('constraintTooltip');
+            if (running) {
+                constraintTooltip.innerHTML = `
+                    <div class="text-sm font-medium mb-1">Job Currently Running</div>
+                    <div class="text-xs text-[var(--neutral)]">Please wait for the current job to complete or stop it to start a new one.</div>
+                `;
+            } else {
+                constraintTooltip.innerHTML = `
+                    <div class="text-sm font-medium mb-1">Only one job can run at a time</div>
+                    <div class="text-xs text-[var(--neutral)]">This ensures optimal performance and resource management</div>
+                `;
+            }
+
+            lucide.createIcons();
+        }
+
+        function updateProgress(progress, stepIndex) {
+            // Update progress ring
+            const circle = document.getElementById('progressRing');
+            const percentage = document.getElementById('progressPercentage');
+            const circumference = 2 * Math.PI * 52;
+            
+            const offset = circumference - (progress / 100) * circumference;
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            circle.style.strokeDashoffset = offset;
+            
+            percentage.textContent = `${Math.round(progress)}%`;
+            
+            // Update timeline
+            const timelineProgress = document.getElementById('timelineProgress');
+            timelineProgress.style.width = `${progress}%`;
+            
+            // Update step indicators
+            const steps = document.querySelectorAll('.step-indicator');
+            steps.forEach((step, index) => {
+                if (index < stepIndex) {
+                    step.classList.add('completed');
+                    step.querySelector('div').classList.add('bg-[var(--success)]');
+                } else if (index === stepIndex) {
+                    step.classList.add('current');
+                    step.classList.remove('completed');
+                    step.querySelector('div').classList.add('bg-[var(--primary)]');
+                } else {
+                    step.classList.remove('completed', 'current');
+                    step.querySelector('div').classList.remove('bg-[var(--success)]', 'bg-[var(--primary)]');
+                }
+            });
+            
+            // Update current step name and time remaining
+            const currentStep = document.getElementById('currentStep');
+            const timeRemaining = document.getElementById('timeRemaining');
+            const steps = backend.STEPS;
+            
+            if (stepIndex < steps.length) {
+                currentStep.textContent = `${steps[stepIndex].name} in progress...`;
+                const remainingSteps = steps.slice(stepIndex).reduce((acc, step) => acc + step.duration, 0);
+                const remainingTime = Math.ceil(remainingSteps / 1000);
+                timeRemaining.textContent = `Estimated ${remainingTime}s remaining`;
+            }
+            
+            // Add log entry for significant progress
+            if (progress % 20 === 0) {
+                addLogEntry(`[INFO] Progress: ${Math.round(progress)}% complete`);
+            }
+        }
+        
+        function updateJobDuration() {
+            if (!startTime || !jobRunning) return;
+            
+            const duration = Date.now() - startTime;
+            const seconds = Math.floor(duration / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            
+            document.getElementById('jobDuration').textContent = 
+                `Duration: ${minutes}m ${remainingSeconds}s`;
+            
+            if (jobRunning) {
+                requestAnimationFrame(updateJobDuration);
+            }
+        }
+        
+        function addLogEntry(message, type = 'info') {
+            const logViewer = document.getElementById('logViewer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+            
+            logBuffer.push(entry);
+            
+            // Limit buffer size
+            if (logBuffer.length > 1000) {
+                logBuffer.shift();
+            }
+            
+            // Only show entries based on current mode
+            if ((type === 'debug' && debugMode) || type !== 'debug') {
+                logViewer.appendChild(entry);
+                
+                // Auto-scroll if enabled
+                if (autoScrollEnabled) {
+                    logViewer.scrollTop = logViewer.scrollHeight;
+                }
+            }
+        }
+
+        function createJobCard(job) {
+            return `
+                <div class="job-card">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-mono font-semibold">#${job.id}</span>
+                        <span class="status-badge ${job.status}">${job.status}</span>
+                    </div>
+                    <div class="text-sm">
+                        <div>${job.timestamp}</div>
+                        <div>Duration: ${job.duration}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Event Handlers
+        document.getElementById('startJobBtn').addEventListener('click', async () => {
+            if (!jobRunning) {
+                try {
+                    updateJobState(true);
+                    const result = await backend.startJob();
+                    if (result.success) {
+                        currentJobId = result.jobId;
+                        startProgressSimulation();
+                        addLogEntry(`[INFO] Started job #${currentJobId}`);
+                    }
+                } catch (error) {
+                    console.error('Failed to start job:', error);
+                    updateJobState(false, true);
+                    addLogEntry(`[ERROR] Failed to start job: ${error.message}`, 'error');
+                }
+            }
+        });
+
+        document.getElementById('pauseJobBtn').addEventListener('click', () => {
+            if (jobRunning && !jobPaused) {
+                jobPaused = true;
+                document.getElementById('pauseJobBtn').classList.add('hidden');
+                document.getElementById('resumeJobBtn').classList.remove('hidden');
+                addLogEntry('[INFO] Job paused');
+            }
+        });
+
+        document.getElementById('resumeJobBtn').addEventListener('click', () => {
+            if (jobRunning && jobPaused) {
+                jobPaused = false;
+                document.getElementById('resumeJobBtn').classList.add('hidden');
+                document.getElementById('pauseJobBtn').classList.remove('hidden');
+                addLogEntry('[INFO] Job resumed');
+            }
+        });
+
+        document.getElementById('stopJobBtn').addEventListener('click', () => {
+            if (jobRunning) {
+                if (confirm('Are you sure you want to stop the current job?')) {
+                    updateJobState(false);
+                    addLogEntry('[INFO] Job stopped by user');
+                }
+            }
+        });
+
+        document.getElementById('forceStopBtn').addEventListener('click', () => {
+            if (jobRunning) {
+                if (confirm('Warning: Force stopping the job may lead to incomplete results. Continue?')) {
+                    updateJobState(false);
+                    addLogEntry('[WARNING] Job force stopped by user', 'warning');
+                }
+            }
+        });
+
+        // Log Controls
+        document.getElementById('standardLogBtn').addEventListener('click', () => {
+            debugMode = false;
+            document.getElementById('standardLogBtn').classList.add('bg-[var(--primary)]', 'text-white');
+            document.getElementById('standardLogBtn').classList.remove('text-[var(--neutral)]');
+            document.getElementById('debugLogBtn').classList.remove('bg-[var(--primary)]', 'text-white');
+            document.getElementById('debugLogBtn').classList.add('text-[var(--neutral)]');
+            updateLogView();
+        });
+
+        document.getElementById('debugLogBtn').addEventListener('click', () => {
+            debugMode = true;
+            document.getElementById('debugLogBtn').classList.add('bg-[var(--primary)]', 'text-white');
+            document.getElementById('debugLogBtn').classList.remove('text-[var(--neutral)]');
+            document.getElementById('standardLogBtn').classList.remove('bg-[var(--primary)]', 'text-white');
+            document.getElementById('standardLogBtn').classList.add('text-[var(--neutral)]');
+            updateLogView();
+        });
+
+        document.getElementById('autoScrollToggle').addEventListener('click', () => {
+            autoScrollEnabled = !autoScrollEnabled;
+            document.getElementById('autoScrollToggle').textContent = `Auto-scroll: ${autoScrollEnabled ? 'ON' : 'OFF'}`;
+        });
+
+        document.getElementById('clearLogs').addEventListener('click', () => {
+            logBuffer = [];
+            document.getElementById('logViewer').innerHTML = '';
+            addLogEntry('[INFO] Log cleared');
+        });
+
+        document.getElementById('exportLogs').addEventListener('click', () => {
+            const logText = logBuffer.map(entry => entry.textContent).join('\n');
+            const blob = new Blob([logText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `job-${currentJobId}-logs.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Log Search
+        let searchTimeout;
+        document.getElementById('logSearch').addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const searchTerm = e.target.value.toLowerCase();
+                updateLogView(searchTerm);
+            }, 300);
+        });
+
+        // Progress Simulation
+        function startProgressSimulation() {
+            currentProgress = 0;
+            currentStep = 0;
+            let stepProgress = 0;
+            let currentStepDuration = 0;
+            
+            function updateSimulation() {
+                if (!jobRunning || jobPaused) return;
+                
+                const step = backend.STEPS[currentStep];
+                if (!step) {
+                    updateJobState(false);
+                    addLogEntry('[INFO] Job completed successfully');
+                    return;
+                }
+                
+                currentStepDuration += backend.POLL_INTERVAL;
+                stepProgress = (currentStepDuration / step.duration) * 100;
+                
+                if (stepProgress >= 100) {
+                    addLogEntry(`[INFO] Completed step: ${step.name}`);
+                    currentStep++;
+                    currentStepDuration = 0;
+                    stepProgress = 0;
+                    
+                    if (currentStep >= backend.STEPS.length) {
+                        currentProgress = 100;
+                        updateProgress(currentProgress, currentStep - 1);
+                        updateJobState(false);
+                        addLogEntry('[INFO] Job completed successfully');
+                        return;
+                    }
+                }
+                
+                currentProgress = ((currentStep * 100) + stepProgress) / backend.STEPS.length;
+                updateProgress(currentProgress, currentStep);
+                
+                setTimeout(updateSimulation, backend.POLL_INTERVAL);
+            }
+            
+            updateSimulation();
+        }
+        
+        function updateLogView(searchTerm = '') {
+            const logViewer = document.getElementById('logViewer');
+            logViewer.innerHTML = '';
+            
+            logBuffer.forEach(entry => {
+                const text = entry.textContent.toLowerCase();
+                const isDebug = entry.classList.contains('debug');
+                const matchesSearch = !searchTerm || text.includes(searchTerm.toLowerCase());
+                const shouldShow = matchesSearch && (!isDebug || (isDebug && debugMode));
+                
+                if (shouldShow) {
+                    logViewer.appendChild(entry.cloneNode(true));
+                }
+            });
+            
+            if (autoScrollEnabled) {
+                logViewer.scrollTop = logViewer.scrollHeight;
+            }
+        }
+
+        // Initialize
+        async function initialize() {
+            try {
+                const [statistics, jobs] = await Promise.all([
+                    backend.getJobStatistics(),
+                    backend.getJobs()
+                ]);
+
+                // Update statistics
+                document.getElementById('totalJobs').textContent = statistics.totalJobs;
+                document.getElementById('successRate').textContent = statistics.successRate;
+                document.getElementById('avgDuration').textContent = statistics.avgDuration;
+
+                // Update job list
+                const jobCards = document.getElementById('jobCards');
+                jobCards.innerHTML = jobs.map(createJobCard).join('');
+                document.getElementById('jobListLoading').classList.add('hidden');
+                jobCards.classList.remove('hidden');
+            } catch (error) {
+                console.error('Failed to initialize:', error);
+            }
+        }
+
+        // Image Gallery State
+        let selectedImages = new Set();
+        let currentFilters = {
+            qc: 'all',
+            job: 'all',
+            search: ''
+        };
+        let imageCache = new Map();
+        let currentPage = 1;
+        const IMAGES_PER_PAGE = 100;
+
+        // Image Gallery Functions
+        async function loadImages(page = 1, filters = currentFilters) {
+            try {
+                const imageGrid = document.getElementById('imageGrid');
+                const emptyState = document.getElementById('emptyState');
+                const errorState = document.getElementById('errorState');
+
+                // Show loading state
+                imageGrid.innerHTML = Array(10).fill(0).map(() => `
+                    <div class="skeleton aspect-square rounded-[var(--border-radius)]"></div>
+                `).join('');
+
+                // Simulate API call
+                const images = await new Promise(resolve => setTimeout(() => resolve([
+                    {
+                        id: 1,
+                        url: 'https://picsum.photos/400',
+                        qcStatus: 'pass',
+                        jobId: 123,
+                        timestamp: '2 mins ago'
+                    },
+                    {
+                        id: 2,
+                        url: 'https://picsum.photos/400',
+                        qcStatus: 'fail',
+                        jobId: 123,
+                        timestamp: '5 mins ago'
+                    },
+                    {
+                        id: 3,
+                        url: 'https://picsum.photos/400',
+                        qcStatus: 'pending',
+                        jobId: 124,
+                        timestamp: '10 mins ago'
+                    }
+                ]), 1500));
+
+                // Update image grid
+                imageGrid.innerHTML = images.map(image => createImageCard(image)).join('');
+                
+                // Update statistics
+                updateImageStatistics(images);
+
+                // Show/hide states
+                imageGrid.classList.remove('hidden');
+                emptyState.classList.toggle('hidden', images.length > 0);
+                errorState.classList.add('hidden');
+
+                // Cache images
+                images.forEach(image => imageCache.set(image.id, image));
+
+                // Initialize Lucide icons
+                lucide.createIcons();
+
+            } catch (error) {
+                console.error('Failed to load images:', error);
+                imageGrid.classList.add('hidden');
+                emptyState.classList.add('hidden');
+                errorState.classList.remove('hidden');
+            }
+        }
+
+        function createImageCard(image) {
+            const qcStatusColors = {
+                pass: 'var(--success)',
+                fail: 'var(--error)',
+                pending: 'var(--warning)'
+            };
+
+            return `
+                <div class="group relative aspect-square rounded-[var(--border-radius)] overflow-hidden border-2 ${
+                    selectedItems.has(`image-${image.id}`) ? 'ring-2 ring-[var(--primary)]' : ''
+                }"
+                     style="border-color: ${qcStatusColors[image.qcStatus]}"
+                     data-selectable
+                     data-type="image"
+                     data-id="${image.id}"
+                     onclick="toggleSelection(${image.id}, 'image')"
+                     oncontextmenu="showContextMenu(event, 'image', ${image.id})">
+                    <img src="${image.url}" 
+                         alt="Generated image ${image.id}"
+                         class="w-full h-full object-cover"
+                         loading="lazy">
+                    
+                    <!-- Selection Indicator -->
+                    <div class="absolute top-2 left-2 w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center
+                              ${selectedItems.has(`image-${image.id}`) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity">
+                        <i data-lucide="${selectedItems.has(`image-${image.id}`) ? 'check-circle' : 'circle'}" 
+                           class="w-4 h-4 ${selectedItems.has(`image-${image.id}`) ? 'text-[var(--primary)]' : 'text-[var(--neutral)]'}"></i>
+                    </div>
+                    
+                    <!-- QC Status Indicator -->
+                    <div class="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center"
+                         style="background-color: ${qcStatusColors[image.qcStatus]}">
+                        <i data-lucide="${getQcStatusIcon(image.qcStatus)}" class="w-4 h-4 text-white"></i>
+                    </div>
+
+                    <!-- Image Info Overlay -->
+                    <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity
+                              flex flex-col justify-between p-3 text-white">
+                        <div class="text-xs">Job #${image.jobId}</div>
+                        <div>
+                            <div class="text-xs opacity-75">${image.timestamp}</div>
+                            <div class="flex gap-2 mt-2">
+                                <button onclick="event.stopPropagation(); viewImage(${image.id})" 
+                                        class="p-1.5 rounded-[var(--border-radius)] bg-white bg-opacity-20 hover:bg-opacity-30">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); updateQcStatus(${image.id})"
+                                        class="p-1.5 rounded-[var(--border-radius)] bg-white bg-opacity-20 hover:bg-opacity-30">
+                                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); deleteImage(${image.id})"
+                                        class="p-1.5 rounded-[var(--border-radius)] bg-white bg-opacity-20 hover:bg-opacity-30">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getQcStatusIcon(status) {
+            switch (status) {
+                case 'pass': return 'check';
+                case 'fail': return 'x';
+                case 'pending': return 'clock';
+                default: return 'help-circle';
+            }
+        }
+
+        function updateImageStatistics(images) {
+            const stats = images.reduce((acc, img) => {
+                acc[img.qcStatus] = (acc[img.qcStatus] || 0) + 1;
+                return acc;
+            }, {});
+
+            document.getElementById('totalImages').textContent = images.length;
+            document.getElementById('passCount').textContent = stats.pass || 0;
+            document.getElementById('failCount').textContent = stats.fail || 0;
+            document.getElementById('pendingCount').textContent = stats.pending || 0;
+        }
+
+        // Image Modal Functions
+        function viewImage(imageId) {
+            const image = imageCache.get(imageId);
+            if (!image) return;
+
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalJobId = document.getElementById('modalJobId');
+            const modalTimestamp = document.getElementById('modalTimestamp');
+            const modalQcStatus = document.getElementById('modalQcStatus');
+
+            modalImage.src = image.url;
+            modalJobId.textContent = `#${image.jobId}`;
+            modalTimestamp.textContent = image.timestamp;
+            modalQcStatus.value = image.qcStatus;
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').classList.add('hidden');
+        }
+
+        async function updateQcStatus(imageId, newStatus) {
+            try {
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                const image = imageCache.get(imageId);
+                if (image) {
+                    image.qcStatus = newStatus;
+                    await loadImages(currentPage, currentFilters);
+                }
+            } catch (error) {
+                console.error('Failed to update QC status:', error);
+            }
+        }
+
+        async function deleteImage(imageId) {
+            if (!confirm('Are you sure you want to delete this image?')) return;
+
+            try {
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                imageCache.delete(imageId);
+                await loadImages(currentPage, currentFilters);
+            } catch (error) {
+                console.error('Failed to delete image:', error);
+            }
+        }
+
+        // Filter Functions
+        function applyFilters() {
+            currentFilters = {
+                qc: document.getElementById('qcFilter').value,
+                job: document.getElementById('jobFilter').value,
+                search: document.getElementById('imageSearch').value
+            };
+            loadImages(1, currentFilters);
+        }
+
+        // Event Listeners for Filters
+        document.getElementById('qcFilter').addEventListener('change', applyFilters);
+        document.getElementById('jobFilter').addEventListener('change', applyFilters);
+        document.getElementById('imageSearch').addEventListener('input', debounce(applyFilters, 300));
+        document.getElementById('clearFilters').addEventListener('click', () => {
+            document.getElementById('qcFilter').value = 'all';
+            document.getElementById('jobFilter').value = 'all';
+            document.getElementById('imageSearch').value = '';
+            applyFilters();
+        });
+
+        // Utility Functions
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Start initialization
+        initialize();
+        loadImages();
+    </script>
+</body>
+</html>

@@ -53,6 +53,7 @@ interface SettingsObject {
 interface SettingsPanelProps {
   onSave?: (settings: SettingsObject) => void;
   onReset?: () => void;
+  onBack?: () => void;
   isLoading?: boolean;
   error?: string | null;
   success?: string | null;
@@ -126,6 +127,7 @@ const tabs: Tab[] = [
 export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onSave,
   onReset,
+  onBack,
   isLoading = false,
   error = null,
   success = null
@@ -869,9 +871,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <Settings className="w-6 h-6 text-blue-600" />
-            <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Settings className="w-6 h-6 text-blue-600" />
+              <h1 className="text-xl font-semibold text-gray-900">Settings</h1>
+            </div>
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Back to main view"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
           <p className="mt-2 text-sm text-gray-500">
             Configure your application settings and API keys

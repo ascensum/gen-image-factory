@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SettingsPanel } from './components/Settings';
+import { DashboardPanel } from './components/Dashboard';
 
 /**
  * Main App Component
@@ -13,7 +14,7 @@ import { SettingsPanel } from './components/Settings';
 function App() {
   const [ipcStatus, setIpcStatus] = useState('Testing...');
   const [appVersion, setAppVersion] = useState('Loading...');
-  const [showSettings, setShowSettings] = useState(false);
+  const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'dashboard'
 
   useEffect(() => {
     // Test IPC communication
@@ -42,8 +43,10 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {showSettings ? (
-        <SettingsPanel />
+      {currentView === 'settings' ? (
+        <SettingsPanel onBack={() => setCurrentView('main')} />
+      ) : currentView === 'dashboard' ? (
+        <DashboardPanel onBack={() => setCurrentView('main')} />
       ) : (
         <div className="flex items-center justify-center min-h-screen">
           <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
@@ -78,12 +81,20 @@ function App() {
                 </p>
               </div>
 
-              <button
-                onClick={() => setShowSettings(true)}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Open Settings
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={() => setCurrentView('settings')}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Open Settings
+                </button>
+                <button
+                  onClick={() => setCurrentView('dashboard')}
+                  className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                >
+                  Open Dashboard
+                </button>
+              </div>
             </div>
           </div>
         </div>

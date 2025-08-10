@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings Management
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settingsObject) => ipcRenderer.invoke('save-settings', settingsObject),
+  getConfiguration: () => ipcRenderer.invoke('settings:get-configuration'),
   
   // API Key Management
   getApiKey: (serviceName) => ipcRenderer.invoke('get-api-key', serviceName),
@@ -26,7 +27,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Job Control
   jobStart: (config) => ipcRenderer.invoke('job:start', config),
   jobStop: () => ipcRenderer.invoke('job:stop'),
-  jobForceStop: () => ipcRenderer.invoke('job:force-stop'),
+  jobForceStop: () => ipcRenderer.invoke('job:force-stop-all'),
+  getJobStatus: () => ipcRenderer.invoke('job:get-status'),
+  getJobProgress: () => ipcRenderer.invoke('job:get-progress'),
+  getJobLogs: (mode) => ipcRenderer.invoke('job:get-logs', mode),
   
   // Security Status
   getSecurityStatus: () => ipcRenderer.invoke('get-security-status'),
@@ -34,21 +38,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Job Execution Management
   saveJobExecution: (execution) => ipcRenderer.invoke('job-execution:save', execution),
   getJobExecution: (id) => ipcRenderer.invoke('job-execution:get', id),
-  getAllJobExecutions: () => ipcRenderer.invoke('job-execution:get-all'),
+  getAllJobExecutions: (options) => ipcRenderer.invoke('job-execution:get-all', options),
   updateJobExecution: (id, execution) => ipcRenderer.invoke('job-execution:update', id, execution),
-  deleteJobExecution: (id) => ipcRenderer.invoke('job-execution:delete', id),
+  deleteJobExecution: (jobId) => ipcRenderer.invoke('job-execution:delete', { jobId }),
   getJobHistory: (limit) => ipcRenderer.invoke('job-execution:history', limit),
   getJobStatistics: () => ipcRenderer.invoke('job-execution:statistics'),
+  exportJobToExcel: (jobId) => ipcRenderer.invoke('job-execution:export-to-excel', { jobId }),
   
   // Generated Image Management
   saveGeneratedImage: (image) => ipcRenderer.invoke('generated-image:save', image),
   getGeneratedImage: (id) => ipcRenderer.invoke('generated-image:get', id),
   getGeneratedImagesByExecution: (executionId) => ipcRenderer.invoke('generated-image:get-by-execution', executionId),
-  getAllGeneratedImages: (limit) => ipcRenderer.invoke('generated-image:get-all', limit),
+  getAllGeneratedImages: (options) => ipcRenderer.invoke('generated-image:get-all', options),
   updateGeneratedImage: (id, image) => ipcRenderer.invoke('generated-image:update', id, image),
-  deleteGeneratedImage: (id) => ipcRenderer.invoke('generated-image:delete', id),
+  deleteGeneratedImage: (imageId) => ipcRenderer.invoke('generated-image:delete', { imageId }),
   getImagesByQCStatus: (qcStatus) => ipcRenderer.invoke('generated-image:get-by-qc-status', qcStatus),
-  updateQCStatus: (id, qcStatus, qcReason) => ipcRenderer.invoke('generated-image:update-qc-status', id, qcStatus, qcReason),
+  updateQCStatus: (imageId, status) => ipcRenderer.invoke('generated-image:update-qc-status', { imageId, status }),
+  manualApproveImage: (imageId) => ipcRenderer.invoke('generated-image:manual-approve', { imageId }),
   getImageMetadata: (executionId) => ipcRenderer.invoke('generated-image:metadata', executionId),
   getImageStatistics: () => ipcRenderer.invoke('generated-image:statistics'),
   
@@ -59,14 +65,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'ping', 
       'get-app-version',
       'get-settings',
-      'save-settings', 
+      'save-settings',
+      'settings:get-configuration', 
       'get-api-key',
       'set-api-key',
       'select-file',
       'validate-path',
       'job:start',
       'job:stop',
-      'job:force-stop',
+      'job:force-stop-all',
+      'job:get-status',
+      'job:get-progress',
+      'job:get-logs',
       'get-security-status',
       // Job Execution Management
       'job-execution:save',
@@ -74,8 +84,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'job-execution:get-all',
       'job-execution:update',
       'job-execution:delete',
-      'job-execution:history',
       'job-execution:statistics',
+      'job-execution:export-to-excel',
       // Generated Image Management
       'generated-image:save',
       'generated-image:get',
@@ -85,6 +95,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'generated-image:delete',
       'generated-image:get-by-qc-status',
       'generated-image:update-qc-status',
+      'generated-image:manual-approve',
       'generated-image:metadata',
       'generated-image:statistics'
     ];
