@@ -39,6 +39,7 @@ class JobExecution {
           successful_images INTEGER DEFAULT 0,
           failed_images INTEGER DEFAULT 0,
           error_message TEXT,
+          label TEXT,
           FOREIGN KEY (configuration_id) REFERENCES job_configurations(id) ON DELETE CASCADE
         )
       `;
@@ -46,7 +47,8 @@ class JobExecution {
       const createIndexesSQL = [
         'CREATE INDEX IF NOT EXISTS idx_job_executions_configuration_id ON job_executions(configuration_id)',
         'CREATE INDEX IF NOT EXISTS idx_job_executions_status ON job_executions(status)',
-        'CREATE INDEX IF NOT EXISTS idx_job_executions_started_at ON job_executions(started_at)'
+        'CREATE INDEX IF NOT EXISTS idx_job_executions_started_at ON job_executions(started_at)',
+        'CREATE INDEX IF NOT EXISTS idx_job_executions_label ON job_executions(label)'
       ];
 
       this.db.serialize(() => {
@@ -87,8 +89,8 @@ class JobExecution {
     return new Promise((resolve, reject) => {
       const sql = `
         INSERT INTO job_executions 
-        (configuration_id, started_at, completed_at, status, total_images, successful_images, failed_images, error_message)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (configuration_id, started_at, completed_at, status, total_images, successful_images, failed_images, error_message, label)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const params = [
@@ -99,7 +101,8 @@ class JobExecution {
         execution.totalImages || 0,
         execution.successfulImages || 0,
         execution.failedImages || 0,
-        execution.errorMessage || null
+        execution.errorMessage || null,
+        execution.label || null
       ];
 
       this.db.run(sql, params, function(err) {
@@ -133,7 +136,8 @@ class JobExecution {
             totalImages: row.total_images,
             successfulImages: row.successful_images,
             failedImages: row.failed_images,
-            errorMessage: row.error_message
+            errorMessage: row.error_message,
+            label: row.label
           };
           resolve({ success: true, execution });
         } else {
@@ -162,7 +166,8 @@ class JobExecution {
             totalImages: row.total_images,
             successfulImages: row.successful_images,
             failedImages: row.failed_images,
-            errorMessage: row.error_message
+            errorMessage: row.error_message,
+            label: row.label
           }));
           resolve({ success: true, executions });
         }
@@ -175,7 +180,7 @@ class JobExecution {
       const sql = `
         UPDATE job_executions 
         SET configuration_id = ?, started_at = ?, completed_at = ?, status = ?, 
-            total_images = ?, successful_images = ?, failed_images = ?, error_message = ?
+            total_images = ?, successful_images = ?, failed_images = ?, error_message = ?, label = ?
         WHERE id = ?
       `;
 
@@ -188,6 +193,7 @@ class JobExecution {
         execution.successfulImages,
         execution.failedImages,
         execution.errorMessage,
+        execution.label,
         id
       ];
 
@@ -245,7 +251,8 @@ class JobExecution {
             totalImages: row.total_images,
             successfulImages: row.successful_images,
             failedImages: row.failed_images,
-            errorMessage: row.error_message
+            errorMessage: row.error_message,
+            label: row.label
           }));
           resolve({ success: true, history });
         }
@@ -305,6 +312,199 @@ class JobExecution {
         } else {
           console.log(`Cleaned up ${this.changes} old job executions`);
           resolve({ success: true, deletedRows: this.changes });
+        }
+      });
+    });
+  }
+
+  async renameJobExecution(id, label) {
+    return new Promise((resolve, reject) => {
+      const sql = 'UPDATE job_executions SET label = ? WHERE id = ?';
+      
+      this.db.run(sql, [label, id], function(err) {
+        if (err) {
+          console.error('Error renaming job execution:', err);
+          reject(err);
+        } else {
+          console.log('Job execution renamed successfully');
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
+  }
+
+  async getJobExecutionsWithFilters(filters = {}) {
+    return new Promise((resolve, reject) => {
+      let sql = `
+        SELECT je.*, jc.name as configuration_name 
+        FROM job_executions je
+        LEFT JOIN job_configurations jc ON je.configuration_id = jc.id
+        WHERE 1=1
+      `;
+      
+      const params = [];
+      
+      if (filters.status && filters.status !== 'all') {
+        sql += ' AND je.status = ?';
+        params.push(filters.status);
+      }
+      
+      if (filters.configurationId) {
+        sql += ' AND je.configuration_id = ?';
+        params.push(filters.configurationId);
+      }
+      
+      if (filters.dateFrom) {
+        sql += ' AND je.started_at >= ?';
+        params.push(filters.dateFrom.toISOString());
+      }
+      
+      if (filters.dateTo) {
+        sql += ' AND je.started_at <= ?';
+        params.push(filters.dateTo.toISOString());
+      }
+      
+      if (filters.search) {
+        sql += ' AND (je.label LIKE ? OR je.id LIKE ? OR jc.name LIKE ?)';
+        const searchTerm = `%${filters.search}%`;
+        params.push(searchTerm, searchTerm, searchTerm);
+      }
+      
+      sql += ' ORDER BY je.started_at DESC';
+      
+      if (filters.limit) {
+        sql += ' LIMIT ?';
+        params.push(filters.limit);
+      }
+      
+      if (filters.offset) {
+        sql += ' OFFSET ?';
+        params.push(filters.offset);
+      }
+      
+      this.db.all(sql, params, (err, rows) => {
+        if (err) {
+          console.error('Error getting filtered job executions:', err);
+          reject(err);
+        } else {
+          // Convert timestamps to Date objects
+          const executions = rows.map(row => ({
+            id: row.id,
+            configurationId: row.configuration_id,
+            configurationName: row.configuration_name,
+            startedAt: row.started_at ? new Date(row.started_at) : new Date(),
+            completedAt: row.completed_at ? new Date(row.completed_at) : null,
+            status: row.status,
+            totalImages: row.total_images,
+            successfulImages: row.successful_images,
+            failedImages: row.failed_images,
+            errorMessage: row.error_message,
+            label: row.label
+          }));
+          resolve({ success: true, executions });
+        }
+      });
+    });
+  }
+
+  async getJobExecutionsByIds(ids) {
+    if (!ids || ids.length === 0) {
+      return { success: true, executions: [] };
+    }
+    
+    return new Promise((resolve, reject) => {
+      const placeholders = ids.map(() => '?').join(',');
+      const sql = `
+        SELECT je.*, jc.name as configuration_name 
+        FROM job_executions je
+        LEFT JOIN job_configurations jc ON je.configuration_id = jc.id
+        WHERE je.id IN (${placeholders})
+        ORDER BY je.started_at DESC
+      `;
+      
+      this.db.all(sql, ids, (err, rows) => {
+        if (err) {
+          console.error('Error getting job executions by IDs:', err);
+          reject(err);
+        } else {
+          // Convert timestamps to Date objects
+          const executions = rows.map(row => ({
+            id: row.id,
+            configurationId: row.configuration_id,
+            configurationName: row.configuration_name,
+            startedAt: row.started_at ? new Date(row.started_at) : new Date(),
+            completedAt: row.completed_at ? new Date(row.completed_at) : null,
+            status: row.status,
+            totalImages: row.total_images,
+            successfulImages: row.successful_images,
+            failedImages: row.failed_images,
+            errorMessage: row.error_message,
+            label: row.label
+          }));
+          resolve({ success: true, executions });
+        }
+      });
+    });
+  }
+
+  async bulkDeleteJobExecutions(ids) {
+    if (!ids || ids.length === 0) {
+      return { success: true, deletedRows: 0 };
+    }
+    
+    return new Promise((resolve, reject) => {
+      const placeholders = ids.map(() => '?').join(',');
+      const sql = `DELETE FROM job_executions WHERE id IN (${placeholders})`;
+      
+      this.db.run(sql, ids, function(err) {
+        if (err) {
+          console.error('Error bulk deleting job executions:', err);
+          reject(err);
+        } else {
+          console.log(`Bulk deleted ${this.changes} job executions`);
+          resolve({ success: true, deletedRows: this.changes });
+        }
+      });
+    });
+  }
+
+  async getJobExecutionsCount(filters = {}) {
+    return new Promise((resolve, reject) => {
+      let sql = 'SELECT COUNT(*) as count FROM job_executions je WHERE 1=1';
+      const params = [];
+      
+      if (filters.status && filters.status !== 'all') {
+        sql += ' AND je.status = ?';
+        params.push(filters.status);
+      }
+      
+      if (filters.configurationId) {
+        sql += ' AND je.configuration_id = ?';
+        params.push(filters.configurationId);
+      }
+      
+      if (filters.dateFrom) {
+        sql += ' AND je.started_at >= ?';
+        params.push(filters.dateFrom.toISOString());
+      }
+      
+      if (filters.dateTo) {
+        sql += ' AND je.started_at <= ?';
+        params.push(filters.dateTo.toISOString());
+      }
+      
+      if (filters.search) {
+        sql += ' AND (je.label LIKE ? OR je.id LIKE ?)';
+        const searchTerm = `%${filters.search}%`;
+        params.push(searchTerm, searchTerm);
+      }
+      
+      this.db.get(sql, params, (err, row) => {
+        if (err) {
+          console.error('Error getting job executions count:', err);
+          reject(err);
+        } else {
+          resolve({ success: true, count: row.count || 0 });
         }
       });
     });

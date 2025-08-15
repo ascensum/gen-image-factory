@@ -63,3 +63,89 @@ export interface JobRunner {
   onProgress(callback: (progress: ProgressUpdate) => void): void;
   onError(callback: (error: JobError) => void): void;
 }
+
+// Job Execution Types
+export interface JobExecution {
+  id: string | number;
+  configurationId: string | number;
+  configurationName?: string;
+  startedAt: Date;
+  completedAt?: Date;
+  status: 'running' | 'completed' | 'failed' | 'stopped' | 'pending';
+  totalImages: number;
+  successfulImages: number;
+  failedImages: number;
+  errorMessage?: string;
+  label?: string;
+}
+
+// Job Management Types
+export interface JobFilters {
+  status?: string;
+  configurationId?: string | number;
+  dateFrom?: Date;
+  dateTo?: Date;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface JobHistoryResult {
+  success: boolean;
+  history?: JobExecution[];
+  error?: string;
+}
+
+export interface JobResultsResult {
+  success: boolean;
+  results?: any[];
+  error?: string;
+}
+
+export interface DeleteJobResult {
+  success: boolean;
+  deletedRows?: number;
+  error?: string;
+}
+
+export interface ExportJobResult {
+  success: boolean;
+  filePath?: string;
+  error?: string;
+}
+
+export interface RenameJobResult {
+  success: boolean;
+  changes?: number;
+  error?: string;
+}
+
+export interface BulkDeleteJobsResult {
+  success: boolean;
+  deletedRows?: number;
+  error?: string;
+}
+
+export interface BulkExportJobsResult {
+  success: boolean;
+  filePaths?: string[];
+  error?: string;
+}
+
+export interface BulkRerunJobsResult {
+  success: boolean;
+  queuedJobs?: number;
+  error?: string;
+}
+
+export interface FilteredJobsResult {
+  success: boolean;
+  executions?: JobExecution[];
+  error?: string;
+}
+
+export interface JobCountResult {
+  success: boolean;
+  count?: number;
+  error?: string;
+}

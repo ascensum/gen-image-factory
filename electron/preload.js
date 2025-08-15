@@ -45,6 +45,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getJobStatistics: () => ipcRenderer.invoke('job-execution:statistics'),
   exportJobToExcel: (jobId) => ipcRenderer.invoke('job-execution:export-to-excel', { jobId }),
   
+  // Job Management
+  getJobResults: (jobId) => ipcRenderer.invoke('get-job-results', jobId),
+  renameJobExecution: (id, label) => ipcRenderer.invoke('job-execution:rename', id, label),
+  bulkDeleteJobExecutions: (ids) => ipcRenderer.invoke('job-execution:bulk-delete', ids),
+  bulkExportJobExecutions: (ids) => ipcRenderer.invoke('job-execution:bulk-export', ids),
+  bulkRerunJobExecutions: (ids) => ipcRenderer.invoke('job-execution:bulk-rerun', ids),
+  getJobExecutionsWithFilters: (filters) => ipcRenderer.invoke('get-job-executions-with-filters', filters),
+  getJobExecutionsCount: (filters) => ipcRenderer.invoke('get-job-executions-count', filters),
+  
   // Generated Image Management
   saveGeneratedImage: (image) => ipcRenderer.invoke('generated-image:save', image),
   getGeneratedImage: (id) => ipcRenderer.invoke('generated-image:get', id),
@@ -91,6 +100,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'job-execution:delete',
       'job-execution:statistics',
       'job-execution:export-to-excel',
+      'job-execution:rename',
+      'job-execution:bulk-delete',
+      'job-execution:bulk-export',
+      'job-execution:bulk-rerun',
+      'get-job-results',
+      'get-job-executions-with-filters',
+      'get-job-executions-count',
       // Generated Image Management
       'generated-image:save',
       'generated-image:get',

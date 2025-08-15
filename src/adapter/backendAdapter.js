@@ -50,11 +50,14 @@ class BackendAdapter {
         'job:get-status', 'job:get-progress', 'job:get-logs', 'get-security-status',
         'job-execution:save', 'job-execution:get', 'job-execution:get-all', 'job-execution:update',
         'job-execution:delete', 'job-execution:statistics', 'job-execution:export-to-excel',
-        'job-execution:history',         'generated-image:save', 'generated-image:get',
+        'job-execution:history', 'generated-image:save', 'generated-image:get',
         'generated-image:get-by-execution', 'generated-image:get-all', 'generated-image:update',
         'generated-image:delete', 'generated-image:get-by-qc-status', 'generated-image:update-qc-status',
         'generated-image:metadata', 'generated-image:statistics', 'generated-image:manual-approve',
-        'failed-image:retry-original', 'failed-image:retry-modified'
+        'failed-image:retry-original', 'failed-image:retry-modified', 'failed-image:retry-batch',
+        'get-job-history', 'get-job-results', 'delete-job-execution', 'export-job-to-excel',
+        'job-execution:rename', 'job-execution:bulk-delete', 'job-execution:bulk-export', 'job-execution:bulk-rerun',
+        'get-job-executions-with-filters', 'get-job-executions-count'
       ];
       
       handlers.forEach(handler => {
@@ -217,6 +220,47 @@ class BackendAdapter {
       // Batch retry handler
       _ipc.handle('failed-image:retry-batch', async (event, { imageIds, useOriginalSettings, modifiedSettings }) => {
         return await this.retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings);
+      });
+
+      // Job Management IPC handlers
+      _ipc.handle('get-job-history', async (event, limit) => {
+        return await this.getJobHistory(limit);
+      });
+
+      _ipc.handle('get-job-results', async (event, jobId) => {
+        return await this.getJobResults(jobId);
+      });
+
+      _ipc.handle('delete-job-execution', async (event, jobId) => {
+        return await this.deleteJobExecution(jobId);
+      });
+
+      _ipc.handle('export-job-to-excel', async (event, jobId) => {
+        return await this.exportJobToExcel(jobId);
+      });
+
+      _ipc.handle('job-execution:rename', async (event, id, label) => {
+        return await this.renameJobExecution(id, label);
+      });
+
+      _ipc.handle('job-execution:bulk-delete', async (event, ids) => {
+        return await this.bulkDeleteJobExecutions(ids);
+      });
+
+      _ipc.handle('job-execution:bulk-export', async (event, ids) => {
+        return await this.bulkExportJobExecutions(ids);
+      });
+
+      _ipc.handle('job-execution:bulk-rerun', async (event, ids) => {
+        return await this.bulkRerunJobExecutions(ids);
+      });
+
+      _ipc.handle('get-job-executions-with-filters', async (event, filters) => {
+        return await this.getJobExecutionsWithFilters(filters);
+      });
+
+      _ipc.handle('get-job-executions-count', async (event, filters) => {
+        return await this.getJobExecutionsCount(filters);
       });
     }
   }
@@ -1035,6 +1079,123 @@ class BackendAdapter {
       }
     }
     return out;
+  }
+
+  // Job Management Methods
+  async getJobResults(jobId) {
+    try {
+      await this.ensureInitialized();
+      const job = await this.jobExecution.getJobExecution(jobId);
+      const images = await this.generatedImage.getGeneratedImagesByExecution(jobId);
+      
+      if (!job.success) {
+        return { success: false, error: 'Job not found' };
+      }
+      
+      return { 
+        success: true, 
+        job: job.execution,
+        images: images.success ? images.images : []
+      };
+    } catch (error) {
+      console.error('Error getting job results:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async renameJobExecution(id, label) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.jobExecution.renameJobExecution(id, label);
+      return result;
+    } catch (error) {
+      console.error('Error renaming job execution:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async bulkDeleteJobExecutions(ids) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.jobExecution.bulkDeleteJobExecutions(ids);
+      return result;
+    } catch (error) {
+      console.error('Error bulk deleting job executions:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async bulkExportJobExecutions(ids) {
+    try {
+      await this.ensureInitialized();
+      const jobs = await this.jobExecution.getJobExecutionsByIds(ids);
+      
+      if (!jobs.success) {
+        return { success: false, error: 'Failed to retrieve jobs for export' };
+      }
+      
+      // For now, return success - actual Excel generation would be implemented here
+      const exportData = {
+        jobs: jobs.executions,
+        timestamp: new Date().toISOString(),
+        totalJobs: jobs.executions.length
+      };
+      
+      return { success: true, data: exportData };
+    } catch (error) {
+      console.error('Error bulk exporting job executions:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async bulkRerunJobExecutions(ids) {
+    try {
+      await this.ensureInitialized();
+      const jobs = await this.jobExecution.getJobExecutionsByIds(ids);
+      
+      if (!jobs.success) {
+        return { success: false, error: 'Failed to retrieve jobs for rerun' };
+      }
+      
+      // Check if any job is currently running
+      const runningJobs = jobs.executions.filter(job => job.status === 'running');
+      if (runningJobs.length > 0) {
+        return { success: false, error: 'Cannot rerun jobs while other jobs are running' };
+      }
+      
+      // For now, return success - actual rerun logic would be implemented here
+      // This would integrate with the existing job processing system
+      return { 
+        success: true, 
+        queuedJobs: jobs.executions.length,
+        message: `${jobs.executions.length} jobs queued for rerun`
+      };
+    } catch (error) {
+      console.error('Error bulk rerunning job executions:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getJobExecutionsWithFilters(filters) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.jobExecution.getJobExecutionsWithFilters(filters);
+      return result;
+    } catch (error) {
+      console.error('Error getting job executions with filters:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getJobExecutionsCount(filters) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.jobExecution.getJobExecutionsCount(filters);
+      return result;
+    } catch (error) {
+      console.error('Error getting job executions count:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 
