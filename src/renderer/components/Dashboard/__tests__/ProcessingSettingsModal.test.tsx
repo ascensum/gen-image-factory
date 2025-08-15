@@ -639,7 +639,7 @@ describe('ProcessingSettingsModal', () => {
       const retryButton = screen.getByText('Retry with Original Settings (3 images)');
       fireEvent.click(retryButton);
 
-      expect(mockOnRetry).toHaveBeenCalledWith(true, undefined);
+      expect(mockOnRetry).toHaveBeenCalledWith(true, undefined, false);
     });
 
     it('calls onRetry with correct parameters for modified settings', () => {
@@ -668,7 +668,7 @@ describe('ProcessingSettingsModal', () => {
         imageEnhancement: true,
         sharpening: 50,
         saturation: 100,
-      }));
+      }), false);
     });
   });
 

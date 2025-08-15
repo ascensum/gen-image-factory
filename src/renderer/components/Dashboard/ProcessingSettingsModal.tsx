@@ -17,7 +17,7 @@ interface ProcessingSettings {
 interface ProcessingSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onRetry: (useOriginalSettings: boolean, modifiedSettings?: ProcessingSettings) => void;
+  onRetry: (useOriginalSettings: boolean, modifiedSettings?: ProcessingSettings, includeMetadata?: boolean) => void;
   selectedCount: number;
 }
 
@@ -28,6 +28,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
   selectedCount
 }) => {
   const [useOriginalSettings, setUseOriginalSettings] = useState(true);
+  const [includeMetadata, setIncludeMetadata] = useState(false);
   const [batchSettings, setBatchSettings] = useState<ProcessingSettings>({
     imageEnhancement: false,
     sharpening: 50,
@@ -46,9 +47,9 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
 
   const handleRetry = () => {
     if (useOriginalSettings) {
-      onRetry(true, undefined);
+      onRetry(true, undefined, includeMetadata);
     } else {
-      onRetry(false, batchSettings);
+      onRetry(false, batchSettings, includeMetadata);
     }
   };
 
@@ -145,6 +146,41 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                   </div>
                 </div>
               </label>
+            </div>
+          </div>
+
+          {/* Metadata Regeneration Option */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Metadata Options</h3>
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-blue-400 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-blue-800">Metadata Regeneration</h4>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Choose whether to regenerate metadata for the selected images during retry processing.
+                  </p>
+                  <div className="mt-3">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        aria-label="Also regenerate metadata"
+                        checked={includeMetadata}
+                        onChange={(e) => setIncludeMetadata(e.target.checked)}
+                        className="text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-blue-800 font-medium">
+                        Also regenerate metadata (titles, descriptions, tags)
+                      </span>
+                    </label>
+                    <p className="text-xs text-blue-600 mt-1">
+                      This will regenerate AI-generated metadata for all selected images using the current AI model settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

@@ -45,11 +45,39 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   const [filterJob, setFilterJob] = useState<string | number>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
+  const [retryQueueStatus, setRetryQueueStatus] = useState<{
+    isProcessing: boolean;
+    queueLength: number;
+    pendingJobs: number;
+    processingJobs: number;
+    completedJobs: number;
+    failedJobs: number;
+  }>({
+    isProcessing: false,
+    queueLength: 0,
+    pendingJobs: 0,
+    processingJobs: 0,
+    completedJobs: 0,
+    failedJobs: 0
+  });
 
   // Load failed images on component mount
   useEffect(() => {
     loadFailedImages();
+    loadRetryQueueStatus();
   }, []);
+
+  // Load retry queue status
+  const loadRetryQueueStatus = async () => {
+    try {
+      const result = await window.electronAPI.getRetryQueueStatus();
+      if (result.success && result.queueStatus) {
+        setRetryQueueStatus(result.queueStatus);
+      }
+    } catch (error) {
+      console.error('Failed to load retry queue status:', error);
+    }
+  };
 
   const loadFailedImages = async () => {
     try {
@@ -153,7 +181,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     }
   };
 
-  const handleRetryWithSettings = async (useOriginalSettings: boolean) => {
+  const handleRetryWithSettings = async (useOriginalSettings: boolean, modifiedSettings?: ProcessingSettings, includeMetadata?: boolean) => {
     if (selectedImages.size === 0) return;
     
     try {
@@ -164,11 +192,13 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       const result = await window.electronAPI.retryFailedImagesBatch(
         imageIds, 
         useOriginalSettings, 
-        useOriginalSettings ? null : processingSettings
+        useOriginalSettings ? null : (modifiedSettings || processingSettings),
+        includeMetadata
       );
       
       if (result.success) {
         await loadFailedImages();
+        await loadRetryQueueStatus(); // Refresh queue status
         setSelectedImages(new Set());
         setShowProcessingSettingsModal(false);
       } else {
@@ -343,6 +373,23 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
               </span>
             </div>
 
+            {/* Queue Status Indicator */}
+            {(retryQueueStatus.isProcessing || retryQueueStatus.queueLength > 0) && (
+              <div className="mr-4 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs font-medium text-blue-800">
+                    {retryQueueStatus.isProcessing ? 'Processing...' : 'Queued'}
+                  </span>
+                  {retryQueueStatus.queueLength > 0 && (
+                    <span className="text-xs text-blue-600">
+                      ({retryQueueStatus.queueLength} job{retryQueueStatus.queueLength !== 1 ? 's' : ''})
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Bulk Actions (visible always, disabled when none selected) */}
             <div className="flex items-center space-x-2">
               <button
@@ -355,11 +402,24 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
               </button>
               <button
                 onClick={() => handleBulkAction('retry')}
-                disabled={selectedImages.size === 0}
-                className={`px-3 py-1 text-sm rounded-md transition-colors ${selectedImages.size === 0 ? 'bg-blue-200 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                title={selectedImages.size === 0 ? 'Select images to enable' : 'Retry selected images (batch)'}
+                disabled={selectedImages.size === 0 || retryQueueStatus.isProcessing}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  selectedImages.size === 0 || retryQueueStatus.isProcessing 
+                    ? 'bg-blue-200 text-white cursor-not-allowed' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                title={
+                  selectedImages.size === 0 
+                    ? 'Select images to enable' 
+                    : retryQueueStatus.isProcessing 
+                    ? 'Retry is currently processing. Please wait for completion.'
+                    : 'Retry selected images (batch)'
+                }
               >
                 Retry Selected
+                {retryQueueStatus.isProcessing && (
+                  <span className="ml-1">⏳</span>
+                )}
               </button>
               <button
                 onClick={() => handleBulkAction('delete')}
@@ -442,8 +502,6 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         <ProcessingSettingsModal
           isOpen={showProcessingSettingsModal}
           onClose={() => setShowProcessingSettingsModal(false)}
-          settings={processingSettings}
-          onSettingsChange={setProcessingSettings}
           onRetry={handleRetryWithSettings}
           selectedCount={selectedImages.size}
         />

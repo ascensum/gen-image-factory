@@ -70,7 +70,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Failed Images Review
   retryFailedImageWithOriginalSettings: (imageId) => ipcRenderer.invoke('failed-image:retry-original', { imageId }),
   retryFailedImageWithModifiedSettings: (imageId, settings) => ipcRenderer.invoke('failed-image:retry-modified', { imageId, settings }),
-  retryFailedImagesBatch: (imageIds, useOriginalSettings, modifiedSettings) => ipcRenderer.invoke('failed-image:retry-batch', { imageIds, useOriginalSettings, modifiedSettings }),
+  retryFailedImagesBatch: (imageIds, useOriginalSettings, modifiedSettings, includeMetadata) => ipcRenderer.invoke('failed-image:retry-batch', { imageIds, useOriginalSettings, modifiedSettings, includeMetadata }),
+  getRetryQueueStatus: () => ipcRenderer.invoke('failed-image:get-queue-status'),
   
   // Error handling wrapper
   invoke: (channel, ...args) => {
@@ -119,6 +120,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'generated-image:manual-approve',
       'generated-image:metadata',
       'generated-image:statistics',
+      'failed-image:get-queue-status',
               'failed-image:retry-original',
         'failed-image:retry-modified',
         'failed-image:retry-batch'

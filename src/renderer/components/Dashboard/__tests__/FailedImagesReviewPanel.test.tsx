@@ -70,10 +70,10 @@ vi.mock('../ProcessingSettingsModal', () => ({
     isOpen ? (
       <div data-testid="processing-settings-modal">
         <h2>Processing Settings ({selectedCount} images)</h2>
-        <button onClick={() => onRetry(true)} data-testid="retry-original">
+        <button onClick={() => onRetry(true, undefined, false)} data-testid="retry-original">
           Retry with Original Settings
         </button>
-        <button onClick={() => onRetry(false)} data-testid="retry-modified">
+        <button onClick={() => onRetry(false, {}, false)} data-testid="retry-modified">
           Retry with Modified Settings
         </button>
         <button onClick={onClose} data-testid="settings-close">
@@ -451,8 +451,8 @@ describe('FailedImagesReviewPanel', () => {
       });
 
       await waitFor(() => {
-        // Click retry with original settings
-        const originalButton = screen.getByTestId('retry-original');
+        // Click retry with original settings (the button text should match what's in the modal)
+        const originalButton = screen.getByText(/Retry with Original Settings/);
         fireEvent.click(originalButton);
       });
 
@@ -460,7 +460,8 @@ describe('FailedImagesReviewPanel', () => {
         expect(mockElectronAPI.retryFailedImagesBatch).toHaveBeenCalledWith(
           expect.arrayContaining(['1', '2']),
           true,
-          null
+          null,
+          false
         );
       });
     });
@@ -481,8 +482,8 @@ describe('FailedImagesReviewPanel', () => {
       });
 
       await waitFor(() => {
-        // Click retry with modified settings
-        const modifiedButton = screen.getByTestId('retry-modified');
+        // Click retry with modified settings (the button text should match what's in the modal)
+        const modifiedButton = screen.getByText(/Retry with Modified Settings/);
         fireEvent.click(modifiedButton);
       });
 
@@ -490,7 +491,8 @@ describe('FailedImagesReviewPanel', () => {
         expect(mockElectronAPI.retryFailedImagesBatch).toHaveBeenCalledWith(
           expect.arrayContaining(['1', '2']),
           false,
-          expect.any(Object) // processingSettings object
+          expect.any(Object), // processingSettings object
+          false
         );
       });
     });

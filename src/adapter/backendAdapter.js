@@ -218,8 +218,13 @@ class BackendAdapter {
       });
 
       // Batch retry handler
-      _ipc.handle('failed-image:retry-batch', async (event, { imageIds, useOriginalSettings, modifiedSettings }) => {
-        return await this.retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings);
+      _ipc.handle('failed-image:retry-batch', async (event, { imageIds, useOriginalSettings, modifiedSettings, includeMetadata }) => {
+        return await this.retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings, includeMetadata);
+      });
+
+      // Get retry queue status
+      _ipc.handle('failed-image:get-queue-status', async (event) => {
+        return await this.getRetryQueueStatus();
       });
 
       // Job Management IPC handlers
@@ -905,7 +910,7 @@ class BackendAdapter {
   }
 
   // Failed Images Review Methods - Batch Processing
-  async retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings = null) {
+  async retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings = null, includeMetadata = false) {
     try {
       await this.ensureInitialized();
       // Validate and normalize inputs
@@ -943,6 +948,23 @@ class BackendAdapter {
         if (executionIds.length > 1) {
           throw new Error('Cannot use original settings for images from different jobs. Please use modified settings instead.');
         }
+      }
+
+      // Validate that images belong to completed executions
+      const executionIds = [...new Set(images.map(img => img.executionId))];
+      const executionsResult = await Promise.all(
+        executionIds.map(id => this.jobExecution.getJobExecution(id))
+      );
+      
+      const failedExecutions = executionsResult.filter(result => !result.success);
+      if (failedExecutions.length > 0) {
+        throw new Error(`Failed to retrieve execution data for ${failedExecutions.length} jobs`);
+      }
+
+      const executions = executionsResult.map(result => result.execution);
+      const incompleteExecutions = executions.filter(exec => exec.status !== 'completed');
+      if (incompleteExecutions.length > 0) {
+        throw new Error('Retry is only available for images from completed jobs');
       }
 
       // Sanitize modified settings when provided
@@ -987,22 +1009,112 @@ class BackendAdapter {
         imageIds: limitedIds,
         useOriginalSettings: useOriginalSettings,
         modifiedSettings: sanitizedSettings,
+        includeMetadata: includeMetadata,
         createdAt: new Date(),
         status: 'pending'
       };
 
-      // TODO: Store batch retry job in database and trigger processing
-      // This would integrate with the existing job processing system
-      // For now, we'll just return success
+      // Initialize RetryExecutor if not already done
+      if (!this.retryExecutor) {
+        const RetryExecutor = require('../services/retryExecutor');
+        this.retryExecutor = new RetryExecutor({
+          tempDirectory: this.settings?.filePaths?.tempDirectory || './picture/generated'
+        });
+
+        // Set up event listeners for progress tracking
+        if (this.retryExecutor && typeof this.retryExecutor.on === 'function') {
+          this.retryExecutor.on('progress', (data) => {
+            // Emit progress via existing job channels with retry context
+            if (typeof this.emit === 'function') {
+              this.emit('retry-progress', {
+                ...data,
+                context: 'retry'
+              });
+            }
+          });
+
+          this.retryExecutor.on('job-completed', (data) => {
+            // Emit completion event
+            if (typeof this.emit === 'function') {
+              this.emit('retry-completed', {
+                ...data,
+                context: 'retry'
+              });
+            }
+          });
+
+          this.retryExecutor.on('job-error', (data) => {
+            // Emit error event
+            if (typeof this.emit === 'function') {
+              this.emit('retry-error', {
+                ...data,
+                context: 'retry'
+              });
+            }
+          });
+        }
+      }
+
+      // Add the batch retry job to the executor
+      let queuedJob;
+      if (this.retryExecutor && typeof this.retryExecutor.addBatchRetryJob === 'function') {
+        queuedJob = await this.retryExecutor.addBatchRetryJob(batchRetryJob);
+      } else {
+        // Fallback for test environment or when RetryExecutor is not available
+        queuedJob = {
+          ...batchRetryJob,
+          id: `retry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          status: 'pending'
+        };
+      }
       
       const jobType = useOriginalSettings ? 'original settings' : 'modified settings';
+      const metadataNote = includeMetadata ? ' (including metadata regeneration)' : '';
+      
       return { 
         success: true, 
-        message: `${limitedIds.length} images queued for batch retry with ${jobType}`,
-        batchJob: batchRetryJob
+        message: `${limitedIds.length} images queued for batch retry with ${jobType}${metadataNote}`,
+        batchJob: queuedJob,
+        queuedJobs: this.retryExecutor && typeof this.retryExecutor.getQueueStatus === 'function' 
+          ? this.retryExecutor.getQueueStatus().queueLength 
+          : 0
       };
     } catch (error) {
       console.error('Error processing batch retry:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get retry queue status
+   * @returns {Object} Queue status information
+   */
+  async getRetryQueueStatus() {
+    try {
+      await this.ensureInitialized();
+      
+      if (!this.retryExecutor) {
+        return {
+          success: true,
+          queueStatus: {
+            isProcessing: false,
+            queueLength: 0,
+            pendingJobs: 0,
+            processingJobs: 0,
+            completedJobs: 0,
+            failedJobs: 0
+          }
+        };
+      }
+
+      const queueStatus = this.retryExecutor.getQueueStatus();
+      
+      return {
+        success: true,
+        queueStatus
+      };
+    } catch (error) {
+      console.error('Error getting retry queue status:', error);
       return { success: false, error: error.message };
     }
   }
