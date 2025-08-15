@@ -14,6 +14,10 @@
 10. **FR10**: The application shall provide a setting or control (e.g., a toggle in the settings area) to switch between 'Standard' and 'Debug' logging modes.
 11. **FR11**: The UI must include a global 'Force Stop All Processes' button to immediately terminate any running backend tasks in case of an error or runaway process.
 12. **FR12**: In the settings UI, features that incur direct API costs (like AI Quality Check and AI Metadata Generation) must be clearly labeled as such to inform the user of potential costs.
+13. **FR13**: The application shall provide configurable image enhancement controls including sharpening intensity (0-10) and saturation level (0-2) with independent toggle functionality.
+14. **FR14**: The UI shall implement a master toggle system with proper feature dependencies and conditional visibility to prevent user confusion and ensure logical workflow.
+15. **FR15**: The application shall support independent image enhancement features that can be enabled regardless of image conversion settings, providing flexible image processing options.
+16. **FR16**: The UI shall provide ZIP export functionality that packages selected images with their metadata (title, description, tags) into a downloadable ZIP file containing both the image files and an Excel spreadsheet.
 
 ## Non-Functional Requirements
 
@@ -22,6 +26,10 @@
 3.  **NFR3**: The application must be packaged as a standalone desktop application for Windows, macOS, and Linux using Electron.
 4.  **NFR4**: The core backend logic (prompt generation, image production) must be reused from the existing CLI tool.
 5.  **NFR5**: A 'Backend Adapter' or 'Facade' layer must be implemented between the UI and the core backend logic. The UI will exclusively interact with this adapter, which will be responsible for managing backend interaction patterns (e.g., polling), translating technical errors into user-friendly messages, and providing a service-agnostic interface to allow for future backend provider changes with minimal UI impact.
+6.  **NFR6**: The test suite must be stable and deterministic in CI, including:
+    - Database integration tests isolated per suite (in-memory or unique path) with migrations in setup and serial execution when needed.
+    - Settings integration tests aligned to `BackendAdapter` with mocks for `keytar` and Electron dialogs.
+    - Centralized mocks and helpers in `tests/setup.ts` to avoid native module invocation during tests.
 
 ## Compatibility Requirements
 

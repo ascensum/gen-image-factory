@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Details</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="job_management_theme.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom styles */
+        .job-title {
+            font-size: 1.5rem;
+            font-weight: 500;
+            cursor: text;
+            padding: 0.5rem;
+            border-radius: var(--radius);
+            transition: all 0.2s ease-out;
+        }
+
+        .job-title:hover {
+            background-color: var(--secondary);
+        }
+
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            border-radius: var(--radius) var(--radius) 0 0;
+            transition: all 0.2s ease-out;
+        }
+
+        .tab-button.active {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .image-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: all 0.2s ease-out;
+        }
+
+        .image-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .image-status {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-complete {
+            background-color: var(--status-completed);
+            color: var(--status-completed-foreground);
+        }
+
+        .status-failed {
+            background-color: var(--status-failed);
+            color: var(--status-failed-foreground);
+        }
+
+        .view-toggle {
+            padding: 0.5rem;
+            border-radius: var(--radius);
+            transition: all 0.2s ease-out;
+        }
+
+        .view-toggle.active {
+            background-color: var(--secondary);
+        }
+
+        .image-list {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .image-list th {
+            background-color: var(--secondary);
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-weight: 500;
+        }
+
+        .image-list td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .thumbnail {
+            width: 48px;
+            height: 48px;
+            object-fit: cover;
+            border-radius: var(--radius-sm);
+        }
+    </style>
+</head>
+<body class="bg-[--background] text-[--foreground] min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="border-b border-[--border] px-6 py-4 shrink-0">
+        <div class="flex items-center gap-4 mb-4">
+            <button class="p-2 hover:bg-[--secondary] rounded-lg transition-colors">
+                <i data-lucide="arrow-left"></i>
+            </button>
+            <h1 class="text-xl font-semibold">Job #12345</h1>
+        </div>
+        <div class="job-title" contenteditable="true">
+            Product Photoshoot March 2024
+        </div>
+    </header>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 px-6 pt-4 shrink-0">
+        <button class="tab-button" data-tab="overview">Overview</button>
+        <button class="tab-button active" data-tab="images">Images</button>
+        <button class="tab-button" data-tab="logs">Logs</button>
+    </div>
+
+    <!-- Tab Contents Container -->
+    <main class="flex-1 min-h-0 relative">
+        <!-- Overview Content -->
+        <div id="overview" class="tab-content absolute inset-0 overflow-auto" style="display: none;">
+            <div class="p-6">
+            <!-- Job Information -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="p-4 border border-[--border] rounded-lg">
+                <div class="text-sm text-[--muted-foreground]">Job ID</div>
+                <div class="text-lg font-medium mt-1">JOB-12345</div>
+            </div>
+            <div class="p-4 border border-[--border] rounded-lg">
+                <div class="text-sm text-[--muted-foreground]">Status</div>
+                <div class="text-lg font-medium mt-1">
+                    <span class="status-badge status-complete">✓ Completed</span>
+                </div>
+            </div>
+            <div class="p-4 border border-[--border] rounded-lg">
+                <div class="text-sm text-[--muted-foreground]">Start Time</div>
+                <div class="text-lg font-medium mt-1">2024-03-20 15:30</div>
+            </div>
+            <div class="p-4 border border-[--border] rounded-lg">
+                <div class="text-sm text-[--muted-foreground]">Duration</div>
+                <div class="text-lg font-medium mt-1">2h 15m</div>
+            </div>
+            <div class="p-4 border border-[--border] rounded-lg">
+                <div class="text-sm text-[--muted-foreground]">Success Rate</div>
+                <div class="text-lg font-medium mt-1">93.3% (42/45)</div>
+            </div>
+        </div>
+
+        <!-- Generated Images Summary -->
+        <h2 class="text-lg font-semibold mb-4">Generated Images Summary</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="p-4 border border-[--border] rounded-lg">
+                <div class="text-sm text-[--muted-foreground]">Total Images</div>
+                <div class="text-2xl font-semibold mt-1">45</div>
+            </div>
+            <div class="p-4 border border-[--border] rounded-lg">
+                <div class="text-sm text-[--muted-foreground]">Successful</div>
+                <div class="text-2xl font-semibold mt-1 text-[--status-completed]">42</div>
+            </div>
+            <div class="p-4 border border-[--border] rounded-lg">
+                <div class="text-sm text-[--muted-foreground]">Failed</div>
+                <div class="text-2xl font-semibold mt-1 text-[--status-failed]">3</div>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold">Settings</h2>
+                <button class="text-sm text-[--primary] hover:underline">Edit</button>
+            </div>
+            <div class="border border-[--border] rounded-lg p-6 space-y-6">
+                <div>
+                    <h3 class="font-medium mb-2">Model Configuration</h3>
+                    <div class="space-y-2 text-[--muted-foreground]">
+                        <div>• Model: Stable Diffusion XL</div>
+                        <div>• Version: 1.0.0</div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-medium mb-2">Image Settings</h3>
+                    <div class="space-y-2 text-[--muted-foreground]">
+                        <div>• Resolution: 1024x1024</div>
+                        <div>• Format: PNG</div>
+                        <div>• Quality: High</div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-medium mb-2">Style Parameters</h3>
+                    <div class="space-y-2 text-[--muted-foreground]">
+                        <div>• Background: Clean White</div>
+                        <div>• Lighting: Studio</div>
+                        <div>• Style: Professional Product</div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-medium mb-2">Processing Options</h3>
+                    <div class="space-y-2 text-[--muted-foreground]">
+                        <div>• Auto-enhance: Enabled</div>
+                        <div>• Noise reduction: Medium</div>
+                        <div>• Sharpening: Low</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Images Content -->
+    <div id="images" class="tab-content absolute inset-0 overflow-auto" style="display: block;">
+        <div class="p-6">
+            <!-- Controls -->
+            <div class="flex items-center justify-between mb-4 pb-4 border-b border-[--border] sticky top-0 bg-[--background]">
+            <div class="flex items-center gap-4">
+                <select class="bg-[--background] border border-[--border] rounded-lg px-4 py-2">
+                    <option>All Images</option>
+                    <option>Completed</option>
+                    <option>Failed</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2">
+                <button class="view-toggle active" title="Grid View">
+                    <i data-lucide="grid"></i>
+                </button>
+                <button class="view-toggle" title="List View">
+                    <i data-lucide="list"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Grid View -->
+        <div class="image-grid">
+            <!-- Image Cards -->
+            <div class="image-card">
+                <img src="https://placehold.co/400x400" alt="Generated image" class="w-full aspect-square object-cover">
+                <div class="p-2 flex items-center justify-between">
+                    <span class="text-sm font-medium">IMG1</span>
+                    <span class="image-status status-complete">✓</span>
+                </div>
+            </div>
+            <div class="image-card">
+                <img src="https://placehold.co/400x400" alt="Generated image" class="w-full aspect-square object-cover">
+                <div class="p-2 flex items-center justify-between">
+                    <span class="text-sm font-medium">IMG2</span>
+                    <span class="image-status status-failed">⚠️</span>
+                </div>
+            </div>
+            <!-- More image cards -->
+            <div class="image-card">
+                <img src="https://placehold.co/400x400" alt="Generated image" class="w-full aspect-square object-cover">
+                <div class="p-2 flex items-center justify-between">
+                    <span class="text-sm font-medium">IMG3</span>
+                    <span class="image-status status-complete">✓</span>
+                </div>
+            </div>
+            <div class="image-card">
+                <img src="https://placehold.co/400x400" alt="Generated image" class="w-full aspect-square object-cover">
+                <div class="p-2 flex items-center justify-between">
+                    <span class="text-sm font-medium">IMG4</span>
+                    <span class="image-status status-failed">⚠️</span>
+                </div>
+            </div>
+            <div class="image-card">
+                <img src="https://placehold.co/400x400" alt="Generated image" class="w-full aspect-square object-cover">
+                <div class="p-2 flex items-center justify-between">
+                    <span class="text-sm font-medium">IMG5</span>
+                    <span class="image-status status-complete">✓</span>
+                </div>
+            </div>
+            <div class="image-card">
+                <img src="https://placehold.co/400x400" alt="Generated image" class="w-full aspect-square object-cover">
+                <div class="p-2 flex items-center justify-between">
+                    <span class="text-sm font-medium">IMG6</span>
+                    <span class="image-status status-complete">✓</span>
+                </div>
+            </div>
+            <div class="image-card">
+                <img src="https://placehold.co/400x400" alt="Generated image" class="w-full aspect-square object-cover">
+                <div class="p-2 flex items-center justify-between">
+                    <span class="text-sm font-medium">IMG7</span>
+                    <span class="image-status status-failed">⚠️</span>
+                </div>
+            </div>
+            <div class="image-card">
+                <img src="https://placehold.co/400x400" alt="Generated image" class="w-full aspect-square object-cover">
+                <div class="p-2 flex items-center justify-between">
+                    <span class="text-sm font-medium">IMG8</span>
+                    <span class="image-status status-complete">✓</span>
+                </div>
+            </div>
+            <div class="image-card">
+                <img src="https://placehold.co/400x400" alt="Generated image" class="w-full aspect-square object-cover">
+                <div class="p-2 flex items-center justify-between">
+                    <span class="text-sm font-medium">IMG9</span>
+                    <span class="image-status status-complete">✓</span>
+                </div>
+            </div>
+            <div class="image-card">
+                <img src="https://placehold.co/400x400" alt="Generated image" class="w-full aspect-square object-cover">
+                <div class="p-2 flex items-center justify-between">
+                    <span class="text-sm font-medium">IMG10</span>
+                    <span class="image-status status-complete">✓</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- List View (hidden by default) -->
+        <table class="image-list hidden">
+            <thead>
+                <tr>
+                    <th>Preview</th>
+                    <th>ID</th>
+                    <th>Status</th>
+                    <th>Generated At</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><img src="https://placehold.co/400x400" alt="Thumbnail" class="thumbnail"></td>
+                    <td>IMG1</td>
+                    <td><span class="image-status status-complete">✓ Complete</span></td>
+                    <td>2024-03-20 15:30</td>
+                </tr>
+                <tr>
+                    <td><img src="https://placehold.co/400x400" alt="Thumbnail" class="thumbnail"></td>
+                    <td>IMG2</td>
+                    <td><span class="image-status status-failed">⚠️ Failed</span></td>
+                    <td>2024-03-20 15:31</td>
+                </tr>
+                <!-- More rows... -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Logs Content -->
+    <div id="logs" class="tab-content absolute inset-0 overflow-auto" style="display: none;">
+        <div class="p-6">
+            <div class="border border-[--border] rounded-lg">
+            <!-- Timeline -->
+            <div class="p-6 space-y-6">
+                <div class="flex items-start gap-4">
+                    <div class="w-2 h-2 mt-2 rounded-full bg-[--status-completed]"></div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="font-medium">Job Started</div>
+                            <div class="text-sm text-[--muted-foreground]">2024-03-20 09:00:00</div>
+                        </div>
+                        <div class="text-sm text-[--muted-foreground]">Job initialization started</div>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4">
+                    <div class="w-2 h-2 mt-2 rounded-full bg-[--status-completed]"></div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="font-medium">Configuration Loaded</div>
+                            <div class="text-sm text-[--muted-foreground]">2024-03-20 09:00:02</div>
+                        </div>
+                        <div class="text-sm text-[--muted-foreground]">Successfully loaded job configuration</div>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4">
+                    <div class="w-2 h-2 mt-2 rounded-full bg-[--status-completed]"></div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="font-medium">Image Generation Started</div>
+                            <div class="text-sm text-[--muted-foreground]">2024-03-20 09:02:15</div>
+                        </div>
+                        <div class="text-sm text-[--muted-foreground]">Starting batch processing of 45 images</div>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4">
+                    <div class="w-2 h-2 mt-2 rounded-full bg-[--status-failed]"></div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="font-medium">Processing Error</div>
+                            <div class="text-sm text-[--muted-foreground]">2024-03-20 10:15:30</div>
+                        </div>
+                        <div class="text-sm text-[--status-failed]">Failed to process 3 images due to complex backgrounds</div>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-4">
+                    <div class="w-2 h-2 mt-2 rounded-full bg-[--status-completed]"></div>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="font-medium">Job Completed</div>
+                            <div class="text-sm text-[--muted-foreground]">2024-03-20 10:45:30</div>
+                        </div>
+                        <div class="text-sm text-[--muted-foreground]">Successfully processed 42 out of 45 images</div>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div> <!-- End of Logs Content -->
+    </main> <!-- End of Tab Contents Container -->
+
+    <!-- Footer -->
+    <footer class="border-t border-[--border] bg-[--background] p-4 shrink-0 mt-auto">
+        <div class="flex items-center justify-end gap-4 px-6">
+            <button class="px-4 py-2 bg-[--primary] text-[--primary-foreground] rounded-lg hover:opacity-90 transition-opacity">
+                🔄 Rerun Job
+            </button>
+            <button class="px-4 py-2 bg-[--secondary] text-[--secondary-foreground] rounded-lg hover:opacity-90 transition-opacity">
+                📥 Export Job
+            </button>
+            <button class="px-4 py-2 bg-[--status-failed] text-white rounded-lg hover:opacity-90 transition-opacity">
+                🗑️ Delete Job
+            </button>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Tab switching functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            function switchTab(tabId) {
+                // Update tab buttons
+                tabs.forEach(tab => {
+                    if (tab.dataset.tab === tabId) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Update tab contents
+                tabContents.forEach(content => {
+                    if (content.id === tabId) {
+                        content.style.display = 'block';
+                    } else {
+                        content.style.display = 'none';
+                    }
+                });
+            }
+
+            // Add click handlers to tabs
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    switchTab(tab.dataset.tab);
+                });
+            });
+
+            // Initialize view toggle
+            const viewToggles = document.querySelectorAll('.view-toggle');
+            const gridView = document.querySelector('.image-grid');
+            const listView = document.querySelector('.image-list');
+
+            viewToggles.forEach(toggle => {
+                toggle.addEventListener('click', () => {
+                    viewToggles.forEach(t => t.classList.remove('active'));
+                    toggle.classList.add('active');
+                    
+                    if (toggle.title === 'Grid View') {
+                        gridView.classList.remove('hidden');
+                        listView.classList.add('hidden');
+                    } else {
+                        gridView.classList.add('hidden');
+                        listView.classList.remove('hidden');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

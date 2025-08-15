@@ -46,7 +46,7 @@
     - Ensure responsive UI during backend processing (NFR1)
     - Style dashboard components with Tailwind CSS
 
-6.  **Results: Implement 'Successful Results' View**
+6.  **Results: Implement 'Successful Results' View - (DONE)**
     - Create results gallery view
     - Display images with metadata and QC status (FR5)
     - Implement Excel export functionality (FR8)
@@ -83,4 +83,26 @@
     - Implement security tests for IPC and app security
     - Create performance and build optimization tests
 
-**Testing Strategy**: Each story includes comprehensive testing tasks covering unit tests, integration tests, and end-to-end validation as appropriate for the story scope. TypeScript will provide additional type safety during development. Story 1.10 specifically addresses the testing requirements for the foundational components from Story 1.1. 
+11. **Security: Implement Production Security Measures**
+    - Implement encrypted database fallback for API key storage
+    - Add comprehensive memory protection for sensitive data
+    - Create secure logging that masks API keys and sensitive information
+    - Add security health checks and monitoring capabilities
+    - Style security components with Tailwind CSS
+
+12. **Results Enhancement: ZIP Export with Images and Metadata**
+    - Add ZIP export button to ImageGallery for selected images
+    - Package selected images with Excel metadata into downloadable ZIP files
+    - Implement backend ZIP creation service with progress tracking
+    - Create logical folder structure (images/ + metadata.xlsx)
+    - Add file validation and error handling for missing images
+    - Style ZIP export components with Tailwind CSS
+
+13. **Testing Stabilization: Unit & Integration (Story 1.13)**
+    - Stabilize database integration tests using in-memory/isolated SQLite and migrations in setup
+    - Align settings integration tests with `BackendAdapter` (replace legacy `SettingsAdapter` usage)
+    - Centralize Electron and `keytar` mocks; assert IPC handlers and payloads
+    - Reflect Story 1.7 clamping rules in assertions
+    - Provide npm scripts for targeted subsets (DB, settings, story-1.7)
+
+**Testing Strategy**: Each story includes comprehensive testing tasks covering unit tests, integration tests, and end-to-end validation as appropriate for the story scope. TypeScript will provide additional type safety during development. Story 1.10 specifically addresses the testing requirements for the foundational components from Story 1.1. Story 1.13 stabilizes unit and integration tests to ensure CI reliability and alignment with current architecture.

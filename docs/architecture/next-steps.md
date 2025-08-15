@@ -25,10 +25,12 @@ This architecture document provides the complete technical blueprint for the enh
 ## Implementation Roadmap
 
 ### **Immediate Priorities**
-1. **Story 1.5**: Core Controls UI - Implement job control interface
-2. **Story 1.6**: Progress Tracking - Real-time progress display
-3. **Story 1.7**: Job History - Database integration for job history
-4. **Story 1.8**: Export Functionality - Excel export capabilities
+1. ✅ **Story 1.5**: Core Controls UI - Implement job control interface (COMPLETE)
+2. ✅ **Story 1.6**: Results Gallery - Successful results view with Excel export (COMPLETE)
+3. **Story 1.7**: Failed Images Review - Manual approval workflow for failed images
+4. **Story 1.13**: Test Stabilization – Unit & Integration
+5. **Story 1.8**: Job History - Database integration for job history and persistence
+6. **Story 1.12**: Advanced Export & File Management - ZIP+Excel export and file operations
 
 ### **Security Enhancement Path**
 1. **Story 1.11**: Security Hardening - Encrypted database and memory protection

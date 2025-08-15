@@ -11,6 +11,17 @@ const ForceStopButton: React.FC<ForceStopButtonProps> = ({
 }) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
 
+  React.useEffect(() => {
+    if (!showConfirmation) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowConfirmation(false);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [showConfirmation]);
+
   const handleForceStop = () => {
     setShowConfirmation(false);
     onForceStop();
@@ -45,8 +56,8 @@ const ForceStopButton: React.FC<ForceStopButtonProps> = ({
 
       {/* Confirmation Dialog */}
       {showConfirmation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75" onClick={() => setShowConfirmation(false)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             {/* Dialog Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div className="flex items-center">

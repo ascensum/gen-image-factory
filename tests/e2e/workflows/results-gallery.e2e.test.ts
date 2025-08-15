@@ -13,9 +13,10 @@ test.describe('Results Gallery E2E Tests', () => {
     await expect(dashboardButton).toBeVisible();
     await dashboardButton.click();
     
-    // Wait for the dashboard to load
+    // Wait for the dashboard to load (new UI has no H1 "Dashboard")
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('h1:has-text("Dashboard")')).toBeVisible();
+    await expect(page.locator('h2:has-text("Current Job")')).toBeVisible();
+    await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
   });
 
   test('Excel export functionality workflow', async ({ page }) => {
@@ -176,7 +177,8 @@ test.describe('Results Gallery E2E Tests', () => {
     await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     
     // Test image selection
-    const imageCheckboxes = page.locator('input[type="checkbox"][aria-label*="Select"]');
+    // Only target per-image checkboxes, not the Select All checkbox
+    const imageCheckboxes = page.locator('input[type="checkbox"][aria-label^="Select "]:not([aria-label="Select all images"])');
     const checkboxCount = await imageCheckboxes.count();
     
     if (checkboxCount > 0) {

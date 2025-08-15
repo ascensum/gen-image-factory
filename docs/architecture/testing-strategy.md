@@ -3,6 +3,27 @@
 ## Overview
 
 This document defines the comprehensive testing strategy for the Electron application, ensuring reliability, maintainability, and user confidence across all layers of the application.
+ 
+## Stabilization Update (Story 1.13)
+ 
+To address intermittent failures and align tests with the current architecture, the following stabilization measures are now standard:
+ 
+- Database integration tests
+  - Use an in-memory or unique-per-test SQLite database path.
+  - Run migrations in suite setup (`beforeAll`) and clean up in `afterAll`.
+  - Run DB-focused suites serially if contention occurs.
+- Settings integration tests
+  - Target `BackendAdapter` APIs (not legacy `SettingsAdapter`).
+  - Mock `keytar` for secure storage and Electron file selection flows.
+  - Assert merged defaults behavior for `getSettings()`.
+- IPC tests
+  - Use explicit Electron mocks; assert handler registration and payload validation.
+  - Avoid direct invocation of native modules in tests.
+- Story 1.7 alignment
+  - Normalize/clamp processing settings in assertions (e.g., saturation clamped to 0..3).
+- Tooling & DX
+  - Centralize common mocks in `tests/setup.ts` (keytar, Electron dialog, `window.api`).
+  - Add scripts to run focused subsets (DB, settings, story-1.7) in package tooling.
 
 ## Testing Philosophy
 
@@ -324,6 +345,25 @@ vi.mock('axios', () => ({
     get: vi.fn(),
   },
 }))
+ 
+// Mock secure storage (keytar)
+vi.mock('keytar', () => ({
+  default: {
+    getPassword: vi.fn().mockResolvedValue(null),
+    setPassword: vi.fn().mockResolvedValue(undefined),
+    deletePassword: vi.fn().mockResolvedValue(true),
+  }
+}))
+
+// Optional: Mock Electron dialog if used directly in Node context
+vi.mock('electron', () => ({
+  dialog: {
+    showOpenDialog: vi.fn().mockResolvedValue({ canceled: false, filePaths: ['/tmp/mock.txt'] })
+  }
+}))
+
+// Helper for DB isolation in integration tests
+export const createIsolatedSqlitePath = () => `test-${Date.now()}-${Math.random()}.sqlite` // or ':memory:'
 ```
 
 ## Specific Testing Scenarios
@@ -365,35 +405,33 @@ describe('SettingsPanel', () => {
 
 ### Backend Service Testing
 ```typescript
-// tests/unit/backend/services/settingsAdapter.test.ts
+// tests/unit/backend/services/backendAdapter.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { SettingsAdapter } from '../../../src/adapter/settingsAdapter'
+import { BackendAdapter } from '../../../src/adapter/backendAdapter'
 
-describe('SettingsAdapter', () => {
+vi.mock('keytar', () => ({
+  default: {
+    getPassword: vi.fn().mockResolvedValue(null),
+    setPassword: vi.fn().mockResolvedValue(undefined),
+    deletePassword: vi.fn().mockResolvedValue(true),
+  }
+}))
+
+describe('BackendAdapter (settings)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should load settings from database', async () => {
-    const mockSettings = { apiKeys: {}, filePaths: {} }
-    const mockGetSettings = vi.fn().mockResolvedValue(mockSettings)
-    
-    const adapter = new SettingsAdapter()
-    adapter.getSettings = mockGetSettings
-    
-    const result = await adapter.getSettings()
-    
-    expect(result).toEqual(mockSettings)
-    expect(mockGetSettings).toHaveBeenCalledOnce()
+  it('returns merged defaults from getSettings()', async () => {
+    const adapter = new BackendAdapter()
+    const settings = await adapter.getSettings()
+    expect(settings).toMatchObject({ apiKeys: expect.any(Object), filePaths: expect.any(Object) })
   })
 
-  it('should handle settings save errors', async () => {
-    const mockSaveSettings = vi.fn().mockRejectedValue(new Error('Database error'))
-    
-    const adapter = new SettingsAdapter()
-    adapter.saveSettings = mockSaveSettings
-    
-    await expect(adapter.saveSettings({})).rejects.toThrow('Database error')
+  it('stores API keys via secure storage (mocked)', async () => {
+    const adapter = new BackendAdapter()
+    const result = await adapter.setApiKey('openai', 'test-key')
+    expect(result?.success ?? true).toBe(true)
   })
 })
 ```

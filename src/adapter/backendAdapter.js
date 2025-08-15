@@ -15,12 +15,13 @@ const ACCOUNT_NAMES = {
 };
 
 class BackendAdapter {
-  constructor() {
+  constructor(options = {}) {
     this.jobConfig = new JobConfiguration();
     this.jobExecution = new JobExecution();
     this.generatedImage = new GeneratedImage();
     this.jobRunner = new JobRunner();
     this.errorTranslation = new ErrorTranslationService();
+    this.ipc = options.ipc || (typeof ipcMain !== 'undefined' ? ipcMain : undefined);
     this.setupIpcHandlers();
     this.setupJobEventListeners();
   }
@@ -39,8 +40,9 @@ class BackendAdapter {
   }
 
   setupIpcHandlers() {
-    // Only set up IPC handlers if we're in an Electron environment
-    if (typeof ipcMain !== 'undefined' && ipcMain) {
+    // Only set up IPC handlers if we have an IPC interface (electron main or injected)
+    const _ipc = this.ipc;
+    if (typeof _ipc !== 'undefined' && _ipc) {
       // Remove existing handlers to prevent duplicates
       const handlers = [
         'get-api-key', 'set-api-key', 'get-settings', 'save-settings', 'settings:get-configuration',
@@ -48,158 +50,173 @@ class BackendAdapter {
         'job:get-status', 'job:get-progress', 'job:get-logs', 'get-security-status',
         'job-execution:save', 'job-execution:get', 'job-execution:get-all', 'job-execution:update',
         'job-execution:delete', 'job-execution:statistics', 'job-execution:export-to-excel',
-        'job-execution:history', 'generated-image:save', 'generated-image:get',
+        'job-execution:history',         'generated-image:save', 'generated-image:get',
         'generated-image:get-by-execution', 'generated-image:get-all', 'generated-image:update',
         'generated-image:delete', 'generated-image:get-by-qc-status', 'generated-image:update-qc-status',
-        'generated-image:metadata', 'generated-image:statistics', 'generated-image:manual-approve'
+        'generated-image:metadata', 'generated-image:statistics', 'generated-image:manual-approve',
+        'failed-image:retry-original', 'failed-image:retry-modified'
       ];
       
       handlers.forEach(handler => {
         try {
-          ipcMain.removeHandler(handler);
+          _ipc.removeHandler(handler);
         } catch (error) {
           // Handler might not exist, ignore error
         }
       });
       // API Key Management
-      ipcMain.handle('get-api-key', async (event, serviceName) => {
+      _ipc.handle('get-api-key', async (event, serviceName) => {
         return await this.getApiKey(serviceName);
       });
 
-      ipcMain.handle('set-api-key', async (event, serviceName, apiKey) => {
+      _ipc.handle('set-api-key', async (event, serviceName, apiKey) => {
         return await this.setApiKey(serviceName, apiKey);
       });
 
       // Settings Management
-      ipcMain.handle('get-settings', async () => {
+      _ipc.handle('get-settings', async () => {
         return await this.getSettings();
       });
 
-      ipcMain.handle('save-settings', async (event, settingsObject) => {
+      _ipc.handle('save-settings', async (event, settingsObject) => {
         return await this.saveSettings(settingsObject);
       });
 
-      ipcMain.handle('settings:get-configuration', async () => {
+      _ipc.handle('settings:get-configuration', async () => {
         return await this.getSettings();
       });
 
       // File Selection
-      ipcMain.handle('select-file', async (event, options) => {
+      _ipc.handle('select-file', async (event, options) => {
         return await this.selectFile(options);
       });
 
       // File Selection Enhancement
-      ipcMain.handle('validate-path', async (event, path, type, fileTypes) => {
+      _ipc.handle('validate-path', async (event, path, type, fileTypes) => {
         return await this.validatePath(path, type, fileTypes);
       });
 
       // Job Control
-      ipcMain.handle('job:start', async (event, config) => {
+      _ipc.handle('job:start', async (event, config) => {
         return await this.startJob(config);
       });
 
-      ipcMain.handle('job:stop', async () => {
+      _ipc.handle('job:stop', async () => {
         return await this.stopJob();
       });
 
-      ipcMain.handle('job:force-stop-all', async () => {
+      _ipc.handle('job:force-stop-all', async () => {
         return await this.forceStopAll();
       });
 
-      ipcMain.handle('job:get-status', async () => {
+      _ipc.handle('job:get-status', async () => {
         return await this.getJobStatus();
       });
 
-      ipcMain.handle('job:get-progress', async () => {
+      _ipc.handle('job:get-progress', async () => {
         return await this.getJobProgress();
       });
 
-      ipcMain.handle('job:get-logs', async (event, mode = 'standard') => {
+      _ipc.handle('job:get-logs', async (event, mode = 'standard') => {
         return await this.getJobLogs(mode);
       });
 
       // Security Status
-      ipcMain.handle('get-security-status', async () => {
+      _ipc.handle('get-security-status', async () => {
         return await this.getSecurityStatus();
       });
 
       // Job Execution Management
-      ipcMain.handle('job-execution:save', async (event, execution) => {
+      _ipc.handle('job-execution:save', async (event, execution) => {
         return await this.saveJobExecution(execution);
       });
 
-      ipcMain.handle('job-execution:get', async (event, id) => {
+      _ipc.handle('job-execution:get', async (event, id) => {
         return await this.getJobExecution(id);
       });
 
-      ipcMain.handle('job-execution:get-all', async (event, options = {}) => {
+      _ipc.handle('job-execution:get-all', async (event, options = {}) => {
         return await this.getAllJobExecutions(options);
       });
 
-      ipcMain.handle('job-execution:update', async (event, id, execution) => {
+      _ipc.handle('job-execution:update', async (event, id, execution) => {
         return await this.updateJobExecution(id, execution);
       });
 
-      ipcMain.handle('job-execution:delete', async (event, { jobId }) => {
+      _ipc.handle('job-execution:delete', async (event, { jobId }) => {
         return await this.deleteJobExecution(jobId);
       });
 
-      ipcMain.handle('job-execution:statistics', async () => {
+      _ipc.handle('job-execution:statistics', async () => {
         return await this.getJobStatistics();
       });
 
-      ipcMain.handle('job-execution:export-to-excel', async (event, { jobId }) => {
+      _ipc.handle('job-execution:export-to-excel', async (event, { jobId }) => {
         return await this.exportJobToExcel(jobId);
       });
 
-      ipcMain.handle('job-execution:history', async (event, limit) => {
+      _ipc.handle('job-execution:history', async (event, limit) => {
         return await this.getJobHistory(limit);
       });
 
       // Generated Image Management
-      ipcMain.handle('generated-image:save', async (event, image) => {
+      _ipc.handle('generated-image:save', async (event, image) => {
         return await this.saveGeneratedImage(image);
       });
 
-      ipcMain.handle('generated-image:get', async (event, id) => {
+      _ipc.handle('generated-image:get', async (event, id) => {
         return await this.getGeneratedImage(id);
       });
 
-      ipcMain.handle('generated-image:get-by-execution', async (event, executionId) => {
+      _ipc.handle('generated-image:get-by-execution', async (event, executionId) => {
         return await this.getGeneratedImagesByExecution(executionId);
       });
 
-      ipcMain.handle('generated-image:get-all', async (event, options = {}) => {
+      _ipc.handle('generated-image:get-all', async (event, options = {}) => {
         return await this.getAllGeneratedImages(options.limit || 100);
       });
 
-      ipcMain.handle('generated-image:update', async (event, id, image) => {
+      _ipc.handle('generated-image:update', async (event, id, image) => {
         return await this.updateGeneratedImage(id, image);
       });
 
-      ipcMain.handle('generated-image:delete', async (event, { imageId }) => {
+      _ipc.handle('generated-image:delete', async (event, { imageId }) => {
         return await this.deleteGeneratedImage(imageId);
       });
 
-      ipcMain.handle('generated-image:get-by-qc-status', async (event, qcStatus) => {
+      _ipc.handle('generated-image:get-by-qc-status', async (event, qcStatus) => {
         return await this.getImagesByQCStatus(qcStatus);
       });
 
-      ipcMain.handle('generated-image:update-qc-status', async (event, { imageId, status }) => {
+      _ipc.handle('generated-image:update-qc-status', async (event, { imageId, status }) => {
         return await this.updateQCStatus(imageId, status);
       });
 
-      ipcMain.handle('generated-image:metadata', async (event, executionId) => {
+      _ipc.handle('generated-image:metadata', async (event, executionId) => {
         return await this.getImageMetadata(executionId);
       });
 
-      ipcMain.handle('generated-image:statistics', async () => {
+      _ipc.handle('generated-image:statistics', async () => {
         return await this.getImageStatistics();
       });
 
       // Manual approval handler
-      ipcMain.handle('generated-image:manual-approve', async (event, { imageId }) => {
+      _ipc.handle('generated-image:manual-approve', async (event, { imageId }) => {
         return await this.manualApproveImage(imageId);
+      });
+
+      // Failed Images Review handlers
+      _ipc.handle('failed-image:retry-original', async (event, { imageId }) => {
+        return await this.retryFailedImageWithOriginalSettings(imageId);
+      });
+
+      _ipc.handle('failed-image:retry-modified', async (event, { imageId, settings }) => {
+        return await this.retryFailedImageWithModifiedSettings(imageId, settings);
+      });
+
+      // Batch retry handler
+      _ipc.handle('failed-image:retry-batch', async (event, { imageIds, useOriginalSettings, modifiedSettings }) => {
+        return await this.retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings);
       });
     }
   }
@@ -841,6 +858,183 @@ class BackendAdapter {
       console.error('Error getting image statistics:', error);
       return { success: false, error: error.message };
     }
+  }
+
+  // Failed Images Review Methods - Batch Processing
+  async retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings = null) {
+    try {
+      await this.ensureInitialized();
+      // Validate and normalize inputs
+      if (!Array.isArray(imageIds) || imageIds.length === 0) {
+        throw new Error('No images selected for retry');
+      }
+      // Normalize image ids: strings of digits or numbers → strings
+      const normalizedIds = Array.from(new Set(
+        imageIds
+          .map((id) => (typeof id === 'number' ? String(id) : String(id || '')))
+          .filter((id) => /^\d+$/.test(id))
+      ));
+      if (normalizedIds.length === 0) {
+        throw new Error('No valid image IDs provided');
+      }
+      // Cap batch size to prevent abuse
+      const MAX_BATCH = 500;
+      const limitedIds = normalizedIds.slice(0, MAX_BATCH);
+
+      // Validate that all images can be processed together
+      const imagesResult = await Promise.all(
+        limitedIds.map(id => this.generatedImage.getGeneratedImage(id))
+      );
+      
+      const failedImages = imagesResult.filter(result => !result.success);
+      if (failedImages.length > 0) {
+        throw new Error(`Failed to retrieve ${failedImages.length} images`);
+      }
+
+      const images = imagesResult.map(result => result.image);
+      
+      // Check if all images are from the same original job (for original settings)
+      if (useOriginalSettings) {
+        const executionIds = [...new Set(images.map(img => img.executionId))];
+        if (executionIds.length > 1) {
+          throw new Error('Cannot use original settings for images from different jobs. Please use modified settings instead.');
+        }
+      }
+
+      // Sanitize modified settings when provided
+      const sanitizedSettings = !useOriginalSettings && modifiedSettings
+        ? this.sanitizeProcessingSettings(modifiedSettings)
+        : null;
+
+      // Update all images to retry_pending status
+      const updatePromises = images.map(image => {
+        const reason = useOriginalSettings ? 'Retry with original settings' : 'Retry with modified settings';
+        return this.generatedImage.updateQCStatus(image.id, 'retry_pending', reason);
+      });
+
+      const updateResults = await Promise.all(updatePromises);
+      const failedUpdates = updateResults.filter(result => !result.success);
+      
+      if (failedUpdates.length > 0) {
+        throw new Error(`Failed to update ${failedUpdates.length} images to retry status`);
+      }
+
+      // If using modified settings, update processing settings for all images
+      if (!useOriginalSettings && sanitizedSettings) {
+        const settingsUpdatePromises = images.map(image => {
+          // Preserve the retry_pending status set above and attach modified processing settings
+          image.qcStatus = 'retry_pending';
+          image.qcReason = 'Retry with modified settings';
+          image.processingSettings = { ...sanitizedSettings };
+          return this.generatedImage.updateGeneratedImage(image.id, image);
+        });
+
+        const settingsUpdateResults = await Promise.all(settingsUpdatePromises);
+        const failedSettingsUpdates = settingsUpdateResults.filter(result => !result.success);
+        
+        if (failedSettingsUpdates.length > 0) {
+          throw new Error(`Failed to update processing settings for ${failedSettingsUpdates.length} images`);
+        }
+      }
+
+      // Create a batch retry job
+      const batchRetryJob = {
+        type: 'batch_retry',
+        imageIds: limitedIds,
+        useOriginalSettings: useOriginalSettings,
+        modifiedSettings: sanitizedSettings,
+        createdAt: new Date(),
+        status: 'pending'
+      };
+
+      // TODO: Store batch retry job in database and trigger processing
+      // This would integrate with the existing job processing system
+      // For now, we'll just return success
+      
+      const jobType = useOriginalSettings ? 'original settings' : 'modified settings';
+      return { 
+        success: true, 
+        message: `${limitedIds.length} images queued for batch retry with ${jobType}`,
+        batchJob: batchRetryJob
+      };
+    } catch (error) {
+      console.error('Error processing batch retry:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Legacy individual methods (for backward compatibility)
+  async retryFailedImageWithOriginalSettings(imageId) {
+    return await this.retryFailedImagesBatch([imageId], true);
+  }
+
+  async retryFailedImageWithModifiedSettings(imageId, settings) {
+    return await this.retryFailedImagesBatch([imageId], false, settings);
+  }
+
+  // Helpers
+  sanitizeProcessingSettings(input) {
+    const allowedKeys = new Set([
+      'imageEnhancement',
+      'sharpening',
+      'saturation',
+      'imageConvert',
+      'convertToJpg',
+      'jpgQuality',
+      'pngQuality',
+      'removeBg',
+      'removeBgSize',
+      'trimTransparentBackground',
+      'jpgBackground'
+    ]);
+    const out = {};
+    for (const [k, v] of Object.entries(input || {})) {
+      if (!allowedKeys.has(k)) continue;
+      switch (k) {
+        case 'imageEnhancement':
+        case 'imageConvert':
+        case 'convertToJpg':
+        case 'removeBg':
+        case 'trimTransparentBackground':
+          out[k] = Boolean(v);
+          break;
+        case 'sharpening': {
+          let num = Number(v);
+          if (!Number.isFinite(num)) num = 0;
+          out[k] = Math.max(0, Math.min(100, Math.round(num)));
+          break;
+        }
+        case 'saturation': {
+          let num = Number(v);
+          if (!Number.isFinite(num)) num = 1;
+          out[k] = Math.max(0, Math.min(3, num));
+          break;
+        }
+        case 'jpgQuality': {
+          let num = Number(v);
+          if (!Number.isFinite(num)) num = 90;
+          out[k] = Math.max(1, Math.min(100, Math.round(num)));
+          break;
+        }
+        case 'pngQuality': {
+          let num = Number(v);
+          if (!Number.isFinite(num)) num = 9;
+          out[k] = Math.max(0, Math.min(9, Math.round(num)));
+          break;
+        }
+        case 'removeBgSize': {
+          const allowed = new Set(['auto', 'full', '4k']);
+          const val = String(v || 'auto').toLowerCase();
+          out[k] = allowed.has(val) ? val : 'auto';
+          break;
+        }
+        case 'jpgBackground': {
+          out[k] = typeof v === 'string' ? v : '#FFFFFF';
+          break;
+        }
+      }
+    }
+    return out;
   }
 }
 

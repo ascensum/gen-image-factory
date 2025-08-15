@@ -1,0 +1,559 @@
+BatchOperationsToolbar Component Specification
+
+Component Overview
+The BatchOperationsToolbar is a specialized toolbar component that provides batch operations for multiple selected jobs. It displays selection information, provides batch action buttons, and shows progress for long-running operations.
+
+Component Structure
+
+File Location
+src/renderer/components/Jobs/BatchOperationsToolbar.tsx
+
+Component Hierarchy
+BatchOperationsToolbar
+├── SelectionCounter
+├── ActionButtons
+│   ├── RerunButton
+│   ├── ExportButton
+│   └── DeleteButton
+├── ProgressIndicators
+└── QueueStatus
+
+Props Interface
+
+interface BatchOperationsToolbarProps {
+  selectedJobs: Set<string>;
+  totalJobs: number;
+  onClearSelection: () => void;
+  onBatchRerun: () => Promise<void>;
+  onBatchExport: () => Promise<void>;
+  onBatchDelete: () => Promise<void>;
+  isRerunInProgress: boolean;
+  isExportInProgress: boolean;
+  isDeleteInProgress: boolean;
+  rerunProgress?: number;
+  exportProgress?: number;
+  deleteProgress?: number;
+  queuedJobs?: number;
+  className?: string;
+}
+
+State Management
+
+Local State
+const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+const [deleteConfirmCount, setDeleteConfirmCount] = useState(0);
+const [lastAction, setLastAction] = useState<'rerun' | 'export' | 'delete' | null>(null);
+const [actionError, setActionError] = useState<string | null>(null);
+
+Derived State
+const hasSelection = selectedJobs.size > 0;
+const selectionPercentage = totalJobs > 0 ? (selectedJobs.size / totalJobs) * 100 : 0;
+const isAnyActionInProgress = isRerunInProgress || isExportInProgress || isDeleteInProgress;
+const canPerformActions = hasSelection && !isAnyActionInProgress;
+
+Component Layout
+
+Toolbar Structure
+Batch Operations Toolbar
+[5 jobs selected (12.5%)] [Clear Selection]
+
+[Rerun Selected] [Export Selected] [Delete Selected]
+[Progress Bar]  [Progress Bar]  [Progress Bar]
+
+Queue Status: 3 jobs queued for rerun
+
+Layout Sections
+
+Selection Counter Section
+- Left-aligned: Shows count of selected jobs and percentage
+- Clear Selection Button: Button to clear all selections
+- Selection Info: "X jobs selected (Y%)" format
+
+Action Buttons Section
+- Rerun Button: Blue button with queue indicator
+- Export Button: Green button with Excel icon
+- Delete Button: Red button with confirmation dialog
+- Button States: Disabled when no selection or action in progress
+
+Progress Indicators Section
+- Progress Bars: Individual progress bars for each action type
+- Progress Labels: Show current progress percentage
+- Status Text: Show current status (e.g., "Processing...", "Complete")
+
+Queue Status Section
+- Queue Information: Show number of jobs queued for rerun
+- Status Updates: Real-time updates via IPC events
+- Visual Indicators: Icons and colors to show queue status
+
+Key Features
+
+Selection Management
+- Selection Counter: Real-time count of selected jobs
+- Percentage Display: Shows selection as percentage of total jobs
+- Clear Selection: One-click button to clear all selections
+- Selection Persistence: Maintains selection across pagination
+
+Batch Actions
+- Rerun Selected: Queue multiple jobs for sequential execution
+- Export Selected: Export multiple jobs to Excel format
+- Delete Selected: Remove multiple jobs with confirmation
+- Action Validation: Prevent actions when no jobs selected
+
+Progress Tracking
+- Individual Progress: Separate progress bars for each action type
+- Real-time Updates: Progress updates via IPC events
+- Status Messages: Clear status text for each operation
+- Completion Indicators: Visual feedback when operations complete
+
+Queue Management
+- Queue Status: Show number of jobs waiting to run
+- Queue Updates: Real-time updates when jobs are queued/started
+- Visual Indicators: Clear visual representation of queue state
+- Queue Information: Details about queued job status
+
+Event Handlers
+
+Selection Events
+const handleClearSelection = () => {
+  onClearSelection();
+  setActionError(null);
+};
+
+Action Events
+const handleBatchRerun = async () => {
+  if (!hasSelection || isAnyActionInProgress) return;
+  
+  try {
+    setActionError(null);
+    setLastAction('rerun');
+    await onBatchRerun();
+  } catch (error) {
+    setActionError('Failed to rerun selected jobs');
+  }
+};
+
+const handleBatchExport = async () => {
+  if (!hasSelection || isAnyActionInProgress) return;
+  
+  try {
+    setActionError(null);
+    setLastAction('export');
+    await onBatchExport();
+  } catch (error) {
+    setActionError('Failed to export selected jobs');
+  }
+};
+
+const handleBatchDelete = async () => {
+  if (!hasSelection || isAnyActionInProgress) return;
+  
+  setDeleteConfirmCount(selectedJobs.size);
+  setShowDeleteConfirm(true);
+};
+
+const handleDeleteConfirm = async () => {
+  try {
+    setActionError(null);
+    setLastAction('delete');
+    await onBatchDelete();
+    setShowDeleteConfirm(false);
+  } catch (error) {
+    setActionError('Failed to delete selected jobs');
+  }
+};
+
+const handleDeleteCancel = () => {
+  setShowDeleteConfirm(false);
+  setDeleteConfirmCount(0);
+};
+
+Progress Tracking
+
+Progress State Management
+interface ProgressState {
+  percentage: number;
+  status: 'idle' | 'starting' | 'processing' | 'complete' | 'error';
+  message: string;
+  startTime?: Date;
+  estimatedTimeRemaining?: number;
+}
+
+const [rerunProgress, setRerunProgress] = useState<ProgressState>({
+  percentage: 0,
+  status: 'idle',
+  message: ''
+});
+
+const [exportProgress, setExportProgress] = useState<ProgressState>({
+  percentage: 0,
+  status: 'idle',
+  message: ''
+});
+
+const [deleteProgress, setDeleteProgress] = useState<ProgressState>({
+  percentage: 0,
+  status: 'idle',
+  message: ''
+});
+
+Progress Updates
+useEffect(() => {
+  const handleRerunProgress = (event: any, data: { jobId: string; progress: number; status: string }) => {
+    if (selectedJobs.has(data.jobId)) {
+      setRerunProgress(prev => ({
+        ...prev,
+        percentage: data.progress,
+        status: data.status === 'complete' ? 'complete' : 'processing',
+        message: `Processing ${data.jobId}...`
+      }));
+    }
+  };
+
+  const handleExportProgress = (event: any, data: { progress: number; status: string }) => {
+    setExportProgress(prev => ({
+      ...prev,
+      percentage: data.progress,
+      status: data.status === 'complete' ? 'complete' : 'processing',
+      message: data.status === 'complete' ? 'Export complete' : 'Exporting...'
+    }));
+  };
+
+  const handleDeleteProgress = (event: any, data: { progress: number; status: string }) => {
+    setDeleteProgress(prev => ({
+      ...prev,
+      percentage: data.progress,
+      status: data.status === 'complete' ? 'complete' : 'processing',
+      message: data.status === 'complete' ? 'Delete complete' : 'Deleting...'
+    }));
+  };
+
+  window.electronAPI.on('batch-rerun:progress', handleRerunProgress);
+  window.electronAPI.on('batch-export:progress', handleExportProgress);
+  window.electronAPI.on('batch-delete:progress', handleDeleteProgress);
+
+  return () => {
+    window.electronAPI.removeListener('batch-rerun:progress', handleRerunProgress);
+    window.electronAPI.removeListener('batch-export:progress', handleExportProgress);
+    window.electronAPI.removeListener('batch-delete:progress', handleDeleteProgress);
+  };
+}, [selectedJobs]);
+
+Action Button Components
+
+Rerun Button
+const RerunButton: React.FC<{
+  disabled: boolean;
+  inProgress: boolean;
+  progress: number;
+  queuedJobs: number;
+  onClick: () => void;
+}> = ({ disabled, inProgress, progress, queuedJobs, onClick }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled || inProgress}
+    className={`
+      px-4 py-2 rounded-md font-medium transition-colors
+      ${disabled || inProgress
+        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+        : 'bg-blue-600 hover:bg-blue-700 text-white'
+      }
+    `}
+  >
+    <div className="flex items-center gap-2">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+      <span>Rerun Selected</span>
+      {queuedJobs > 0 && (
+        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+          {queuedJobs} queued
+        </span>
+      )}
+    </div>
+    {inProgress && (
+      <div className="mt-2">
+        <div className="w-full bg-blue-200 rounded-full h-2">
+          <div 
+            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="text-xs text-blue-700">{progress}%</span>
+      </div>
+    )}
+  </button>
+);
+
+Export Button
+const ExportButton: React.FC<{
+  disabled: boolean;
+  inProgress: boolean;
+  progress: number;
+  onClick: () => void;
+}> = ({ disabled, inProgress, progress, onClick }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled || inProgress}
+    className={`
+      px-4 py-2 rounded-md font-medium transition-colors
+      ${disabled || inProgress
+        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+        : 'bg-green-600 hover:bg-green-700 text-white'
+      }
+    `}
+  >
+    <div className="flex items-center gap-2">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <span>Export Selected</span>
+    </div>
+    {inProgress && (
+      <div className="mt-2">
+        <div className="w-full bg-green-200 rounded-full h-2">
+          <div 
+            className="bg-green-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="text-xs text-green-700">{progress}%</span>
+      </div>
+    )}
+  </button>
+);
+
+Delete Button
+const DeleteButton: React.FC<{
+  disabled: boolean;
+  inProgress: boolean;
+  progress: number;
+  onClick: () => void;
+}> = ({ disabled, inProgress, progress, onClick }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled || inProgress}
+    className={`
+      px-4 py-2 rounded-md font-medium transition-colors
+      ${disabled || inProgress
+        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+        : 'bg-red-600 hover:bg-red-700 text-white'
+      }
+    `}
+  >
+    <div className="flex items-center gap-2">
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+      <span>Delete Selected</span>
+    </div>
+    {inProgress && (
+      <div className="mt-2">
+        <div className="w-full bg-red-200 rounded-full h-2">
+          <div 
+            className="bg-red-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <span className="text-xs text-red-700">{progress}%</span>
+      </div>
+    )}
+  </button>
+);
+
+Confirmation Dialog
+
+Delete Confirmation Modal
+const DeleteConfirmationModal: React.FC<{
+  isOpen: boolean;
+  jobCount: number;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, jobCount, onConfirm, onCancel }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="bg-red-100 p-2 rounded-full">
+            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">Confirm Deletion</h3>
+        </div>
+        
+        <p className="text-gray-700 mb-6">
+          Are you sure you want to delete <strong>{jobCount}</strong> selected job{jobCount !== 1 ? 's' : ''}? 
+          This action cannot be undone and will also delete all associated generated images.
+        </p>
+        
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+          >
+            Delete {jobCount} Job{jobCount !== 1 ? 's' : ''}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+Queue Status Display
+
+Queue Information Component
+const QueueStatus: React.FC<{
+  queuedJobs: number;
+  runningJobs: number;
+}> = ({ queuedJobs, runningJobs }) => {
+  if (queuedJobs === 0 && runningJobs === 0) return null;
+
+  return (
+    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+      <div className="flex items-center gap-2 text-blue-800">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span className="text-sm font-medium">
+          {queuedJobs > 0 && `${queuedJobs} job${queuedJobs !== 1 ? 's' : ''} queued`}
+          {queuedJobs > 0 && runningJobs > 0 && ' • '}
+          {runningJobs > 0 && `${runningJobs} job${runningJobs !== 1 ? 's' : ''} running`}
+        </span>
+      </div>
+      
+      {queuedJobs > 0 && (
+        <p className="text-xs text-blue-600 mt-1">
+          Jobs will run sequentially when the current job completes
+        </p>
+      )}
+    </div>
+  );
+};
+
+Error Handling
+
+Error Display
+const ErrorDisplay: React.FC<{
+  error: string | null;
+  onDismiss: () => void;
+}> = ({ error, onDismiss }) => {
+  if (!error) return null;
+
+  return (
+    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-red-800">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          </svg>
+          <span className="text-sm">{error}</span>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="text-red-600 hover:text-red-800"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+Performance Optimizations
+
+Rendering Optimization
+- React.memo: Memoize component to prevent unnecessary re-renders
+- useMemo: Memoize expensive computations like progress calculations
+- useCallback: Memoize event handlers to prevent child re-renders
+- Conditional Rendering: Only render progress bars when needed
+
+State Updates
+- Batch Updates: Group multiple state updates together
+- Debounced Updates: Prevent excessive progress updates
+- Optimistic Updates: Show immediate feedback for user actions
+- Error Boundaries: Handle errors gracefully without breaking UI
+
+Accessibility Features
+
+Keyboard Navigation
+- Tab Order: Logical tab order through all interactive elements
+- Enter/Space: Activate buttons and confirmations
+- Escape: Cancel confirmation dialogs
+- Focus Management: Maintain focus during progress updates
+
+Screen Reader Support
+- ARIA Labels: Proper labeling for all interactive elements
+- Status Announcements: Announce progress updates and completion
+- Error Messages: Clear error descriptions for screen readers
+- Progress Indicators: Accessible progress information
+
+Visual Accessibility
+- Color Contrast: Meet WCAG contrast requirements
+- Focus Indicators: Clear focus states for all interactive elements
+- Progress Visualization: Clear visual progress indicators
+- Status Indicators: Clear visual status information
+
+Testing Requirements
+
+Unit Tests
+- Component Rendering: Test component renders correctly with different props
+- State Management: Test state changes and updates
+- Event Handling: Test all event handlers and callbacks
+- Progress Tracking: Test progress state management
+
+Integration Tests
+- Data Flow: Test data flow between components
+- User Interactions: Test complete user workflows
+- Progress Updates: Test progress tracking and updates
+- Error Handling: Test error states and recovery
+
+E2E Tests
+- Batch Operations: Test complete batch operation workflows
+- Progress Tracking: Test progress indicators and updates
+- Confirmation Dialogs: Test confirmation and cancellation
+- Accessibility: Test keyboard navigation and screen reader support
+
+Styling Guidelines
+
+Tailwind Classes
+- Layout: Use flexbox for toolbar layout
+- Spacing: Use consistent spacing scale (4px increments)
+- Colors: Use established color palette from design system
+- Typography: Use consistent font sizes and weights
+- Shadows: Use subtle shadows for depth and hierarchy
+
+Desktop Design
+- Desktop First: Optimize for 1200px+ toolbar width
+- Window Resizing: Flexible toolbar layout for different desktop resolutions
+- Desktop Interactions: Mouse, keyboard, and trackpad optimized
+- Native OS Integration: Leverage platform-specific toolbar behavior
+
+Future Enhancements
+
+Planned Features
+- Action History: Track and display action history
+- Undo Operations: Allow undoing recent batch operations
+- Scheduled Actions: Schedule batch operations for later execution
+- Action Templates: Save and reuse common batch operation configurations
+
+Technical Improvements
+- Real-time Collaboration: Multi-user batch operation coordination
+- Advanced Progress: More detailed progress information
+- Performance Metrics: Track operation performance and optimization
+- Queue Management: Advanced queue management and prioritization
+
+Conclusion
+
+The BatchOperationsToolbar component provides a comprehensive and efficient interface for managing batch operations on multiple selected jobs. By implementing progress tracking, queue management, and user confirmation, it delivers a professional user experience while maintaining performance and accessibility.
+
+The component's focus on user feedback and progress visibility ensures users can effectively manage complex batch operations, while the modular architecture ensures maintainability and extensibility for future enhancements.

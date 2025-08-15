@@ -1,0 +1,177 @@
+INDIVIDUAL IMAGE REVIEW TOOLS INTEGRATION
+
+COMPONENT PURPOSE
+Individual image review tools that enhance existing ImageModal component for failed images review, providing detailed analysis and individual actions without bulk operations.
+
+INTEGRATION STRATEGY
+- Enhance Existing: Extend current ImageModal component for individual failed image review
+- Reuse Components: Leverage existing modal infrastructure and styling
+- Add QC Features: Minimal additions for individual image failure analysis and actions
+- Maintain Consistency: Use existing Tailwind CSS patterns and responsive behavior
+
+VISUAL DESIGN
+- Base Structure: Same as existing ImageModal component
+- QC Enhancements: Failure analysis section and individual action buttons
+- Consistent Styling: Follow existing modal patterns and color scheme
+- Responsive Layout: Inherit existing responsive behavior
+
+ENHANCED IMAGE MODAL FOR INDIVIDUAL FAILED IMAGE REVIEW
+
+Modal Structure (Enhanced from Existing)
+
+Failed Image Review Modal
+[Close] [Previous] [Next] [Full Screen]
+
+[Large Image Display] [Individual Failure Analysis Panel]
+
+Failure Reason: [Detailed explanation]
+Individual Actions: [Approve] [Retry] [Delete]
+
+Generation Details: [Full prompt, parameters, metadata]
+
+[Individual Image Actions Only - No Bulk Operations]
+
+Enhanced Elements
+
+1. Individual Failure Analysis Panel
+- Position: Right side of image display (when space allows)
+- Style: bg-red-50 border border-red-200 rounded-lg p-4
+- Content: 
+  - Failure reason with detailed explanation
+  - Suggested actions for this specific image
+  - Quality metrics and thresholds for this image
+
+2. Individual Action Buttons
+- Approve: bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded
+- Retry: bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded
+- Delete: bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded
+- View Metadata: bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded
+
+3. Generation Details Section
+- Full Prompt: Complete generation prompt with syntax highlighting
+- Parameters: All generation and processing parameters for this image
+- Metadata: AI-generated title, description, tags for this image
+- Timestamps: Creation and failure timestamps for this image
+
+IMPLEMENTATION NOTES
+
+Component Enhancement
+// Extend existing ImageModal props
+interface FailedImageModalProps extends ImageModalProps {
+  qcStatus: 'failed';
+  qcReason: string;
+  onApprove: (imageId: string) => void;
+  onRetry: (imageId: string) => void;
+  onDelete: (imageId: string) => void;
+}
+
+Integration Points
+- Reuse Modal: Extend existing ImageModal component
+- Enhance State: Add failed images specific state management
+- Extend Actions: Add QC-specific individual action handlers
+- Maintain Navigation: Keep existing modal navigation (previous/next)
+
+KEY SIMPLIFICATIONS
+
+NO BULK OPERATIONS
+- Before: Mixed individual and bulk functionality
+- After: Individual image actions only
+- Reason: Bulk operations handled separately in ImageGallery
+
+NO COMPLEX WORKFLOWS
+- Before: Multi-step approval process with parameter editing
+- After: Direct approve/retry/delete actions for single image
+
+NO PARAMETER EDITING
+- Before: Complex parameter modification interface
+- After: Simple retry with original settings
+
+NO IMAGE COMPARISON
+- Before: Side-by-side comparison with reference images
+- After: Single image view with failure analysis
+
+BENEFITS OF THIS APPROACH
+
+1. Faster Development: Enhance existing modal rather than create new components
+2. Better Consistency: Maintains visual and behavioral consistency
+3. Easier Maintenance: Less code duplication and simpler state management
+4. User Familiarity: Users already know how to interact with image modals
+5. Responsive Design: Automatically inherits existing responsive behavior
+
+RESPONSIVE BEHAVIOR
+- Desktop: Side-by-side layout with failure analysis panel
+- Tablet: Stacked layout with collapsible failure analysis
+- Mobile: Single column with simplified actions
+
+INTERACTIVE FEATURES
+- Image Navigation: Previous/next navigation (reuse existing)
+- Full Screen: Full screen view (reuse existing)
+- Individual Actions: Direct approve/retry/delete execution for single image
+- Keyboard Navigation: Arrow keys and shortcuts (reuse existing)
+
+STATE MANAGEMENT
+- Loading States: Same as existing modal
+- Error Handling: Inline error messages for failed actions
+- Success Feedback: Visual confirmation for completed actions
+- Navigation State: Integrates with existing modal state
+
+IMPLEMENTATION PRIORITY
+1. Phase 1: Enhance existing ImageModal with failure analysis
+2. Phase 2: Add QC-specific individual action buttons
+3. Phase 3: Integrate with failed images filtering
+4. Phase 4: Ensure individual actions work with existing handlers
+
+FILE LOCATIONS
+- Enhanced Component: src/renderer/components/Dashboard/ImageModal.tsx
+- QC Enhancements: Add to existing modal component
+- No New Files: Extend existing rather than create new
+
+TESTING STRATEGY
+- Unit Tests: Extend existing ImageModal.test.tsx
+- Integration Tests: Test individual QC actions with failed images
+- E2E Tests: Complete individual failed image review workflow
+- Coverage: Maintain existing test coverage while adding QC features
+
+INDIVIDUAL IMAGE ACTIONS WORKFLOW
+
+Individual Approve
+1. View failed image in modal
+2. Click "Approve" button
+3. Confirm action
+4. Update QC status from 'failed' to 'approved'
+5. Image automatically appears in main Dashboard Panel as 'Success' image
+6. Show success feedback
+
+Individual Retry
+1. View failed image in modal
+2. Click "Retry" button
+3. Confirm action
+4. Queue retry request for backend processing with original settings
+5. Show success feedback
+
+Individual Delete
+1. View failed image in modal
+2. Click "Delete" button
+3. Show confirmation dialog
+4. Delete image
+5. Show success feedback
+
+CLEAR SEPARATION OF CONCERNS
+
+This File (03): Individual Image Review
+- Single image analysis and actions
+- Individual approve/retry/delete
+- Failure analysis for one image
+- Modal-based interaction
+
+File 04: Bulk Operations
+- Multiple image selection and actions
+- Bulk approve/retry/delete
+- Batch settings configuration
+- Gallery-based interaction
+
+NO DUPLICATION
+- Individual actions: Handled in this file (03)
+- Bulk operations: Handled in file 04
+- Clear boundaries: Each file has distinct responsibility
+- No confusion: Users know where to find each functionality

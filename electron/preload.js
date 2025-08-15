@@ -58,6 +58,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getImageMetadata: (executionId) => ipcRenderer.invoke('generated-image:metadata', executionId),
   getImageStatistics: () => ipcRenderer.invoke('generated-image:statistics'),
   
+  // Failed Images Review
+  retryFailedImageWithOriginalSettings: (imageId) => ipcRenderer.invoke('failed-image:retry-original', { imageId }),
+  retryFailedImageWithModifiedSettings: (imageId, settings) => ipcRenderer.invoke('failed-image:retry-modified', { imageId, settings }),
+  retryFailedImagesBatch: (imageIds, useOriginalSettings, modifiedSettings) => ipcRenderer.invoke('failed-image:retry-batch', { imageIds, useOriginalSettings, modifiedSettings }),
+  
   // Error handling wrapper
   invoke: (channel, ...args) => {
     // Whitelist channels for security
@@ -97,7 +102,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'generated-image:update-qc-status',
       'generated-image:manual-approve',
       'generated-image:metadata',
-      'generated-image:statistics'
+      'generated-image:statistics',
+              'failed-image:retry-original',
+        'failed-image:retry-modified',
+        'failed-image:retry-batch'
     ];
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);

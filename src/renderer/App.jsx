@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SettingsPanel } from './components/Settings';
-import { DashboardPanel } from './components/Dashboard';
+import { DashboardPanel, FailedImagesReviewPanel } from './components/Dashboard';
 
 /**
  * Main App Component
@@ -14,7 +14,7 @@ import { DashboardPanel } from './components/Dashboard';
 function App() {
   const [ipcStatus, setIpcStatus] = useState('Testing...');
   const [appVersion, setAppVersion] = useState('Loading...');
-  const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'dashboard'
+  const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'dashboard', 'failed-review'
 
   useEffect(() => {
     // Test IPC communication
@@ -46,7 +46,14 @@ function App() {
       {currentView === 'settings' ? (
         <SettingsPanel onBack={() => setCurrentView('main')} />
       ) : currentView === 'dashboard' ? (
-        <DashboardPanel onBack={() => setCurrentView('main')} />
+        <DashboardPanel
+          onBack={() => setCurrentView('main')}
+          onOpenFailedImagesReview={() => setCurrentView('failed-review')}
+          onOpenSettings={() => setCurrentView('settings')}
+          onOpenJobs={() => {/* stub for future jobs page */}}
+        />
+      ) : currentView === 'failed-review' ? (
+        <FailedImagesReviewPanel onBack={() => setCurrentView('dashboard')} />
       ) : (
         <div className="flex items-center justify-center min-h-screen">
           <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">

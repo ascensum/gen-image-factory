@@ -1,0 +1,416 @@
+SingleJobViewModal Component Specification
+
+Component Overview
+The SingleJobViewModal is a comprehensive modal component that displays detailed information about a single job execution. It provides complete job metadata, generated images gallery, execution timeline, and action buttons for job management.
+
+Component Structure
+
+File Location
+src/renderer/components/Jobs/SingleJobViewModal.tsx
+
+Component Hierarchy
+SingleJobViewModal
+├── ModalHeader
+├── JobInformationPanel
+├── GeneratedImagesGallery
+├── JobLogsTimeline
+└── ActionButtons
+
+Props Interface
+
+interface SingleJobViewModalProps {
+  isOpen: boolean;
+  jobId: string | null;
+  onClose: () => void;
+  onJobAction: (action: 'export' | 'rerun' | 'delete', jobId: string) => void;
+  onRefresh?: () => void;
+}
+
+State Management
+
+Local State
+const [job, setJob] = useState<JobExecution | null>(null);
+const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+const [jobLogs, setJobLogs] = useState<LogEntry[]>([]);
+const [isLoading, setIsLoading] = useState(false);
+const [error, setError] = useState<string | null>(null);
+const [activeTab, setActiveTab] = useState<'overview' | 'images' | 'logs'>('overview');
+const [imageFilters, setImageFilters] = useState<ImageFilters>({
+  qcStatus: 'all',
+  sortBy: 'createdAt',
+  sortOrder: 'desc'
+});
+const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+
+Derived State
+const filteredImages = useMemo(() => applyImageFilters(generatedImages, imageFilters), [generatedImages, imageFilters]);
+const sortedImages = useMemo(() => sortImages(filteredImages, imageFilters.sortBy, imageFilters.sortOrder), [filteredImages, imageFilters]);
+const hasImageSelection = selectedImages.size > 0;
+const jobDuration = useMemo(() => calculateJobDuration(job), [job]);
+const successRate = useMemo(() => calculateSuccessRate(generatedImages), [generatedImages]);
+
+Component Layout
+
+Modal Structure
+- Size: 900px width, 700px height (responsive)
+- Position: Centered over the current page
+- Backdrop: Semi-transparent dark overlay with click-to-close
+- Scrollable: Content scrolls independently of modal
+
+Header Section
+- Job Title: Job name/label or "Job Details" if no label
+- Close Button: Right-aligned X button
+- Action Buttons: View Details, Export, Rerun, Delete buttons
+- Job Status: Status badge with color coding
+
+Content Tabs
+- Overview Tab: Job information and summary statistics
+- Images Tab: Generated images gallery with filtering
+- Logs Tab: Execution timeline and detailed logs
+
+Tab Content Specifications
+
+Overview Tab
+Job Information Panel
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│ Job ID          │ │ Status          │ │ Configuration   │
+│ JOB-001         │ │ Completed       │ │ Product Photos  │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│ Start Time      │ │ Duration        │ │ Success Rate    │
+│ 2024-01-15      │ │ 2h 15m         │ │ 93.3% (42/45)   │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+
+Generated Images Summary
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│ Total           │ │ Successful      │ │ Failed          │
+│ 45              │ │ 42              │ │ 3               │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+
+Processing Parameters
+• Image Enhancement: Enabled
+• Sharpening: 0.8
+• Saturation: 1.2
+• Background Removal: Enabled
+
+Images Tab
+Images Gallery Controls
+[Filter by QC Status] [Sort by Date/Quality] [Export Selected]
+[All] [Approved] [Rejected] [Failed] [Pending]
+
+Images Grid (3 columns)
+┌─────────┐ ┌─────────┐ ┌─────────┐
+│ [Image] │ │ [Image] │ │ [Image] │
+│ Status  │ │ Status  │ │ Status  │
+└─────────┘ └─────────┘ └─────────┘
+┌─────────┐ ┌─────────┐ ┌─────────┐
+│ [Image] │ │ [Image] │ │ [Image] │
+│ Status  │ │ Status  │ │ Status  │
+└─────────┘ └─────────┘ └─────────┘
+
+[Load More Images] [Export All Images]
+
+Logs Tab
+Execution Timeline
+┌─────────────────────────────────────────────────────────────────────┐
+│ Step 1: Job Initialization                    │ 2024-01-15 09:00 │
+│ ✓ Configuration loaded successfully            │ Duration: 2s     │
+└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│ Step 2: Image Generation                      │ 2024-01-15 09:02 │
+│ ✓ Generated 45 images                         │ Duration: 1h 45m │
+└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┘
+│ Step 3: Post-processing                      │ 2024-01-15 10:47 │
+│ ✓ Applied image enhancements                 │ Duration: 25m     │
+└─────────────────────────────────────────────────────────────────────┘
+
+Error Details (if any)
+• 3 images failed during post-processing
+• Reason: Background removal failed for complex backgrounds
+
+Key Features
+
+Job Information Display
+- Complete Metadata: All job execution details and parameters
+- Real-time Updates: Status updates via IPC events
+- Calculated Fields: Duration, success rate, and other derived values
+- Configuration Details: Full processing parameters used
+
+Images Gallery
+- Grid Layout: Responsive 3-column grid for images
+- QC Status Indicators: Color-coded status badges on each image
+- Filtering Options: Filter by QC status (All, Approved, Rejected, Failed, Pending)
+- Sorting Options: Sort by creation date, quality score, or QC status
+- Selection Support: Multi-select images for export or bulk operations
+- Image Preview: Click to view full-size image with details
+
+Execution Timeline
+- Step-by-step Progress: Visual timeline of job execution steps
+- Timing Information: Duration for each step and overall job
+- Status Indicators: Success/failure status for each step
+- Error Details: Comprehensive error information and recovery steps
+- Processing Parameters: Settings and configuration used for each step
+
+Action Buttons
+- View Details: Expand/collapse detailed information
+- Export: Export job data to Excel format
+- Rerun: Restart job with same configuration
+- Delete: Remove job and all associated data
+
+Event Handlers
+
+Modal Events
+const handleClose = () => {
+  setJob(null);
+  setGeneratedImages([]);
+  setJobLogs([]);
+  setSelectedImages(new Set());
+  setActiveTab('overview');
+  onClose();
+};
+
+const handleBackdropClick = (event: React.MouseEvent) => {
+  if (event.target === event.currentTarget) {
+    handleClose();
+  }
+};
+
+Tab Navigation
+const handleTabChange = (tab: 'overview' | 'images' | 'logs') => {
+  setActiveTab(tab);
+  setSelectedImages(new Set()); // Clear image selection when changing tabs
+};
+
+Image Operations
+const handleImageSelect = (imageId: string, selected: boolean) => {
+  const newSelection = new Set(selectedImages);
+  if (selected) {
+    newSelection.add(imageId);
+  } else {
+    newSelection.delete(imageId);
+  }
+  setSelectedImages(newSelection);
+};
+
+const handleExportImages = async () => {
+  if (!hasImageSelection) return;
+  
+  try {
+    const imageIds = Array.from(selectedImages);
+    await window.electronAPI['generated-image:export-selected'](imageIds);
+    // Show success message
+  } catch (error) {
+    setError('Failed to export selected images');
+  }
+};
+
+const handleImageFilterChange = (filterType: keyof ImageFilters, value: any) => {
+  setImageFilters(prev => ({ ...prev, [filterType]: value }));
+  setSelectedImages(new Set()); // Clear selection when filters change
+};
+
+Job Actions
+const handleJobAction = async (action: 'export' | 'rerun' | 'delete') => {
+  if (!job) return;
+  
+  try {
+    setIsLoading(true);
+    await onJobAction(action, job.id);
+    
+    if (action === 'delete') {
+      handleClose();
+    } else if (action === 'rerun') {
+      // Refresh job data to show new status
+      await loadJobData();
+    }
+  } catch (error) {
+    setError(`Failed to ${action} job`);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+Data Fetching
+
+Initial Load
+useEffect(() => {
+  if (isOpen && jobId) {
+    loadJobData();
+  }
+}, [isOpen, jobId]);
+
+const loadJobData = async () => {
+  if (!jobId) return;
+  
+  try {
+    setIsLoading(true);
+    setError(null);
+    
+    // Load job execution data
+    const jobData = await window.electronAPI['job-execution:get-by-id'](jobId);
+    setJob(jobData);
+    
+    // Load generated images
+    const imagesData = await window.electronAPI['generated-image:get-by-execution'](jobId);
+    setGeneratedImages(imagesData);
+    
+    // Load job logs
+    const logsData = await window.electronAPI['job-execution:get-logs'](jobId);
+    setJobLogs(logsData);
+  } catch (error) {
+    setError('Failed to load job data');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+Real-time Updates
+useEffect(() => {
+  if (!job) return;
+  
+  const handleJobUpdate = (event: any, jobData: JobExecution) => {
+    if (jobData.id === job.id) {
+      setJob(jobData);
+    }
+  };
+  
+  const handleImageUpdate = (event: any, imageData: GeneratedImage) => {
+    if (imageData.executionId === job.id) {
+      setGeneratedImages(prev => prev.map(img => 
+        img.id === imageData.id ? imageData : img
+      ));
+    }
+  };
+  
+  window.electronAPI.on('job-execution:status-update', handleJobUpdate);
+  window.electronAPI.on('generated-image:update', handleImageUpdate);
+  
+  return () => {
+    window.electronAPI.removeListener('job-execution:status-update', handleJobUpdate);
+    window.electronAPI.removeListener('generated-image:update', handleImageUpdate);
+  };
+}, [job]);
+
+Image Gallery Features
+
+Grid Layout
+- Responsive Columns: 3 columns on desktop, 2 on tablet, 1 on mobile
+- Image Cards: Each image in a card with status badge and metadata
+- Lazy Loading: Load images as they come into view
+- Image Preview: Click to open full-size preview modal
+
+Filtering and Sorting
+- QC Status Filter: Filter by approval status
+- Date Sorting: Sort by creation date (newest/oldest first)
+- Quality Sorting: Sort by quality score if available
+- Search: Text search within image metadata
+
+Selection and Export
+- Multi-selection: Checkbox selection for multiple images
+- Bulk Export: Export selected images to ZIP or individual files
+- Selection Persistence: Maintain selection across filter changes
+- Select All: Select all images in current filtered view
+
+Error Handling
+
+Loading Errors
+- Data Fetch Errors: Show error message with retry button
+- Image Load Errors: Show placeholder for failed images
+- Network Errors: Handle IPC communication failures gracefully
+- Validation Errors: Show validation messages for user input
+
+Error Recovery
+- Retry Mechanisms: Retry button for failed data loads
+- Fallback States: Show cached data when fresh data unavailable
+- User Feedback: Clear error messages with actionable steps
+- Graceful Degradation: Show partial data when possible
+
+Performance Optimizations
+
+Rendering Optimization
+- React.memo: Memoize child components to prevent unnecessary re-renders
+- useMemo: Memoize expensive computations like filtering and sorting
+- useCallback: Memoize event handlers to prevent child re-renders
+- Virtualization: Use virtual scrolling for large image lists
+
+Image Optimization
+- Lazy Loading: Load images only when needed
+- Thumbnail Generation: Use smaller thumbnails for grid view
+- Progressive Loading: Show low-quality placeholders while loading
+- Caching: Cache loaded images to prevent re-downloading
+
+Accessibility Features
+
+Keyboard Navigation
+- Tab Order: Logical tab order through all interactive elements
+- Arrow Keys: Navigate between tabs and images
+- Enter/Space: Activate buttons and select images
+- Escape: Close modal and cancel operations
+
+Screen Reader Support
+- ARIA Labels: Proper labeling for all interactive elements
+- Tab Structure: Clear tab navigation with proper ARIA attributes
+- Image Descriptions: Alt text and descriptions for all images
+- Status Announcements: Announce tab changes and image updates
+
+Visual Accessibility
+- Color Contrast: Meet WCAG contrast requirements
+- Focus Indicators: Clear focus states for all interactive elements
+- Status Indicators: Clear visual indicators for different states
+- Loading States: Clear loading indicators for all operations
+
+Testing Requirements
+
+Unit Tests
+- Component Rendering: Test component renders correctly with different props
+- State Management: Test state changes and updates
+- Event Handling: Test all event handlers and callbacks
+- Error Handling: Test error states and recovery
+
+Integration Tests
+- Data Flow: Test data flow between components
+- API Integration: Test IPC communication and data fetching
+- User Interactions: Test complete user workflows
+- Modal Behavior: Test modal opening, closing, and backdrop behavior
+
+E2E Tests
+- User Workflows: Test complete job viewing workflows
+- Image Operations: Test image filtering, sorting, and selection
+- Tab Navigation: Test tab switching and content loading
+- Accessibility: Test keyboard navigation and screen reader support
+
+Styling Guidelines
+
+Tailwind Classes
+- Layout: Use flexbox and grid for responsive layouts
+- Spacing: Use consistent spacing scale (4px increments)
+- Colors: Use established color palette from design system
+- Typography: Use consistent font sizes and weights
+- Shadows: Use subtle shadows for depth and hierarchy
+
+Desktop Design
+- Desktop First: Optimize for 900px+ modal width
+- Window Resizing: Flexible modal sizing for different desktop resolutions
+- Desktop Interactions: Mouse, keyboard, and trackpad optimized
+- Native OS Integration: Leverage platform-specific modal behavior
+
+Future Enhancements
+
+Planned Features
+- Image Comparison: Side-by-side image comparison tool
+- Batch Image Operations: Bulk QC status updates
+- Image Annotations: Add notes and annotations to images
+- Export Formats: Additional export formats and options
+
+Technical Improvements
+- Image Optimization: Better thumbnail generation and caching
+- Real-time Collaboration: Multi-user image review
+- Advanced Filtering: AI-powered image filtering and search
+- Performance Metrics: Image loading and rendering performance
+
+Conclusion
+
+The SingleJobViewModal component provides a comprehensive and efficient interface for viewing detailed job information. By organizing content into logical tabs and providing rich interaction capabilities, it delivers a professional user experience while maintaining visual consistency with existing components.
+
+The component's focus on performance, accessibility, and user experience ensures it can handle real-world usage scenarios effectively while providing the detailed information needed for comprehensive job management.

@@ -1,0 +1,438 @@
+JobTable Component Specification
+
+Component Overview
+The JobTable is a comprehensive data table component that displays job executions with advanced features including multi-selection, inline editing, sorting, and row actions. It provides the core data display functionality for the Job Management system.
+
+Component Structure
+
+File Location
+src/renderer/components/Jobs/JobTable.tsx
+
+Component Hierarchy
+JobTable
+├── TableHeader
+│   ├── SelectAllCheckbox
+│   ├── SortableColumnHeaders
+│   └── ActionColumnHeader
+├── TableBody
+│   ├── JobRow (multiple)
+│   │   ├── SelectionCheckbox
+│   │   ├── JobIdCell
+│   │   ├── LabelCell (editable)
+│   │   ├── StatusCell
+│   │   ├── DateCell
+│   │   ├── DurationCell
+│   │   ├── ImageCountCell
+│   │   └── ActionsCell
+│   └── EmptyState
+└── TableFooter
+
+Props Interface
+
+interface JobTableProps {
+  jobs: JobExecution[];
+  selectedJobs: Set<string>;
+  onJobSelect: (jobId: string, selected: boolean) => void;
+  onSelectAll: (selected: boolean) => void;
+  onJobAction: (action: 'view' | 'export' | 'rerun' | 'delete', jobId: string) => void;
+  onJobLabelEdit: (jobId: string, newLabel: string) => Promise<void>;
+  sortConfig: SortConfig;
+  onSortChange: (column: keyof JobExecution, direction: 'asc' | 'desc') => void;
+  isLoading: boolean;
+  error: string | null;
+}
+
+State Management
+
+Local State
+const [editingJobId, setEditingJobId] = useState<string | null>(null);
+const [editingLabel, setEditingLabel] = useState<string>('');
+const [editError, setEditError] = useState<string | null>(null);
+const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+const [contextMenu, setContextMenu] = useState<{
+  jobId: string;
+  x: number;
+  y: number;
+} | null>(null);
+
+Derived State
+const isAllSelected = selectedJobs.size === jobs.length && jobs.length > 0;
+const isPartiallySelected = selectedJobs.size > 0 && selectedJobs.size < jobs.length;
+const sortedJobs = useMemo(() => sortJobs(jobs, sortConfig), [jobs, sortConfig]);
+
+Component Layout
+
+Table Structure
+Table Header
+[☑] [Job ID ▼] [Name/Label] [Status] [Date ▼] [Duration] [Images] [⋮]
+Table Body
+[☑] [JOB-001] [Product Photos] [Completed] [2024-01-15] [2h 15m] [45] [⋮]
+[☑] [JOB-002] [Marketing Assets] [Failed] [2024-01-14] [0h 45m] [12] [⋮]
+[☑] [JOB-003] [Website Images] [Running] [2024-01-15] [1h 30m] [30] [⋮]
+
+Empty State (when no jobs)
+┌─────────────────────────────────────────────────────────────────────┐
+│ No jobs found matching current filters                             │
+│ [Clear Filters] [Create New Job]                                   │
+└─────────────────────────────────────────────────────────────────────┘
+
+Column Specifications
+
+Selection Column
+- Width: 48px (fixed)
+- Content: Checkbox for each row, select-all checkbox in header
+- Behavior: Click to select/deselect individual jobs
+- Header: Select-all checkbox that respects current filters
+
+Job ID Column
+- Width: 120px (fixed)
+- Content: Monospace font job identifier
+- Behavior: Clickable to open Single Job View
+- Sorting: Sortable by job ID
+- Style: Monospace font, clickable with hover effect
+
+Name/Label Column
+- Width: 200px (flexible)
+- Content: Editable job label/name
+- Behavior: Click to edit inline, Enter to save, Escape to cancel
+- Validation: Prevent empty labels
+- Style: Editable text input with validation
+
+Status Column
+- Width: 120px (fixed)
+- Content: Status badge with color coding
+- Behavior: Clickable to filter by status
+- Sorting: Sortable by status
+- Style: Color-coded badges (Completed: green, Failed: red, Running: blue, etc.)
+
+Date Column
+- Width: 140px (fixed)
+- Content: Formatted date with time
+- Behavior: Clickable to sort by date
+- Sorting: Sortable by start date (default: newest first)
+- Style: Formatted date string with hover effect
+
+Duration Column
+- Width: 100px (fixed)
+- Content: Human-readable duration
+- Behavior: Clickable to sort by duration
+- Sorting: Sortable by execution duration
+- Style: Formatted duration (e.g., "2h 15m", "45m", "1h")
+
+Image Count Column
+- Width: 80px (fixed)
+- Content: Number with small image icon
+- Behavior: Clickable to filter by image count
+- Sorting: Sortable by total images generated
+- Style: Number with icon, right-aligned
+
+Actions Column
+- Width: 60px (fixed)
+- Content: Three-dot menu button
+- Behavior: Click to open context menu
+- Actions: View, Export, Rerun, Delete
+- Style: Icon button with hover effect
+
+Key Features
+
+Multi-Selection
+- Individual Selection: Checkbox for each row
+- Select All: Header checkbox that selects all visible jobs
+- Partial Selection: Visual indication when some jobs are selected
+- Selection Persistence: Maintains selection across pagination
+- Keyboard Navigation: Shift+Click for range selection
+
+Inline Editing
+- Job Labels: Click to edit job names/labels
+- Optimistic Updates: Show changes immediately
+- Validation: Prevent empty labels, show error messages
+- Auto-save: Save after user stops typing
+- Rollback: Cancel changes with Escape key
+
+Sorting
+- Column Headers: Clickable column headers for sorting
+- Sort Indicators: Visual indicators showing sort direction
+- Multi-column: Support for complex sorting logic
+- Default Sort: Date column sorted by newest first
+- Sort Persistence: Remember sort preferences
+
+Row Actions
+- Context Menu: Right-click or three-dot menu
+- Quick Actions: Common actions accessible via keyboard
+- Action States: Disable actions based on job status
+- Confirmation: Require confirmation for destructive actions
+
+Event Handlers
+
+Selection Events
+const handleJobSelect = (jobId: string, selected: boolean) => {
+  onJobSelect(jobId, selected);
+};
+
+const handleSelectAll = (selected: boolean) => {
+  onSelectAll(selected);
+};
+
+const handleSelectRange = (startJobId: string, endJobId: string, selected: boolean) => {
+  const jobIds = getJobIdsInRange(startJobId, endJobId);
+  jobIds.forEach(jobId => onJobSelect(jobId, selected));
+};
+
+Inline Editing Events
+const handleLabelEditStart = (jobId: string, currentLabel: string) => {
+  setEditingJobId(jobId);
+  setEditingLabel(currentLabel);
+  setEditError(null);
+};
+
+const handleLabelEditChange = (value: string) => {
+  setEditingLabel(value);
+  setEditError(null);
+};
+
+const handleLabelEditSave = async () => {
+  if (!editingJobId || !editingLabel.trim()) {
+    setEditError('Label cannot be empty');
+    return;
+  }
+
+  try {
+    await onJobLabelEdit(editingJobId, editingLabel.trim());
+    setEditingJobId(null);
+    setEditingLabel('');
+  } catch (error) {
+    setEditError('Failed to save label');
+  }
+};
+
+const handleLabelEditCancel = () => {
+  setEditingJobId(null);
+  setEditingLabel('');
+  setEditError(null);
+};
+
+Sorting Events
+const handleSortChange = (column: keyof JobExecution) => {
+  const currentDirection = sortConfig.column === column ? sortConfig.direction : 'desc';
+  const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+  onSortChange(column, newDirection);
+};
+
+Action Events
+const handleJobAction = (action: 'view' | 'export' | 'rerun' | 'delete', jobId: string) => {
+  onJobAction(action, jobId);
+};
+
+const handleContextMenu = (event: React.MouseEvent, jobId: string) => {
+  event.preventDefault();
+  setContextMenu({
+    jobId,
+    x: event.clientX,
+    y: event.clientY
+  });
+};
+
+const handleContextMenuClose = () => {
+  setContextMenu(null);
+};
+
+Data Processing
+
+Sorting Logic
+const sortJobs = (jobs: JobExecution[], config: SortConfig): JobExecution[] => {
+  return [...jobs].sort((a, b) => {
+    const { column, direction } = config;
+    
+    let aValue = a[column];
+    let bValue = b[column];
+    
+    // Handle null/undefined values
+    if (aValue === null || aValue === undefined) aValue = '';
+    if (bValue === null || bValue === undefined) bValue = '';
+    
+    // Handle date sorting
+    if (column === 'startedAt' || column === 'completedAt') {
+      aValue = new Date(aValue || 0).getTime();
+      bValue = new Date(bValue || 0).getTime();
+    }
+    
+    // Handle duration sorting
+    if (column === 'duration') {
+      aValue = calculateDuration(a);
+      bValue = calculateDuration(b);
+    }
+    
+    // Handle string sorting
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      aValue = aValue.toLowerCase();
+      bValue = bValue.toLowerCase();
+    }
+    
+    // Compare values
+    if (aValue < bValue) return direction === 'asc' ? -1 : 1;
+    if (aValue > bValue) return direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+};
+
+Duration Calculation
+const calculateDuration = (job: JobExecution): number => {
+  if (!job.startedAt) return 0;
+  
+  const endTime = job.completedAt || new Date();
+  const startTime = new Date(job.startedAt);
+  
+  return endTime.getTime() - startTime.getTime();
+};
+
+const formatDuration = (milliseconds: number): string => {
+  const hours = Math.floor(milliseconds / (1000 * 60 * 60));
+  const minutes = Math.floor((milliseconds % (1000 * 60 * 60)) / (1000 * 60));
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m`;
+};
+
+Row Component (JobRow)
+
+Props Interface
+interface JobRowProps {
+  job: JobExecution;
+  isSelected: boolean;
+  isEditing: boolean;
+  editingLabel: string;
+  onSelect: (selected: boolean) => void;
+  onLabelEditStart: () => void;
+  onLabelEditChange: (value: string) => void;
+  onLabelEditSave: () => void;
+  onLabelEditCancel: () => void;
+  onAction: (action: string) => void;
+  sortConfig: SortConfig;
+}
+
+Row States
+- Normal: Default row display
+- Selected: Row is selected (highlighted background)
+- Editing: Row is in edit mode (input field visible)
+- Hovered: Row is hovered (subtle highlight)
+- Error: Row has validation error (error styling)
+
+Context Menu
+
+Menu Items
+- View Details: Open Single Job View modal
+- Export Job: Export job data to Excel
+- Rerun Job: Restart job with same configuration
+- Delete Job: Remove job and associated data
+- Copy Job ID: Copy job identifier to clipboard
+
+Menu Behavior
+- Positioning: Position relative to click location
+- Auto-close: Close when clicking outside or selecting item
+- Keyboard Navigation: Arrow keys and Enter to navigate
+- Accessibility: Proper ARIA labels and roles
+
+Performance Optimizations
+
+Rendering Optimization
+- React.memo: Memoize individual row components
+- useMemo: Memoize expensive computations like sorting
+- useCallback: Memoize event handlers
+- Virtualization: Use virtual scrolling for large datasets
+
+Event Optimization
+- Debounced Input: Debounce label editing input
+- Batch Updates: Batch multiple selection changes
+- Lazy Loading: Load row details on demand
+- Caching: Cache computed values like durations
+
+Accessibility Features
+
+Keyboard Navigation
+- Tab Order: Logical tab order through all interactive elements
+- Arrow Keys: Navigate between rows and cells
+- Enter/Space: Activate buttons and checkboxes
+- Escape: Cancel inline editing and close menus
+
+Screen Reader Support
+- ARIA Labels: Proper labeling for all interactive elements
+- Table Structure: Proper table semantics with headers and cells
+- Status Announcements: Announce selection changes and updates
+- Row Information: Clear row identification and content
+
+Visual Accessibility
+- Color Contrast: Meet WCAG contrast requirements
+- Focus Indicators: Clear focus states for all interactive elements
+- Selection States: Clear visual indicators for selection
+- Error States: Clear visual indicators for errors
+
+Error Handling
+
+Validation Errors
+- Empty Labels: Prevent saving empty job labels
+- Invalid Input: Show validation messages for invalid input
+- Save Failures: Handle API failures gracefully
+- Network Errors: Show retry options for failed operations
+
+Error Recovery
+- Rollback Changes: Revert changes on save failure
+- Retry Mechanisms: Retry failed operations
+- User Feedback: Clear error messages with actionable steps
+- Graceful Degradation: Show partial data when possible
+
+Testing Requirements
+
+Unit Tests
+- Component Rendering: Test component renders correctly with different props
+- State Management: Test state changes and updates
+- Event Handling: Test all event handlers and callbacks
+- Sorting Logic: Test sorting functionality for all columns
+
+Integration Tests
+- Data Flow: Test data flow between components
+- User Interactions: Test complete user workflows
+- Selection Behavior: Test multi-selection and select-all
+- Inline Editing: Test label editing and validation
+
+E2E Tests
+- Table Navigation: Test keyboard and mouse navigation
+- Selection Workflows: Test multi-selection and batch operations
+- Sorting: Test column sorting and persistence
+- Accessibility: Test keyboard navigation and screen reader support
+
+Styling Guidelines
+
+Tailwind Classes
+- Layout: Use flexbox and grid for table structure
+- Spacing: Use consistent spacing scale (4px increments)
+- Colors: Use established color palette from design system
+- Typography: Use consistent font sizes and weights
+- Shadows: Use subtle shadows for depth and hierarchy
+
+Desktop Design
+- Desktop First: Optimize for 1200px+ table width
+- Window Resizing: Flexible table layout for different desktop resolutions
+- Desktop Interactions: Mouse, keyboard, and trackpad optimized
+- Native OS Integration: Leverage platform-specific table behavior
+
+Future Enhancements
+
+Planned Features
+- Column Resizing: Allow users to resize columns
+- Column Reordering: Drag and drop column reordering
+- Custom Columns: User-defined custom columns
+- Advanced Filtering: Inline filtering within columns
+
+Technical Improvements
+- Virtual Scrolling: Better performance for large datasets
+- Infinite Scrolling: Load more data as user scrolls
+- Real-time Updates: Live updates without full refresh
+- Export Options: Additional export formats and customization
+
+Conclusion
+
+The JobTable component provides a comprehensive and efficient interface for displaying and interacting with job execution data. By implementing advanced features like multi-selection, inline editing, and sorting, it delivers a professional user experience while maintaining performance and accessibility.
+
+The component's modular architecture ensures maintainability and extensibility, while the focus on user experience and performance ensures it can handle real-world usage scenarios effectively.

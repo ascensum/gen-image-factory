@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { GeneratedImage } from './DashboardPanel';
-import QuickActions from './QuickActions';
 import ImageModal from './ImageModal';
 
 // Excel export configuration
@@ -36,7 +35,6 @@ interface ImageGalleryProps {
   images: GeneratedImage[];
   onImageAction: (action: string, imageId: string, data?: any) => void;
   onBulkAction?: (action: string, imageIds: string[]) => void;
-  onQCStatusChange?: (imageId: string, status: string) => void;
   isLoading: boolean;
   jobStatus?: 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'stopped';
 }
@@ -45,7 +43,6 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   images,
   onImageAction,
   onBulkAction,
-  onQCStatusChange,
   isLoading,
   jobStatus = 'idle'
 }) => {
@@ -60,14 +57,18 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     );
   }
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
-  const [filterQC, setFilterQC] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [filterJob, setFilterJob] = useState<string | number>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name' | 'status'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
   const [showImageModal, setShowImageModal] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  // Clear selection when job filter changes
+  React.useEffect(() => {
+    setSelectedImages(new Set());
+  }, [filterJob]);
 
   // Get unique job IDs for filtering
   const uniqueJobIds = Array.from(new Set((images || []).map(img => img.executionId)));
@@ -78,11 +79,6 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     }
     
     let filtered = images.filter(image => {
-      // QC Status filter
-      if (filterQC !== 'all' && image.qcStatus !== filterQC) {
-        return false;
-      }
-      
       // Job filter
       if (filterJob !== 'all' && image.executionId !== filterJob) {
         return false;
@@ -110,53 +106,15 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
         case 'name':
           return a.generationPrompt.localeCompare(b.generationPrompt);
-        case 'status':
-          return a.qcStatus.localeCompare(b.qcStatus);
         default:
           return 0;
       }
     });
 
     return sorted;
-  }, [images, filterQC, filterJob, searchQuery, sortBy]);
+  }, [images, filterJob, searchQuery, sortBy]);
 
-  const getQCStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getQCStatusIcon = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        );
-      case 'rejected':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        );
-      case 'pending':
-        return (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-      default:
-        return null;
-    }
-  };
+  // Note: QC status functions removed since we only show success images in main dashboard
 
   const handleImageSelect = (imageId: string) => {
     const newSelected = new Set(selectedImages);
@@ -179,31 +137,14 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   const handleBulkAction = (action: string) => {
     if (selectedImages.size === 0) return;
     
-    if (action === 'reject') {
-      // Handle reject action by updating QC status
-      selectedImages.forEach(imageId => {
-        if (onQCStatusChange) {
-          onQCStatusChange(imageId, 'rejected');
-        } else {
-          onImageAction('updateQC', imageId, { status: 'rejected' });
-        }
-      });
-    } else {
-      // Handle other actions normally
-      selectedImages.forEach(imageId => {
-        onImageAction(action, imageId);
-      });
-    }
+    // Handle actions for success images (only delete supported)
+    selectedImages.forEach(imageId => {
+      onImageAction(action, imageId);
+    });
     setSelectedImages(new Set());
   };
 
-  const handleQCStatusChange = (imageId: string, newStatus: string) => {
-    if (onQCStatusChange) {
-      onQCStatusChange(imageId, newStatus);
-    } else {
-      onImageAction('updateQC', imageId, { status: newStatus });
-    }
-  };
+  // Note: QC status changes are handled in the separate Failed Images Review page
 
   // Helper function to transform image data for Excel export
   const transformImageForExport = (image: GeneratedImage, index: number) => {
@@ -325,15 +266,9 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Header with Quick Actions - STATIC (non-scrollable) */}
+      {/* Header - STATIC (non-scrollable) */}
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <h2 className="text-lg font-semibold text-gray-900">Generated Images</h2>
-        <QuickActions
-          jobStatus={jobStatus}
-          onJobAction={(action, jobId) => onImageAction(action, jobId)}
-          onImageAction={onImageAction}
-          isLoading={isLoading}
-        />
       </div>
 
       {/* Image Count Indicators - STATIC (non-scrollable) */}
@@ -345,19 +280,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
             <span className="text-sm text-gray-700">
-              {images.filter(img => img.qcStatus === 'approved').length} Pass
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-            <span className="text-sm text-gray-700">
-              {images.filter(img => img.qcStatus === 'rejected').length} Fail
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-            <span className="text-sm text-gray-700">
-              {images.filter(img => img.qcStatus === 'pending').length} Pending
+              {images.length} Success Images
             </span>
           </div>
         </div>
@@ -366,25 +289,13 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       {/* Filters and Controls - STATIC (non-scrollable) */}
       <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-lg mb-4 flex-shrink-0">
         <div className="flex items-center space-x-4">
-          {/* QC Status Filter */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">QC Status:</span>
-            <select
-              value={filterQC}
-              onChange={(e) => setFilterQC(e.target.value as any)}
-              className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Statuses</option>
-              <option value="pending">Pending ({images.filter(img => img.qcStatus === 'pending').length})</option>
-              <option value="approved">Approved ({images.filter(img => img.qcStatus === 'approved').length})</option>
-              <option value="rejected">Rejected ({images.filter(img => img.qcStatus === 'rejected').length})</option>
-            </select>
-          </div>
+          {/* Note: QC Status Filter removed since we only show success images */}
 
           {/* Job Filter */}
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium text-gray-700">Job:</span>
             <select
+              aria-label="Job"
               value={filterJob}
               onChange={(e) => setFilterJob(e.target.value)}
               className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -423,7 +334,6 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
               <option value="name">By Name</option>
-              <option value="status">By Status</option>
             </select>
           </div>
 
@@ -458,6 +368,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
+              aria-label="Select all images"
               checked={selectedImages.size === filteredAndSortedImages.length && filteredAndSortedImages.length > 0}
               onChange={handleSelectAll}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
@@ -476,25 +387,12 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
               >
                 Delete Selected
               </button>
-              <button
-                onClick={() => handleBulkAction('approve')}
-                className="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-              >
-                Approve Selected
-              </button>
-              <button
-                onClick={() => handleBulkAction('reject')}
-                className="px-3 py-1 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
-              >
-                Reject Selected
-              </button>
             </div>
           )}
 
           {/* Clear Button */}
           <button
             onClick={() => {
-              setFilterQC('all');
               setFilterJob('all');
               setSearchQuery('');
               setSortBy('newest');
@@ -601,13 +499,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                       onClick={() => setShowImageModal(image.id)}
                     />
                     
-                    {/* QC Status Badge */}
-                    <div className="absolute top-2 right-2">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getQCStatusColor(image.qcStatus)}`}>
-                        {getQCStatusIcon(image.qcStatus)}
-                        <span className="ml-1">{image.qcStatus}</span>
-                      </span>
-                    </div>
+                    {/* Note: QC status badge removed in dashboard success-only view */}
 
                     {/* Quick Actions Overlay */}
                     <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
@@ -747,74 +639,18 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                       </div>
                     </div>
                     
-                    {/* QC Status Dropdown */}
-                    <select
-                      value={image.qcStatus}
-                      onChange={(e) => handleQCStatusChange(image.id, e.target.value)}
-                      className="mt-2 w-full text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="approved">Approved</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
+                    {/* Note: QC Status controls removed since we only show success images */}
                   </div>
                 </div>
               ))}
 
-              {/* Add sample images if we have fewer than 10 real images to demonstrate scrolling */}
-              {filteredAndSortedImages.length < 10 && (
-                <>
-                  <div className="text-xs text-gray-500 text-center py-2 border-b border-gray-200 mb-4 col-span-full">
-                    📜 Sample images to demonstrate scrolling behavior
-                  </div>
-                  {Array.from({ length: 20 }, (_, index) => (
-                    <div
-                      key={`sample-${index}`}
-                      className="relative bg-white border rounded-lg overflow-hidden transition-colors border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                    >
-                      {/* Sample Image */}
-                      <div className="relative aspect-square">
-                        <img
-                          src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik01MCA1MEgxNTBWNzVINzVWMTI1SDUwVjUwWiIgZmlsbD0iI0QxRDVEM0EiLz4KPHN2ZyB4PSI3NSIgeT0iODAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI0NSIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNMTkgM0g1QzMuOSAzIDMgMy45IDMgNVYxOUMzIDIwLjEgMy45IDIxIDUgMjFIMTlDMjAuMSAyMSAyMSAyMC4xIDIxIDE5VjVDMjEgMy45IDIwLjEgMyAxOSAzWk0xOSAxOUg1VjVIMTlWMTlaIiBmaWxsPSIjOUI5QkEwIi8+CjxwYXRoIGQ9Ik0xNCAxM0gxMFYxN0gxNFYxM1oiIGZpbGw9IiM5QjlCQTAiLz4KPC9zdmc+Cjwvc3ZnPgo="
-                          alt={`Sample image ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                        
-                        {/* Sample QC Status Badge */}
-                        <div className="absolute top-2 right-2">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            pending
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Sample Image Info */}
-                      <div className="p-3">
-                        <div className="text-xs text-gray-600 truncate">Sample AI generated image {index + 1}</div>
-                        <div className="text-xs text-gray-500">Aug 9, 2025</div>
-                        
-                        {/* Sample QC Status Dropdown */}
-                        <select
-                          defaultValue="pending"
-                          className="mt-2 w-full text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        >
-                          <option value="pending">Pending</option>
-                          <option value="approved">Approved</option>
-                          <option value="rejected">Rejected</option>
-                        </select>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
+              {/* Note: Sample images removed since they're not needed for production */}
             </div>
           </>
         )}
       </div>
+
+      {/* Note: Retry settings modal removed since it's not needed for success images */}
 
       {/* Image Modal */}
       <ImageModal

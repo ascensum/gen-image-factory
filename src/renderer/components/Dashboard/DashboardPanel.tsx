@@ -4,8 +4,87 @@ import ProgressIndicator from './ProgressIndicator';
 import LogViewer from './LogViewer';
 import JobHistory from './JobHistory';
 import ImageGallery from './ImageGallery';
-import QuickActions from './QuickActions';
 import ForceStopButton from './ForceStopButton';
+// Failed images review is a separate top-level view now
+
+const HeaderMenu: React.FC<{
+  onOpenFailedImagesReview?: () => void;
+  onOpenSettings?: () => void;
+  onOpenJobs?: () => void;
+}> = ({ onOpenFailedImagesReview, onOpenSettings, onOpenJobs }) => {
+  const [open, setOpen] = React.useState(false);
+  const [menuPos, setMenuPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const buttonRef = React.useRef<HTMLButtonElement | null>(null);
+  const PANEL_WIDTH = 320; // px (~20rem)
+  return (
+    <div className="relative">
+      <button
+        aria-label="Open menu"
+        title="Menu"
+        ref={buttonRef}
+        onClick={() => {
+          const rect = buttonRef.current?.getBoundingClientRect();
+          if (rect) {
+            const top = rect.bottom + 8;
+            const idealLeft = rect.right - PANEL_WIDTH;
+            const maxLeft = window.innerWidth - PANEL_WIDTH - 8;
+            const left = Math.max(8, Math.min(idealLeft, maxLeft));
+            setMenuPos({ top, left });
+          }
+          setOpen((v) => !v);
+        }}
+        className="p-2 rounded-md hover:bg-gray-100 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+      {open && (
+        <div
+          className="fixed min-w-[20rem] bg-white border border-gray-200 rounded-lg shadow-xl z-50 overflow-hidden"
+          style={{ top: `${menuPos.top}px`, left: `${menuPos.left}px`, width: `${PANEL_WIDTH}px` }}
+        >
+          <div className="py-1">
+            <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide text-center">Navigate</div>
+            <button
+              onClick={() => {
+                setOpen(false);
+                onOpenFailedImagesReview && onOpenFailedImagesReview();
+              }}
+              className="w-full py-2 text-sm text-gray-700 hover:bg-gray-50 grid place-items-center grid-flow-col auto-cols-max gap-2"
+            >
+              <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+              <span>Failed Images Review</span>
+            </button>
+            <button
+              onClick={() => {
+                setOpen(false);
+                onOpenSettings && onOpenSettings();
+              }}
+              className="w-full py-2 text-sm text-gray-700 hover:bg-gray-50 grid place-items-center grid-flow-col auto-cols-max gap-2"
+            >
+              <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+              <span>Settings</span>
+            </button>
+            <button
+              onClick={() => {
+                setOpen(false);
+                onOpenJobs && onOpenJobs();
+              }}
+              className="w-full py-2 text-sm text-gray-700 hover:bg-gray-50 grid place-items-center grid-flow-col auto-cols-max gap-2"
+            >
+              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-6h13M9 7h13M5 7h.01M5 17h.01M5 12h.01" /></svg>
+              <span>Job Management</span>
+            </button>
+          </div>
+        </div>
+      )}
+      {open && (
+        <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+      )}
+    </div>
+  );
+};
 
 export interface JobStatus {
   state: 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'stopped';
@@ -61,7 +140,7 @@ export interface GeneratedImage {
   executionId: string;
   generationPrompt: string;
   seed?: number | null;
-  qcStatus: 'pending' | 'approved' | 'rejected';
+  qcStatus: 'pending' | 'approved' | 'rejected' | 'failed' | 'retry_pending';
   qcReason?: string | null;
   finalImagePath?: string | null;
   metadata?: {
@@ -90,9 +169,12 @@ export interface GeneratedImage {
 
 interface DashboardPanelProps {
   onBack?: () => void;
+  onOpenFailedImagesReview?: () => void;
+  onOpenSettings?: () => void;
+  onOpenJobs?: () => void;
 }
 
-const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack }) => {
+const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedImagesReview, onOpenSettings, onOpenJobs }) => {
   const [jobStatus, setJobStatus] = useState<JobStatus>({
     state: 'idle',
     progress: 0,
@@ -112,6 +194,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack }) => {
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Removed local failed images review state; navigation handled at App level
 
   // Poll for job status updates
   useEffect(() => {
@@ -184,7 +267,9 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack }) => {
       console.log('Generated images loaded:', images);
       // Ensure images is always an array
       if (images && Array.isArray(images)) {
-        setGeneratedImages(images);
+        // Filter to show only success/approved images in main dashboard
+        const successImages = images.filter(img => img.qcStatus === 'approved');
+        setGeneratedImages(successImages);
       } else {
         console.warn('getAllGeneratedImages returned non-array:', images);
         setGeneratedImages([]);
@@ -314,27 +399,14 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack }) => {
       setError(null);
       
       switch (action) {
-        case 'approve':
-          await window.electronAPI.manualApproveImage(imageId);
-          await loadGeneratedImages();
-          break;
-        case 'reject':
-          await window.electronAPI.manualRejectImage(imageId);
-          await loadGeneratedImages();
-          break;
         case 'delete':
           await window.electronAPI.deleteGeneratedImage(imageId);
           await loadGeneratedImages();
           break;
-        case 'updateQC':
-          if (data && data.status) {
-            await window.electronAPI.updateQCStatus(imageId, data.status);
-            await loadGeneratedImages();
-          }
-          break;
         case 'view':
           // Handle view action
           break;
+        // Note: Review actions (approve/reject) are handled in the separate Failed Images Review page
       }
     } catch (error) {
       setError(`Failed to ${action} image`);
@@ -348,15 +420,10 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack }) => {
       if (imageIds.length === 0) return;
 
       switch (action) {
-        case 'approve':
-          await window.electronAPI.bulkApproveImages(imageIds);
-          break;
-        case 'reject':
-          await window.electronAPI.bulkRejectImages(imageIds);
-          break;
         case 'delete':
           await window.electronAPI.bulkDeleteImages(imageIds);
           break;
+        // Note: Review actions (approve/reject) are handled in the separate Failed Images Review page
       }
       await loadGeneratedImages();
     } catch (error) {
@@ -365,55 +432,28 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack }) => {
     }
   };
 
-  const handleQCStatusChange = async (imageId: string, newStatus: 'pending' | 'approved' | 'rejected') => {
-    try {
-      setError(null);
-      await window.electronAPI.updateQCStatus(imageId, newStatus);
-      await loadGeneratedImages();
-    } catch (error) {
-      setError(`Failed to update QC status for image ${imageId}`);
-      console.error(`Failed to update QC status for image ${imageId}:`, error);
-    }
-  };
+  // Note: QC status changes are handled in the separate Failed Images Review page
 
   return (
     <div className="dashboard-panel min-h-screen bg-gray-50">
-      {/* Dashboard Header - Fixed height 48px */}
-      <div className="bg-white border-b border-gray-200 h-12 flex items-center px-6">
+      {/* Dashboard Header - compact with ordered elements */}
+      <div className="bg-white border-b border-gray-200 h-14 flex items-center px-6">
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-            <div className="flex items-center space-x-2">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                jobStatus.state === 'idle' ? 'bg-green-100 text-green-800' :
-                jobStatus.state === 'starting' ? 'bg-blue-100 text-blue-800' :
-                jobStatus.state === 'running' ? 'bg-blue-100 text-blue-800' :
-                jobStatus.state === 'completed' ? 'bg-green-100 text-green-800' :
-                jobStatus.state === 'failed' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {jobStatus.state === 'idle' && 'Ready'}
-                {jobStatus.state === 'starting' && 'Starting'}
-                {jobStatus.state === 'running' && 'Running'}
-                {jobStatus.state === 'completed' && 'Completed'}
-                {jobStatus.state === 'failed' && 'Failed'}
-                {jobStatus.state === 'stopped' && 'Stopped'}
-              </span>
-            </div>
+          {/* Left: Close, Menu, Start/Stop/Force */}
+          <div className="flex items-center space-x-3">
             {onBack && (
               <button
                 onClick={onBack}
                 className="text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Back to main view"
+                aria-label="Close dashboard"
+                title="Close"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             )}
-          </div>
-          
-          <div className="flex items-center space-x-3">
+            <HeaderMenu onOpenFailedImagesReview={onOpenFailedImagesReview} onOpenSettings={onOpenSettings} onOpenJobs={onOpenJobs} />
             <JobControls
               jobStatus={jobStatus.state}
               onStartJob={handleStartJob}
@@ -425,32 +465,12 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack }) => {
               isLoading={isLoading}
             />
           </div>
-          
-          {/* Job Statistics Display */}
-          <div className="flex items-center space-x-6 ml-8">
-            <div className="text-sm">
-              <span className="text-gray-600">Total Jobs:</span>
-              <span className="ml-2 font-semibold text-blue-600">{statistics.totalJobs}</span>
-            </div>
-            <div className="text-sm">
-              <span className="text-gray-600">Success Rate:</span>
-              <span className="ml-2 font-semibold text-green-600">{statistics.successRate}%</span>
-            </div>
-            <div className="text-sm">
-              <span className="text-gray-600">Images Generated:</span>
-              <span className="ml-2 font-semibold text-purple-600">{statistics.totalImagesGenerated}</span>
-            </div>
-            <div className="text-sm">
-              <span className="text-gray-600">Avg Duration:</span>
-              <span className="ml-2 font-semibold text-orange-600">{statistics.averageExecutionTime}s</span>
-            </div>
-          </div>
-          
-
-          
-          {/* Secure Mode Indicator */}
-          <div className="text-right">
-            <div className="text-xs font-medium text-green-600">Secure Mode</div>
+          {/* Right: compact stats only */}
+          <div className="flex items-center space-x-6">
+            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Total Jobs:</span><span className="ml-1 font-semibold text-blue-600">{statistics.totalJobs}</span></div>
+            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Success Rate:</span><span className="ml-1 font-semibold text-green-600">{statistics.successRate}%</span></div>
+            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Images Generated:</span><span className="ml-1 font-semibold text-purple-600">{statistics.totalImagesGenerated}</span></div>
+            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Avg Duration:</span><span className="ml-1 font-semibold text-orange-600">{statistics.averageExecutionTime}s</span></div>
           </div>
         </div>
       </div>
@@ -502,14 +522,13 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack }) => {
               📜 Image Gallery area - scroll when content overflows ({generatedImages.length} total images)
             </div>
           )}
-          <ImageGallery
-            images={generatedImages}
-            onImageAction={handleImageAction}
-            onBulkAction={handleBulkAction}
-            onQCStatusChange={handleQCStatusChange}
-            isLoading={isLoading}
-            jobStatus={jobStatus.state}
-          />
+                        <ImageGallery
+                images={generatedImages}
+                onImageAction={handleImageAction}
+                onBulkAction={handleBulkAction}
+                isLoading={isLoading}
+                jobStatus={jobStatus.state}
+              />
         </div>
       </div>
 
@@ -556,6 +575,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack }) => {
           </div>
         </div>
       )}
+
+      {/* Failed Images Review is now a separate page, navigated from App */}
     </div>
   );
 };
