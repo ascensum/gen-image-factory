@@ -402,10 +402,42 @@ describe('DashboardPanel', () => {
     const mockOnBack = vi.fn();
     render(<DashboardPanel onBack={mockOnBack} />);
     
-    const backButton = screen.getByLabelText('Back to main view');
+    const backButton = screen.getByLabelText('Close dashboard');
     fireEvent.click(backButton);
     
     expect(mockOnBack).toHaveBeenCalled();
+  });
+
+  it('navigates to Single Job View when job view action is triggered', async () => {
+    const mockOnOpenSingleJobView = vi.fn();
+    
+    // Mock job data
+    mockElectronAPI.getJobHistory.mockResolvedValue([
+      {
+        id: '1',
+        label: 'Test Job',
+        status: 'completed',
+        startedAt: new Date('2024-01-01'),
+        completedAt: new Date('2024-01-01'),
+        totalImages: 5,
+        successfulImages: 5,
+        failedImages: 0
+      }
+    ]);
+    
+    render(<DashboardPanel onOpenSingleJobView={mockOnOpenSingleJobView} />);
+    
+    // Wait for job to be loaded
+    await waitFor(() => {
+      expect(screen.getByText('Test Job')).toBeInTheDocument();
+    });
+    
+    // Find and click the view button for the job
+    const viewButton = screen.getByLabelText('View Details');
+    fireEvent.click(viewButton);
+    
+    // Verify that the navigation function was called with the correct job ID
+    expect(mockOnOpenSingleJobView).toHaveBeenCalledWith('1');
   });
 
   it('does not show back button when onBack prop is not provided', () => {

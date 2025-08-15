@@ -21,6 +21,19 @@ export interface IpcChannels {
   'get-job-executions-with-filters': (filters: JobFilters) => Promise<FilteredJobsResult>;
   'get-job-executions-count': (filters: JobFilters) => Promise<JobCountResult>;
   
+  // Job Status and Statistics
+  'get-job-status': () => Promise<JobStatus>;
+  'get-job-statistics': () => Promise<JobStatistics>;
+  'get-job-logs': (type: string) => Promise<LogEntry[]>;
+  
+  // Generated Images
+  'get-all-generated-images': () => Promise<GeneratedImage[]>;
+  'delete-generated-image': (imageId: string) => Promise<void>;
+  'bulk-delete-images': (imageIds: string[]) => Promise<void>;
+  
+  // Configuration
+  'get-configuration': () => Promise<JobConfiguration>;
+  
   // Settings (existing)
   'get-settings': () => Promise<SettingsResult>;
   'save-settings': (settings: SettingsObject) => Promise<SettingsResult>;
@@ -53,6 +66,19 @@ export interface ElectronAPI {
   bulkRerunJobExecutions: (ids: string[]) => Promise<BulkRerunJobsResult>;
   getJobExecutionsWithFilters: (filters: JobFilters) => Promise<FilteredJobsResult>;
   getJobExecutionsCount: (filters: JobFilters) => Promise<JobCountResult>;
+  
+  // Job Status and Statistics
+  getJobStatus: () => Promise<JobStatus>;
+  getJobStatistics: () => Promise<JobStatistics>;
+  getJobLogs: (type: string) => Promise<LogEntry[]>;
+  
+  // Generated Images
+  getAllGeneratedImages: () => Promise<GeneratedImage[]>;
+  deleteGeneratedImage: (imageId: string) => Promise<void>;
+  bulkDeleteImages: (imageIds: string[]) => Promise<void>;
+  
+  // Configuration
+  getConfiguration: () => Promise<JobConfiguration>;
   
   // Settings (existing)
   getSettings: () => Promise<SettingsResult>;

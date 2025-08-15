@@ -54,6 +54,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getJobExecutionsWithFilters: (filters) => ipcRenderer.invoke('get-job-executions-with-filters', filters),
   getJobExecutionsCount: (filters) => ipcRenderer.invoke('get-job-executions-count', filters),
   
+  // Configuration
+  getConfiguration: () => ipcRenderer.invoke('settings:get-configuration'),
+  
   // Generated Image Management
   saveGeneratedImage: (image) => ipcRenderer.invoke('generated-image:save', image),
   getGeneratedImage: (id) => ipcRenderer.invoke('generated-image:get', id),
@@ -66,6 +69,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   manualApproveImage: (imageId) => ipcRenderer.invoke('generated-image:manual-approve', { imageId }),
   getImageMetadata: (executionId) => ipcRenderer.invoke('generated-image:metadata', executionId),
   getImageStatistics: () => ipcRenderer.invoke('generated-image:statistics'),
+  bulkDeleteImages: (imageIds) => ipcRenderer.invoke('generated-image:bulk-delete', { imageIds }),
   
   // Failed Images Review
   retryFailedImageWithOriginalSettings: (imageId) => ipcRenderer.invoke('failed-image:retry-original', { imageId }),
@@ -108,6 +112,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'get-job-results',
       'get-job-executions-with-filters',
       'get-job-executions-count',
+      'settings:get-configuration',
       // Generated Image Management
       'generated-image:save',
       'generated-image:get',
@@ -120,6 +125,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'generated-image:manual-approve',
       'generated-image:metadata',
       'generated-image:statistics',
+      'generated-image:bulk-delete',
       'failed-image:get-queue-status',
               'failed-image:retry-original',
         'failed-image:retry-modified',

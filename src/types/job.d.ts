@@ -38,6 +38,43 @@ export interface JobConfiguration {
   };
 }
 
+export interface JobStatus {
+  state: 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'stopped';
+  currentJob?: JobExecution;
+  progress: number;
+  currentStep: number;
+  totalSteps: number;
+  startTime?: Date;
+  estimatedTimeRemaining?: number;
+}
+
+export interface JobStatistics {
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+  averageExecutionTime: number;
+  totalImagesGenerated: number;
+  successRate: number;
+}
+
+export interface LogEntry {
+  timestamp: Date;
+  level: 'info' | 'warn' | 'error' | 'debug';
+  message: string;
+  context?: string;
+}
+
+export interface GeneratedImage {
+  id: string;
+  jobId: string;
+  originalPath: string;
+  finalPath: string;
+  qcStatus: 'pending' | 'approved' | 'rejected' | 'processing' | 'failed';
+  metadata?: any;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface JobResult {
   success: boolean;
   jobId?: string;

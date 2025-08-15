@@ -167,19 +167,19 @@ class BackendAdapter {
         return await this.saveGeneratedImage(image);
       });
 
-      _ipc.handle('generated-image:get', async (event, id) => {
+      _ipc.handle('generated-image:get', async (event, { id }) => {
         return await this.getGeneratedImage(id);
       });
 
-      _ipc.handle('generated-image:get-by-execution', async (event, executionId) => {
+      _ipc.handle('generated-image:get-by-execution', async (event, { executionId }) => {
         return await this.getGeneratedImagesByExecution(executionId);
       });
 
       _ipc.handle('generated-image:get-all', async (event, options = {}) => {
-        return await this.getAllGeneratedImages(options.limit || 100);
+        return await this.getAllGeneratedImages(options);
       });
 
-      _ipc.handle('generated-image:update', async (event, id, image) => {
+      _ipc.handle('generated-image:update', async (event, { id, image }) => {
         return await this.updateGeneratedImage(id, image);
       });
 
@@ -187,7 +187,11 @@ class BackendAdapter {
         return await this.deleteGeneratedImage(imageId);
       });
 
-      _ipc.handle('generated-image:get-by-qc-status', async (event, qcStatus) => {
+      _ipc.handle('generated-image:bulk-delete', async (event, { imageIds }) => {
+        return await this.bulkDeleteGeneratedImages(imageIds);
+      });
+
+      _ipc.handle('generated-image:get-by-qc-status', async (event, { qcStatus }) => {
         return await this.getImagesByQCStatus(qcStatus);
       });
 
@@ -861,6 +865,17 @@ class BackendAdapter {
       return result;
     } catch (error) {
       console.error('Error deleting generated image:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async bulkDeleteGeneratedImages(imageIds) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.generatedImage.bulkDeleteGeneratedImages(imageIds);
+      return result;
+    } catch (error) {
+      console.error('Error bulk deleting generated images:', error);
       return { success: false, error: error.message };
     }
   }

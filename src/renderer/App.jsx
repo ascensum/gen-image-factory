@@ -53,6 +53,10 @@ function App() {
           onOpenFailedImagesReview={() => setCurrentView('failed-review')}
           onOpenSettings={() => setCurrentView('settings')}
           onOpenJobs={() => setCurrentView('job-management')}
+          onOpenSingleJobView={(jobId) => {
+            setSelectedJobId(jobId);
+            setCurrentView('single-job');
+          }}
         />
       ) : currentView === 'failed-review' ? (
         <FailedImagesReviewPanel onBack={() => setCurrentView('dashboard')} />

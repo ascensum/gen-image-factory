@@ -358,6 +358,28 @@ class GeneratedImage {
     });
   }
 
+  async bulkDeleteGeneratedImages(imageIds) {
+    return new Promise((resolve, reject) => {
+      if (!Array.isArray(imageIds) || imageIds.length === 0) {
+        resolve({ success: false, error: 'No image IDs provided' });
+        return;
+      }
+
+      const placeholders = imageIds.map(() => '?').join(',');
+      const sql = `DELETE FROM generated_images WHERE id IN (${placeholders})`;
+      
+      this.db.run(sql, imageIds, function(err) {
+        if (err) {
+          console.error('Error bulk deleting generated images:', err);
+          reject(err);
+        } else {
+          console.log(`Bulk deleted ${this.changes} generated images`);
+          resolve({ success: true, deletedRows: this.changes });
+        }
+      });
+    });
+  }
+
   async cleanupOldImages(daysToKeep = 30) {
     return new Promise((resolve, reject) => {
       const sql = `

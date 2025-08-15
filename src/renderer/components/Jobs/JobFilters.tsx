@@ -1,270 +1,327 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { JobFilters as JobFiltersType } from '../../types/job';
-
-interface JobConfiguration {
-  id: string;
-  name: string;
-}
+import { JobFilters as JobFiltersType } from '../../../types/job';
 
 interface JobFiltersProps {
   filters: JobFiltersType;
   onFiltersChange: (filters: JobFiltersType) => void;
-  onClearFilters: () => void;
-  availableConfigurations: JobConfiguration[];
-  isLoading: boolean;
+  onSearch: (query: string) => void;
+  searchQuery: string;
+  totalJobs: number;
+  filteredJobs: number;
 }
 
 const JobFilters: React.FC<JobFiltersProps> = ({
   filters,
   onFiltersChange,
-  onClearFilters,
-  availableConfigurations,
-  isLoading
+  onSearch,
+  searchQuery,
+  totalJobs,
+  filteredJobs
 }) => {
-  const [localFilters, setLocalFilters] = useState<JobFiltersType>(filters);
-  const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  // Status options
-  const statusOptions = [
-    { value: 'all', label: 'All Statuses', color: 'gray' },
-    { value: 'completed', label: 'Completed', color: 'green' },
-    { value: 'failed', label: 'Failed', color: 'red' },
-    { value: 'running', label: 'Running', color: 'blue' },
-    { value: 'stopped', label: 'Stopped', color: 'yellow' },
-    { value: 'pending', label: 'Pending', color: 'orange' }
-  ];
-
-  // Quick date ranges
-  const quickDateRanges = [
-    { label: 'Today', value: 'today' },
-    { label: 'Last 7 days', value: '7days' },
-    { label: 'Last 30 days', value: '30days' },
-    { label: 'Last 90 days', value: '90days' }
-  ];
-
-  // Handle filter change
   const handleFilterChange = useCallback((key: keyof JobFiltersType, value: any) => {
-    const newFilters = { ...localFilters, [key]: value };
-    setLocalFilters(newFilters);
-    
-    // Apply filters immediately for most fields
-    if (key !== 'search') {
-      onFiltersChange(newFilters);
-    }
-  }, [localFilters, onFiltersChange]);
+    onFiltersChange({
+      ...filters,
+      [key]: value
+    });
+  }, [filters, onFiltersChange]);
 
-  // Handle search with debouncing
-  const handleSearchChange = useCallback((value: string) => {
-    setLocalFilters(prev => ({ ...prev, search: value }));
-    
-    // Clear existing timeout
-    if (searchDebounce) {
-      clearTimeout(searchDebounce);
-    }
-    
-    // Set new timeout for search
-    const timeout = setTimeout(() => {
-      onFiltersChange({ ...localFilters, search: value });
-    }, 300);
-    
-    setSearchDebounce(timeout);
-  }, [localFilters, onFiltersChange, searchDebounce]);
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onSearch(e.target.value);
+  }, [onSearch]);
 
-  // Handle quick date range selection
-  const handleQuickDateRange = useCallback((range: string) => {
-    const now = new Date();
-    let dateFrom: Date | undefined;
-    
-    switch (range) {
-      case 'today':
-        dateFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        break;
-      case '7days':
-        dateFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case '30days':
-        dateFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        break;
-      case '90days':
-        dateFrom = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-        break;
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Trigger search on Enter
+      onSearch(searchQuery);
     }
-    
-    const newFilters = { 
-      ...localFilters, 
-      dateFrom,
-      dateTo: now
-    };
-    setLocalFilters(newFilters);
-    onFiltersChange(newFilters);
-  }, [localFilters, onFiltersChange]);
+  }, [searchQuery, onSearch]);
 
-  // Handle clear filters
   const handleClearFilters = useCallback(() => {
-    const clearedFilters = {
+    onFiltersChange({
       status: 'all',
-      limit: 25,
-      offset: 0
-    };
-    setLocalFilters(clearedFilters);
-    onClearFilters();
-  }, [onClearFilters]);
+      dateRange: 'all',
+      label: '',
+      minImages: 0,
+      maxImages: null
+    });
+    onSearch('');
+  }, [onFiltersChange, onSearch]);
 
-  // Check if any filters are active
+  const handleToggleExpanded = useCallback(() => {
+    setIsExpanded(!isExpanded);
+  }, [isExpanded]);
+
+  const handleToggleExpandedKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleToggleExpanded();
+    }
+  }, [handleToggleExpanded]);
+
   const hasActiveFilters = useMemo(() => {
-    return (
-      filters.status !== 'all' ||
-      filters.configurationId ||
-      filters.dateFrom ||
-      filters.dateTo ||
-      filters.search
-    );
+    return filters.status !== 'all' ||
+           filters.dateRange !== 'all' ||
+           filters.label !== '' ||
+           filters.minImages > 0 ||
+           filters.maxImages !== null;
   }, [filters]);
 
-  // Format date for input
-  const formatDateForInput = (date: Date | undefined): string => {
-    if (!date) return '';
-    return date.toISOString().split('T')[0];
-  };
+  const getDateRangeOptions = () => [
+    { value: 'all', label: 'All Time' },
+    { value: 'today', label: 'Today' },
+    { value: 'yesterday', label: 'Yesterday' },
+    { value: 'week', label: 'This Week' },
+    { value: 'month', label: 'This Month' },
+    { value: 'quarter', label: 'This Quarter' },
+    { value: 'year', label: 'This Year' }
+  ];
 
-  // Parse date from input
-  const parseDateFromInput = (dateString: string): Date | undefined => {
-    if (!dateString) return undefined;
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? undefined : date;
-  };
+  const getStatusOptions = () => [
+    { value: 'all', label: 'All Statuses' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'failed', label: 'Failed' },
+    { value: 'processing', label: 'Processing' },
+    { value: 'pending', label: 'Pending' }
+  ];
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
+    <div className="bg-white rounded-lg shadow p-6 mb-6">
+      {/* Header Section */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium text-gray-900">Filters</h3>
-        {hasActiveFilters && (
-          <button
-            onClick={handleClearFilters}
-            className="text-sm text-gray-500 hover:text-gray-700"
+        <div>
+          <h3 className="text-lg font-medium text-gray-900" id="filters-title">
+            Filters & Search
+          </h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Showing {filteredJobs} of {totalJobs} jobs
+          </p>
+        </div>
+        
+        {/* Expand/Collapse Button */}
+        <button
+          onClick={handleToggleExpanded}
+          onKeyDown={handleToggleExpandedKeyDown}
+          className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+          aria-expanded={isExpanded}
+          aria-controls="filters-content"
+          aria-label={isExpanded ? 'Collapse filters' : 'Expand filters'}
+          tabIndex={0}
+          role="button"
+        >
+          <span>{isExpanded ? 'Hide' : 'Show'} Filters</span>
+          <svg
+            className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
           >
-            Clear All
-          </button>
-        )}
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Status Filter */}
-        <div>
-          <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
-            Status
-          </label>
-          <select
-            id="status-filter"
-            value={localFilters.status || 'all'}
-            onChange={(e) => handleFilterChange('status', e.target.value)}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            disabled={isLoading}
-          >
-            {statusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+      {/* Search Bar - Always Visible */}
+      <div className="mb-4">
+        <label htmlFor="search-input" className="block text-sm font-medium text-gray-700 mb-2">
+          Search Jobs
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            id="search-input"
+            type="text"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            onKeyDown={handleSearchKeyDown}
+            placeholder="Search by label, status, or job ID..."
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            aria-describedby="search-help"
+          />
         </div>
+        <p id="search-help" className="mt-1 text-sm text-gray-500">
+          Press Enter to search. Use quotes for exact phrases.
+        </p>
+      </div>
 
-        {/* Configuration Filter */}
-        <div>
-          <label htmlFor="config-filter" className="block text-sm font-medium text-gray-700 mb-2">
-            Configuration
-          </label>
-          <select
-            id="config-filter"
-            value={localFilters.configurationId || ''}
-            onChange={(e) => handleFilterChange('configurationId', e.target.value || undefined)}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            disabled={isLoading}
-          >
-            <option value="">All Configurations</option>
-            {availableConfigurations.map((config) => (
-              <option key={config.id} value={config.id}>
-                {config.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Expandable Filters Section */}
+      <div
+        id="filters-content"
+        className={`transition-all duration-200 ease-in-out overflow-hidden ${
+          isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+        }`}
+        aria-hidden={!isExpanded}
+      >
+        <div className="space-y-4 pt-4 border-t border-gray-200">
+          {/* Status Filter */}
+          <div>
+            <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
+              Status
+            </label>
+            <select
+              id="status-filter"
+              value={filters.status}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              aria-describedby="status-help"
+            >
+              {getStatusOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p id="status-help" className="mt-1 text-sm text-gray-500">
+              Filter jobs by their current status
+            </p>
+          </div>
 
-        {/* Date Range Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Date Range
-          </label>
-          <div className="space-y-2">
+          {/* Date Range Filter */}
+          <div>
+            <label htmlFor="date-range-filter" className="block text-sm font-medium text-gray-700 mb-2">
+              Date Range
+            </label>
+            <select
+              id="date-range-filter"
+              value={filters.dateRange}
+              onChange={(e) => handleFilterChange('dateRange', e.target.value)}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              aria-describedby="date-range-help"
+            >
+              {getDateRangeOptions().map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p id="date-range-help" className="mt-1 text-sm text-gray-500">
+              Filter jobs by when they were created
+            </p>
+          </div>
+
+          {/* Label Filter */}
+          <div>
+            <label htmlFor="label-filter" className="block text-sm font-medium text-gray-700 mb-2">
+              Label Contains
+            </label>
             <input
-              type="date"
-              value={formatDateForInput(localFilters.dateFrom)}
-              onChange={(e) => handleFilterChange('dateFrom', parseDateFromInput(e.target.value))}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              disabled={isLoading}
+              id="label-filter"
+              type="text"
+              value={filters.label}
+              onChange={(e) => handleFilterChange('label', e.target.value)}
+              placeholder="Enter label text to filter..."
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              aria-describedby="label-help"
             />
-            <input
-              type="date"
-              value={formatDateForInput(localFilters.dateTo)}
-              onChange={(e) => handleFilterChange('dateTo', parseDateFromInput(e.target.value))}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              disabled={isLoading}
-            />
+            <p id="label-help" className="mt-1 text-sm text-gray-500">
+              Filter jobs by label text (case-insensitive)
+            </p>
+          </div>
+
+          {/* Image Count Range */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="min-images-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                Min Images
+              </label>
+              <input
+                id="min-images-filter"
+                type="number"
+                min="0"
+                value={filters.minImages}
+                onChange={(e) => handleFilterChange('minImages', parseInt(e.target.value) || 0)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                aria-describedby="min-images-help"
+              />
+              <p id="min-images-help" className="mt-1 text-sm text-gray-500">
+                Minimum number of images
+              </p>
+            </div>
+            
+            <div>
+              <label htmlFor="max-images-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                Max Images
+              </label>
+              <input
+                id="max-images-filter"
+                type="number"
+                min="0"
+                value={filters.maxImages || ''}
+                onChange={(e) => handleFilterChange('maxImages', e.target.value ? parseInt(e.target.value) : null)}
+                placeholder="No limit"
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                aria-describedby="max-images-help"
+              />
+              <p id="max-images-help" className="mt-1 text-sm text-gray-500">
+                Maximum number of images (leave empty for no limit)
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Search Filter */}
-        <div>
-          <label htmlFor="search-filter" className="block text-sm font-medium text-gray-700 mb-2">
-            Search
-          </label>
-          <input
-            type="text"
-            id="search-filter"
-            value={localFilters.search || ''}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search jobs..."
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            disabled={isLoading}
-          />
+        {/* Filter Actions */}
+        <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200">
+          <div className="flex items-center space-x-2">
+            {hasActiveFilters && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {Object.values(filters).filter(v => v !== 'all' && v !== '' && v !== 0 && v !== null).length} active filters
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleClearFilters}
+              disabled={!hasActiveFilters && !searchQuery}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                !hasActiveFilters && !searchQuery
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+              aria-label="Clear all filters and search"
+              aria-disabled={!hasActiveFilters && !searchQuery}
+            >
+              Clear All
+            </button>
+            
+            <button
+              onClick={() => onSearch(searchQuery)}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              aria-label="Apply current filters and search"
+            >
+              Apply Filters
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Quick Date Range Buttons */}
-      <div className="mt-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Quick Ranges
-        </label>
+      {/* Quick Filter Pills */}
+      <div className="mt-4 pt-4 border-t border-gray-200">
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Quick Filters</h4>
         <div className="flex flex-wrap gap-2">
-          {quickDateRanges.map((range) => (
+          {[
+            { label: 'Recent Jobs', action: () => handleFilterChange('dateRange', 'week') },
+            { label: 'Failed Jobs', action: () => handleFilterChange('status', 'failed') },
+            { label: 'Large Jobs', action: () => handleFilterChange('minImages', 10) },
+            { label: 'Small Jobs', action: () => handleFilterChange('maxImages', 5) }
+          ].map((quickFilter, index) => (
             <button
-              key={range.value}
-              onClick={() => handleQuickDateRange(range.value)}
-              className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              disabled={isLoading}
+              key={index}
+              onClick={quickFilter.action}
+              className="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              aria-label={`Quick filter: ${quickFilter.label}`}
             >
-              {range.label}
+              {quickFilter.label}
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Page Size Filter */}
-      <div className="mt-4">
-        <label htmlFor="page-size-filter" className="block text-sm font-medium text-gray-700 mb-2">
-          Page Size
-        </label>
-        <select
-          id="page-size-filter"
-          value={localFilters.limit || 25}
-          onChange={(e) => handleFilterChange('limit', parseInt(e.target.value))}
-          className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-          disabled={isLoading}
-        >
-          <option value={25}>25</option>
-          <option value={50}>50</option>
-          <option value={100}>100</option>
-        </select>
       </div>
     </div>
   );

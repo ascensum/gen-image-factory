@@ -172,9 +172,10 @@ interface DashboardPanelProps {
   onOpenFailedImagesReview?: () => void;
   onOpenSettings?: () => void;
   onOpenJobs?: () => void;
+  onOpenSingleJobView?: (jobId: string) => void;
 }
 
-const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedImagesReview, onOpenSettings, onOpenJobs }) => {
+const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedImagesReview, onOpenSettings, onOpenJobs, onOpenSingleJobView }) => {
   const [jobStatus, setJobStatus] = useState<JobStatus>({
     state: 'idle',
     progress: 0,
@@ -371,7 +372,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       
       switch (action) {
         case 'view':
-          // Handle view action
+          onOpenSingleJobView && onOpenSingleJobView(jobId);
           break;
         case 'export':
           await window.electronAPI.exportJobToExcel(jobId);
