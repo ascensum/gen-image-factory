@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SettingsPanel } from './components/Settings';
 import { DashboardPanel, FailedImagesReviewPanel } from './components/Dashboard';
+import { JobManagementPanel, SingleJobView } from './components/Jobs';
 
 /**
  * Main App Component
@@ -14,7 +15,8 @@ import { DashboardPanel, FailedImagesReviewPanel } from './components/Dashboard'
 function App() {
   const [ipcStatus, setIpcStatus] = useState('Testing...');
   const [appVersion, setAppVersion] = useState('Loading...');
-  const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'dashboard', 'failed-review'
+  const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'dashboard', 'failed-review', 'job-management', 'single-job'
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   useEffect(() => {
     // Test IPC communication
@@ -50,10 +52,29 @@ function App() {
           onBack={() => setCurrentView('main')}
           onOpenFailedImagesReview={() => setCurrentView('failed-review')}
           onOpenSettings={() => setCurrentView('settings')}
-          onOpenJobs={() => {/* stub for future jobs page */}}
+          onOpenJobs={() => setCurrentView('job-management')}
         />
       ) : currentView === 'failed-review' ? (
         <FailedImagesReviewPanel onBack={() => setCurrentView('dashboard')} />
+      ) : currentView === 'job-management' ? (
+        <JobManagementPanel
+          onBack={() => setCurrentView('dashboard')}
+          onOpenSingleJobView={(jobId) => {
+            setSelectedJobId(jobId);
+            setCurrentView('single-job');
+          }}
+          onOpenSettings={() => setCurrentView('settings')}
+        />
+      ) : currentView === 'single-job' ? (
+        <SingleJobView
+          jobId={selectedJobId || ''}
+          onBack={() => setCurrentView('job-management')}
+          onJobAction={async (action, jobId) => {
+            // Handle job actions - for now just log them
+            console.log(`Job action: ${action} for job ${jobId}`);
+            // In a real implementation, you'd call the appropriate IPC methods
+          }}
+        />
       ) : (
         <div className="flex items-center justify-center min-h-screen">
           <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
@@ -85,6 +106,9 @@ function App() {
                 <h3 className="font-semibold text-yellow-800 mb-1">Development Status</h3>
                 <p className="text-yellow-600">
                   ✅ Story 1.1 Foundation Setup Complete
+                </p>
+                <p className="text-yellow-600">
+                  🚧 Story 1.8 Job Management - Core Infrastructure Complete
                 </p>
               </div>
 
