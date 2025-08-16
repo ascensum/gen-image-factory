@@ -1196,6 +1196,24 @@
   font-size: 1rem;
 }
 
+/* Error State in Settings Modal */
+.error-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--muted-foreground);
+}
+
+.error-state p {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.error-state p:last-child {
+  margin-bottom: 0;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+
 /* Responsive Design */
 @media (max-width: 640px) {
   .settings-modal {

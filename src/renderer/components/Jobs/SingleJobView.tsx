@@ -189,6 +189,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   // Settings editing handlers
   const handleSettingsEdit = useCallback(async () => {
+    console.log('Edit button clicked, job:', job);
+    console.log('Job configurationId:', job?.configurationId);
+    
     setIsEditingSettings(true);
     setSettingsSaveError(null);
     setIsLoadingSettings(true);
@@ -196,26 +199,29 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     try {
       // Load job-specific settings from backend
       if (job?.configurationId) {
+        console.log('Attempting to load configuration for ID:', job.configurationId);
         const result = await window.electronAPI.getJobConfigurationById(job.configurationId);
+        console.log('Configuration load result:', result);
+        
         if (result.success && result.configuration?.settings) {
           setEditedSettings(result.configuration.settings);
           console.log('Loaded job configuration:', result.configuration.settings);
         } else {
-          // If job configuration not found, this is an error state
+          // If job configuration not found, show error but keep modal open
+          console.warn('Job configuration not found, showing error in modal');
           setSettingsSaveError('Job configuration not found. This job may be corrupted.');
-          setIsEditingSettings(false);
-          return;
+          // Don't close modal - let user see the error
         }
       } else {
         // No configuration ID - this job was not properly created
+        console.warn('Job has no configurationId:', job);
         setSettingsSaveError('Job has no configuration. This job may be corrupted.');
-        setIsEditingSettings(false);
-        return;
+        // Don't close modal - let user see the error
       }
     } catch (error) {
       console.error('Error loading job settings:', error);
       setSettingsSaveError('Failed to load job settings');
-      setIsEditingSettings(false);
+      // Don't close modal - let user see the error
     } finally {
       setIsLoadingSettings(false);
     }
@@ -1061,7 +1067,14 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   </div>
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <div className="settings-content">
+                <div className="error-state">
+                  <p>Unable to load job settings. This job may be corrupted or missing configuration.</p>
+                  <p>Please check the error message below for more details.</p>
+                </div>
+              </div>
+            )}
 
             {settingsSaveError && (
               <div className="settings-error">
