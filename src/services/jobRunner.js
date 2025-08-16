@@ -459,7 +459,7 @@ class JobRunner extends EventEmitter {
             currentStep: "completed"
           };
           
-          const updateResult = await this.backendAdapter.saveJobExecution(updatedJobExecution);
+          const updateResult = await this.backendAdapter.updateJobExecution(this.databaseExecutionId, updatedJobExecution);
           console.log("✅ Job execution updated in database:", updateResult);
         } catch (error) {
           console.error("❌ Failed to update job execution in database:", error);
