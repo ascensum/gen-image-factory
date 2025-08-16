@@ -23,10 +23,15 @@ class BackendAdapter {
     this.jobExecution = new JobExecution();
     this.generatedImage = new GeneratedImage();
     
-    // If an existing jobRunner is passed, use it; otherwise create a new one
-    if (options.existingJobRunner) {
+    // Check if there's already a global backendAdapter and reuse its JobRunner
+    if (global.backendAdapter && global.backendAdapter.jobRunner) {
+      console.log('🔄 Reusing existing JobRunner from global backendAdapter');
+      this.jobRunner = global.backendAdapter.jobRunner;
+    } else if (options.existingJobRunner) {
+      console.log('🔄 Using passed existing JobRunner');
       this.jobRunner = options.existingJobRunner;
     } else {
+      console.log('🆕 Creating new JobRunner instance');
       this.jobRunner = new JobRunner();
     }
     
