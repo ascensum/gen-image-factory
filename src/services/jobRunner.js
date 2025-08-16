@@ -206,19 +206,23 @@ class JobRunner extends EventEmitter {
    */
   setEnvironmentFromConfig(config) {
     console.log('🔧 Setting environment variables from config:', config.apiKeys);
+    console.log('🔧 Before setting - Environment variables:');
+    console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
+    console.log('  - PIAPI_API_KEY:', process.env.PIAPI_API_KEY ? 'SET' : 'NOT SET');
+    console.log('  - REMOVE_BG_API_KEY:', process.env.REMOVE_BG_API_KEY ? 'SET' : 'NOT SET');
     
     // Set API keys
     if (config.apiKeys.openai) {
       process.env.OPENAI_API_KEY = config.apiKeys.openai;
-      console.log('✅ OpenAI API key set');
+      console.log('✅ OpenAI API key set to:', config.apiKeys.openai.substring(0, 10) + '...');
     }
     if (config.apiKeys.piapi) {
       process.env.PIAPI_API_KEY = config.apiKeys.piapi;  // Fixed: was PIAPI_KEY
-      console.log('✅ PiAPI key set');
+      console.log('✅ PiAPI key set to:', config.apiKeys.piapi.substring(0, 10) + '...');
     }
     if (config.apiKeys.removeBg) {
       process.env.REMOVE_BG_API_KEY = config.apiKeys.removeBg;
-      console.log('✅ RemoveBG API key set');
+      console.log('✅ RemoveBG API key set to:', config.apiKeys.removeBg.substring(0, 10) + '...');
     }
 
     // Set other environment variables as needed
@@ -227,6 +231,10 @@ class JobRunner extends EventEmitter {
       console.log('✅ Debug mode enabled');
     }
     
+    console.log('🔧 After setting - Environment variables:');
+    console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
+    console.log('  - PIAPI_API_KEY:', process.env.PIAPI_API_KEY ? 'SET' : 'NOT SET');
+    console.log('  - REMOVE_BG_API_KEY:', process.env.REMOVE_BG_API_KEY ? 'SET' : 'NOT SET');
     console.log('🔧 Environment variables set successfully');
   }
 
@@ -360,6 +368,13 @@ class JobRunner extends EventEmitter {
     try {
       console.log('🎨 Calling producePictureModule with parameters:', parameters);
       
+      // Debug: Check what API keys are available
+      console.log('🔑 Available API keys in config:', config.apiKeys);
+      console.log('🔑 Environment variables:');
+      console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
+      console.log('  - PIAPI_API_KEY:', process.env.PIAPI_API_KEY ? 'SET' : 'NOT SET');
+      console.log('  - REMOVE_BG_API_KEY:', process.env.REMOVE_BG_API_KEY ? 'SET' : 'NOT SET');
+      
       // Prepare the configuration for producePictureModule
       const moduleConfig = {
         removeBg: config.processing?.removeBg || false,
@@ -369,7 +384,7 @@ class JobRunner extends EventEmitter {
         aspectRatios: parameters.aspectRatios || ['1:1'],
         pollingTimeout: config.processing?.pollingTimeout || 30000,
         processMode: config.parameters?.processMode || 'single',
-        removeBgSize: config.processing?.removeBgSize || 'auto',
+        removeBgSize: config.processing?.removeBgSize || 'preview',
         runQualityCheck: config.ai?.runQualityCheck || false,
         runMetadataGen: config.ai?.runMetadataGen || false,
         // Image enhancement settings
@@ -390,8 +405,18 @@ class JobRunner extends EventEmitter {
       // Note: This is a simplified call - the real module expects more complex setup
       // For now, we'll create a basic implementation
       const imgNameBase = `job_${Date.now()}`;
+      
+      // Create settings object with API keys and prompt
+      const settings = {
+        prompt: parameters.prompt,
+        promptContext: parameters.promptContext,
+        apiKeys: config.apiKeys  // Pass API keys in settings
+      };
+      
+      console.log('🔧 Settings prepared for producePictureModule:', settings);
+      
       const result = await producePictureModule.producePictureModule(
-        config, // settings
+        settings, // Pass settings with API keys as first parameter
         imgNameBase,
         null, // customMetadataPrompt
         moduleConfig
