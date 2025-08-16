@@ -161,8 +161,12 @@ async function producePictureModule(
     logDebug(`Polling for task ${taskId} (timeout: ${maxPollingTime / 60000} minutes)...`);
 
     let lastStatus = null; // Track the last reported status
+    let consecutiveErrors = 0; // Track consecutive errors
+    const maxConsecutiveErrors = 3; // Maximum consecutive errors before giving up
+    const maxTotalRetries = 10; // Maximum total retry attempts
+    let totalRetries = 0;
 
-    while (Date.now() - startTime < maxPollingTime) {
+    while (Date.now() - startTime < maxPollingTime && totalRetries < maxTotalRetries) {
       try {
         const statusResponse = await axios.get(
           `https://api.piapi.ai/api/v1/task/${taskId}`, // Corrected polling endpoint based on common PiAPI pattern
@@ -170,10 +174,14 @@ async function producePictureModule(
             headers: {
               'X-API-Key': process.env.PIAPI_API_KEY,
             },
+            timeout: 10000, // 10 second timeout for individual API calls
           }
         );
 
         const taskData = statusResponse.data.data; // Access data.data as per response example
+        
+        // Reset error counter on successful request
+        consecutiveErrors = 0;
         
         if (taskData.status !== lastStatus) {
           logDebug(`Task ${taskId} status: ${taskData.status}`);
@@ -200,8 +208,27 @@ async function producePictureModule(
           logDebug(`Task ${taskId} is staged. Waiting...`); // Use global logDebug
         }
       } catch (pollError) {
-        console.error(`Error while polling for task ${taskId}: ${pollError.message}`);
-        // Continue polling, but log the error
+        consecutiveErrors++;
+        totalRetries++;
+        console.error(`Error while polling for task ${taskId} (total retries: ${totalRetries}/${maxTotalRetries}, consecutive errors: ${consecutiveErrors}/${maxConsecutiveErrors}): ${pollError.message}`);
+        
+        // If we've hit max total retries, give up
+        if (totalRetries >= maxTotalRetries) {
+          console.error(`Task ${taskId}: Maximum total retries (${maxTotalRetries}) reached, giving up`);
+          throw new Error(`PiAPI task ${taskId} failed after ${maxTotalRetries} total retry attempts: ${pollError.message}`);
+        }
+        
+        // If we've had too many consecutive errors, give up
+        if (consecutiveErrors >= maxConsecutiveErrors) {
+          console.error(`Task ${taskId}: Too many consecutive errors (${consecutiveErrors}), giving up`);
+          throw new Error(`PiAPI task ${taskId} failed after ${consecutiveErrors} consecutive errors: ${pollError.message}`);
+        }
+        
+        // Wait a bit longer on errors to avoid overwhelming the API (exponential backoff)
+        const backoffDelay = Math.min(pollingInterval * Math.pow(2, consecutiveErrors - 1), 30000); // Max 30 seconds
+        console.log(`Waiting ${backoffDelay}ms before retry ${totalRetries + 1}...`);
+        await pause(false, backoffDelay / 1000);
+        continue;
       }
 
       await pause(false, pollingInterval / 1000); // Wait before next poll (pause expects seconds)
