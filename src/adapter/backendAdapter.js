@@ -25,8 +25,12 @@ class BackendAdapter {
     this.jobRunner = new JobRunner();
     this.errorTranslation = new ErrorTranslationService();
     this.ipc = options.ipc || (typeof ipcMain !== 'undefined' ? ipcMain : undefined);
-    this.setupIpcHandlers();
-    this.setupJobEventListeners();
+    
+    // Only setup IPC handlers if not explicitly skipped
+    if (!options.skipIpcSetup) {
+      this.setupIpcHandlers();
+      this.setupJobEventListeners();
+    }
   }
 
   async ensureInitialized() {
