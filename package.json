@@ -11,6 +11,7 @@
     "electron": "electron .",
     "electron:dev": "NODE_ENV=development electron .",
     "electron:build": "npm run build && electron .",
+    "migrate": "node scripts/run-migrations.js",
     "lint": "eslint . --ext js,jsx,ts,tsx",
     "lint:fix": "eslint . --ext js,jsx,ts,tsx --fix",
     "format": "prettier --write .",

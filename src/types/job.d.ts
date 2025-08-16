@@ -125,6 +125,10 @@ export interface JobFilters {
   search?: string;
   limit?: number;
   offset?: number;
+  dateRange?: string;
+  label?: string;
+  minImages?: number;
+  maxImages?: number;
 }
 
 export interface JobHistoryResult {

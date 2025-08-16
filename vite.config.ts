@@ -11,6 +11,9 @@ export default defineConfig({
     exclude: ['tests/e2e/**/*', '**/node_modules/**', '**/dist/**', '**/cypress/**', '**/.{idea,git,cache,output,temp}/**']
   },
   
+  // Root directory for development
+  root: '.',
+  
   // Base directory for serving files
   base: './',
   

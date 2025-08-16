@@ -135,7 +135,14 @@ class BackendAdapter {
       });
 
       _ipc.handle('job-execution:get', async (event, id) => {
-        return await this.getJobExecution(id);
+        try {
+          await this.ensureInitialized();
+          const result = await this.jobExecution.getJobExecution(id);
+          return result;
+        } catch (error) {
+          console.error('Error getting job execution:', error);
+          return { success: false, error: error.message };
+        }
       });
 
       _ipc.handle('job-execution:get-all', async (event, options = {}) => {
@@ -171,12 +178,19 @@ class BackendAdapter {
         return await this.getGeneratedImage(id);
       });
 
-      _ipc.handle('generated-image:get-by-execution', async (event, { executionId }) => {
-        return await this.getGeneratedImagesByExecution(executionId);
+      _ipc.handle('generated-image:get-by-execution', async (event, executionId) => {
+        try {
+          await this.ensureInitialized();
+          const result = await this.generatedImage.getGeneratedImagesByExecution(executionId);
+          return result;
+        } catch (error) {
+          console.error('Error getting generated images by execution:', error);
+          return { success: false, error: error.message };
+        }
       });
 
       _ipc.handle('generated-image:get-all', async (event, options = {}) => {
-        return await this.getAllGeneratedImages(options);
+        return await this.getAllGeneratedImages(options.limit || 100);
       });
 
       _ipc.handle('generated-image:update', async (event, { id, image }) => {
@@ -264,12 +278,48 @@ class BackendAdapter {
         return await this.bulkRerunJobExecutions(ids);
       });
 
-      _ipc.handle('get-job-executions-with-filters', async (event, filters) => {
-        return await this.getJobExecutionsWithFilters(filters);
+      _ipc.handle('get-job-executions-with-filters', async (event, filters, page = 1, pageSize = 25) => {
+        try {
+          await this.ensureInitialized();
+          const result = await this.jobExecution.getJobExecutionsWithFilters(filters, page, pageSize);
+          return result;
+        } catch (error) {
+          console.error('Error getting job executions with filters:', error);
+          return { success: false, error: error.message };
+        }
       });
 
       _ipc.handle('get-job-executions-count', async (event, filters) => {
-        return await this.getJobExecutionsCount(filters);
+        try {
+          await this.ensureInitialized();
+          const result = await this.jobExecution.getJobExecutionsCount(filters);
+          return result;
+        } catch (error) {
+          console.error('Error getting job executions count:', error);
+          return { success: false, error: error.message };
+        }
+      });
+
+      _ipc.handle('job-execution:rerun', async (event, id) => {
+        try {
+          await this.ensureInitialized();
+          const result = await this.jobExecution.rerunJobExecution(id);
+          return result;
+        } catch (error) {
+          console.error('Error rerunning job execution:', error);
+          return { success: false, error: error.message };
+        }
+      });
+
+      _ipc.handle('job-execution:export', async (event, id) => {
+        try {
+          await this.ensureInitialized();
+          const result = await this.jobExecution.exportJobExecution(id);
+          return result;
+        } catch (error) {
+          console.error('Error exporting job execution:', error);
+          return { success: false, error: error.message };
+        }
       });
     }
   }

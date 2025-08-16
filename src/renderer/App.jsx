@@ -4,19 +4,13 @@ import { DashboardPanel, FailedImagesReviewPanel } from './components/Dashboard'
 import { JobManagementPanel, SingleJobView } from './components/Jobs';
 
 /**
- * Main App Component
- * 
- * Security Notes:
- * - IPC communication is secured through contextBridge in preload.js
- * - Only whitelisted channels are allowed for IPC communication
- * - CSP is configured to allow necessary development features
- * - No direct Node.js API access from renderer process
+ * Main App Component - Full Navigation
  */
 function App() {
   const [ipcStatus, setIpcStatus] = useState('Testing...');
   const [appVersion, setAppVersion] = useState('Loading...');
   const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'dashboard', 'failed-review', 'job-management', 'single-job'
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState(null);
 
   useEffect(() => {
     // Test IPC communication
@@ -25,6 +19,7 @@ function App() {
         const response = await window.electronAPI.ping();
         setIpcStatus(response === 'pong' ? '✅ IPC Working' : '❌ IPC Failed');
       } catch (error) {
+        console.error('IPC Error:', error);
         setIpcStatus('❌ IPC Error: ' + error.message);
       }
     };
@@ -35,6 +30,7 @@ function App() {
         const version = await window.electronAPI.getAppVersion();
         setAppVersion(version);
       } catch (error) {
+        console.error('Version Error:', error);
         setAppVersion('Error: ' + error.message);
       }
     };
@@ -62,21 +58,27 @@ function App() {
         <FailedImagesReviewPanel onBack={() => setCurrentView('dashboard')} />
       ) : currentView === 'job-management' ? (
         <JobManagementPanel
-          onBack={() => setCurrentView('dashboard')}
-          onOpenSingleJobView={(jobId) => {
-            setSelectedJobId(jobId);
+          onOpenSingleJob={(jobId) => {
+            setSelectedJobId(jobId.toString());
             setCurrentView('single-job');
           }}
-          onOpenSettings={() => setCurrentView('settings')}
+          onBack={() => setCurrentView('dashboard')}
         />
       ) : currentView === 'single-job' ? (
         <SingleJobView
           jobId={selectedJobId || ''}
           onBack={() => setCurrentView('job-management')}
-          onJobAction={async (action, jobId) => {
-            // Handle job actions - for now just log them
-            console.log(`Job action: ${action} for job ${jobId}`);
-            // In a real implementation, you'd call the appropriate IPC methods
+          onExport={(jobId) => {
+            console.log(`Export job ${jobId}`);
+            // TODO: Implement export functionality
+          }}
+          onRerun={(jobId) => {
+            console.log(`Rerun job ${jobId}`);
+            // TODO: Implement rerun functionality
+          }}
+          onDelete={(jobId) => {
+            console.log(`Delete job ${jobId}`);
+            // TODO: Implement delete functionality
           }}
         />
       ) : (

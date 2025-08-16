@@ -10,7 +10,7 @@ const fs = require('fs').promises;
 class DatabaseMigration {
   constructor() {
     this.dbPath = path.join(__dirname, '../../../data/settings.db');
-    this.migrationsPath = path.join(__dirname, 'migrations');
+    this.migrationsPath = __dirname;
     this.versionTable = 'schema_versions';
   }
 

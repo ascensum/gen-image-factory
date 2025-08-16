@@ -1,0 +1,451 @@
+/* Job Management Panel Styles following exact design specification */
+
+/* CSS Custom Properties from design theme */
+:root {
+  /* Base colors */
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.2 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0 0);
+  
+  /* Brand colors */
+  --primary: oklch(0.55 0.2 250);
+  --primary-foreground: oklch(0.98 0 0);
+  
+  /* UI colors */
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.3 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.95 0.03 250);
+  --accent-foreground: oklch(0.2 0 0);
+  
+  /* Status colors */
+  --status-completed: oklch(0.65 0.15 150);    /* Success green */
+  --status-in-progress: oklch(0.55 0.2 250);   /* Processing blue */
+  --status-failed: oklch(0.65 0.25 25);        /* Error red */
+  --status-pending: oklch(0.75 0.15 80);       /* Waiting orange */
+  
+  /* Status foreground colors */
+  --status-completed-foreground: oklch(1 0 0);
+  --status-in-progress-foreground: oklch(1 0 0);
+  --status-failed-foreground: oklch(1 0 0);
+  --status-pending-foreground: oklch(0.1 0 0);
+  
+  /* UI Elements */
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.55 0.2 250);
+  
+  /* Quick Actions */
+  --action-view: oklch(0.55 0.1 250);
+  --action-rerun: oklch(0.55 0.2 150);
+  --action-export: oklch(0.55 0.1 200);
+  --action-delete: oklch(0.65 0.25 25);
+  
+  /* Typography */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  /* Spacing & Layout */
+  --radius: 0.5rem;
+  --radius-sm: 0.3rem;
+  --radius-lg: 0.7rem;
+  --spacing: 0.25rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  
+  /* Custom properties */
+  --header-height: 4rem;
+  --stats-card-width: 12rem;
+  --row-height: 4.5rem;
+  --checkbox-size: 1.25rem;
+  --timestamp-size: 0.875rem;
+  --quick-action-size: 1.5rem;
+}
+
+/* Header Styles */
+.job-management-header {
+  border-bottom: 1px solid var(--border);
+  height: var(--header-height);
+  padding: 0 1.5rem;
+  background-color: var(--card);
+  flex-shrink: 0;
+}
+
+.header-content {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.back-button {
+  color: var(--muted-foreground);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.back-button:hover {
+  color: var(--foreground);
+}
+
+.header-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.refresh-button {
+  padding: 0.5rem;
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background-color: var(--accent);
+  border-color: var(--primary);
+}
+
+.refresh-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Stats Cards */
+.stats-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease-out;
+}
+
+.stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Table Styles */
+.job-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.job-table thead {
+  position: sticky;
+  top: 0;
+  background-color: var(--background);
+  z-index: 10;
+}
+
+.job-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+  background-color: var(--background);
+}
+
+.job-table th:hover {
+  background-color: var(--secondary);
+}
+
+.job-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Table Container Scrolling */
+.job-table-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.job-table-scroll {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+/* 
+  Scrollbar Visibility Calculation:
+  - Row height: 4.5rem (72px)
+  - Fixed elements: ~464px (header + stats + filters + pagination)
+  - 1080p screen: Scrollbar appears after ~9+ rows
+  - 1440p screen: Scrollbar appears after ~14+ rows
+  - 4K screen: Scrollbar appears after ~20+ rows
+*/
+
+/* Ensure table takes full width */
+.job-table {
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+/* Responsive table columns */
+.job-table th:nth-child(1),
+.job-table td:nth-child(1) { width: 3rem; } /* Checkbox */
+
+.job-table th:nth-child(2),
+.job-table td:nth-child(2) { width: 8rem; } /* Job ID */
+
+.job-table th:nth-child(3),
+.job-table td:nth-child(3) { width: 16rem; } /* Name/Label */
+
+.job-table th:nth-child(4),
+.job-table td:nth-child(4) { width: 8rem; } /* Status */
+
+.job-table th:nth-child(5),
+.job-table td:nth-child(5) { width: 10rem; } /* Date */
+
+.job-table th:nth-child(6),
+.job-table td:nth-child(6) { width: 6rem; } /* Duration */
+
+.job-table th:nth-child(7),
+.job-table td:nth-child(7) { width: 6rem; } /* Images */
+
+.job-table th:nth-child(8),
+.job-table td:nth-child(8) { width: 10rem; } /* Actions */
+
+.job-row {
+  transition: all 0.2s ease-out;
+  cursor: pointer;
+  position: relative;
+}
+
+.job-row:hover {
+  transform: translateY(-1px);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.job-row:active {
+  transform: translateY(0);
+  background-color: var(--accent);
+}
+
+.job-row.selected {
+  background-color: var(--accent);
+}
+
+.job-row.selected:hover {
+  background-color: var(--accent);
+  opacity: 0.9;
+}
+
+/* Add subtle border on hover for better visual feedback */
+.job-row:hover td {
+  border-color: var(--primary);
+}
+
+/* Status Badges */
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.status-completed {
+  background-color: var(--status-completed);
+  color: var(--status-completed-foreground);
+}
+
+.status-processing {
+  background-color: var(--status-in-progress);
+  color: var(--status-in-progress-foreground);
+}
+
+.status-failed {
+  background-color: var(--status-failed);
+  color: var(--status-failed-foreground);
+}
+
+.status-pending {
+  background-color: var(--status-pending);
+  color: var(--status-pending-foreground);
+}
+
+/* Job ID and Label */
+.job-id {
+  font-family: var(--font-mono);
+  font-size: var(--timestamp-size);
+}
+
+.job-label {
+  cursor: text;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease-out;
+}
+
+.job-label:hover {
+  background-color: var(--secondary);
+}
+
+.job-label:focus {
+  outline: 2px solid var(--ring);
+  background-color: var(--secondary);
+}
+
+/* Checkbox Styles */
+.checkbox-wrapper {
+  width: var(--checkbox-size);
+  height: var(--checkbox-size);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  background-color: var(--card);
+}
+
+.checkbox-wrapper:hover {
+  border-color: var(--primary);
+  background-color: var(--secondary);
+}
+
+.checkbox-wrapper[aria-checked="true"] {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.checkbox-wrapper:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Quick Actions */
+.quick-actions {
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+}
+
+.job-row:hover .quick-actions {
+  opacity: 1;
+}
+
+/* Timestamp */
+.timestamp {
+  font-family: var(--font-mono);
+  font-size: var(--timestamp-size);
+  color: var(--muted-foreground);
+}
+
+/* Sort Indicators */
+.sort-indicator {
+  margin-left: 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+
+/* Loading Animation */
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .stats-card {
+    padding: 0.75rem;
+  }
+  
+  .job-table th,
+  .job-table td {
+    padding: 0.75rem 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .stats-card {
+    padding: 0.5rem;
+  }
+  
+  .job-table th,
+  .job-table td {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.875rem;
+  }
+  
+  .quick-actions {
+    opacity: 1;
+  }
+}
+
+/* Custom Scrollbar Styling */
+.job-table-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.job-table-scroll::-webkit-scrollbar-track {
+  background: var(--secondary);
+  border-radius: var(--radius-sm);
+}
+
+.job-table-scroll::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s ease-out;
+}
+
+.job-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--foreground);
+}
+
+.job-table-scroll::-webkit-scrollbar-corner {
+  background: var(--secondary);
+}
+
+/* Firefox scrollbar styling */
+.job-table-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-foreground) var(--secondary);
+}

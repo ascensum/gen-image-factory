@@ -60,11 +60,11 @@ export interface ElectronAPI {
   getJobResults: (jobId: string) => Promise<JobResultsResult>;
   deleteJobExecution: (jobId: string) => Promise<DeleteJobResult>;
   exportJobToExcel: (jobId: string) => Promise<ExportJobResult>;
-  renameJobExecution: (id: string, label: string) => Promise<RenameJobResult>;
-  bulkDeleteJobExecutions: (ids: string[]) => Promise<BulkDeleteJobsResult>;
-  bulkExportJobExecutions: (ids: string[]) => Promise<BulkExportJobsResult>;
-  bulkRerunJobExecutions: (ids: string[]) => Promise<BulkRerunJobsResult>;
-  getJobExecutionsWithFilters: (filters: JobFilters) => Promise<FilteredJobsResult>;
+  renameJobExecution: (id: string | number, label: string) => Promise<JobResult>;
+  rerunJobExecution: (id: string | number) => Promise<JobResult>;
+  exportJobExecution: (id: string | number) => Promise<JobResult>;
+  deleteJobExecution: (id: string | number) => Promise<JobResult>;
+  getJobExecutionsWithFilters: (filters: JobFilters, page?: number, pageSize?: number) => Promise<JobExecutionsResult>;
   getJobExecutionsCount: (filters: JobFilters) => Promise<JobCountResult>;
   
   // Job Status and Statistics
@@ -93,6 +93,27 @@ export interface ElectronAPI {
   // Utility
   ping: () => Promise<string>;
   getAppVersion: () => Promise<string>;
+}
+
+export interface JobExecutionsResult {
+  success: boolean;
+  jobs: JobExecution[];
+  totalCount?: number;
+  error?: string;
+}
+
+export interface JobCountResult {
+  success: boolean;
+  count: number;
+  error?: string;
+}
+
+export interface JobResult {
+  success: boolean;
+  changes?: number;
+  deletedRows?: number;
+  data?: any;
+  error?: string;
 }
 
 declare global {

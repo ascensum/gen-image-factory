@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { JobExecution, GeneratedImage } from '../../../types/job';
+import './SingleJobView.css';
 
 interface SingleJobViewProps {
   jobId: string | number;
@@ -7,12 +8,6 @@ interface SingleJobViewProps {
   onExport: (jobId: string | number) => void;
   onRerun: (jobId: string | number) => void;
   onDelete: (jobId: string | number) => void;
-}
-
-interface Tab {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
 }
 
 const SingleJobView: React.FC<SingleJobViewProps> = ({
@@ -29,36 +24,8 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  const tabs: Tab[] = [
-    {
-      id: 'overview',
-      label: 'Overview',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      )
-    },
-    {
-      id: 'images',
-      label: 'Images',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      )
-    },
-    {
-      id: 'logs',
-      label: 'Logs',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      )
-    }
-  ];
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [imageFilter, setImageFilter] = useState('all');
 
   useEffect(() => {
     loadJobData();
@@ -70,7 +37,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       setError(null);
 
       // Load job details
-      const jobResult = await window.electronAPI.getJobExecution(jobId);
+      const jobResult = await window.electronAPI.jobManagement.getJobExecution(jobId);
       if (jobResult.success) {
         setJob(jobResult.execution);
       } else {
@@ -78,9 +45,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       }
 
       // Load job images
-      const imagesResult = await window.electronAPI.getGeneratedImagesForJob(jobId);
+      const imagesResult = await window.electronAPI.generatedImages.getGeneratedImagesByExecution(jobId);
       if (imagesResult.success) {
-        setImages(imagesResult.images);
+        setImages(imagesResult.images || []);
       }
 
       // Load job logs (placeholder - implement when available)
@@ -102,23 +69,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     setActiveTab(tabId);
   }, []);
 
-  const handleTabKeyDown = useCallback((e: React.KeyboardEvent, tabId: string) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleTabChange(tabId);
-    }
-  }, [handleTabChange]);
-
   const handleBack = useCallback(() => {
     onBack();
   }, [onBack]);
-
-  const handleBackKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleBack();
-    }
-  }, [handleBack]);
 
   const handleExport = useCallback(() => {
     onExport(jobId);
@@ -132,35 +85,14 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     setShowDeleteConfirm(true);
   }, []);
 
-  const handleDeleteKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleDelete();
-    }
-  }, [handleDelete]);
-
   const handleConfirmDelete = useCallback(() => {
     onDelete(jobId);
     setShowDeleteConfirm(false);
   }, [onDelete, jobId]);
 
-  const handleConfirmDeleteKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleConfirmDelete();
-    }
-  }, [handleConfirmDelete]);
-
   const handleCancelDelete = useCallback(() => {
     setShowDeleteConfirm(false);
   }, []);
-
-  const handleCancelDeleteKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handleCancelDelete();
-    }
-  }, [handleCancelDelete]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -171,35 +103,32 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     const start = new Date(startTime);
     const end = new Date(endTime);
     const duration = end.getTime() - start.getTime();
-    const minutes = Math.floor(duration / 60000);
-    const seconds = Math.floor((duration % 60000) / 1000);
-    return `${minutes}m ${seconds}s`;
+    const hours = Math.floor(duration / 3600000);
+    const minutes = Math.floor((duration % 3600000) / 60000);
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'text-green-600 bg-green-100';
-      case 'failed': return 'text-red-600 bg-red-100';
-      case 'processing': return 'text-blue-600 bg-blue-100';
-      case 'pending': return 'text-yellow-600 bg-yellow-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'completed': return 'status-complete';
+      case 'failed': return 'status-failed';
+      case 'processing': return 'status-processing';
+      case 'pending': return 'status-pending';
+      default: return 'status-pending';
     }
   };
 
+  const filteredImages = useMemo(() => {
+    if (imageFilter === 'all') return images;
+    return images.filter(img => img.status === imageFilter);
+  }, [images, imageFilter]);
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6" role="main" aria-label="Loading job details">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-4 bg-gray-200 rounded"></div>
-                ))}
-              </div>
-            </div>
-          </div>
+      <div className="single-job-view" role="main" aria-label="Loading job details">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading job details...</p>
         </div>
       </div>
     );
@@ -207,29 +136,14 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6" role="main" aria-label="Job error">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Job</h3>
-              <p className="text-sm text-gray-500 mb-4">{error}</p>
-              <button
-                onClick={handleBack}
-                onKeyDown={handleBackKeyDown}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                aria-label="Go back to job list"
-                tabIndex={0}
-                role="button"
-              >
-                Go Back
-              </button>
-            </div>
-          </div>
+      <div className="single-job-view" role="main" aria-label="Job error">
+        <div className="error-container">
+          <div className="error-icon">⚠️</div>
+          <h3>Error Loading Job</h3>
+          <p>{error}</p>
+          <button onClick={handleBack} className="btn-primary">
+            Go Back
+          </button>
         </div>
       </div>
     );
@@ -237,362 +151,334 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   if (!job) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6" role="main" aria-label="Job not found">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Job Not Found</h3>
-              <p className="text-sm text-gray-500 mb-4">The requested job could not be found.</p>
-              <button
-                onClick={handleBack}
-                onKeyDown={handleBackKeyDown}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                aria-label="Go back to job list"
-                tabIndex={0}
-                role="button"
-              >
-                Go Back
-              </button>
-            </div>
-          </div>
+      <div className="single-job-view" role="main" aria-label="Job not found">
+        <div className="error-container">
+          <h3>Job Not Found</h3>
+          <p>The requested job could not be found.</p>
+          <button onClick={handleBack} className="btn-primary">
+            Go Back
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" role="main" aria-labelledby="job-title">
+    <div className="single-job-view">
       {/* Header */}
-      <div className="bg-white shadow border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={handleBack}
-                  onKeyDown={handleBackKeyDown}
-                  className="inline-flex items-center p-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  aria-label="Go back to job list"
-                  tabIndex={0}
-                  role="button"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                
-                <div>
-                  <h1 id="job-title" className="text-2xl font-bold text-gray-900">
-                    {job.label || `Job ${job.id}`}
-                  </h1>
-                  <p className="text-sm text-gray-500">
-                    Job ID: {job.id} • Created: {formatDate(job.createdAt)}
-                  </p>
+      <header className="job-header">
+        <div className="header-content">
+          <div className="header-left">
+            <button 
+              onClick={handleBack}
+              className="back-button"
+              aria-label="Go back to job list"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+            </button>
+            <h1 className="job-title-main">Job #{job.id}</h1>
+          </div>
+        </div>
+        <div className="job-title-editable" contentEditable="true">
+          {job.label || `Job ${job.id}`}
+        </div>
+      </header>
+
+      {/* Tabs */}
+      <div className="tab-navigation">
+        <button 
+          className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => handleTabChange('overview')}
+          data-tab="overview"
+        >
+          Overview
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'images' ? 'active' : ''}`}
+          onClick={() => handleTabChange('images')}
+          data-tab="images"
+        >
+          Images
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'logs' ? 'active' : ''}`}
+          onClick={() => handleTabChange('logs')}
+          data-tab="logs"
+        >
+          Logs
+        </button>
+      </div>
+
+      {/* Tab Contents Container */}
+      <main className="tab-content-container">
+        {/* Overview Content */}
+        <div 
+          id="overview" 
+          className={`tab-content ${activeTab === 'overview' ? 'active' : ''}`}
+        >
+          <div className="overview-content">
+            {/* Job Information */}
+            <div className="info-grid">
+              <div className="info-card">
+                <div className="info-label">Job ID</div>
+                <div className="info-value">JOB-{job.id}</div>
+              </div>
+              <div className="info-card">
+                <div className="info-label">Status</div>
+                <div className="info-value">
+                  <span className={`status-badge ${getStatusColor(job.status)}`}>
+                    {job.status === 'completed' ? '✓ Completed' : 
+                     job.status === 'processing' ? '⟳ Processing' :
+                     job.status === 'failed' ? '⚠ Failed' : '⏳ Pending'}
+                  </span>
                 </div>
               </div>
+              <div className="info-card">
+                <div className="info-label">Start Time</div>
+                <div className="info-value">
+                  {job.startedAt ? formatDate(job.startedAt) : 'Not started'}
+                </div>
+              </div>
+              <div className="info-card">
+                <div className="info-label">Duration</div>
+                <div className="info-value">
+                  {job.startedAt && job.completedAt ? 
+                    formatDuration(job.startedAt, job.completedAt) : 'In Progress'}
+                </div>
+              </div>
+              <div className="info-card">
+                <div className="info-label">Success Rate</div>
+                <div className="info-value">
+                  {job.totalImages ? 
+                    `${Math.round(((job.successfulImages || 0) / job.totalImages) * 100)}% (${job.successfulImages || 0}/${job.totalImages})` : 
+                    'N/A'}
+                </div>
+              </div>
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={handleExport}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                  aria-label="Export job and images"
-                >
-                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Export
-                </button>
+            {/* Generated Images Summary */}
+            <h2 className="section-title">Generated Images Summary</h2>
+            <div className="stats-grid">
+              <div className="stats-card">
+                <div className="stats-label">Total Images</div>
+                <div className="stats-value">{job.totalImages || 0}</div>
+              </div>
+              <div className="stats-card">
+                <div className="stats-label">Successful</div>
+                <div className="stats-value success">{job.successfulImages || 0}</div>
+              </div>
+              <div className="stats-card">
+                <div className="stats-label">Failed</div>
+                <div className="stats-value failed">{job.failedImages || 0}</div>
+              </div>
+            </div>
 
-                <button
-                  onClick={handleRerun}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  aria-label="Rerun job"
-                >
-                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Rerun
-                </button>
-
-                <button
-                  onClick={handleDelete}
-                  onKeyDown={handleDeleteKeyDown}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                  aria-label="Delete job"
-                  tabIndex={0}
-                  role="button"
-                >
-                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Delete
-                </button>
+            {/* Settings */}
+            <div className="settings-section">
+              <div className="settings-header">
+                <h2 className="section-title">Settings</h2>
+                <button className="edit-button">Edit</button>
+              </div>
+              <div className="settings-content">
+                <div className="setting-group">
+                  <h3>Model Configuration</h3>
+                  <div className="setting-details">
+                    <div>• Model: Stable Diffusion XL</div>
+                    <div>• Version: 1.0.0</div>
+                  </div>
+                </div>
+                <div className="setting-group">
+                  <h3>Image Settings</h3>
+                  <div className="setting-details">
+                    <div>• Resolution: 1024x1024</div>
+                    <div>• Format: PNG</div>
+                    <div>• Quality: High</div>
+                  </div>
+                </div>
+                <div className="setting-group">
+                  <h3>Style Parameters</h3>
+                  <div className="setting-details">
+                    <div>• Background: Clean White</div>
+                    <div>• Lighting: Studio</div>
+                    <div>• Style: Professional Product</div>
+                  </div>
+                </div>
+                <div className="setting-group">
+                  <h3>Processing Options</h3>
+                  <div className="setting-details">
+                    <div>• Auto-enhance: Enabled</div>
+                    <div>• Noise reduction: Medium</div>
+                    <div>• Sharpening: Low</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Tabs */}
-        <div className="mb-6">
-          <nav className="flex space-x-8" role="tablist" aria-label="Job detail tabs">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                onKeyDown={(e) => handleTabKeyDown(e, tab.id)}
-                className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                aria-controls={`${tab.id}-panel`}
-                tabIndex={activeTab === tab.id ? 0 : -1}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
+        {/* Images Content */}
+        <div 
+          id="images" 
+          className={`tab-content ${activeTab === 'images' ? 'active' : ''}`}
+        >
+          <div className="images-content">
+            {/* Controls */}
+            <div className="images-controls">
+              <div className="filter-controls">
+                <select 
+                  value={imageFilter}
+                  onChange={(e) => setImageFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Images</option>
+                  <option value="completed">Completed</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+              <div className="view-controls">
+                <button 
+                  className={`view-toggle ${viewMode === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                  title="Grid View"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                </button>
+                <button 
+                  className={`view-toggle ${viewMode === 'list' ? 'active' : ''}`}
+                  onClick={() => setViewMode('list')}
+                  title="List View"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
-        {/* Tab Panels */}
-        <div className="bg-white rounded-lg shadow">
-          {/* Overview Tab */}
-          <div
-            id="overview-panel"
-            role="tabpanel"
-            aria-labelledby="overview-tab"
-            className={activeTab === 'overview' ? 'block' : 'hidden'}
-          >
-            <div className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Job Overview</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Basic Information */}
-                <div>
-                  <h3 className="text-md font-medium text-gray-700 mb-3">Basic Information</h3>
-                  <dl className="space-y-3">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Job ID</dt>
-                      <dd className="text-sm text-gray-900 font-mono">{job.id}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Label</dt>
-                      <dd className="text-sm text-gray-900">{job.label || 'No label'}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Status</dt>
-                      <dd>
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(job.status)}`}>
-                          {job.status}
+            {/* Grid View */}
+            {viewMode === 'grid' && (
+              <div className="image-grid">
+                {filteredImages.length === 0 ? (
+                  <div className="no-images">
+                    <p>No images found with current filter.</p>
+                  </div>
+                ) : (
+                  filteredImages.map((image) => (
+                    <div key={image.id} className="image-card">
+                      <div className="image-placeholder">
+                        <span>IMG{image.id}</span>
+                      </div>
+                      <div className="image-info">
+                        <span className="image-id">IMG{image.id}</span>
+                        <span className={`image-status ${getStatusColor(image.status)}`}>
+                          {image.status === 'completed' ? '✓' : '⚠️'}
                         </span>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Created</dt>
-                      <dd className="text-sm text-gray-900">{formatDate(job.createdAt)}</dd>
-                    </div>
-                  </dl>
-                </div>
-
-                {/* Timing Information */}
-                <div>
-                  <h3 className="text-md font-medium text-gray-700 mb-3">Timing</h3>
-                  <dl className="space-y-3">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Started</dt>
-                      <dd className="text-sm text-gray-900">{job.startedAt ? formatDate(job.startedAt) : 'Not started'}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Completed</dt>
-                      <dd className="text-sm text-gray-900">{job.completedAt ? formatDate(job.completedAt) : 'Not completed'}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Duration</dt>
-                      <dd className="text-sm text-gray-900">{formatDuration(job.startedAt, job.completedAt)}</dd>
-                    </div>
-                  </dl>
-                </div>
-              </div>
-
-              {/* Image Statistics */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h3 className="text-md font-medium text-gray-700 mb-3">Image Statistics</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <dt className="text-sm font-medium text-gray-500">Total Images</dt>
-                    <dd className="text-2xl font-bold text-gray-900">{images.length}</dd>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-4">
-                    <dt className="text-sm font-medium text-green-600">Successful</dt>
-                    <dd className="text-2xl font-bold text-green-900">
-                      {images.filter(img => img.status === 'completed').length}
-                    </dd>
-                  </div>
-                  <div className="bg-red-50 rounded-lg p-4">
-                    <dt className="text-sm font-medium text-red-600">Failed</dt>
-                    <dd className="text-2xl font-bold text-red-900">
-                      {images.filter(img => img.status === 'failed').length}
-                    </dd>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Images Tab */}
-          <div
-            id="images-panel"
-            role="tabpanel"
-            aria-labelledby="images-tab"
-            className={activeTab === 'images' ? 'block' : 'hidden'}
-          >
-            <div className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Generated Images</h2>
-              
-              {images.length === 0 ? (
-                <div className="text-center py-12">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No images generated</h3>
-                  <p className="mt-1 text-sm text-gray-500">This job hasn't generated any images yet.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {images.map((image) => (
-                    <div
-                      key={image.id}
-                      className="bg-gray-50 rounded-lg p-4 border border-gray-200"
-                      role="article"
-                      aria-labelledby={`image-${image.id}-title`}
-                    >
-                      <div className="aspect-w-1 aspect-h-1 mb-3">
-                        <div className="w-full h-32 bg-gray-200 rounded-lg flex items-center justify-center">
-                          <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                      </div>
-                      
-                      <h3 id={`image-${image.id}-title`} className="text-sm font-medium text-gray-900 mb-2">
-                        Image {image.id}
-                      </h3>
-                      
-                      <div className="space-y-2 text-xs text-gray-500">
-                        <div className="flex justify-between">
-                          <span>Status:</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(image.status)}`}>
-                            {image.status}
-                          </span>
-                        </div>
-                        {image.filePath && (
-                          <div className="flex justify-between">
-                            <span>Path:</span>
-                            <span className="truncate ml-2">{image.filePath}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* List View */}
+            {viewMode === 'list' && (
+              <table className="image-list">
+                <thead>
+                  <tr>
+                    <th>Preview</th>
+                    <th>ID</th>
+                    <th>Status</th>
+                    <th>Generated At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredImages.map((image) => (
+                    <tr key={image.id}>
+                      <td>
+                        <div className="thumbnail">IMG{image.id}</div>
+                      </td>
+                      <td>IMG{image.id}</td>
+                      <td>
+                        <span className={`image-status ${getStatusColor(image.status)}`}>
+                          {image.status === 'completed' ? '✓ Complete' : '⚠️ Failed'}
+                        </span>
+                      </td>
+                      <td>{formatDate(job.startedAt || '')}</td>
+                    </tr>
                   ))}
-                </div>
-              )}
-            </div>
+                </tbody>
+              </table>
+            )}
           </div>
+        </div>
 
-          {/* Logs Tab */}
-          <div
-            id="logs-panel"
-            role="tabpanel"
-            aria-labelledby="logs-tab"
-            className={activeTab === 'logs' ? 'block' : 'hidden'}
-          >
-            <div className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Job Logs</h2>
-              
-              {logs.length === 0 ? (
-                <div className="text-center py-12">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No logs available</h3>
-                  <p className="mt-1 text-sm text-gray-500">This job doesn't have any logs yet.</p>
-                </div>
-              ) : (
-                <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">
-                  <div className="space-y-1">
-                    {logs.map((log, index) => (
-                      <div
-                        key={index}
-                        className="text-sm text-gray-300 font-mono"
-                        role="log"
-                        aria-label={`Log entry ${index + 1}`}
-                      >
-                        {log}
-                      </div>
-                    ))}
+        {/* Logs Content */}
+        <div 
+          id="logs" 
+          className={`tab-content ${activeTab === 'logs' ? 'active' : ''}`}
+        >
+          <div className="logs-content">
+            <div className="logs-timeline">
+              {logs.map((log, index) => (
+                <div key={index} className="log-entry">
+                  <div className="log-dot"></div>
+                  <div className="log-content">
+                    <div className="log-header">
+                      <div className="log-title">Log Entry {index + 1}</div>
+                      <div className="log-time">{formatDate(new Date().toISOString())}</div>
+                    </div>
+                    <div className="log-message">{log}</div>
                   </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="job-footer">
+        <div className="footer-actions">
+          <button onClick={handleRerun} className="btn-rerun">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Rerun Job
+          </button>
+          <button onClick={handleExport} className="btn-export">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export Job
+          </button>
+          <button onClick={handleDelete} className="btn-delete">
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete Job
+          </button>
+        </div>
+      </footer>
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-confirmation-title"
-          aria-describedby="delete-confirmation-description"
-        >
-          <div className="bg-white rounded-lg p-6 max-w-md mx-4">
-            <div className="flex items-center mb-4">
-              <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 id="delete-confirmation-title" className="text-lg font-medium text-gray-900">
-                  Confirm Deletion
-                </h3>
-              </div>
+        <div className="modal-overlay">
+          <div className="delete-modal">
+            <div className="modal-header">
+              <h3>Confirm Deletion</h3>
             </div>
-            
-            <div className="mb-6">
-              <p id="delete-confirmation-description" className="text-sm text-gray-500">
-                Are you sure you want to delete this job? This action cannot be undone and will permanently remove the job and all associated data.
-              </p>
+            <div className="modal-body">
+              <p>Are you sure you want to delete this job? This action cannot be undone.</p>
             </div>
-
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={handleCancelDelete}
-                onKeyDown={handleCancelDeleteKeyDown}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                aria-label="Cancel deletion"
-                tabIndex={0}
-                role="button"
-              >
+            <div className="modal-actions">
+              <button onClick={handleCancelDelete} className="btn-cancel">
                 Cancel
               </button>
-              <button
-                onClick={handleConfirmDelete}
-                onKeyDown={handleConfirmDeleteKeyDown}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                aria-label="Confirm deletion"
-                tabIndex={0}
-                role="button"
-              >
+              <button onClick={handleConfirmDelete} className="btn-confirm-delete">
                 Delete Permanently
               </button>
             </div>

@@ -201,7 +201,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   useEffect(() => {
     const pollJobStatus = async () => {
       try {
-        const status = await window.electronAPI.getJobStatus();
+        const status = await window.electronAPI.jobManagement.getJobStatus();
         setJobStatus(status);
       } catch (error) {
         console.error('Failed to get job status:', error);
@@ -233,7 +233,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     try {
       setIsLoading(true);
       setError(null);
-      const jobs = await window.electronAPI.getJobHistory();
+      const jobs = await window.electronAPI.jobManagement.getJobHistory();
       console.log('Job history loaded:', jobs);
       // Ensure jobs is always an array
       if (jobs && Array.isArray(jobs)) {
@@ -253,7 +253,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
   const loadStatistics = async () => {
     try {
-      const stats = await window.electronAPI.getJobStatistics();
+      const stats = await window.electronAPI.jobManagement.getJobStatistics();
       console.log('Statistics loaded:', stats);
       setStatistics(stats);
     } catch (error) {
@@ -264,7 +264,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
   const loadGeneratedImages = async () => {
     try {
-      const images = await window.electronAPI.getAllGeneratedImages();
+      const images = await window.electronAPI.jobManagement.getAllGeneratedImages();
       console.log('Generated images loaded:', images);
       // Ensure images is always an array
       if (images && Array.isArray(images)) {
@@ -285,7 +285,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   const loadLogs = async () => {
     try {
       if (jobStatus.state === 'running') {
-        const jobLogs = await window.electronAPI.getJobLogs('standard');
+        const jobLogs = await window.electronAPI.jobManagement.getJobLogs('standard');
         console.log('Logs loaded:', jobLogs);
         // Ensure logs is always an array
         if (jobLogs && Array.isArray(jobLogs)) {
@@ -308,10 +308,10 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       setError(null);
       
       // Get current configuration
-      const config = await window.electronAPI.getConfiguration();
+      const config = await window.electronAPI.jobManagement.getConfiguration();
       
       // Start the job
-      await window.electronAPI.jobStart(config);
+      await window.electronAPI.jobManagement.jobStart(config);
       
       // Reload data
       await Promise.all([
@@ -331,7 +331,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       setIsLoading(true);
       setError(null);
       
-      await window.electronAPI.jobStop();
+      await window.electronAPI.jobManagement.jobStop();
       
       // Reload data
       await Promise.all([
@@ -351,7 +351,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       setIsLoading(true);
       setError(null);
       
-      await window.electronAPI.jobForceStop();
+      await window.electronAPI.jobManagement.jobForceStop();
       
       // Reload data
       await Promise.all([
@@ -375,17 +375,17 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
           onOpenSingleJobView && onOpenSingleJobView(jobId);
           break;
         case 'export':
-          await window.electronAPI.exportJobToExcel(jobId);
+          await window.electronAPI.jobManagement.exportJobToExcel(jobId);
           break;
         case 'delete':
-          await window.electronAPI.deleteJobExecution(jobId);
+          await window.electronAPI.jobManagement.deleteJobExecution(jobId);
           await loadJobHistory();
           await loadStatistics();
           break;
         case 'rerun':
           const job = jobHistory.find(j => j.id === jobId);
           if (job) {
-            await window.electronAPI.jobStart(job.configuration.parameters);
+            await window.electronAPI.jobManagement.jobStart(job.configuration.parameters);
           }
           break;
       }
@@ -401,7 +401,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       
       switch (action) {
         case 'delete':
-          await window.electronAPI.deleteGeneratedImage(imageId);
+          await window.electronAPI.jobManagement.deleteGeneratedImage(imageId);
           await loadGeneratedImages();
           break;
         case 'view':
@@ -422,7 +422,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
       switch (action) {
         case 'delete':
-          await window.electronAPI.bulkDeleteImages(imageIds);
+          await window.electronAPI.jobManagement.bulkDeleteImages(imageIds);
           break;
         // Note: Review actions (approve/reject) are handled in the separate Failed Images Review page
       }

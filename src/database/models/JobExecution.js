@@ -47,9 +47,11 @@ class JobExecution {
       const createIndexesSQL = [
         'CREATE INDEX IF NOT EXISTS idx_job_executions_configuration_id ON job_executions(configuration_id)',
         'CREATE INDEX IF NOT EXISTS idx_job_executions_status ON job_executions(status)',
-        'CREATE INDEX IF NOT EXISTS idx_job_executions_started_at ON job_executions(started_at)',
-        'CREATE INDEX IF NOT EXISTS idx_job_executions_label ON job_executions(label)'
+        'CREATE INDEX IF NOT EXISTS idx_job_executions_started_at ON job_executions(started_at)'
       ];
+
+      // Only add label index if the column exists
+      const addLabelIndexSQL = 'CREATE INDEX IF NOT EXISTS idx_job_executions_label ON job_executions(label)';
 
       this.db.serialize(() => {
         // Create table
@@ -62,7 +64,7 @@ class JobExecution {
           console.log('Job executions table created successfully');
         });
 
-        // Create indexes
+        // Create basic indexes
         createIndexesSQL.forEach((indexSQL, index) => {
           this.db.run(indexSQL, (err) => {
             if (err) {
@@ -71,6 +73,15 @@ class JobExecution {
               console.log(`Index ${index} created successfully`);
             }
           });
+        });
+
+        // Try to create label index (it might fail if column doesn't exist yet)
+        this.db.run(addLabelIndexSQL, (err) => {
+          if (err) {
+            console.log('Label index creation skipped (column may not exist yet):', err.message);
+          } else {
+            console.log('Label index created successfully');
+          }
         });
 
         // Wait for all operations to complete
@@ -298,20 +309,158 @@ class JobExecution {
     });
   }
 
-  async cleanupOldExecutions(daysToKeep = 30) {
+  async getJobExecutionsWithFilters(filters = {}, page = 1, pageSize = 25) {
     return new Promise((resolve, reject) => {
-      const sql = `
-        DELETE FROM job_executions 
-        WHERE started_at < datetime('now', '-${daysToKeep} days')
+      let sql = `
+        SELECT je.*, jc.name as configuration_name 
+        FROM job_executions je
+        LEFT JOIN job_configurations jc ON je.configuration_id = jc.id
+        WHERE 1=1
       `;
       
-      this.db.run(sql, [], function(err) {
+      const params = [];
+      
+      // Apply filters
+      if (filters.status && filters.status !== 'all') {
+        sql += ' AND je.status = ?';
+        params.push(filters.status);
+      }
+      
+      if (filters.label && filters.label.trim()) {
+        sql += ' AND je.label LIKE ?';
+        params.push(`%${filters.label.trim()}%`);
+      }
+      
+      if (filters.dateRange && filters.dateRange !== 'all') {
+        const now = new Date();
+        let startDate = new Date();
+        
+        switch (filters.dateRange) {
+          case 'today':
+            startDate.setHours(0, 0, 0, 0);
+            break;
+          case 'yesterday':
+            startDate.setDate(startDate.getDate() - 1);
+            startDate.setHours(0, 0, 0, 0);
+            break;
+          case 'week':
+            startDate.setDate(startDate.getDate() - 7);
+            break;
+          case 'month':
+            startDate.setMonth(startDate.getMonth() - 1);
+            break;
+          case 'quarter':
+            startDate.setMonth(startDate.getMonth() - 3);
+            break;
+          case 'year':
+            startDate.setFullYear(startDate.getFullYear() - 1);
+            break;
+        }
+        
+        sql += ' AND je.started_at >= ?';
+        params.push(startDate.toISOString());
+      }
+      
+      if (filters.minImages && filters.minImages > 0) {
+        sql += ' AND je.total_images >= ?';
+        params.push(filters.minImages);
+      }
+      
+      if (filters.maxImages && filters.maxImages > 0) {
+        sql += ' AND je.total_images <= ?';
+        params.push(filters.maxImages);
+      }
+      
+      // Add sorting and pagination
+      sql += ' ORDER BY je.started_at DESC LIMIT ? OFFSET ?';
+      params.push(pageSize, (page - 1) * pageSize);
+      
+      this.db.all(sql, params, (err, rows) => {
         if (err) {
-          console.error('Error cleaning up old executions:', err);
+          console.error('Error getting job executions with filters:', err);
           reject(err);
         } else {
-          console.log(`Cleaned up ${this.changes} old job executions`);
-          resolve({ success: true, deletedRows: this.changes });
+          const executions = rows.map(row => ({
+            id: row.id,
+            configurationId: row.configuration_id,
+            configurationName: row.configuration_name,
+            startedAt: row.started_at ? new Date(row.started_at) : null,
+            completedAt: row.completed_at ? new Date(row.completed_at) : null,
+            status: row.status,
+            totalImages: row.total_images,
+            successfulImages: row.successful_images,
+            failedImages: row.failed_images,
+            errorMessage: row.error_message,
+            label: row.label
+          }));
+          resolve({ success: true, jobs: executions });
+        }
+      });
+    });
+  }
+
+  async getJobExecutionsCount(filters = {}) {
+    return new Promise((resolve, reject) => {
+      let sql = 'SELECT COUNT(*) as count FROM job_executions je WHERE 1=1';
+      const params = [];
+      
+      // Apply same filters as above
+      if (filters.status && filters.status !== 'all') {
+        sql += ' AND je.status = ?';
+        params.push(filters.status);
+      }
+      
+      if (filters.label && filters.label.trim()) {
+        sql += ' AND je.label LIKE ?';
+        params.push(`%${filters.label.trim()}%`);
+      }
+      
+      if (filters.dateRange && filters.dateRange !== 'all') {
+        const now = new Date();
+        let startDate = new Date();
+        
+        switch (filters.dateRange) {
+          case 'today':
+            startDate.setHours(0, 0, 0, 0);
+            break;
+          case 'yesterday':
+            startDate.setDate(startDate.getDate() - 1);
+            startDate.setHours(0, 0, 0, 0);
+            break;
+          case 'week':
+            startDate.setDate(startDate.getDate() - 7);
+            break;
+          case 'month':
+            startDate.setMonth(startDate.getMonth() - 1);
+            break;
+          case 'quarter':
+            startDate.setMonth(startDate.getMonth() - 3);
+            break;
+          case 'year':
+            startDate.setFullYear(startDate.getFullYear() - 1);
+            break;
+        }
+        
+        sql += ' AND je.started_at >= ?';
+        params.push(startDate.toISOString());
+      }
+      
+      if (filters.minImages && filters.minImages > 0) {
+        sql += ' AND je.total_images >= ?';
+        params.push(filters.minImages);
+      }
+      
+      if (filters.maxImages && filters.maxImages > 0) {
+        sql += ' AND je.total_images <= ?';
+        params.push(filters.maxImages);
+      }
+      
+      this.db.get(sql, params, (err, row) => {
+        if (err) {
+          console.error('Error getting job executions count:', err);
+          reject(err);
+        } else {
+          resolve({ success: true, count: row.count || 0 });
         }
       });
     });
@@ -333,75 +482,76 @@ class JobExecution {
     });
   }
 
-  async getJobExecutionsWithFilters(filters = {}) {
+  async rerunJobExecution(id) {
     return new Promise((resolve, reject) => {
-      let sql = `
+      // For now, just reset the status to 'pending'
+      // In a real implementation, this would trigger the job execution
+      const sql = 'UPDATE job_executions SET status = ?, started_at = NULL, completed_at = NULL WHERE id = ?';
+      
+      this.db.run(sql, ['pending', id], function(err) {
+        if (err) {
+          console.error('Error rerunning job execution:', err);
+          reject(err);
+        } else {
+          console.log('Job execution reset for rerun');
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
+  }
+
+  async exportJobExecution(id) {
+    return new Promise((resolve, reject) => {
+      // Get the job execution data for export
+      const sql = `
         SELECT je.*, jc.name as configuration_name 
         FROM job_executions je
         LEFT JOIN job_configurations jc ON je.configuration_id = jc.id
-        WHERE 1=1
+        WHERE je.id = ?
       `;
       
-      const params = [];
-      
-      if (filters.status && filters.status !== 'all') {
-        sql += ' AND je.status = ?';
-        params.push(filters.status);
-      }
-      
-      if (filters.configurationId) {
-        sql += ' AND je.configuration_id = ?';
-        params.push(filters.configurationId);
-      }
-      
-      if (filters.dateFrom) {
-        sql += ' AND je.started_at >= ?';
-        params.push(filters.dateFrom.toISOString());
-      }
-      
-      if (filters.dateTo) {
-        sql += ' AND je.started_at <= ?';
-        params.push(filters.dateTo.toISOString());
-      }
-      
-      if (filters.search) {
-        sql += ' AND (je.label LIKE ? OR je.id LIKE ? OR jc.name LIKE ?)';
-        const searchTerm = `%${filters.search}%`;
-        params.push(searchTerm, searchTerm, searchTerm);
-      }
-      
-      sql += ' ORDER BY je.started_at DESC';
-      
-      if (filters.limit) {
-        sql += ' LIMIT ?';
-        params.push(filters.limit);
-      }
-      
-      if (filters.offset) {
-        sql += ' OFFSET ?';
-        params.push(filters.offset);
-      }
-      
-      this.db.all(sql, params, (err, rows) => {
+      this.db.get(sql, [id], (err, row) => {
         if (err) {
-          console.error('Error getting filtered job executions:', err);
+          console.error('Error getting job execution for export:', err);
           reject(err);
+        } else if (!row) {
+          reject(new Error('Job execution not found'));
         } else {
-          // Convert timestamps to Date objects
-          const executions = rows.map(row => ({
+          // In a real implementation, this would create an export file
+          const exportData = {
             id: row.id,
-            configurationId: row.configuration_id,
             configurationName: row.configuration_name,
-            startedAt: row.started_at ? new Date(row.started_at) : new Date(),
-            completedAt: row.completed_at ? new Date(row.completed_at) : null,
+            startedAt: row.started_at,
+            completedAt: row.completed_at,
             status: row.status,
             totalImages: row.total_images,
             successfulImages: row.successful_images,
             failedImages: row.failed_images,
             errorMessage: row.error_message,
             label: row.label
-          }));
-          resolve({ success: true, executions });
+          };
+          
+          console.log('Job execution exported successfully');
+          resolve({ success: true, data: exportData });
+        }
+      });
+    });
+  }
+
+  async cleanupOldExecutions(daysToKeep = 30) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        DELETE FROM job_executions 
+        WHERE started_at < datetime('now', '-${daysToKeep} days')
+      `;
+      
+      this.db.run(sql, [], function(err) {
+        if (err) {
+          console.error('Error cleaning up old executions:', err);
+          reject(err);
+        } else {
+          console.log(`Cleaned up ${this.changes} old job executions`);
+          resolve({ success: true, deletedRows: this.changes });
         }
       });
     });
@@ -463,48 +613,6 @@ class JobExecution {
         } else {
           console.log(`Bulk deleted ${this.changes} job executions`);
           resolve({ success: true, deletedRows: this.changes });
-        }
-      });
-    });
-  }
-
-  async getJobExecutionsCount(filters = {}) {
-    return new Promise((resolve, reject) => {
-      let sql = 'SELECT COUNT(*) as count FROM job_executions je WHERE 1=1';
-      const params = [];
-      
-      if (filters.status && filters.status !== 'all') {
-        sql += ' AND je.status = ?';
-        params.push(filters.status);
-      }
-      
-      if (filters.configurationId) {
-        sql += ' AND je.configuration_id = ?';
-        params.push(filters.configurationId);
-      }
-      
-      if (filters.dateFrom) {
-        sql += ' AND je.started_at >= ?';
-        params.push(filters.dateFrom.toISOString());
-      }
-      
-      if (filters.dateTo) {
-        sql += ' AND je.started_at <= ?';
-        params.push(filters.dateTo.toISOString());
-      }
-      
-      if (filters.search) {
-        sql += ' AND (je.label LIKE ? OR je.id LIKE ?)';
-        const searchTerm = `%${filters.search}%`;
-        params.push(searchTerm, searchTerm);
-      }
-      
-      this.db.get(sql, params, (err, row) => {
-        if (err) {
-          console.error('Error getting job executions count:', err);
-          reject(err);
-        } else {
-          resolve({ success: true, count: row.count || 0 });
         }
       });
     });
