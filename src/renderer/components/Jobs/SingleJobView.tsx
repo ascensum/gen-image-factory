@@ -74,8 +74,13 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
         setImages(imagesResult.images || []);
       }
       
-      // Load job logs (placeholder - implement when available)
-      setLogs(['Job started successfully', 'Processing images...', 'Job completed']);
+      // Load job logs from actual job execution
+      if (jobResult.execution?.logs) {
+        setLogs(jobResult.execution.logs);
+      } else {
+        // If no logs available, show a message
+        setLogs(['No logs available for this job']);
+      }
       
       // Load job configuration if available
       if (jobResult.execution?.configurationId) {
@@ -649,13 +654,28 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 ) : (
                   filteredImages.map((image) => (
                     <div key={image.id} className="image-card">
-                      <div className="image-placeholder">
-                        <span>IMG{image.id}</span>
+                      <div className="image-preview">
+                        {image.finalImagePath ? (
+                          <img 
+                            src={`file://${image.finalImagePath}`} 
+                            alt={`Generated image ${image.id}`}
+                            className="w-full h-32 object-cover rounded"
+                            onError={(e) => {
+                              e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik02NCAzMkM3Ny4yNTQ4IDMyIDg4IDQyLjc0NTIgODggNTZDODggNjkuMjU0OCA3Ny4yNTQ4IDgwIDY0IDgwQzUwLjc0NTIgODAgNDAgNjkuMjU0OCA0MCA1NkM0MCA0Mi43NDUyIDUwLjc0NTIgMzIgNjQgMzJaIiBmaWxsPSIjOUI5QkEwIi8+CjxwYXRoIGQ9Ik0yNCA4OEgxMDRDMTEwLjYyNyA4OCAxMTYgOTMuMzcyNiAxMTYgMTAwVjExMkMxMTYgMTE4LjYyNyAxMTAuNjI3IDEyNCAxMDQgMTI0SDI0QzE3LjM3MjYgMTI0IDEyIDExOC42MjcgMTIgMTEyVjEwMEMxMiA5My4zNzI2IDE3LjM3MjYgODggMjQgODhaIiBmaWxsPSIjOUI5QkEwIi8+Cjwvc3ZnPgo=';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center">
+                            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
                       </div>
                       <div className="image-info">
-                        <span className="image-id">IMG{image.id}</span>
+                        <span className="image-id">Image {image.id}</span>
                         <span className={`image-status ${getStatusColor(image.qcStatus)}`}>
-                          {image.qcStatus === 'approved' ? '✓' : image.qcStatus === 'failed' ? '⚠️' : '⏳'}
+                          {image.qcStatus === 'approved' ? '✓ Approved' : image.qcStatus === 'failed' ? '⚠️ Failed' : '⏳ Pending'}
                         </span>
                       </div>
                     </div>
@@ -679,9 +699,26 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   {filteredImages.map((image) => (
                     <tr key={image.id}>
                       <td>
-                        <div className="thumbnail">IMG{image.id}</div>
+                        <div className="thumbnail">
+                          {image.finalImagePath ? (
+                            <img 
+                              src={`file://${image.finalImagePath}`} 
+                              alt={`Generated image ${image.id}`}
+                              className="w-12 h-12 object-cover rounded"
+                              onError={(e) => {
+                                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNCAxMkMzMC42MjcgMTIgMzYgMTcuMzcyNiAzNiAyNEMzNiAzMC42Mjc4IDMwLjYyNyAzNiAyNCAzNkMxNy4zNzIyIDM2IDEyIDMwLjYyNzggMTIgMjRDMTIgMTcuMzcyNiAxNy4zNzIyIDEyIDI0IDEyWiIgZmlsbD0iIzlCOUJBMCIvPgo8cGF0aCBkPSJNOSAzNkgzOUM0Mi4zMTM3IDM2IDQ1IDMzLjMxMzcgNDUgMzBWMjRDNDUgMjAuNjg2MyA0Mi4zMTM3IDE4IDM5IDE4SDlDNi42ODYyOSAxOCA0IDIwLjY4NjMgNCAyNFYzMEM0IDMzLjMxMzcgNi42ODYyOSAzNiA5IDM2WiIgZmlsbD0iIzlCOUJBMCIvPgo8L3N2Zz4K';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center">
+                              <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
                       </td>
-                      <td>IMG{image.id}</td>
+                      <td>Image {image.id}</td>
                       <td>
                         <span className={`image-status ${getStatusColor(image.qcStatus)}`}>
                           {image.qcStatus === 'approved' ? '✓ Complete' : image.qcStatus === 'failed' ? '⚠️ Failed' : '⏳ Pending'}
@@ -709,7 +746,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   <div className="log-content">
                     <div className="log-header">
                       <div className="log-title">Log Entry {index + 1}</div>
-                      <div className="log-time">{formatDate(new Date().toISOString())}</div>
+                      <div className="log-time">
+                        {job?.startedAt ? formatDate(job.startedAt) : 'Unknown time'}
+                      </div>
                     </div>
                     <div className="log-message">{log}</div>
                   </div>

@@ -191,21 +191,10 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       setError(err instanceof Error ? err.message : 'Failed to load jobs');
       console.error('Error loading jobs:', err);
       
-      // Temporary: Generate sample data for testing scrollbar
+      // No sample data - show empty state
       if (jobs.length === 0) {
-        const sampleJobs = Array.from({ length: 50 }, (_, i) => ({
-          id: i + 1,
-          label: `Sample Job ${i + 1}`,
-          status: ['completed', 'processing', 'failed', 'pending'][i % 4] as any,
-          startedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-          completedAt: i % 4 === 0 ? new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString() : null,
-          totalImages: Math.floor(Math.random() * 100) + 10,
-          successfulImages: i % 4 === 0 ? Math.floor(Math.random() * 100) + 10 : 0,
-          failedImages: i % 4 === 2 ? Math.floor(Math.random() * 20) + 1 : 0,
-          errorMessage: i % 4 === 2 ? 'Sample error message' : null
-        }));
-        setJobs(sampleJobs);
-        setTotalJobs(50);
+        setJobs([]);
+        setTotalJobs(0);
       }
     } finally {
       setIsLoading(false);

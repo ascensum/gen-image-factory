@@ -293,131 +293,13 @@ const LogViewer: React.FC<LogViewerProps> = ({
               <span className="ml-2 text-gray-600">Loading logs...</span>
             </div>
           ) : logs.length === 0 ? (
-            <>
-              {/* Sample logs for demonstration - remove in production */}
-              <div className="space-y-1">
-                {/* Sample Log 1 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:00</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Job started successfully</span>
-                </div>
-                {/* Sample Log 2 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:05</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Configuration loaded</span>
-                </div>
-                {/* Sample Log 3 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:10</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Using default parameters</span>
-                </div>
-                {/* Sample Log 4 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:15</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Generating image 1 of 5</span>
-                </div>
-                {/* Sample Log 5 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:20</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">SUCCESS</span>
-                  <span className="text-sm text-gray-700">Image 1 completed successfully</span>
-                </div>
-                {/* Sample Log 6 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:25</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Generating image 2 of 5</span>
-                </div>
-                {/* Sample Log 7 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:30</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">SUCCESS</span>
-                  <span className="text-sm text-gray-700">Image 2 completed successfully</span>
-                </div>
-                {/* Sample Log 8 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:35</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Generating image 3 of 5</span>
-                </div>
-                {/* Sample Log 9 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:40</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">SUCCESS</span>
-                  <span className="text-sm text-gray-700">Image 3 completed successfully</span>
-                </div>
-                {/* Sample Log 10 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:45</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Generating image 4 of 5</span>
-                </div>
-                {/* Sample Log 11 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:50</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">SUCCESS</span>
-                  <span className="text-sm text-gray-700">Image 4 completed successfully</span>
-                </div>
-                {/* Sample Log 12 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:00:55</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Generating image 5 of 5</span>
-                </div>
-                {/* Sample Log 13 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:01:00</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">SUCCESS</span>
-                  <span className="text-sm text-gray-700">Image 5 completed successfully</span>
-                </div>
-                {/* Sample Log 14 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:01:05</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Quality check started</span>
-                </div>
-                {/* Sample Log 15 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:01:10</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">SUCCESS</span>
-                  <span className="text-sm text-gray-700">All images generated successfully</span>
-                </div>
-                {/* Sample Log 16 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:01:15</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Saving results to database</span>
-                </div>
-                {/* Sample Log 17 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:01:20</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">SUCCESS</span>
-                  <span className="text-sm text-gray-700">Results saved successfully</span>
-                </div>
-                {/* Sample Log 18 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:01:25</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Job completed successfully</span>
-                </div>
-                {/* Sample Log 19 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:01:30</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">INFO</span>
-                  <span className="text-sm text-gray-700">Cleaning up temporary files</span>
-                </div>
-                {/* Sample Log 20 */}
-                <div className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
-                  <span className="text-xs text-gray-500 font-mono">12:01:35</span>
-                  <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">SUCCESS</span>
-                  <span className="text-sm text-gray-700">Cleanup completed</span>
-                </div>
-              </div>
-            </>
+            <div className="text-center text-gray-500 py-8">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No logs available</h3>
+              <p className="mt-1 text-sm text-gray-500">Logs will appear here when a job is running or has completed.</p>
+            </div>
           ) : filteredLogs.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
               No logs match the current filters.

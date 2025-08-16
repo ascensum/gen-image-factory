@@ -309,130 +309,15 @@ const JobHistory: React.FC<JobHistoryProps> = ({
           </div>
         )}
         
-        {/* Sample job entries for demonstration - remove in production */}
+        {/* No jobs message */}
         {filteredAndSortedJobs.length === 0 && (
-          <>
-            {/* Sample Job 1 */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">Sample Job 1</h3>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <span>Aug 9, 2025</span>
-                      <span>Duration: 2m 30s</span>
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">completed</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Images:</span>
-                  <div>5 total (5 successful, 0 failed)</div>
-                </div>
-              </div>
-            </div>
-            {/* Sample Job 2 */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">Sample Job 2</h3>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <span>Aug 9, 2025</span>
-                      <span>Duration: 3m 45s</span>
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">running</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Images:</span>
-                  <div>8 total (6 successful, 2 failed)</div>
-                </div>
-              </div>
-            </div>
-            {/* Sample Job 3 */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">Sample Job 3</h3>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <span>Aug 9, 2025</span>
-                      <span>Duration: 0m 0s</span>
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">pending</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Images:</span>
-                  <div>0 total (0 successful, 0 failed)</div>
-                </div>
-              </div>
-            </div>
-            {/* Sample Job 4 */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">Sample Job 4</h3>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <span>Aug 9, 2025</span>
-                      <span>Duration: 1m 15s</span>
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">failed</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Images:</span>
-                  <div>3 total (1 successful, 2 failed)</div>
-                </div>
-              </div>
-            </div>
-            {/* Sample Job 5 */}
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">Sample Job 5</h3>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <span>Aug 9, 2025</span>
-                      <span>Duration: 4m 20s</span>
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">completed</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Images:</span>
-                  <div>12 total (12 successful, 0 failed)</div>
-                </div>
-              </div>
-            </div>
-          </>
+          <div className="text-center py-12">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No jobs found</h3>
+            <p className="mt-1 text-sm text-gray-500">Jobs will appear here once you start processing images.</p>
+          </div>
         )}
         
         {filteredAndSortedJobs.map((job) => (
