@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { JobExecution, GeneratedImage } from '../../../types/job';
 import './SingleJobView.css';
 
@@ -26,93 +26,155 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [imageFilter, setImageFilter] = useState('all');
+  
+  // Job label editing state
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [editedLabel, setEditedLabel] = useState('');
+  const [isSavingLabel, setIsSavingLabel] = useState(false);
+  const [labelSaveError, setLabelSaveError] = useState<string | null>(null);
+  const labelInputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadJobData();
   }, [jobId]);
 
-  const loadJobData = useCallback(async () => {
+  const loadJobData = async () => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
-      setIsLoading(true);
-      setError(null);
-
       // Load job details
       const jobResult = await window.electronAPI.jobManagement.getJobExecution(jobId);
       if (jobResult.success) {
         setJob(jobResult.execution);
+        setEditedLabel(jobResult.execution.label || `Job ${jobResult.execution.id}`);
       } else {
-        throw new Error(jobResult.error || 'Failed to load job');
+        setError(jobResult.error || 'Failed to load job details');
       }
-
+      
       // Load job images
       const imagesResult = await window.electronAPI.generatedImages.getGeneratedImagesByExecution(jobId);
       if (imagesResult.success) {
         setImages(imagesResult.images || []);
       }
-
+      
       // Load job logs (placeholder - implement when available)
-      setLogs([
-        `Job ${jobId} started at ${new Date().toISOString()}`,
-        'Processing images...',
-        'Post-processing completed',
-        'Job finished successfully'
-      ]);
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setLogs(['Job started successfully', 'Processing images...', 'Job completed']);
+      
+    } catch (error) {
+      console.error('Error loading job data:', error);
+      setError('Failed to load job data');
     } finally {
       setIsLoading(false);
     }
-  }, [jobId]);
+  };
 
   const handleTabChange = useCallback((tabId: string) => {
     setActiveTab(tabId);
   }, []);
-
+  
   const handleBack = useCallback(() => {
     onBack();
   }, [onBack]);
-
+  
   const handleExport = useCallback(() => {
     onExport(jobId);
   }, [onExport, jobId]);
-
+  
   const handleRerun = useCallback(() => {
     onRerun(jobId);
   }, [onRerun, jobId]);
-
+  
   const handleDelete = useCallback(() => {
     setShowDeleteConfirm(true);
   }, []);
-
+  
   const handleConfirmDelete = useCallback(() => {
     onDelete(jobId);
     setShowDeleteConfirm(false);
   }, [onDelete, jobId]);
-
+  
   const handleCancelDelete = useCallback(() => {
     setShowDeleteConfirm(false);
   }, []);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
+  // Job label editing handlers
+  const handleLabelEdit = useCallback(() => {
+    setIsEditingLabel(true);
+    setLabelSaveError(null);
+    // Focus the input after a brief delay to ensure DOM is ready
+    setTimeout(() => {
+      if (labelInputRef.current) {
+        labelInputRef.current.focus();
+        // Select all text for easy replacement
+        const range = document.createRange();
+        range.selectNodeContents(labelInputRef.current);
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      }
+    }, 10);
+  }, []);
 
-  const formatDuration = (startTime: string, endTime?: string) => {
-    if (!endTime) return 'In Progress';
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const duration = end.getTime() - start.getTime();
-    const hours = Math.floor(duration / 3600000);
-    const minutes = Math.floor((duration % 3600000) / 60000);
-    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-  };
+  const handleLabelSave = useCallback(async () => {
+    if (!job || !editedLabel.trim()) return;
+    
+    setIsSavingLabel(true);
+    setLabelSaveError(null);
+    
+    try {
+      const result = await window.electronAPI.jobManagement.renameJobExecution(job.id, editedLabel.trim());
+      if (result.success) {
+        // Update local state
+        setJob(prevJob => prevJob ? { ...prevJob, label: editedLabel.trim() } : null);
+        setIsEditingLabel(false);
+        // Show success feedback (could be a toast notification)
+        console.log('Job label updated successfully');
+      } else {
+        setLabelSaveError(result.error || 'Failed to save label');
+      }
+    } catch (error) {
+      console.error('Error saving job label:', error);
+      setLabelSaveError('Failed to save label');
+    } finally {
+      setIsSavingLabel(false);
+    }
+  }, [job, editedLabel]);
+
+  const handleLabelCancel = useCallback(() => {
+    setIsEditingLabel(false);
+    setEditedLabel(job?.label || `Job ${job?.id}`);
+    setLabelSaveError(null);
+  }, [job]);
+
+  const handleLabelKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleLabelSave();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleLabelCancel();
+    }
+  }, [handleLabelSave, handleLabelCancel]);
+
+  const handleLabelBlur = useCallback(() => {
+    // Auto-save on blur if content changed
+    if (editedLabel !== (job?.label || `Job ${job?.id}`)) {
+      handleLabelSave();
+    }
+  }, [editedLabel, job, handleLabelSave]);
+
+  const handleLabelChange = useCallback((e: React.FormEvent<HTMLDivElement>) => {
+    setEditedLabel(e.currentTarget.textContent || '');
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'status-complete';
       case 'failed': return 'status-failed';
-      case 'processing': return 'status-processing';
+      case 'running': return 'status-processing';
       case 'pending': return 'status-pending';
       default: return 'status-pending';
     }
@@ -120,8 +182,25 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   const filteredImages = useMemo(() => {
     if (imageFilter === 'all') return images;
-    return images.filter(img => img.status === imageFilter);
+    return images.filter(img => img.qcStatus === imageFilter);
   }, [images, imageFilter]);
+
+  const formatDate = (dateString: string | Date) => {
+    if (dateString instanceof Date) {
+      return dateString.toLocaleString();
+    }
+    return new Date(dateString).toLocaleString();
+  };
+
+  const formatDuration = (startTime: string | Date, endTime?: string | Date) => {
+    if (!endTime) return 'In Progress';
+    const start = startTime instanceof Date ? startTime : new Date(startTime);
+    const end = endTime instanceof Date ? endTime : new Date(endTime);
+    const duration = end.getTime() - start.getTime();
+    const hours = Math.floor(duration / 3600000);
+    const minutes = Math.floor((duration % 3600000) / 60000);
+    return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+  };
 
   if (isLoading) {
     return (
@@ -181,9 +260,47 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
             <h1 className="job-title-main">Job #{job.id}</h1>
           </div>
         </div>
-        <div className="job-title-editable" contentEditable="true">
-          {job.label || `Job ${job.id}`}
+        <div 
+          className={`job-title-editable ${isEditingLabel ? 'editing' : ''}`}
+          contentEditable={isEditingLabel}
+          onBlur={handleLabelBlur}
+          onKeyDown={handleLabelKeyDown}
+          onInput={handleLabelChange}
+          ref={labelInputRef}
+          onClick={!isEditingLabel ? handleLabelEdit : undefined}
+          title={!isEditingLabel ? "Click to edit job label" : "Press Enter to save, Escape to cancel"}
+        >
+          {isEditingLabel ? editedLabel : (job.label || `Job ${job.id}`)}
         </div>
+        
+        {/* Label editing controls */}
+        {isEditingLabel && (
+          <div className="label-edit-controls">
+            <button 
+              onClick={handleLabelSave}
+              disabled={isSavingLabel}
+              className="label-save-btn"
+              title="Save label"
+            >
+              {isSavingLabel ? 'Saving...' : 'Save'}
+            </button>
+            <button 
+              onClick={handleLabelCancel}
+              disabled={isSavingLabel}
+              className="label-cancel-btn"
+              title="Cancel editing"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+        
+        {/* Label save error */}
+        {labelSaveError && (
+          <div className="label-error">
+            {labelSaveError}
+          </div>
+        )}
       </header>
 
       {/* Tabs */}
@@ -374,8 +491,8 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       </div>
                       <div className="image-info">
                         <span className="image-id">IMG{image.id}</span>
-                        <span className={`image-status ${getStatusColor(image.status)}`}>
-                          {image.status === 'completed' ? '✓' : '⚠️'}
+                        <span className={`image-status ${getStatusColor(image.qcStatus)}`}>
+                          {image.qcStatus === 'approved' ? '✓' : image.qcStatus === 'failed' ? '⚠️' : '⏳'}
                         </span>
                       </div>
                     </div>
@@ -403,8 +520,8 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       </td>
                       <td>IMG{image.id}</td>
                       <td>
-                        <span className={`image-status ${getStatusColor(image.status)}`}>
-                          {image.status === 'completed' ? '✓ Complete' : '⚠️ Failed'}
+                        <span className={`image-status ${getStatusColor(image.qcStatus)}`}>
+                          {image.qcStatus === 'approved' ? '✓ Complete' : image.qcStatus === 'failed' ? '⚠️ Failed' : '⏳ Pending'}
                         </span>
                       </td>
                       <td>{formatDate(job.startedAt || '')}</td>

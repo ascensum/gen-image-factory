@@ -115,6 +115,7 @@
   margin: 0;
 }
 
+/* Job Label Editing */
 .job-title-editable {
   font-size: 1.5rem;
   font-weight: 500;
@@ -124,6 +125,9 @@
   transition: all 0.2s ease-out;
   background-color: transparent;
   border: 2px solid transparent;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
 }
 
 .job-title-editable:hover {
@@ -134,6 +138,81 @@
   outline: none;
   border-color: var(--ring);
   background-color: var(--secondary);
+}
+
+.job-title-editable.editing {
+  background-color: var(--secondary);
+  border-color: var(--ring);
+  cursor: text;
+}
+
+.job-title-editable:not(.editing) {
+  cursor: pointer;
+}
+
+.job-title-editable:not(.editing):hover::after {
+  content: " ✏️";
+  opacity: 0.7;
+  margin-left: 0.5rem;
+}
+
+/* Label Edit Controls */
+.label-edit-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--secondary);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.label-save-btn,
+.label-cancel-btn {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background-color: var(--card);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: all 0.2s ease-out;
+  font-size: 0.875rem;
+}
+
+.label-save-btn {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+
+.label-save-btn:hover:not(:disabled) {
+  background-color: var(--primary);
+  opacity: 0.9;
+}
+
+.label-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.label-cancel-btn:hover:not(:disabled) {
+  background-color: var(--accent);
+}
+
+.label-cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Label Error */
+.label-error {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: var(--status-failed);
+  color: var(--status-failed-foreground);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  border: 1px solid var(--status-failed);
 }
 
 /* Tab Navigation */
