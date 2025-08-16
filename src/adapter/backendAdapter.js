@@ -681,12 +681,15 @@ class BackendAdapter {
     try {
       console.log('🔧 backendAdapter.startJob called with config:', config);
       console.log('🔧 jobRunner instance:', this.jobRunner);
+      console.log('🔧 jobRunner.startJob method type:', typeof this.jobRunner.startJob);
+      console.log('🔧 About to call jobRunner.startJob with config:', config);
       
       const result = await this.jobRunner.startJob(config);
       console.log('✅ backendAdapter.startJob result:', result);
       return result;
     } catch (error) {
       console.error('❌ Error starting job in backendAdapter:', error);
+      console.error('❌ Error stack:', error.stack);
       const translatedError = this.errorTranslation.createJobError(
         'unknown',
         error,
