@@ -150,6 +150,30 @@ class JobRunner extends EventEmitter {
       // Start the job execution
       console.log('🎯 Starting job execution...');
       this.currentJob = this.executeJob(config, jobId);
+      // Save job execution to database if backendAdapter is available
+      if (this.backendAdapter) {
+        try {
+          console.log("💾 Saving job execution to database...");
+          const jobExecution = {
+            id: jobId,
+            configurationId: null, // Will be set when job completes
+            status: "running",
+            startTime: this.jobState.startTime,
+            endTime: null,
+            error: null,
+            progress: 0,
+            currentStep: "initialization"
+          };
+          
+          const saveResult = await this.backendAdapter.saveJobExecution(jobExecution);
+          console.log("✅ Job execution saved to database:", saveResult);
+        } catch (error) {
+          console.error("❌ Failed to save job execution to database:", error);
+        }
+      } else {
+        console.warn("⚠️ No backendAdapter available - job execution will not be saved to database");
+      }
+      
       
       // For testing purposes, wait a bit to ensure job state is set
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -326,6 +350,37 @@ class JobRunner extends EventEmitter {
       console.log('✅ Images type:', typeof images);
       console.log('✅ Images length:', Array.isArray(images) ? images.length : 'Not an array');
       console.log('✅ Images structure:', JSON.stringify(images, null, 2));
+      // Save generated images to database if backendAdapter is available
+      if (this.backendAdapter && Array.isArray(images)) {
+        try {
+          console.log("💾 Saving generated images to database...");
+          for (const image of images) {
+            if (image.path && image.status === "generated") {
+              const generatedImage = {
+                id: uuidv4(),
+                jobExecutionId: jobId,
+                originalPath: image.path,
+                processedPath: image.path,
+                status: image.status,
+                aspectRatio: image.aspectRatio || "16:9",
+                metadata: image.metadata || {},
+                qcStatus: "pending",
+                qcScore: null,
+                qcReason: null,
+                createdAt: new Date()
+              };
+              
+              const saveResult = await this.backendAdapter.saveGeneratedImage(generatedImage);
+              console.log("✅ Generated image saved to database:", saveResult);
+            }
+          }
+        } catch (error) {
+          console.error("❌ Failed to save generated images to database:", error);
+        }
+      } else {
+        console.warn("⚠️ No backendAdapter available or no images - generated images will not be saved to database");
+      }
+      
       
       this.completedSteps.push('image_generation');
       this.emitProgress('image_generation', 75, 'Images generated successfully');
@@ -364,6 +419,30 @@ class JobRunner extends EventEmitter {
       this.jobState.status = 'completed';
       this.jobState.endTime = new Date();
       this.emitProgress('completed', 100, 'Job completed successfully');
+      
+      // Save completed job execution to database if backendAdapter is available
+      if (this.backendAdapter) {
+        try {
+          console.log("💾 Updating job execution in database...");
+          const updatedJobExecution = {
+            id: jobId,
+            configurationId: null, // Will be set when job completes
+            status: "completed",
+            startTime: this.jobState.startTime,
+            endTime: this.jobState.endTime,
+            error: null,
+            progress: 100,
+            currentStep: "completed"
+          };
+          
+          const updateResult = await this.backendAdapter.saveJobExecution(updatedJobExecution);
+          console.log("✅ Job execution updated in database:", updateResult);
+        } catch (error) {
+          console.error("❌ Failed to update job execution in database:", error);
+        }
+      } else {
+        console.warn("⚠️ No backendAdapter available - job execution will not be saved to database");
+      }
       
       console.log('🎉 Job execution completed successfully!');
 
