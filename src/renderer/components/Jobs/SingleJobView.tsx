@@ -68,10 +68,18 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
         setError(jobResult.error || 'Failed to load job details');
       }
       
-      // Load job images
-      const imagesResult = await window.electronAPI.generatedImages.getGeneratedImagesByExecution(jobId);
-      if (imagesResult.success) {
-        setImages(imagesResult.images || []);
+      // Load job images - use the numeric database ID from job execution
+      if (jobResult.execution?.id) {
+        const imagesResult = await window.electronAPI.generatedImages.getGeneratedImagesByExecution(jobResult.execution.id);
+        if (imagesResult.success) {
+          setImages(imagesResult.images || []);
+        } else {
+          console.warn('Failed to load images:', imagesResult.error);
+          setImages([]);
+        }
+      } else {
+        console.warn('Job execution has no numeric ID, cannot load images');
+        setImages([]);
       }
       
       // Load job logs from actual job execution
@@ -268,10 +276,10 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
           // Don't close modal - let user see the error
         }
       } else {
-        // No configuration ID - this job was not properly created
-        console.warn('Job has no configurationId:', job);
-        setSettingsSaveError('Job has no configuration. This job may be corrupted.');
-        // Don't close modal - let user see the error
+        // No configuration ID - this is a dashboard-created job (expected behavior)
+        console.log('Job has no configurationId - this is a dashboard-created job');
+        setSettingsSaveError('This job was created from the dashboard and has no saved configuration. You can view the job details and generated images, but cannot edit settings. This is normal behavior for dashboard-created jobs.');
+        // Don't close modal - let user see the message
       }
     } catch (error) {
       console.error('Error loading job settings:', error);
@@ -661,6 +669,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                             alt={`Generated image ${image.id}`}
                             className="w-full h-32 object-cover rounded"
                             onError={(e) => {
+                              console.error('Failed to load image:', image.finalImagePath);
                               e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik02NCAzMkM3Ny4yNTQ4IDMyIDg4IDQyLjc0NTIgODggNTZDODggNjkuMjU0OCA3Ny4yNTQ4IDgwIDY0IDgwQzUwLjc0NTIgODAgNDAgNjkuMjU0OCA0MCA1NkM0MCA0Mi43NDUyIDUwLjc0NTIgMzIgNjQgMzJaIiBmaWxsPSIjOUI5QkEwIi8+CjxwYXRoIGQ9Ik0yNCA4OEgxMDRDMTEwLjYyNyA4OCAxMTYgOTMuMzcyNiAxMTYgMTAwVjExMkMxMTYgMTE4LjYyNyAxMTAuNjI3IDEyNCAxMDQgMTI0SDI0QzE3LjM3MjYgMTI0IDEyIDExOC42MjcgMTIgMTEyVjEwMEMxMiA5My4zNzI2IDE3LjM3MjYgODggMjQgODhaIiBmaWxsPSIjOUI5QkEwIi8+Cjwvc3ZnPgo=';
                             }}
                           />
