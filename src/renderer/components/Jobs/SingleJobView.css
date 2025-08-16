@@ -115,79 +115,97 @@
   margin: 0;
 }
 
-/* Job Label Editing */
+/* Job Title Section */
+.job-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .job-title-editable {
-  font-size: 1.5rem;
-  font-weight: 500;
-  cursor: text;
-  padding: 0.5rem;
-  border-radius: var(--radius);
-  transition: all 0.2s ease-out;
-  background-color: transparent;
-  border: 2px solid transparent;
-  min-height: 2.5rem;
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 2.5rem;
 }
 
 .job-title-editable:hover {
-  background-color: var(--secondary);
+  background-color: var(--muted/30);
+  border-color: var(--border);
 }
 
-.job-title-editable:focus {
+.job-title-text {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--foreground);
+  flex: 1;
+}
+
+.edit-icon {
+  color: var(--muted-foreground);
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.job-title-editable:hover .edit-icon {
+  opacity: 1;
+  color: var(--ring);
+}
+
+/* Label Input Field */
+.label-input {
+  flex: 1;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--foreground);
+  background: none;
+  border: none;
   outline: none;
-  border-color: var(--ring);
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+}
+
+.label-input:focus {
   background-color: var(--secondary);
-}
-
-.job-title-editable.editing {
-  background-color: var(--secondary);
-  border-color: var(--ring);
-  cursor: text;
-}
-
-.job-title-editable:not(.editing) {
-  cursor: pointer;
-}
-
-.job-title-editable:not(.editing):hover::after {
-  content: " ✏️";
-  opacity: 0.7;
-  margin-left: 0.5rem;
+  border-radius: var(--radius);
+  padding: 0.25rem 0.5rem;
+  margin: -0.25rem -0.5rem;
 }
 
 /* Label Edit Controls */
 .label-edit-controls {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background-color: var(--secondary);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
+  align-items: center;
 }
 
 .label-save-btn,
 .label-cancel-btn {
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background-color: var(--card);
-  color: var(--foreground);
-  cursor: pointer;
-  transition: all 0.2s ease-out;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius);
   font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
 }
 
 .label-save-btn {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
-  border-color: var(--primary);
+  background-color: #2563eb;
+  color: white;
+  border-color: #2563eb;
 }
 
 .label-save-btn:hover:not(:disabled) {
-  background-color: var(--primary);
-  opacity: 0.9;
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
 .label-save-btn:disabled {
@@ -195,24 +213,32 @@
   cursor: not-allowed;
 }
 
-.label-cancel-btn:hover:not(:disabled) {
-  background-color: var(--accent);
+.label-cancel-btn {
+  background-color: transparent;
+  color: var(--muted-foreground);
+  border-color: var(--border);
 }
 
-.label-cancel-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.label-cancel-btn:hover {
+  background-color: var(--muted);
+  color: var(--foreground);
 }
 
 /* Label Error */
 .label-error {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background-color: var(--status-failed);
-  color: var(--status-failed-foreground);
-  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius);
+  color: #dc2626;
   font-size: 0.875rem;
-  border: 1px solid var(--status-failed);
+}
+
+.label-error .error-icon {
+  font-size: 1rem;
 }
 
 /* Tab Navigation */

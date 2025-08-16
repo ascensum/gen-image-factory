@@ -173,10 +173,6 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     }
   }, [editedLabel, job, handleLabelSave]);
 
-  const handleLabelChange = useCallback((e: React.FormEvent<HTMLDivElement>) => {
-    setEditedLabel(e.currentTarget.textContent || '');
-  }, []);
-
   // Settings editing handlers
   const handleSettingsEdit = useCallback(async () => {
     setIsEditingSettings(true);
@@ -342,47 +338,46 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
             <h1 className="job-title-main">Job #{job.id}</h1>
           </div>
         </div>
-        <div 
-          className={`job-title-editable ${isEditingLabel ? 'editing' : ''}`}
-          contentEditable={isEditingLabel}
-          onBlur={handleLabelBlur}
-          onKeyDown={handleLabelKeyDown}
-          onInput={handleLabelChange}
-          ref={labelInputRef}
-          onClick={!isEditingLabel ? handleLabelEdit : undefined}
-          title={!isEditingLabel ? "Click to edit job label" : "Press Enter to save, Escape to cancel"}
-        >
-          {isEditingLabel ? editedLabel : (job.label || `Job ${job.id}`)}
+        <div className="job-title-section">
+          <div className="job-title-editable" onClick={!isEditingLabel ? handleLabelEdit : undefined} title={!isEditingLabel ? "Click to edit job label" : "Press Enter to save, Escape to cancel"}>
+            {isEditingLabel ? (
+              <input
+                type="text"
+                value={editedLabel}
+                onChange={(e) => setEditedLabel(e.target.value)}
+                onKeyDown={handleLabelKeyDown}
+                onBlur={handleLabelBlur}
+                ref={labelInputRef}
+                className="label-input"
+                autoFocus
+              />
+            ) : (
+              <>
+                <span className="job-title-text">{job.label || `Job ${job.id}`}</span>
+                <svg className="edit-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </>
+            )}
+          </div>
+          {isEditingLabel && (
+            <div className="label-edit-controls">
+              <button onClick={handleLabelSave} disabled={isSavingLabel} className="label-save-btn" title="Save label">
+                {isSavingLabel ? 'Saving...' : 'Save'}
+              </button>
+              <button onClick={handleLabelCancel} disabled={isSavingLabel} className="label-cancel-btn" title="Cancel editing">
+                Cancel
+              </button>
+            </div>
+          )}
+          {labelSaveError && (
+            <div className="label-error">
+              <span className="error-icon">⚠️</span>
+              {labelSaveError}
+            </div>
+          )}
         </div>
-        
-        {/* Label editing controls */}
-        {isEditingLabel && (
-          <div className="label-edit-controls">
-            <button 
-              onClick={handleLabelSave}
-              disabled={isSavingLabel}
-              className="label-save-btn"
-              title="Save label"
-            >
-              {isSavingLabel ? 'Saving...' : 'Save'}
-            </button>
-            <button 
-              onClick={handleLabelCancel}
-              disabled={isSavingLabel}
-              className="label-cancel-btn"
-              title="Cancel editing"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-        
-        {/* Label save error */}
-        {labelSaveError && (
-          <div className="label-error">
-            {labelSaveError}
-          </div>
-        )}
       </header>
 
       {/* Tabs */}
