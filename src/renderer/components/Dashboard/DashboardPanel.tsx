@@ -229,6 +229,16 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     }
   }, [jobStatus.state]);
 
+  // Refresh data when job status changes to completed
+  useEffect(() => {
+    if (jobStatus.state === 'completed') {
+      console.log('🔄 Job completed, refreshing data...');
+      loadJobHistory();
+      loadStatistics();
+      loadGeneratedImages();
+    }
+  }, [jobStatus.state]);
+
   const loadJobHistory = async () => {
     try {
       setIsLoading(true);
@@ -476,6 +486,11 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
               jobStatus={jobStatus.state}
               onStartJob={handleStartJob}
               onStopJob={handleStopJob}
+              onRefresh={() => {
+                loadJobHistory();
+                loadStatistics();
+                loadGeneratedImages();
+              }}
               isLoading={isLoading}
             />
             <ForceStopButton
