@@ -31,7 +31,7 @@ class JobExecution {
       const createTableSQL = `
         CREATE TABLE IF NOT EXISTS job_executions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          configuration_id INTEGER NOT NULL,
+          configuration_id INTEGER,
           started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           completed_at TIMESTAMP,
           status VARCHAR(50) DEFAULT 'running',
@@ -84,12 +84,101 @@ class JobExecution {
           }
         });
 
-        // Wait for all operations to complete
-        this.db.wait((err) => {
+        // Migrate existing table to allow nullable configuration_id
+        this.migrateTable().then(() => {
+          // Wait for all operations to complete
+          this.db.wait((err) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
+        }).catch(reject);
+      });
+    });
+  }
+
+  async migrateTable() {
+    return new Promise((resolve, reject) => {
+      // Check if we need to migrate the configuration_id column
+      this.db.get("PRAGMA table_info(job_executions)", (err, rows) => {
+        if (err) {
+          console.error('Error checking table schema:', err);
+          resolve(); // Continue anyway
+          return;
+        }
+
+        // Get all column info
+        this.db.all("PRAGMA table_info(job_executions)", (err, columns) => {
           if (err) {
-            reject(err);
+            console.error('Error getting table columns:', err);
+            resolve(); // Continue anyway
+            return;
+          }
+
+          // Find configuration_id column
+          const configColumn = columns.find(col => col.name === 'configuration_id');
+          if (configColumn && configColumn.notnull === 1) {
+            console.log('Migrating job_executions table to allow nullable configuration_id...');
+            
+            // Create new table with nullable configuration_id
+            const createNewTableSQL = `
+              CREATE TABLE job_executions_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                configuration_id INTEGER,
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP,
+                status VARCHAR(50) DEFAULT 'running',
+                total_images INTEGER DEFAULT 0,
+                successful_images INTEGER DEFAULT 0,
+                failed_images INTEGER DEFAULT 0,
+                error_message TEXT,
+                label TEXT,
+                FOREIGN KEY (configuration_id) REFERENCES job_configurations(id) ON DELETE CASCADE
+              )
+            `;
+
+            this.db.serialize(() => {
+              // Create new table
+              this.db.run(createNewTableSQL, (err) => {
+                if (err) {
+                  console.error('Error creating new table:', err);
+                  resolve(); // Continue anyway
+                  return;
+                }
+
+                // Copy data from old table
+                this.db.run('INSERT INTO job_executions_new SELECT * FROM job_executions', (err) => {
+                  if (err) {
+                    console.error('Error copying data:', err);
+                    resolve(); // Continue anyway
+                    return;
+                  }
+
+                  // Drop old table
+                  this.db.run('DROP TABLE job_executions', (err) => {
+                    if (err) {
+                      console.error('Error dropping old table:', err);
+                      resolve(); // Continue anyway
+                      return;
+                    }
+
+                    // Rename new table
+                    this.db.run('ALTER TABLE job_executions_new RENAME TO job_executions', (err) => {
+                      if (err) {
+                        console.error('Error renaming table:', err);
+                      } else {
+                        console.log('Successfully migrated job_executions table');
+                      }
+                      resolve();
+                    });
+                  });
+                });
+              });
+            });
           } else {
-            resolve();
+            resolve(); // No migration needed
           }
         });
       });
