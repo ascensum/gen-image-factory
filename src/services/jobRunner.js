@@ -426,12 +426,32 @@ class JobRunner extends EventEmitter {
       
       // The module returns a path, so we need to create a proper response
       if (result) {
-        return [{
-          path: result,
-          aspectRatio: parameters.aspectRatios?.[0] || '1:1',
+        // Handle different result structures from producePictureModule
+        let imagePaths = [];
+        
+        if (Array.isArray(result)) {
+          // If result is an array, use each path
+          imagePaths = result;
+        } else if (typeof result === 'string') {
+          // If result is a string, use it directly
+          imagePaths = [result];
+        } else if (result.paths && Array.isArray(result.paths)) {
+          // If result has a paths property
+          imagePaths = result.paths;
+        } else {
+          // Fallback: treat result as a single path
+          imagePaths = [result];
+        }
+        
+        console.log('🔧 Processed image paths:', imagePaths);
+        
+        // Create proper image objects
+        return imagePaths.map((path, index) => ({
+          path: path,
+          aspectRatio: parameters.aspectRatios?.[index] || '1:1',
           status: 'generated',
           metadata: { prompt: parameters.prompt }
-        }];
+        }));
       } else {
         throw new Error('No images were generated');
       }
