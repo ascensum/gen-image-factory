@@ -278,14 +278,10 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       console.log('Generated images loaded:', images);
       // Ensure images is always an array
       if (images && Array.isArray(images)) {
-        // TEMPORARILY: Show all images, not just approved ones, to debug QC status issue
-        // TODO: Restore filtering once QC status is properly updated
-        console.log('🔍 TEMPORARY: Showing all images instead of filtering by qcStatus');
-        setGeneratedImages(images);
-        
-        // Original filtering (commented out for now):
-        // const successImages = images.filter(img => img.qcStatus === 'approved');
-        // setGeneratedImages(successImages);
+        // Filter to show only success/approved images in main dashboard
+        const successImages = images.filter(img => img.qcStatus === 'approved');
+        setGeneratedImages(successImages);
+        console.log('🔍 Showing approved images:', successImages.length, 'out of', images.length, 'total');
       } else {
         console.warn('getAllGeneratedImages returned non-array:', images);
         setGeneratedImages([]);
