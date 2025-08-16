@@ -302,7 +302,8 @@ function readCsvFile(filePath) {
     const formattedDate = today.toISOString().slice(0, 10).replace(/-/g, '.');
     const timeStr = today.toTimeString().slice(0, 8).replace(/:/g, '');
 
-    const uploadDir = path.resolve('./pictures/toupload');
+    // Use settings path instead of hardcoded relative path
+    const uploadDir = path.resolve(config.outputDirectory || './pictures/toupload');
     await fs.mkdir(uploadDir, { recursive: true });
 
     const processedImages = [];
@@ -395,7 +396,9 @@ function readCsvFile(filePath) {
 
           const date = new Date().toISOString().split('T')[0].replace(/-/g, '_');
           const excelFileName = `redbubble_upload_data_${date}.xlsx`;
-          const excelFilePath = path.join(process.cwd(), 'pictures', 'toupload', excelFileName);
+          
+          // Use settings path instead of hardcoded relative path
+          const excelFilePath = path.join(config.outputDirectory || './pictures/toupload', excelFileName);
           
           try {
             await fs.mkdir(path.dirname(excelFilePath), { recursive: true });

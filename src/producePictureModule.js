@@ -220,7 +220,10 @@ async function producePictureModule(
     for (let i = 0; i < imageUrls.length; i++) {
       const imageUrl = imageUrls[i];
       const imageSuffix = `_${i + 1}`;
-      const inputImagePath = path.resolve(`./pictures/generated/${imgNameBase}${imageSuffix}.png`);
+      
+      // Use settings path instead of hardcoded relative path
+      const tempDir = config.tempDirectory || './pictures/generated';
+      const inputImagePath = path.resolve(path.join(tempDir, `${imgNameBase}${imageSuffix}.png`));
 
       // Download the image
       try {
@@ -383,7 +386,10 @@ async function processImage(inputImagePath, imgName, config = {}) {
 
   // 4. Determine Final Format and Path
   const finalExtension = convertToJpg ? ".jpg" : ".png";
-  const outputPath = path.resolve(`./pictures/toupload/${imgName}${finalExtension}`);
+  
+  // Use settings path instead of hardcoded relative path
+  const outputDir = config.outputDirectory || './pictures/toupload';
+  const outputPath = path.resolve(path.join(outputDir, `${imgName}${finalExtension}`));
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
   // 5. Encode to Final Format and Save

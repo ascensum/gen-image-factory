@@ -180,6 +180,23 @@ class JobConfiguration {
   }
 
   getDefaultSettings() {
+    // Get user-accessible paths for Electron app
+    let outputDir, tempDir;
+    
+    try {
+      // In Electron context, use app.getPath('userData')
+      const { app } = require('electron');
+      const userDataPath = app.getPath('userData');
+      outputDir = path.join(userDataPath, 'pictures', 'toupload');
+      tempDir = path.join(userDataPath, 'pictures', 'generated');
+    } catch (error) {
+      // Fallback for non-Electron context (e.g., testing)
+      const os = require('os');
+      const homeDir = os.homedir();
+      outputDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'toupload');
+      tempDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'generated');
+    }
+
     return {
       apiKeys: {
         openai: '',
@@ -187,8 +204,8 @@ class JobConfiguration {
         removeBg: ''
       },
       filePaths: {
-        outputDirectory: './pictures/toupload',
-        tempDirectory: './pictures/generated',
+        outputDirectory: outputDir,
+        tempDirectory: tempDir,
         systemPromptFile: '',
         keywordsFile: '',
         qualityCheckPromptFile: '',
