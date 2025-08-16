@@ -469,19 +469,36 @@ class JobRunner extends EventEmitter {
           console.log(`🔧 Processing image ${index}:`, item);
           console.log(`🔧 Item type:`, typeof item);
           console.log(`🔧 Item keys:`, Object.keys(item));
-          
           // Extract the outputPath from each item
           const imagePath = item.outputPath || item.path || item;
           console.log(`🔧 Extracted path for image ${index}:`, imagePath);
           console.log(`🔧 Path type:`, typeof imagePath);
           
+          // Get the correct aspect ratio for this image
+          // If we have multiple aspect ratios, cycle through them
+          // If we have only one, use it for all images
+          let aspectRatio;
+          if (parameters.aspectRatios && parameters.aspectRatios.length > 0) {
+            if (parameters.aspectRatios.length === 1) {
+              // Single aspect ratio - use for all images
+              aspectRatio = parameters.aspectRatios[0];
+            } else {
+              // Multiple aspect ratios - cycle through them
+              aspectRatio = parameters.aspectRatios[index % parameters.aspectRatios.length];
+            }
+          } else {
+            // Fallback to default
+            aspectRatio = '1:1';
+          }
+          
+          console.log(`🔧 Using aspect ratio for image ${index}:`, aspectRatio);
+          
           const imageObject = {
             path: imagePath,  // This should be a string path
-            aspectRatio: parameters.aspectRatios?.[index] || '1:1',
+            aspectRatio: aspectRatio,
             status: 'generated',
             metadata: { prompt: parameters.prompt }
           };
-          
           console.log(`🔧 Created image object ${index}:`, imageObject);
           return imageObject;
         });
