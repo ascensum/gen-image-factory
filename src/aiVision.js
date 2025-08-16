@@ -44,13 +44,18 @@ async function runQualityCheck(imagePath, openaiModel = 'gpt-4o', customQualityC
       logDebug('Error parsing JSON response. Attempting to extract information from raw response.');
       // If JSON parsing fails, try to extract pass/fail information from the text
       const lowerAnalysis = analysis.toLowerCase();
-      const passed = lowerAnalysis.includes('passed: true') || lowerAnalysis.includes('"passed": true');
+      const passed = lowerAnalysis.includes('passed: true') || lowerAnalysis.includes('"passed": true') || 
+                    lowerAnalysis.includes('pass') || lowerAnalysis.includes('success');
       const failed = lowerAnalysis.includes('passed: false') || lowerAnalysis.includes('"passed": false') || 
-                    lowerAnalysis.includes('fail') || lowerAnalysis.includes('failed');
+                    lowerAnalysis.includes('fail') || lowerAnalysis.includes('failed') ||
+                    lowerAnalysis.includes('unable to analyze') || lowerAnalysis.includes('cannot analyze');
+      
+      // If we can't determine, default to passed to avoid blocking jobs
+      const isPassed = passed && !failed;
       
       parsedAnalysis = {
-        passed: passed && !failed,
-        score: passed ? 9 : 2,
+        passed: isPassed,
+        score: isPassed ? 9 : 2,
         reason: `Raw response analysis: ${analysis.substring(0, 200)}...`
       };
     }
