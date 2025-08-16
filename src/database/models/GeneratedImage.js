@@ -31,7 +31,7 @@ class GeneratedImage {
       const createTableSQL = `
         CREATE TABLE IF NOT EXISTS generated_images (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          execution_id INTEGER NOT NULL,
+          execution_id INTEGER,
           generation_prompt TEXT NOT NULL,
           seed INTEGER,
           qc_status VARCHAR(20) DEFAULT 'pending',
@@ -43,6 +43,9 @@ class GeneratedImage {
           FOREIGN KEY (execution_id) REFERENCES job_executions(id) ON DELETE CASCADE
         )
       `;
+      
+      // Check if we need to migrate existing table
+      this.checkAndMigrateTable().then(() => {
 
       const createIndexesSQL = [
         'CREATE INDEX IF NOT EXISTS idx_generated_images_execution_id ON generated_images(execution_id)',
@@ -79,6 +82,114 @@ class GeneratedImage {
           } else {
             resolve();
           }
+        });
+      });
+    });
+  }
+
+  /**
+   * Check if table needs migration and migrate if necessary
+   * This handles the case where execution_id was NOT NULL but needs to be nullable
+   */
+  async checkAndMigrateTable() {
+    return new Promise((resolve, reject) => {
+      // Check if the current table has the NOT NULL constraint
+      this.db.get("PRAGMA table_info(generated_images)", (err, rows) => {
+        if (err) {
+          console.warn('Could not check table schema, skipping migration:', err);
+          resolve();
+          return;
+        }
+
+        // Check if execution_id column exists and has NOT NULL constraint
+        this.db.all("PRAGMA table_info(generated_images)", (err, columns) => {
+          if (err) {
+            console.warn('Could not check table columns, skipping migration:', err);
+            resolve();
+            return;
+          }
+
+          const executionIdColumn = columns.find(col => col.name === 'execution_id');
+          if (executionIdColumn && executionIdColumn.notnull === 1) {
+            console.log('🔄 Migrating generated_images table to allow nullable execution_id...');
+            this.migrateTable().then(resolve).catch(reject);
+          } else {
+            resolve();
+          }
+        });
+      });
+    });
+  }
+
+  /**
+   * Migrate the table to allow nullable execution_id
+   */
+  async migrateTable() {
+    return new Promise((resolve, reject) => {
+      console.log('🔄 Starting generated_images table migration...');
+      
+      // Create new table with nullable execution_id
+      const createNewTableSQL = `
+        CREATE TABLE generated_images_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          execution_id INTEGER,
+          generation_prompt TEXT NOT NULL,
+          seed INTEGER,
+          qc_status VARCHAR(20) DEFAULT 'pending',
+          qc_reason TEXT,
+          final_image_path VARCHAR(500),
+          metadata TEXT,
+          processing_settings TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (execution_id) REFERENCES job_executions(id) ON DELETE CASCADE
+        )
+      `;
+
+      this.db.serialize(() => {
+        // Create new table
+        this.db.run(createNewTableSQL, (err) => {
+          if (err) {
+            console.error('Error creating new generated_images table:', err);
+            reject(err);
+            return;
+          }
+          console.log('✅ New generated_images table created');
+
+          // Copy data from old table to new table
+          this.db.run(`
+            INSERT INTO generated_images_new 
+            SELECT id, execution_id, generation_prompt, seed, qc_status, qc_reason, 
+                   final_image_path, metadata, processing_settings, created_at
+            FROM generated_images
+          `, (err) => {
+            if (err) {
+              console.error('Error copying data to new table:', err);
+              reject(err);
+              return;
+            }
+            console.log('✅ Data copied to new table');
+
+            // Drop old table
+            this.db.run('DROP TABLE generated_images', (err) => {
+              if (err) {
+                console.error('Error dropping old table:', err);
+                reject(err);
+                return;
+              }
+              console.log('✅ Old table dropped');
+
+              // Rename new table
+              this.db.run('ALTER TABLE generated_images_new RENAME TO generated_images', (err) => {
+                if (err) {
+                  console.error('Error renaming new table:', err);
+                  reject(err);
+                  return;
+                }
+                console.log('✅ Table migration completed successfully');
+                resolve();
+              });
+            });
+          });
         });
       });
     });
