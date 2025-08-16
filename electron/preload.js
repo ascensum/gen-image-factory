@@ -74,6 +74,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // Configuration
   getConfiguration: () => ipcRenderer.invoke('settings:get-configuration'),
+  getJobConfigurationById: (id) => ipcRenderer.invoke('job-configuration:get-by-id', id),
+  updateJobConfiguration: (id, settingsObject) => ipcRenderer.invoke('job-configuration:update', id, settingsObject),
   
   // Generated Images
   generatedImages: {
@@ -136,6 +138,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'get-job-executions-with-filters',
       'get-job-executions-count',
       'settings:get-configuration',
+      'job-configuration:get-by-id',
+      'job-configuration:update',
       // Generated Image Management
       'generated-image:save',
       'generated-image:get',

@@ -89,6 +89,14 @@ class BackendAdapter {
         return await this.getSettings();
       });
 
+      _ipc.handle('job-configuration:get-by-id', async (event, id) => {
+        return await this.getJobConfigurationById(id);
+      });
+
+      _ipc.handle('job-configuration:update', async (event, id, settingsObject) => {
+        return await this.updateJobConfiguration(id, settingsObject);
+      });
+
       // File Selection
       _ipc.handle('select-file', async (event, options) => {
         return await this.selectFile(options);
@@ -413,10 +421,7 @@ class BackendAdapter {
 
   async getSettings() {
     try {
-      // Ensure database is initialized
       await this.ensureInitialized();
-      
-      // Get settings from database
       const result = await this.jobConfig.getSettings();
       
       if (result.success && result.settings) {
@@ -461,6 +466,28 @@ class BackendAdapter {
       // Return default settings on error to ensure UI compatibility
       const defaultSettings = this.jobConfig.getDefaultSettings();
       return { success: true, settings: defaultSettings };
+    }
+  }
+
+  async getJobConfigurationById(id) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.jobConfig.getConfigurationById(id);
+      return result;
+    } catch (error) {
+      console.error('Error getting job configuration by ID:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateJobConfiguration(id, settingsObject) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.jobConfig.updateConfiguration(id, settingsObject);
+      return result;
+    } catch (error) {
+      console.error('Error updating job configuration:', error);
+      return { success: false, error: error.message };
     }
   }
 

@@ -96,6 +96,59 @@ class JobConfiguration {
     });
   }
 
+  async getConfigurationById(id) {
+    return new Promise((resolve, reject) => {
+      const sql = 'SELECT * FROM job_configurations WHERE id = ?';
+      
+      this.db.get(sql, [id], (err, row) => {
+        if (err) {
+          console.error('Error getting configuration by ID:', err);
+          reject(err);
+        } else if (row) {
+          try {
+            const settings = JSON.parse(row.settings);
+            resolve({ 
+              success: true, 
+              configuration: {
+                id: row.id,
+                name: row.name,
+                settings: settings,
+                createdAt: row.created_at,
+                updatedAt: row.updated_at
+              }
+            });
+          } catch (parseError) {
+            console.error('Error parsing settings JSON:', parseError);
+            reject(parseError);
+          }
+        } else {
+          resolve({ success: false, error: 'Configuration not found' });
+        }
+      });
+    });
+  }
+
+  async updateConfiguration(id, settingsObject) {
+    return new Promise((resolve, reject) => {
+      const settingsJson = JSON.stringify(settingsObject);
+      const sql = `
+        UPDATE job_configurations 
+        SET settings = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `;
+
+      this.db.run(sql, [settingsJson, id], function(err) {
+        if (err) {
+          console.error('Error updating configuration:', err);
+          reject(err);
+        } else {
+          console.log('Configuration updated successfully');
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
+  }
+
   async getAllConfigurations() {
     return new Promise((resolve, reject) => {
       const sql = 'SELECT name, created_at, updated_at FROM job_configurations ORDER BY updated_at DESC';

@@ -180,20 +180,44 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     setIsLoadingSettings(true);
     
     try {
-      // Load current settings from backend
-      const result = await window.electronAPI.getConfiguration();
-      if (result.success && result.settings) {
-        setEditedSettings(result.settings);
+      // Load job-specific settings from backend
+      if (job?.configurationId) {
+        const result = await window.electronAPI.getJobConfigurationById(job.configurationId);
+        if (result.success && result.configuration?.settings) {
+          setEditedSettings(result.configuration.settings);
+        } else {
+          // Fallback to global settings if job configuration not found
+          const globalResult = await window.electronAPI.getConfiguration();
+          if (globalResult.success && globalResult.settings) {
+            setEditedSettings(globalResult.settings);
+          } else {
+            // Fallback to default settings if loading fails
+            setEditedSettings({
+              apiKeys: { openai: '', piapi: '', removeBg: '' },
+              filePaths: { outputDirectory: './pictures/toupload', tempDirectory: './pictures/generated' },
+              parameters: { processMode: 'relax', aspectRatios: '1:1,16:9,9:16', mjVersion: '6.1' },
+              processing: { removeBg: false, imageConvert: false, imageEnhancement: false, sharpening: 5, saturation: 1.4, convertToJpg: false, trimTransparentBackground: false, jpgBackground: 'white', jpgQuality: 100, pngQuality: 100, removeBgSize: 'auto' },
+              ai: { runQualityCheck: true, runMetadataGen: true },
+              advanced: { debugMode: false }
+            });
+          }
+        }
       } else {
-        // Fallback to default settings if loading fails
-        setEditedSettings({
-          apiKeys: { openai: '', piapi: '', removeBg: '' },
-          filePaths: { outputDirectory: './pictures/toupload', tempDirectory: './pictures/generated' },
-          parameters: { processMode: 'relax', aspectRatios: '1:1,16:9,9:16', mjVersion: '6.1' },
-          processing: { removeBg: false, imageConvert: false, imageEnhancement: false, sharpening: 5, saturation: 1.4, convertToJpg: false, trimTransparentBackground: false, jpgBackground: 'white', jpgQuality: 100, pngQuality: 100, removeBgSize: 'auto' },
-          ai: { runQualityCheck: true, runMetadataGen: true },
-          advanced: { debugMode: false }
-        });
+        // No configuration ID, load global settings
+        const globalResult = await window.electronAPI.getConfiguration();
+        if (globalResult.success && globalResult.settings) {
+          setEditedSettings(globalResult.settings);
+        } else {
+          // Fallback to default settings if loading fails
+          setEditedSettings({
+            apiKeys: { openai: '', piapi: '', removeBg: '' },
+            filePaths: { outputDirectory: './pictures/toupload', tempDirectory: './pictures/generated' },
+            parameters: { processMode: 'relax', aspectRatios: '1:1,16:9,9:16', mjVersion: '6.1' },
+            processing: { removeBg: false, imageConvert: false, imageEnhancement: false, sharpening: 5, saturation: 1.4, convertToJpg: false, trimTransparentBackground: false, jpgBackground: 'white', jpgQuality: 100, pngQuality: 100, removeBgSize: 'auto' },
+            ai: { runQualityCheck: true, runMetadataGen: true },
+            advanced: { debugMode: false }
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -201,7 +225,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     } finally {
       setIsLoadingSettings(false);
     }
-  }, []);
+  }, [job?.configurationId]);
 
   const handleSettingsSave = useCallback(async () => {
     if (!editedSettings) return;
@@ -210,8 +234,16 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     setSettingsSaveError(null);
     
     try {
-      // Save settings using existing backend functionality
-      const result = await window.electronAPI.saveSettings(editedSettings);
+      let result;
+      
+      // Save to job-specific configuration if available
+      if (job?.configurationId) {
+        result = await window.electronAPI.updateJobConfiguration(job.configurationId, editedSettings);
+      } else {
+        // Fallback to global settings if no job configuration
+        result = await window.electronAPI.saveSettings(editedSettings);
+      }
+      
       if (result.success) {
         setIsEditingSettings(false);
         console.log('Settings updated successfully');
@@ -225,7 +257,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     } finally {
       setIsSavingSettings(false);
     }
-  }, [editedSettings]);
+  }, [editedSettings, job?.configurationId]);
 
   const handleSettingsCancel = useCallback(() => {
     setIsEditingSettings(false);
