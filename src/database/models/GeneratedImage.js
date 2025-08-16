@@ -44,9 +44,8 @@ class GeneratedImage {
         )
       `;
       
-            // Check if we need to migrate existing table
+      // Check if we need to migrate existing table
       this.checkAndMigrateTable().then(() => {
-
         const createIndexesSQL = [
           'CREATE INDEX IF NOT EXISTS idx_generated_images_execution_id ON generated_images(execution_id)',
           'CREATE INDEX IF NOT EXISTS idx_generated_images_qc_status ON generated_images(qc_status)',
@@ -88,6 +87,7 @@ class GeneratedImage {
         console.error('Migration failed:', error);
         reject(error);
       });
+    });
   }
 
   /**
