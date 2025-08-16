@@ -76,6 +76,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getConfiguration: () => ipcRenderer.invoke('settings:get-configuration'),
   getJobConfigurationById: (id) => ipcRenderer.invoke('job-configuration:get-by-id', id),
   updateJobConfiguration: (id, settingsObject) => ipcRenderer.invoke('job-configuration:update', id, settingsObject),
+  openExportsFolder: () => ipcRenderer.invoke('open-exports-folder'),
+  exportJobToExcel: (jobId) => ipcRenderer.invoke('job-execution:export-to-excel', { jobId }),
   
   // Generated Images
   generatedImages: {
@@ -140,6 +142,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'settings:get-configuration',
       'job-configuration:get-by-id',
       'job-configuration:update',
+      'open-exports-folder',
       // Generated Image Management
       'generated-image:save',
       'generated-image:get',

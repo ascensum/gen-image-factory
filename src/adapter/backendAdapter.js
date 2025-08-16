@@ -1,5 +1,8 @@
 const keytar = require('keytar');
 const { ipcMain } = require('electron');
+const XLSX = require('xlsx');
+const path = require('path');
+const fs = require('fs');
 const { JobConfiguration } = require('../database/models/JobConfiguration');
 const { JobExecution } = require('../database/models/JobExecution');
 const { GeneratedImage } = require('../database/models/GeneratedImage');
@@ -95,6 +98,10 @@ class BackendAdapter {
 
       _ipc.handle('job-configuration:update', async (event, id, settingsObject) => {
         return await this.updateJobConfiguration(id, settingsObject);
+      });
+
+      _ipc.handle('open-exports-folder', async () => {
+        return await this.openExportsFolder();
       });
 
       // File Selection
@@ -845,18 +852,140 @@ class BackendAdapter {
   async exportJobToExcel(jobId) {
     try {
       await this.ensureInitialized();
-      const job = await this.jobExecution.getJobExecution(jobId);
-      const images = await this.generatedImage.getGeneratedImagesByExecution(jobId);
       
-      // Create Excel export logic here
-      const exportData = {
-        job: job,
-        images: images,
-        timestamp: new Date().toISOString()
+      // Get job execution details
+      const jobResult = await this.jobExecution.getJobExecution(jobId);
+      if (!jobResult.success) {
+        return { success: false, error: 'Failed to get job execution' };
+      }
+      
+      const job = jobResult.execution;
+      
+      // Get generated images for this job
+      const imagesResult = await this.generatedImage.getGeneratedImagesByExecution(jobId);
+      const images = imagesResult.success ? imagesResult.images || [] : [];
+      
+      // Get job configuration if available
+      let jobConfig = null;
+      if (job.configurationId) {
+        try {
+          const configResult = await this.jobConfig.getConfigurationById(job.configurationId);
+          if (configResult.success) {
+            jobConfig = configResult.configuration;
+          }
+        } catch (error) {
+          console.warn('Could not load job configuration:', error);
+        }
+      }
+      
+      // Create Excel workbook
+      const workbook = XLSX.utils.book_new();
+      
+      // Job Summary Sheet
+      const jobSummaryData = [
+        ['Job Export Report', ''],
+        ['Generated:', new Date().toISOString()],
+        ['', ''],
+        ['Job Information', ''],
+        ['Job ID', job.id],
+        ['Label', job.label || 'No label'],
+        ['Status', job.status],
+        ['Started At', job.startedAt ? new Date(job.startedAt).toLocaleString() : 'N/A'],
+        ['Completed At', job.completedAt ? new Date(job.completedAt).toLocaleString() : 'N/A'],
+        ['Total Images', job.totalImages || 0],
+        ['Successful Images', job.successfulImages || 0],
+        ['Failed Images', job.failedImages || 0],
+        ['Error Message', job.errorMessage || 'None'],
+        ['', ''],
+        ['Configuration ID', job.configurationId || 'None']
+      ];
+      
+      if (jobConfig) {
+        jobSummaryData.push(['Configuration Name', jobConfig.name || 'Unknown']);
+        jobSummaryData.push(['Created At', jobConfig.createdAt ? new Date(jobConfig.createdAt).toLocaleString() : 'N/A']);
+        jobSummaryData.push(['Updated At', jobConfig.updatedAt ? new Date(jobConfig.updatedAt).toLocaleString() : 'N/A']);
+      }
+      
+      const jobSummarySheet = XLSX.utils.aoa_to_sheet(jobSummaryData);
+      XLSX.utils.book_append_sheet(workbook, jobSummarySheet, 'Job Summary');
+      
+      // Images Sheet
+      if (images.length > 0) {
+        const imagesData = [
+          ['Image ID', 'Execution ID', 'Generation Prompt', 'Seed', 'QC Status', 'QC Reason', 'Final Image Path', 'Created At']
+        ];
+        
+        images.forEach(image => {
+          imagesData.push([
+            image.id,
+            image.executionId,
+            image.generationPrompt || 'N/A',
+            image.seed || 'N/A',
+            image.qcStatus || 'N/A',
+            image.qcReason || 'N/A',
+            image.finalImagePath || 'N/A',
+            image.createdAt ? new Date(image.createdAt).toLocaleString() : 'N/A'
+          ]);
+        });
+        
+        const imagesSheet = XLSX.utils.aoa_to_sheet(imagesData);
+        XLSX.utils.book_append_sheet(workbook, imagesSheet, 'Generated Images');
+      }
+      
+      // Configuration Sheet (if available)
+      if (jobConfig && jobConfig.settings) {
+        const configData = [
+          ['Job Configuration Settings', ''],
+          ['Exported:', new Date().toISOString()],
+          ['', '']
+        ];
+        
+        // Flatten nested settings object
+        const flattenSettings = (obj, prefix = '') => {
+          const result = [];
+          for (const [key, value] of Object.entries(obj)) {
+            const fullKey = prefix ? `${prefix}.${key}` : key;
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+              result.push(...flattenSettings(value, fullKey));
+            } else {
+              result.push([fullKey, value]);
+            }
+          }
+          return result;
+        };
+        
+        const flattenedSettings = flattenSettings(jobConfig.settings);
+        configData.push(...flattenedSettings);
+        
+        const configSheet = XLSX.utils.aoa_to_sheet(configData);
+        XLSX.utils.book_append_sheet(workbook, configSheet, 'Job Configuration');
+      }
+      
+      // Generate filename
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const jobLabel = job.label && job.label.trim() !== '' ? job.label.replace(/[^a-zA-Z0-9]/g, '_') : 'Job';
+      const filename = `${jobLabel}_${job.id}_${timestamp}.xlsx`;
+      
+      // Create export directory if it doesn't exist
+      const exportDir = path.join(__dirname, '../../../exports');
+      if (!fs.existsSync(exportDir)) {
+        fs.mkdirSync(exportDir, { recursive: true });
+      }
+      
+      const filePath = path.join(exportDir, filename);
+      
+      // Write Excel file
+      XLSX.writeFile(workbook, filePath);
+      
+      console.log('Excel export created successfully:', filePath);
+      
+      return { 
+        success: true, 
+        filePath: filePath,
+        filename: filename,
+        message: `Export created successfully: ${filename}`
       };
       
-      // For now, return success - actual Excel generation would be implemented here
-      return { success: true, data: exportData };
     } catch (error) {
       console.error('Error exporting job to Excel:', error);
       return { success: false, error: error.message };
@@ -1398,6 +1527,26 @@ class BackendAdapter {
       return result;
     } catch (error) {
       console.error('Error getting job executions count:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async openExportsFolder() {
+    try {
+      const exportDir = path.join(__dirname, '../../../exports');
+      
+      // Create export directory if it doesn't exist
+      if (!fs.existsSync(exportDir)) {
+        fs.mkdirSync(exportDir, { recursive: true });
+      }
+      
+      // Open folder in file explorer
+      const { shell } = require('electron');
+      await shell.openPath(exportDir);
+      
+      return { success: true, message: 'Exports folder opened' };
+    } catch (error) {
+      console.error('Error opening exports folder:', error);
       return { success: false, error: error.message };
     }
   }
