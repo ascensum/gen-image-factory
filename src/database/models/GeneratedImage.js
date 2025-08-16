@@ -44,47 +44,50 @@ class GeneratedImage {
         )
       `;
       
-      // Check if we need to migrate existing table
+            // Check if we need to migrate existing table
       this.checkAndMigrateTable().then(() => {
 
-      const createIndexesSQL = [
-        'CREATE INDEX IF NOT EXISTS idx_generated_images_execution_id ON generated_images(execution_id)',
-        'CREATE INDEX IF NOT EXISTS idx_generated_images_qc_status ON generated_images(qc_status)',
-        'CREATE INDEX IF NOT EXISTS idx_generated_images_created_at ON generated_images(created_at)'
-      ];
+        const createIndexesSQL = [
+          'CREATE INDEX IF NOT EXISTS idx_generated_images_execution_id ON generated_images(execution_id)',
+          'CREATE INDEX IF NOT EXISTS idx_generated_images_qc_status ON generated_images(qc_status)',
+          'CREATE INDEX IF NOT EXISTS idx_generated_images_created_at ON generated_images(created_at)'
+        ];
 
-      this.db.serialize(() => {
-        // Create table
-        this.db.run(createTableSQL, (err) => {
-          if (err) {
-            console.error('Error creating generated_images table:', err);
-            reject(err);
-            return;
-          }
-          console.log('Generated images table created successfully');
-        });
-
-        // Create indexes
-        createIndexesSQL.forEach((indexSQL, index) => {
-          this.db.run(indexSQL, (err) => {
+        this.db.serialize(() => {
+          // Create table
+          this.db.run(createTableSQL, (err) => {
             if (err) {
-              console.error(`Error creating index ${index}:`, err);
+              console.error('Error creating generated_images table:', err);
+              reject(err);
+              return;
+            }
+            console.log('Generated images table created successfully');
+          });
+
+          // Create indexes
+          createIndexesSQL.forEach((indexSQL, index) => {
+            this.db.run(indexSQL, (err) => {
+              if (err) {
+                console.error(`Error creating index ${index}:`, err);
+              } else {
+                console.log(`Index ${index} created successfully`);
+              }
+            });
+          });
+
+          // Wait for all operations to complete
+          this.db.wait((err) => {
+            if (err) {
+              reject(err);
             } else {
-              console.log(`Index ${index} created successfully`);
+              resolve();
             }
           });
         });
-
-        // Wait for all operations to complete
-        this.db.wait((err) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
+      }).catch((error) => {
+        console.error('Migration failed:', error);
+        reject(error);
       });
-    });
   }
 
   /**
