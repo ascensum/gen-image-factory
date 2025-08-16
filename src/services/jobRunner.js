@@ -205,21 +205,29 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Job configuration
    */
   setEnvironmentFromConfig(config) {
+    console.log('🔧 Setting environment variables from config:', config.apiKeys);
+    
     // Set API keys
     if (config.apiKeys.openai) {
       process.env.OPENAI_API_KEY = config.apiKeys.openai;
+      console.log('✅ OpenAI API key set');
     }
     if (config.apiKeys.piapi) {
-      process.env.PIAPI_KEY = config.apiKeys.piapi;
+      process.env.PIAPI_API_KEY = config.apiKeys.piapi;  // Fixed: was PIAPI_KEY
+      console.log('✅ PiAPI key set');
     }
     if (config.apiKeys.removeBg) {
       process.env.REMOVE_BG_API_KEY = config.apiKeys.removeBg;
+      console.log('✅ RemoveBG API key set');
     }
 
     // Set other environment variables as needed
-    if (config.advanced.debugMode) {
+    if (config.advanced && config.advanced.debugMode) {
       process.env.DEBUG_MODE = 'true';
+      console.log('✅ Debug mode enabled');
     }
+    
+    console.log('🔧 Environment variables set successfully');
   }
 
   /**
