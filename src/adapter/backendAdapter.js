@@ -696,12 +696,29 @@ class BackendAdapter {
   async startJob(config) {
     try {
       console.log('🔧 backendAdapter.startJob called with config:', config);
-      console.log('🔧 jobRunner instance:', this.jobRunner);
-      console.log('🔧 jobRunner.startJob method type:', typeof this.jobRunner.startJob);
-      console.log('🔧 About to call jobRunner.startJob with config:', config);
       
-      const result = await this.jobRunner.startJob(config);
+      // Create a NEW JobRunner instance for each job to prevent state conflicts
+      console.log('🆕 Creating new JobRunner instance for this job');
+      const JobRunner = require('../services/jobRunner');
+      const jobRunner = new JobRunner();
+      
+      // Set the backendAdapter reference
+      jobRunner.backendAdapter = this;
+      
+      console.log('🔧 jobRunner instance:', jobRunner);
+      console.log('🔧 jobRunner.startJob method type:', typeof jobRunner.startJob);
+      
+      if (!jobRunner || typeof jobRunner.startJob !== 'function') {
+        throw new Error('JobRunner not properly initialized');
+      }
+      
+      console.log('🔧 About to call jobRunner.startJob with config:', config);
+      const result = await jobRunner.startJob(config);
       console.log('✅ backendAdapter.startJob result:', result);
+      
+      // Store the new jobRunner instance for status queries
+      this.jobRunner = jobRunner;
+      
       return result;
     } catch (error) {
       console.error('❌ Error starting job in backendAdapter:', error);
