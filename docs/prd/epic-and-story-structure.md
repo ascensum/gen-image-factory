@@ -67,14 +67,17 @@
     - Add data export and cleanup features
     - Style history components with Tailwind CSS
 
-9.  **Distribution: Implement Application Packaging**
+9. **Techical debt: Backend Frontend integration that have no ben done for some reason**
+     
+
+10.  **Distribution: Implement Application Packaging**
     - Configure Electron Builder for cross-platform packaging (NFR3)
     - Generate distributable installers for Windows, macOS, and Linux
     - Implement auto-update mechanism
     - Create deployment documentation
     - Optimize Vite build for production
 
-10. **Testing: Implement Comprehensive Testing for Story 1.1**
+11. **Testing: Implement Comprehensive Testing for Story 1.1**
     - Create unit tests for React components using React Testing Library
     - Implement integration tests for IPC communication
     - Create end-to-end tests for basic app functionality
