@@ -755,7 +755,11 @@ class BackendAdapter {
   async getJobStatus() {
     try {
       const status = await this.jobRunner.getJobStatus();
-      return {
+      console.log('🔍 getJobStatus - Raw status from jobRunner:', status);
+      console.log('🔍 getJobStatus - status.state:', status.state);
+      console.log('🔍 getJobStatus - status.currentJob:', status.currentJob);
+      
+      const result = {
         state: status.state || 'idle',
         currentJob: status.currentJob || null,
         progress: status.progress || 0,
@@ -764,6 +768,9 @@ class BackendAdapter {
         startTime: status.startTime || null,
         estimatedTimeRemaining: status.estimatedTimeRemaining || null
       };
+      
+      console.log('🔍 getJobStatus - Returning result:', result);
+      return result;
     } catch (error) {
       console.error('Error getting job status:', error);
       return {
