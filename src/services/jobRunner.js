@@ -43,8 +43,11 @@ class JobRunner extends EventEmitter {
    */
   async startJob(config) {
     try {
+      console.log('🚀 JobRunner.startJob called with config:', config);
+      
       // Check if job is already running
       if (this.jobState.status === 'running') {
+        console.log('⚠️ Job already running, cannot start new job');
         return {
           success: false,
           error: 'A job is already running. Please stop the current job first.',
@@ -52,18 +55,25 @@ class JobRunner extends EventEmitter {
         };
       }
 
+      console.log('✅ No job currently running, proceeding...');
+      
       // Validate configuration
+      console.log('🔍 Validating configuration...');
       const validationResult = this.validateConfiguration(config);
       if (!validationResult.valid) {
+        console.log('❌ Configuration validation failed:', validationResult.error);
         return {
           success: false,
           error: validationResult.error,
           code: 'JOB_CONFIGURATION_ERROR'
         };
       }
+      console.log('✅ Configuration validation passed');
 
       // Initialize job
       const jobId = uuidv4();
+      console.log('🆔 Generated job ID:', jobId);
+      
       this.jobState = {
         id: jobId,
         status: 'running',
@@ -76,18 +86,23 @@ class JobRunner extends EventEmitter {
       this.completedSteps = [];
       this.isStopping = false;
 
+      console.log('✅ Job state initialized:', this.jobState);
+
       // Emit progress update
       this.emitProgress('initialization', 0, 'Initializing job configuration...');
 
       // Set environment variables from config
+      console.log('🔧 Setting environment variables...');
       this.setEnvironmentFromConfig(config);
 
       // Start the job execution
+      console.log('🎯 Starting job execution...');
       this.currentJob = this.executeJob(config, jobId);
       
       // For testing purposes, wait a bit to ensure job state is set
       await new Promise(resolve => setTimeout(resolve, 10));
 
+      console.log('✅ Job started successfully, returning result');
       return {
         success: true,
         jobId: jobId,
@@ -95,7 +110,7 @@ class JobRunner extends EventEmitter {
       };
 
     } catch (error) {
-      console.error('Error starting job:', error);
+      console.error('❌ Error starting job in JobRunner:', error);
       this.jobState.status = 'error';
       this.jobState.error = error.message;
       

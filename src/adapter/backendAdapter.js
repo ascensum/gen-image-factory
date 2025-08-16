@@ -679,9 +679,14 @@ class BackendAdapter {
   // Job Control Methods
   async startJob(config) {
     try {
-      return await this.jobRunner.startJob(config);
+      console.log('🔧 backendAdapter.startJob called with config:', config);
+      console.log('🔧 jobRunner instance:', this.jobRunner);
+      
+      const result = await this.jobRunner.startJob(config);
+      console.log('✅ backendAdapter.startJob result:', result);
+      return result;
     } catch (error) {
-      console.error('Error starting job:', error);
+      console.error('❌ Error starting job in backendAdapter:', error);
       const translatedError = this.errorTranslation.createJobError(
         'unknown',
         error,

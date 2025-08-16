@@ -304,24 +304,33 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
   const handleStartJob = async () => {
     try {
+      console.log('🚀 handleStartJob called - starting job execution...');
       setIsLoading(true);
       setError(null);
       
+      console.log('📋 Getting current configuration...');
       // Get current configuration
       const config = await window.electronAPI.jobManagement.getConfiguration();
+      console.log('✅ Configuration loaded:', config);
       
+      console.log('🎯 Starting the job with config...');
       // Start the job
-      await window.electronAPI.jobManagement.jobStart(config);
+      const result = await window.electronAPI.jobManagement.jobStart(config);
+      console.log('✅ Job start result:', result);
       
+      console.log('🔄 Reloading data...');
       // Reload data
       await Promise.all([
         loadJobHistory(),
         loadStatistics()
       ]);
+      console.log('✅ Data reloaded successfully');
+      
     } catch (error) {
+      console.error('❌ Failed to start job:', error);
       setError('Failed to start job');
-      console.error('Failed to start job:', error);
     } finally {
+      console.log('🏁 handleStartJob completed, setting loading to false');
       setIsLoading(false);
     }
   };
