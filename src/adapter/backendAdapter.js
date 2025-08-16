@@ -699,7 +699,7 @@ class BackendAdapter {
       
       // Create a NEW JobRunner instance for each job to prevent state conflicts
       console.log('🆕 Creating new JobRunner instance for this job');
-      const JobRunner = require('../services/jobRunner');
+      const { JobRunner } = require('../services/jobRunner');
       const jobRunner = new JobRunner();
       
       // Set the backendAdapter reference
