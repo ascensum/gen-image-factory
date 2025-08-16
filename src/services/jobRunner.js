@@ -93,7 +93,47 @@ class JobRunner extends EventEmitter {
 
       // Set environment variables from config
       console.log('🔧 Setting environment variables...');
-      this.setEnvironmentFromConfig(config);
+      try {
+        console.log('🔧 About to call setEnvironmentFromConfig...');
+        this.setEnvironmentFromConfig(config);
+        console.log('🔧 setEnvironmentFromConfig completed successfully');
+      } catch (error) {
+        console.error('❌ Error in setEnvironmentFromConfig:', error);
+        console.error('❌ Error stack:', error.stack);
+        throw error; // Re-throw to prevent silent failure
+      }
+      console.log('🔧 AFTER setEnvironmentFromConfig - about to start backendAdapter initialization');
+      console.log('🔧 DEBUG: About to log next line');
+      console.log('🔧 DEBUG: This line should appear');
+      console.log('🔧 DEBUG: If you see this, the issue is after this point');
+
+      // Initialize backend adapter
+      console.log('🔧 MODULE LOAD: Starting backendAdapter initialization...');
+      console.log('🔧 MODULE LOAD: About to enter try block');
+      try {
+        console.log('🔧 MODULE LOAD: Inside try block - about to log first message');
+        // Try to get the backend adapter instance
+        console.log('🔧 MODULE LOAD: Attempting to initialize backend adapter for database integration...');
+        console.log('🔧 MODULE LOAD: Current directory:', __dirname);
+        console.log('🔧 MODULE LOAD: About to require ../adapter/backendAdapter');
+        
+        const { BackendAdapter } = require('../adapter/backendAdapter');
+        console.log('✅ MODULE LOAD: BackendAdapter class imported successfully');
+        console.log('🔧 MODULE LOAD: About to create new BackendAdapter instance');
+        
+        this.backendAdapter = new BackendAdapter();
+        console.log('✅ MODULE LOAD: BackendAdapter instance created successfully');
+        console.log('✅ MODULE LOAD: Database integration enabled - job executions will be saved');
+        console.log('🔧 MODULE LOAD: backendAdapter object:', typeof this.backendAdapter, this.backendAdapter ? 'AVAILABLE' : 'NULL');
+        console.log('🔧 MODULE LOAD: Exiting try block successfully');
+      } catch (error) {
+        console.error('❌ MODULE LOAD: Could not initialize backend adapter for database integration:', error);
+        console.error('❌ MODULE LOAD: Error stack:', error.stack);
+        console.warn('❌ MODULE LOAD: Job executions will not be saved to database');
+        console.warn('❌ MODULE LOAD: Frontend will continue to show no data');
+        console.log('🔧 MODULE LOAD: Exiting catch block');
+      }
+      console.log('🔧 MODULE LOAD: After try-catch block - about to start job execution');
 
       // Start the job execution
       console.log('🎯 Starting job execution...');
