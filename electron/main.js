@@ -63,36 +63,42 @@ function createWindow() {
 // Initialize Backend Adapter once
 let backendAdapter;
 
+// Set up protocol handler for local files BEFORE app is ready
+protocol.registerFileProtocol('local-file', (request, callback) => {
+  console.log('🔗 Protocol handler called for:', request.url);
+  const filePath = request.url.replace('local-file://', '');
+  console.log('🔗 Extracted file path:', filePath);
+  
+  // Security check: only allow access to files in specific directories
+  const allowedPaths = [
+    path.join(app.getPath('userData'), 'exports'),
+    path.join(app.getPath('userData'), 'generated'),
+    path.join(process.env.HOME || process.env.USERPROFILE || '', 'Desktop', 'Gen_Image_Factory_ToUpload'),
+    path.join(process.env.HOME || process.env.USERPROFILE || '', 'Desktop', 'Gen_Image_Factory_Generated')
+  ];
+  
+  console.log('🔗 Allowed paths:', allowedPaths);
+  
+  let isAllowed = false;
+  for (const allowedPath of allowedPaths) {
+    if (filePath.startsWith(allowedPath)) {
+      isAllowed = true;
+      console.log('🔗 Path allowed by:', allowedPath);
+      break;
+    }
+  }
+  
+  if (isAllowed && fs.existsSync(filePath)) {
+    console.log('🔗 File exists and allowed, serving:', filePath);
+    callback(filePath);
+  } else {
+    console.warn('🔗 Blocked access to file:', filePath, 'exists:', fs.existsSync(filePath), 'allowed:', isAllowed);
+    callback(404);
+  }
+});
+
 // This method will be called when Electron has finished initialization
 app.whenReady().then(() => {
-  // Set up protocol handler for local files
-  protocol.registerFileProtocol('local-file', (request, callback) => {
-    const filePath = request.url.replace('local-file://', '');
-    
-    // Security check: only allow access to files in specific directories
-    const allowedPaths = [
-      path.join(app.getPath('userData'), 'exports'),
-      path.join(app.getPath('userData'), 'generated'),
-      path.join(process.env.HOME || process.env.USERPROFILE || '', 'Desktop', 'Gen_Image_Factory_ToUpload'),
-      path.join(process.env.HOME || process.env.USERPROFILE || '', 'Desktop', 'Gen_Image_Factory_Generated')
-    ];
-    
-    let isAllowed = false;
-    for (const allowedPath of allowedPaths) {
-      if (filePath.startsWith(allowedPath)) {
-        isAllowed = true;
-        break;
-      }
-    }
-    
-    if (isAllowed && fs.existsSync(filePath)) {
-      callback(filePath);
-    } else {
-      console.warn('Blocked access to file:', filePath);
-      callback(404);
-    }
-  });
-  
   // Initialize Backend Adapter only once
   backendAdapter = new BackendAdapter();
   
