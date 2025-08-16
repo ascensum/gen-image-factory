@@ -167,6 +167,19 @@ class JobRunner extends EventEmitter {
           
           const saveResult = await this.backendAdapter.saveJobExecution(jobExecution);
           console.log("✅ Job execution saved to database:", saveResult);
+          console.log("🔍 saveResult type:", typeof saveResult);
+          console.log("🔍 saveResult keys:", Object.keys(saveResult));
+          console.log("🔍 saveResult.success:", saveResult.success);
+          console.log("🔍 saveResult.id:", saveResult.id);
+          
+          // Store the database execution ID for later use
+          if (saveResult.success && saveResult.id) {
+            this.databaseExecutionId = saveResult.id;
+            console.log('🔍 Stored database execution ID:', this.databaseExecutionId);
+            console.log('🔍 this.databaseExecutionId after assignment:', this.databaseExecutionId);
+          } else {
+            console.warn('⚠️ saveResult missing required fields:', saveResult);
+          }
         } catch (error) {
           console.error("❌ Failed to save job execution to database:", error);
         }
@@ -356,22 +369,33 @@ class JobRunner extends EventEmitter {
           console.log("💾 Saving generated images to database...");
           for (const image of images) {
             if (image.path && image.status === "generated") {
-              const generatedImage = {
-                id: uuidv4(),
-                jobExecutionId: jobId,
-                originalPath: image.path,
-                processedPath: image.path,
-                status: image.status,
-                aspectRatio: image.aspectRatio || "16:9",
-                metadata: image.metadata || {},
-                qcStatus: "pending",
-                qcScore: null,
-                qcReason: null,
-                createdAt: new Date()
-              };
+              // Use the stored database execution ID
+              const executionId = this.databaseExecutionId;
+              console.log('🔍 Using stored database execution ID for generated image:', executionId);
+              console.log('🔍 this.databaseExecutionId type:', typeof this.databaseExecutionId);
+              console.log('🔍 this.databaseExecutionId value:', this.databaseExecutionId);
+              console.log('🔍 this object keys:', Object.keys(this));
               
-              const saveResult = await this.backendAdapter.saveGeneratedImage(generatedImage);
-              console.log("✅ Generated image saved to database:", saveResult);
+              if (executionId) {
+                const generatedImage = {
+                  executionId: executionId,
+                  generationPrompt: image.metadata?.prompt || 'Generated image',
+                  seed: null,
+                  qcStatus: 'pending',
+                  qcReason: null,
+                  finalImagePath: image.path,
+                  metadata: JSON.stringify(image.metadata || {}),
+                  processingSettings: JSON.stringify({
+                    aspectRatio: image.aspectRatio || '16:9',
+                    status: image.status
+                  })
+                };
+                
+                const saveResult = await this.backendAdapter.saveGeneratedImage(generatedImage);
+                console.log("✅ Generated image saved to database:", saveResult);
+              } else {
+                console.warn('⚠️ Skipping image save - no execution ID available');
+              }
             }
           }
         } catch (error) {
