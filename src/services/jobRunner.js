@@ -459,12 +459,21 @@ class JobRunner extends EventEmitter {
         console.log('🔧 Processed image paths:', imagePaths);
         
         // Create proper image objects
-        return imagePaths.map((path, index) => ({
-          path: path,
-          aspectRatio: parameters.aspectRatios?.[index] || '1:1',
-          status: 'generated',
-          metadata: { prompt: parameters.prompt }
-        }));
+        const processedImages = imagePaths.map((path, index) => {
+          console.log(`🔧 Processing image ${index}:`, path);
+          console.log(`🔧 Path type:`, typeof path);
+          console.log(`🔧 Path value:`, path);
+          
+          return {
+            path: path,
+            aspectRatio: parameters.aspectRatios?.[index] || '1:1',
+            status: 'generated',
+            metadata: { prompt: parameters.prompt }
+          };
+        });
+        
+        console.log('🔧 Final processed images:', processedImages);
+        return processedImages;
       } else {
         throw new Error('No images were generated');
       }
@@ -513,11 +522,15 @@ class JobRunner extends EventEmitter {
   async runQualityChecks(images, config) {
     try {
       console.log('🔍 Starting quality checks for', images.length, 'images');
+      console.log('🔍 Images array:', images);
       
       for (const image of images) {
         if (this.isStopping) return;
         
-        console.log(`🔍 Running quality check on: ${image.path}`);
+        console.log(`🔍 Running quality check on image:`, image);
+        console.log(`🔍 Image path:`, image.path);
+        console.log(`🔍 Image path type:`, typeof image.path);
+        console.log(`🔍 Image path value:`, image.path);
         
         // Call the real quality check from aiVision module with correct signature
         const result = await aiVision.runQualityCheck(
