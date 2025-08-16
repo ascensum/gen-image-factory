@@ -68,4 +68,6 @@ Thumbs.db
 
 # Backup files
 *.backup
-*.bak
+
+# Prevent duplicate JobRunner files
+src/services/JobRunner*.js
