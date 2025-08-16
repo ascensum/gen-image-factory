@@ -115,17 +115,29 @@ class JobRunner extends EventEmitter {
         // Try to get the backend adapter instance
         console.log('🔧 MODULE LOAD: Attempting to initialize backend adapter for database integration...');
         console.log('🔧 MODULE LOAD: Current directory:', __dirname);
-        console.log('🔧 MODULE LOAD: About to require ../adapter/backendAdapter');
+        // Instead of creating a new instance, try to get the existing one
+        // This avoids IPC handler conflicts
+        console.log("🔧 MODULE LOAD: Attempting to get existing backend adapter instance...");
         
-        const { BackendAdapter } = require('../adapter/backendAdapter');
-        console.log('✅ MODULE LOAD: BackendAdapter class imported successfully');
-        console.log('🔧 MODULE LOAD: About to create new BackendAdapter instance');
+        // Try to get the existing backend adapter from the parent process
+        // Since we are in the main process, we can access the existing instance
+        if (process.mainModule && process.mainModule.exports && process.mainModule.exports.backendAdapter) {
+          this.backendAdapter = process.mainModule.exports.backendAdapter;
+          console.log("✅ MODULE LOAD: Using existing main process backend adapter");
+        } else if (global.backendAdapter) {
+          this.backendAdapter = global.backendAdapter;
+          console.log("✅ MODULE LOAD: Using existing global backend adapter");
+        } else {
+          console.log("🔧 MODULE LOAD: No existing backend adapter found, will skip database integration");
+          this.backendAdapter = null;
+        }
         
-        this.backendAdapter = new BackendAdapter();
-        console.log('✅ MODULE LOAD: BackendAdapter instance created successfully');
-        console.log('✅ MODULE LOAD: Database integration enabled - job executions will be saved');
-        console.log('🔧 MODULE LOAD: backendAdapter object:', typeof this.backendAdapter, this.backendAdapter ? 'AVAILABLE' : 'NULL');
-        console.log('🔧 MODULE LOAD: Exiting try block successfully');
+        if (this.backendAdapter) {
+          console.log("✅ MODULE LOAD: Database integration enabled - job executions will be saved");
+          console.log("🔧 MODULE LOAD: backendAdapter object:", typeof this.backendAdapter, this.backendAdapter ? "AVAILABLE" : "NULL");
+        } else {
+          console.warn("⚠️ MODULE LOAD: No backend adapter available - job executions will not be saved to database");
+        }
       } catch (error) {
         console.error('❌ MODULE LOAD: Could not initialize backend adapter for database integration:', error);
         console.error('❌ MODULE LOAD: Error stack:', error.stack);
