@@ -169,24 +169,34 @@ class JobRunner extends EventEmitter {
    * @returns {Object} Validation result
    */
   validateConfiguration(config) {
+    console.log('🔍 validateConfiguration called with config:', config);
+    console.log('🔍 config.apiKeys:', config.apiKeys);
+    console.log('🔍 config.filePaths:', config.filePaths);
+    console.log('🔍 config.parameters:', config.parameters);
+    
     // Check required API keys
-    if (!config.apiKeys.openai) {
+    if (!config.apiKeys || !config.apiKeys.openai) {
+      console.log('❌ OpenAI API key missing or invalid');
       return { valid: false, error: 'OpenAI API key is required' };
     }
     if (!config.apiKeys.piapi) {
+      console.log('❌ PiAPI key missing');
       return { valid: false, error: 'PiAPI key is required' };
     }
 
     // Check file paths
-    if (!config.filePaths.outputDirectory) {
+    if (!config.filePaths || !config.filePaths.outputDirectory) {
+      console.log('❌ Output directory missing');
       return { valid: false, error: 'Output directory is required' };
     }
 
     // Check parameters
-    if (!config.parameters.processMode) {
+    if (!config.parameters || !config.parameters.processMode) {
+      console.log('❌ Process mode missing');
       return { valid: false, error: 'Process mode is required' };
     }
 
+    console.log('✅ Configuration validation passed');
     return { valid: true };
   }
 

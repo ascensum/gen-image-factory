@@ -310,8 +310,16 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       
       console.log('📋 Getting current configuration...');
       // Get current configuration
-      const config = await window.electronAPI.jobManagement.getConfiguration();
-      console.log('✅ Configuration loaded:', config);
+      const configResponse = await window.electronAPI.jobManagement.getConfiguration();
+      console.log('✅ Configuration response loaded:', configResponse);
+      
+      // Extract the actual settings from the response
+      if (!configResponse.success || !configResponse.settings) {
+        throw new Error('Failed to load configuration or invalid response structure');
+      }
+      
+      const config = configResponse.settings;
+      console.log('✅ Configuration extracted:', config);
       
       console.log('🎯 Starting the job with config...');
       // Start the job
