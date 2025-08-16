@@ -49,7 +49,7 @@ class BackendAdapter {
       // Remove existing handlers to prevent duplicates
       const handlers = [
         'get-api-key', 'set-api-key', 'get-settings', 'save-settings', 'settings:get-configuration',
-        'select-file', 'validate-path', 'job:start', 'job:stop', 'job:force-stop-all',
+        'select-file', 'validate-path', 'job:start', 'job:stop', 'job:force-stop', 'job:force-stop-all',
         'job:get-status', 'job:get-progress', 'job:get-logs', 'get-security-status',
         'job-execution:save', 'job-execution:get', 'job-execution:get-all', 'job-execution:update',
         'job-execution:delete', 'job-execution:statistics', 'job-execution:export-to-excel',
@@ -121,6 +121,10 @@ class BackendAdapter {
 
       _ipc.handle('job:stop', async () => {
         return await this.stopJob();
+      });
+
+      _ipc.handle('job:force-stop', async () => {
+        return await this.forceStopAll();
       });
 
       _ipc.handle('job:force-stop-all', async () => {
