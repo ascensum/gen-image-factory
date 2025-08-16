@@ -220,6 +220,36 @@ class JobExecution {
     });
   }
 
+  async updateJobExecutionStatus(id, status, jobId = null, errorMessage = null) {
+    return new Promise((resolve, reject) => {
+      let sql, params;
+      
+      if (jobId && errorMessage) {
+        sql = 'UPDATE job_executions SET status = ?, job_id = ?, error_message = ? WHERE id = ?';
+        params = [status, jobId, errorMessage, id];
+      } else if (jobId) {
+        sql = 'UPDATE job_executions SET status = ?, job_id = ? WHERE id = ?';
+        params = [status, jobId, id];
+      } else if (errorMessage) {
+        sql = 'UPDATE job_executions SET status = ?, error_message = ? WHERE id = ?';
+        params = [status, errorMessage, id];
+      } else {
+        sql = 'UPDATE job_executions SET status = ? WHERE id = ?';
+        params = [status, id];
+      }
+      
+      this.db.run(sql, params, function(err) {
+        if (err) {
+          console.error('Error updating job execution status:', err);
+          reject(err);
+        } else {
+          console.log('Job execution status updated successfully');
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
+  }
+
   async deleteJobExecution(id) {
     return new Promise((resolve, reject) => {
       const sql = 'DELETE FROM job_executions WHERE id = ?';
@@ -484,17 +514,53 @@ class JobExecution {
 
   async rerunJobExecution(id) {
     return new Promise((resolve, reject) => {
-      // For now, just reset the status to 'pending'
-      // In a real implementation, this would trigger the job execution
-      const sql = 'UPDATE job_executions SET status = ?, started_at = NULL, completed_at = NULL WHERE id = ?';
+      // Get the job execution with its configuration
+      const sql = `
+        SELECT je.*, jc.settings as configuration_settings 
+        FROM job_executions je
+        LEFT JOIN job_configurations jc ON je.configuration_id = jc.id
+        WHERE je.id = ?
+      `;
       
-      this.db.run(sql, ['pending', id], function(err) {
+      this.db.get(sql, [id], (err, row) => {
         if (err) {
-          console.error('Error rerunning job execution:', err);
+          console.error('Error getting job execution for rerun:', err);
           reject(err);
+        } else if (!row) {
+          reject(new Error('Job execution not found'));
         } else {
-          console.log('Job execution reset for rerun');
-          resolve({ success: true, changes: this.changes });
+          // Reset the job status for rerun
+          const updateSql = `
+            UPDATE job_executions 
+            SET status = ?, started_at = NULL, completed_at = NULL, 
+                total_images = 0, successful_images = 0, failed_images = 0,
+                error_message = NULL
+            WHERE id = ?
+          `;
+          
+          this.db.run(updateSql, ['pending', id], function(err) {
+            if (err) {
+              console.error('Error resetting job execution for rerun:', err);
+              reject(err);
+            } else {
+              console.log('Job execution reset for rerun');
+              
+              // Return the job configuration for actual execution
+              const jobConfig = {
+                id: row.id,
+                label: row.label,
+                configurationId: row.configuration_id,
+                settings: row.configuration_settings ? JSON.parse(row.configuration_settings) : null
+              };
+              
+              resolve({ 
+                success: true, 
+                changes: this.changes,
+                jobConfig: jobConfig,
+                message: 'Job execution reset and ready for rerun'
+              });
+            }
+          });
         }
       });
     });

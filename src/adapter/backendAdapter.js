@@ -318,8 +318,54 @@ class BackendAdapter {
       _ipc.handle('job-execution:rerun', async (event, id) => {
         try {
           await this.ensureInitialized();
+          
+          // First, reset the job execution and get its configuration
           const result = await this.jobExecution.rerunJobExecution(id);
-          return result;
+          
+          if (!result.success) {
+            return { success: false, error: result.error || 'Failed to reset job execution' };
+          }
+          
+          // Check if we have a valid configuration
+          if (!result.jobConfig || !result.jobConfig.settings) {
+            return { 
+              success: false, 
+              error: 'Job has no valid configuration. Cannot rerun without settings.' 
+            };
+          }
+          
+          // Check if another job is currently running
+          const currentStatus = await this.jobRunner.getJobStatus();
+          if (currentStatus.status === 'running') {
+            return { 
+              success: false, 
+              error: 'Another job is currently running. Please wait for it to complete.' 
+            };
+          }
+          
+          // Start the job with the existing configuration
+          const jobResult = await this.jobRunner.startJob(result.jobConfig.settings);
+          
+          if (jobResult.success) {
+            // Update the job execution with the new job ID and status
+            await this.jobExecution.updateJobExecutionStatus(id, 'running', jobResult.jobId);
+            
+            return { 
+              success: true, 
+              message: 'Job rerun started successfully',
+              jobId: jobResult.jobId,
+              originalJobId: id
+            };
+          } else {
+            // If job start failed, reset the status back to 'failed'
+            await this.jobExecution.updateJobExecutionStatus(id, 'failed', null, jobResult.error);
+            
+            return { 
+              success: false, 
+              error: `Failed to start job rerun: ${jobResult.error}` 
+            };
+          }
+          
         } catch (error) {
           console.error('Error rerunning job execution:', error);
           return { success: false, error: error.message };
@@ -1468,14 +1514,76 @@ class BackendAdapter {
         return { success: false, error: 'Failed to retrieve jobs for export' };
       }
       
-      // For now, return success - actual Excel generation would be implemented here
-      const exportData = {
-        jobs: jobs.executions,
-        timestamp: new Date().toISOString(),
-        totalJobs: jobs.executions.length
+      if (jobs.executions.length === 0) {
+        return { success: false, error: 'No jobs found for export' };
+      }
+      
+      // Create exports directory if it doesn't exist
+      const { app } = require('electron');
+      const exportDir = path.join(app.getPath('userData'), 'exports');
+      if (!fs.existsSync(exportDir)) {
+        fs.mkdirSync(exportDir, { recursive: true });
+      }
+      
+      const exportedFiles = [];
+      
+      // Export each job individually
+      for (const job of jobs.executions) {
+        try {
+          const exportResult = await this.exportJobToExcel(job.id);
+          if (exportResult.success) {
+            exportedFiles.push({
+              jobId: job.id,
+              label: job.label || 'No label',
+              filename: exportResult.filename,
+              filePath: exportResult.filePath
+            });
+          } else {
+            console.warn(`Failed to export job ${job.id}:`, exportResult.error);
+          }
+        } catch (error) {
+          console.warn(`Error exporting job ${job.id}:`, error);
+        }
+      }
+      
+      if (exportedFiles.length === 0) {
+        return { success: false, error: 'Failed to export any jobs' };
+      }
+      
+      // Create a summary Excel file
+      const summaryData = [
+        ['Bulk Export Summary', ''],
+        ['Generated:', new Date().toISOString()],
+        ['Total Jobs:', jobs.executions.length],
+        ['Successfully Exported:', exportedFiles.length],
+        ['', ''],
+        ['Exported Jobs:', ''],
+        ['Job ID', 'Label', 'Filename']
+      ];
+      
+      exportedFiles.forEach(file => {
+        summaryData.push([file.jobId, file.label, file.filename]);
+      });
+      
+      const workbook = XLSX.utils.book_new();
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Export Summary');
+      
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const summaryFilename = `bulk_export_summary_${timestamp}.xlsx`;
+      const summaryFilePath = path.join(exportDir, summaryFilename);
+      
+      XLSX.writeFile(workbook, summaryFilePath);
+      
+      return { 
+        success: true, 
+        exportedFiles: exportedFiles,
+        summaryFile: summaryFilename,
+        totalJobs: jobs.executions.length,
+        successfulExports: exportedFiles.length,
+        message: `Successfully exported ${exportedFiles.length} out of ${jobs.executions.length} jobs`
       };
       
-      return { success: true, data: exportData };
     } catch (error) {
       console.error('Error bulk exporting job executions:', error);
       return { success: false, error: error.message };
@@ -1491,19 +1599,102 @@ class BackendAdapter {
         return { success: false, error: 'Failed to retrieve jobs for rerun' };
       }
       
+      if (jobs.executions.length === 0) {
+        return { success: false, error: 'No jobs found for rerun' };
+      }
+      
       // Check if any job is currently running
       const runningJobs = jobs.executions.filter(job => job.status === 'running');
       if (runningJobs.length > 0) {
-        return { success: false, error: 'Cannot rerun jobs while other jobs are running' };
+        return { 
+          success: false, 
+          error: 'Cannot rerun jobs while other jobs are running' 
+        };
       }
       
-      // For now, return success - actual rerun logic would be implemented here
-      // This would integrate with the existing job processing system
-      return { 
-        success: true, 
-        queuedJobs: jobs.executions.length,
-        message: `${jobs.executions.length} jobs queued for rerun`
-      };
+      // Check if we have a job runner available
+      const currentStatus = await this.jobRunner.getJobStatus();
+      if (currentStatus.status === 'running') {
+        return { 
+          success: false, 
+          error: 'Another job is currently running. Please wait for it to complete.' 
+        };
+      }
+      
+      const queuedJobs = [];
+      const failedJobs = [];
+      
+      // Process each job for rerun
+      for (const job of jobs.executions) {
+        try {
+          // Reset the job execution and get its configuration
+          const rerunResult = await this.jobExecution.rerunJobExecution(job.id);
+          
+          if (rerunResult.success && rerunResult.jobConfig && rerunResult.jobConfig.settings) {
+            // Add to queue for execution
+            queuedJobs.push({
+              jobId: job.id,
+              label: job.label || 'No label',
+              configuration: rerunResult.jobConfig.settings
+            });
+          } else {
+            failedJobs.push({
+              jobId: job.id,
+              label: job.label || 'No label',
+              error: rerunResult.error || 'Invalid configuration'
+            });
+          }
+        } catch (error) {
+          failedJobs.push({
+            jobId: job.id,
+            label: job.label || 'No label',
+            error: error.message
+          });
+        }
+      }
+      
+      if (queuedJobs.length === 0) {
+        return { 
+          success: false, 
+          error: 'No jobs could be queued for rerun',
+          failedJobs: failedJobs
+        };
+      }
+      
+      // Start the first job in the queue
+      const firstJob = queuedJobs[0];
+      const jobResult = await this.jobRunner.startJob(firstJob.configuration);
+      
+      if (jobResult.success) {
+        // Update the job execution with the new job ID and status
+        await this.jobExecution.updateJobExecutionStatus(firstJob.jobId, 'running', jobResult.jobId);
+        
+        // Store remaining jobs in queue for sequential execution
+        const remainingJobs = queuedJobs.slice(1);
+        
+        return { 
+          success: true, 
+          startedJob: {
+            jobId: firstJob.jobId,
+            label: firstJob.label,
+            newJobId: jobResult.jobId
+          },
+          queuedJobs: remainingJobs.length,
+          totalJobs: jobs.executions.length,
+          failedJobs: failedJobs.length,
+          message: `Started rerun of ${firstJob.label || firstJob.jobId}. ${remainingJobs.length} jobs queued for sequential execution.`
+        };
+      } else {
+        // If job start failed, reset the status back to 'failed'
+        await this.jobExecution.updateJobExecutionStatus(firstJob.jobId, 'failed', null, jobResult.error);
+        
+        return { 
+          success: false, 
+          error: `Failed to start job rerun: ${jobResult.error}`,
+          failedJobs: failedJobs
+        };
+      }
+      
     } catch (error) {
       console.error('Error bulk rerunning job executions:', error);
       return { success: false, error: error.message };
