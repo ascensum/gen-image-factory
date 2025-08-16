@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const isDev = process.env.NODE_ENV === 'development';
 
 // Initialize Backend Adapter
@@ -64,6 +65,34 @@ let backendAdapter;
 
 // This method will be called when Electron has finished initialization
 app.whenReady().then(() => {
+  // Set up protocol handler for local files
+  protocol.registerFileProtocol('local-file', (request, callback) => {
+    const filePath = request.url.replace('local-file://', '');
+    
+    // Security check: only allow access to files in specific directories
+    const allowedPaths = [
+      path.join(app.getPath('userData'), 'exports'),
+      path.join(app.getPath('userData'), 'generated'),
+      path.join(process.env.HOME || process.env.USERPROFILE || '', 'Desktop', 'Gen_Image_Factory_ToUpload'),
+      path.join(process.env.HOME || process.env.USERPROFILE || '', 'Desktop', 'Gen_Image_Factory_Generated')
+    ];
+    
+    let isAllowed = false;
+    for (const allowedPath of allowedPaths) {
+      if (filePath.startsWith(allowedPath)) {
+        isAllowed = true;
+        break;
+      }
+    }
+    
+    if (isAllowed && fs.existsSync(filePath)) {
+      callback(filePath);
+    } else {
+      console.warn('Blocked access to file:', filePath);
+      callback(404);
+    }
+  });
+  
   // Initialize Backend Adapter only once
   backendAdapter = new BackendAdapter();
   

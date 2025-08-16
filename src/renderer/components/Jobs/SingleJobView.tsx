@@ -665,7 +665,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <div className="image-preview">
                         {image.finalImagePath ? (
                           <img 
-                            src={`file://${image.finalImagePath}`} 
+                            src={`local-file://${image.finalImagePath}`} 
                             alt={`Generated image ${image.id}`}
                             className="w-full h-32 object-cover rounded"
                             onError={(e) => {
@@ -711,7 +711,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                         <div className="thumbnail">
                           {image.finalImagePath ? (
                             <img 
-                              src={`file://${image.finalImagePath}`} 
+                              src={`local-file://${image.finalImagePath}`} 
                               alt={`Generated image ${image.id}`}
                               className="w-12 h-12 object-cover rounded"
                               onError={(e) => {
