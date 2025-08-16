@@ -54,7 +54,13 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       const jobResult = await window.electronAPI.jobManagement.getJobExecution(jobId);
       if (jobResult.success) {
         setJob(jobResult.execution);
-        setEditedLabel(jobResult.execution.label || `Job ${jobResult.execution.id}`);
+        // Set label to "No label" if undefined, otherwise use job label or default
+        const jobLabel = jobResult.execution.label;
+        if (!jobLabel || jobLabel.trim() === '') {
+          setEditedLabel('No label');
+        } else {
+          setEditedLabel(jobLabel);
+        }
       } else {
         setError(jobResult.error || 'Failed to load job details');
       }
@@ -132,12 +138,13 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     setLabelSaveError(null);
     
     try {
-      const result = await window.electronAPI.jobManagement.renameJobExecution(job.id, editedLabel.trim());
+      // Handle "No label" case - save as empty string to database
+      const labelToSave = editedLabel.trim() === 'No label' ? '' : editedLabel.trim();
+      const result = await window.electronAPI.jobManagement.renameJobExecution(job.id, labelToSave);
       if (result.success) {
         // Update local state
-        setJob(prevJob => prevJob ? { ...prevJob, label: editedLabel.trim() } : null);
+        setJob(prevJob => prevJob ? { ...prevJob, label: labelToSave } : null);
         setIsEditingLabel(false);
-        // Show success feedback (could be a toast notification)
         console.log('Job label updated successfully');
       } else {
         setLabelSaveError(result.error || 'Failed to save label');
@@ -152,7 +159,12 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   const handleLabelCancel = useCallback(() => {
     setIsEditingLabel(false);
-    setEditedLabel(job?.label || `Job ${job?.id}`);
+    const jobLabel = job?.label;
+    if (!jobLabel || jobLabel.trim() === '') {
+      setEditedLabel('No label');
+    } else {
+      setEditedLabel(jobLabel);
+    }
     setLabelSaveError(null);
   }, [job]);
 
@@ -168,7 +180,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   const handleLabelBlur = useCallback(() => {
     // Auto-save on blur if content changed
-    if (editedLabel !== (job?.label || `Job ${job?.id}`)) {
+    const currentLabel = job?.label || '';
+    const currentDisplayLabel = currentLabel && currentLabel.trim() !== '' ? currentLabel : 'No label';
+    if (editedLabel !== currentDisplayLabel) {
       handleLabelSave();
     }
   }, [editedLabel, job, handleLabelSave]);
@@ -185,75 +199,48 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
         const result = await window.electronAPI.getJobConfigurationById(job.configurationId);
         if (result.success && result.configuration?.settings) {
           setEditedSettings(result.configuration.settings);
+          console.log('Loaded job configuration:', result.configuration.settings);
         } else {
-          // Fallback to global settings if job configuration not found
-          const globalResult = await window.electronAPI.getConfiguration();
-          if (globalResult.success && globalResult.settings) {
-            setEditedSettings(globalResult.settings);
-          } else {
-            // Fallback to default settings if loading fails
-            setEditedSettings({
-              apiKeys: { openai: '', piapi: '', removeBg: '' },
-              filePaths: { outputDirectory: './pictures/toupload', tempDirectory: './pictures/generated' },
-              parameters: { processMode: 'relax', aspectRatios: '1:1,16:9,9:16', mjVersion: '6.1' },
-              processing: { removeBg: false, imageConvert: false, imageEnhancement: false, sharpening: 5, saturation: 1.4, convertToJpg: false, trimTransparentBackground: false, jpgBackground: 'white', jpgQuality: 100, pngQuality: 100, removeBgSize: 'auto' },
-              ai: { runQualityCheck: true, runMetadataGen: true },
-              advanced: { debugMode: false }
-            });
-          }
+          // If job configuration not found, this is an error state
+          setSettingsSaveError('Job configuration not found. This job may be corrupted.');
+          setIsEditingSettings(false);
+          return;
         }
       } else {
-        // No configuration ID, load global settings
-        const globalResult = await window.electronAPI.getConfiguration();
-        if (globalResult.success && globalResult.settings) {
-          setEditedSettings(globalResult.settings);
-        } else {
-          // Fallback to default settings if loading fails
-          setEditedSettings({
-            apiKeys: { openai: '', piapi: '', removeBg: '' },
-            filePaths: { outputDirectory: './pictures/toupload', tempDirectory: './pictures/generated' },
-            parameters: { processMode: 'relax', aspectRatios: '1:1,16:9,9:16', mjVersion: '6.1' },
-            processing: { removeBg: false, imageConvert: false, imageEnhancement: false, sharpening: 5, saturation: 1.4, convertToJpg: false, trimTransparentBackground: false, jpgBackground: 'white', jpgQuality: 100, pngQuality: 100, removeBgSize: 'auto' },
-            ai: { runQualityCheck: true, runMetadataGen: true },
-            advanced: { debugMode: false }
-          });
-        }
+        // No configuration ID - this job was not properly created
+        setSettingsSaveError('Job has no configuration. This job may be corrupted.');
+        setIsEditingSettings(false);
+        return;
       }
     } catch (error) {
-      console.error('Error loading settings:', error);
-      setSettingsSaveError('Failed to load current settings');
+      console.error('Error loading job settings:', error);
+      setSettingsSaveError('Failed to load job settings');
+      setIsEditingSettings(false);
     } finally {
       setIsLoadingSettings(false);
     }
   }, [job?.configurationId]);
 
   const handleSettingsSave = useCallback(async () => {
-    if (!editedSettings) return;
+    if (!editedSettings || !job?.configurationId) return;
     
     setIsSavingSettings(true);
     setSettingsSaveError(null);
     
     try {
-      let result;
-      
-      // Save to job-specific configuration if available
-      if (job?.configurationId) {
-        result = await window.electronAPI.updateJobConfiguration(job.configurationId, editedSettings);
-      } else {
-        // Fallback to global settings if no job configuration
-        result = await window.electronAPI.saveSettings(editedSettings);
-      }
+      // Save to job-specific configuration
+      const result = await window.electronAPI.updateJobConfiguration(job.configurationId, editedSettings);
       
       if (result.success) {
         setIsEditingSettings(false);
-        console.log('Settings updated successfully');
+        console.log('Job settings updated successfully');
         // TODO: Refresh job data to show updated settings
       } else {
-        setSettingsSaveError(result.error || 'Failed to save settings');
+        setSettingsSaveError(result.error || 'Failed to save job settings');
       }
     } catch (error) {
-      console.error('Error saving settings:', error);
-      setSettingsSaveError('Failed to save settings');
+      console.error('Error saving job settings:', error);
+      setSettingsSaveError('Failed to save job settings');
     } finally {
       setIsSavingSettings(false);
     }
@@ -385,7 +372,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
               />
             ) : (
               <>
-                <span className="job-title-text">{job.label || `Job ${job.id}`}</span>
+                <span className="job-title-text">
+                  {job?.label && job.label.trim() !== '' ? job.label : 'No label'}
+                </span>
                 <svg className="edit-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                   <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
