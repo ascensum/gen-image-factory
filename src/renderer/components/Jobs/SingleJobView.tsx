@@ -33,6 +33,24 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const [isSavingLabel, setIsSavingLabel] = useState(false);
   const [labelSaveError, setLabelSaveError] = useState<string | null>(null);
   const labelInputRef = useRef<HTMLDivElement>(null);
+  
+  // Settings editing state
+  const [isEditingSettings, setIsEditingSettings] = useState(false);
+  const [editedSettings, setEditedSettings] = useState({
+    model: 'Stable Diffusion XL',
+    version: '1.0.0',
+    resolution: '1024x1024',
+    format: 'PNG',
+    quality: 'High',
+    background: 'Clean White',
+    lighting: 'Studio',
+    style: 'Professional Product',
+    autoEnhance: true,
+    noiseReduction: 'Medium',
+    sharpening: 'Low'
+  });
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     loadJobData();
@@ -168,6 +186,66 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   const handleLabelChange = useCallback((e: React.FormEvent<HTMLDivElement>) => {
     setEditedLabel(e.currentTarget.textContent || '');
+  }, []);
+
+  // Settings editing handlers
+  const handleSettingsEdit = useCallback(() => {
+    setIsEditingSettings(true);
+    setSettingsSaveError(null);
+    // Initialize with current job settings if available
+    if (job) {
+      // TODO: Load actual job configuration settings from backend
+      // For now, use default values
+    }
+  }, [job]);
+
+  const handleSettingsSave = useCallback(async () => {
+    setIsSavingSettings(true);
+    setSettingsSaveError(null);
+    
+    try {
+      // TODO: Implement actual settings save to backend
+      // For now, just simulate success
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update local state
+      setIsEditingSettings(false);
+      console.log('Settings updated successfully');
+      
+      // TODO: Refresh job data to show updated settings
+      
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      setSettingsSaveError('Failed to save settings');
+    } finally {
+      setIsSavingSettings(false);
+    }
+  }, []);
+
+  const handleSettingsCancel = useCallback(() => {
+    setIsEditingSettings(false);
+    setSettingsSaveError(null);
+    // Reset to original values
+    setEditedSettings({
+      model: 'Stable Diffusion XL',
+      version: '1.0.0',
+      resolution: '1024x1024',
+      format: 'PNG',
+      quality: 'High',
+      background: 'Clean White',
+      lighting: 'Studio',
+      style: 'Professional Product',
+      autoEnhance: true,
+      noiseReduction: 'Medium',
+      sharpening: 'Low'
+    });
+  }, []);
+
+  const handleSettingChange = useCallback((key: string, value: string | boolean) => {
+    setEditedSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
   }, []);
 
   const getStatusColor = (status: string) => {
@@ -396,7 +474,13 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
             <div className="settings-section">
               <div className="settings-header">
                 <h2 className="section-title">Settings</h2>
-                <button className="edit-button">Edit</button>
+                <button 
+                  className="edit-button"
+                  onClick={handleSettingsEdit}
+                  title="Edit job settings"
+                >
+                  Edit
+                </button>
               </div>
               <div className="settings-content">
                 <div className="setting-group">
@@ -597,6 +681,159 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
               </button>
               <button onClick={handleConfirmDelete} className="btn-confirm-delete">
                 Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Edit Modal */}
+      {isEditingSettings && (
+        <div className="modal-overlay">
+          <div className="settings-modal">
+            <div className="modal-header">
+              <h3>Edit Job Settings</h3>
+            </div>
+            <div className="modal-body">
+              <div className="settings-form">
+                <div className="setting-group">
+                  <h4>Model Configuration</h4>
+                  <div className="setting-row">
+                    <label>Model:</label>
+                    <input
+                      type="text"
+                      value={editedSettings.model}
+                      onChange={(e) => handleSettingChange('model', e.target.value)}
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Version:</label>
+                    <input
+                      type="text"
+                      value={editedSettings.version}
+                      onChange={(e) => handleSettingChange('version', e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="setting-group">
+                  <h4>Image Settings</h4>
+                  <div className="setting-row">
+                    <label>Resolution:</label>
+                    <select
+                      value={editedSettings.resolution}
+                      onChange={(e) => handleSettingChange('resolution', e.target.value)}
+                    >
+                      <option value="512x512">512x512</option>
+                      <option value="768x768">768x768</option>
+                      <option value="1024x1024">1024x1024</option>
+                      <option value="1280x1280">1280x1280</option>
+                    </select>
+                  </div>
+                  <div className="setting-row">
+                    <label>Format:</label>
+                    <select
+                      value={editedSettings.format}
+                      onChange={(e) => handleSettingChange('format', e.target.value)}
+                    >
+                      <option value="PNG">PNG</option>
+                      <option value="JPEG">JPEG</option>
+                      <option value="WEBP">WEBP</option>
+                    </select>
+                  </div>
+                  <div className="setting-row">
+                    <label>Quality:</label>
+                    <select
+                      value={editedSettings.quality}
+                      onChange={(e) => handleSettingChange('quality', e.target.value)}
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="setting-group">
+                  <h4>Style Parameters</h4>
+                  <div className="setting-row">
+                    <label>Background:</label>
+                    <input
+                      type="text"
+                      value={editedSettings.background}
+                      onChange={(e) => handleSettingChange('background', e.target.value)}
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Lighting:</label>
+                    <input
+                      type="text"
+                      value={editedSettings.lighting}
+                      onChange={(e) => handleSettingChange('lighting', e.target.value)}
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Style:</label>
+                    <input
+                      type="text"
+                      value={editedSettings.style}
+                      onChange={(e) => handleSettingChange('style', e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="setting-group">
+                  <h4>Processing Options</h4>
+                  <div className="setting-row">
+                    <label>Auto-enhance:</label>
+                    <input
+                      type="checkbox"
+                      checked={editedSettings.autoEnhance}
+                      onChange={(e) => handleSettingChange('autoEnhance', e.target.checked)}
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Noise reduction:</label>
+                    <select
+                      value={editedSettings.noiseReduction}
+                      onChange={(e) => handleSettingChange('noiseReduction', e.target.value)}
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                  </div>
+                  <div className="setting-row">
+                    <label>Sharpening:</label>
+                    <select
+                      value={editedSettings.sharpening}
+                      onChange={(e) => handleSettingChange('sharpening', e.target.value)}
+                    >
+                      <option value="Low">Low</option>
+                      <option value="Medium">Medium</option>
+                      <option value="High">High</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Settings save error */}
+              {settingsSaveError && (
+                <div className="settings-error">
+                  {settingsSaveError}
+                </div>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button onClick={handleSettingsCancel} className="btn-cancel">
+                Cancel
+              </button>
+              <button 
+                onClick={handleSettingsSave} 
+                disabled={isSavingSettings}
+                className="btn-save"
+              >
+                {isSavingSettings ? 'Saving...' : 'Save Settings'}
               </button>
             </div>
           </div>
