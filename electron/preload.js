@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getConfiguration: () => ipcRenderer.invoke('settings:get-configuration'),
     deleteGeneratedImage: (imageId) => ipcRenderer.invoke('generated-image:delete', { imageId }),
     bulkDeleteImages: (imageIds) => ipcRenderer.invoke('generated-image:bulk-delete', { imageIds }),
+    getAllGeneratedImages: (options) => ipcRenderer.invoke('generated-image:get-all', options),
   },
   
   // Configuration
