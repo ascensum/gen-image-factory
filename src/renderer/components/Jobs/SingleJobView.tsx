@@ -40,6 +40,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  
+  // Job configuration state
+  const [jobConfiguration, setJobConfiguration] = useState(null);
 
   useEffect(() => {
     loadJobData();
@@ -73,6 +76,19 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       
       // Load job logs (placeholder - implement when available)
       setLogs(['Job started successfully', 'Processing images...', 'Job completed']);
+      
+      // Load job configuration if available
+      if (jobResult.execution?.configurationId) {
+        try {
+          const configResult = await window.electronAPI.getJobConfigurationById(jobResult.execution.configurationId);
+          if (configResult.success && configResult.configuration) {
+            setJobConfiguration(configResult.configuration);
+          }
+        } catch (configError) {
+          console.warn('Failed to load job configuration:', configError);
+          // Don't fail the entire load for missing configuration
+        }
+      }
       
     } catch (error) {
       console.error('Error loading job data:', error);
@@ -543,37 +559,40 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 </button>
               </div>
               <div className="settings-content">
-                <div className="setting-group">
-                  <h3>Model Configuration</h3>
-                  <div className="setting-details">
-                    <div>• Model: Stable Diffusion XL</div>
-                    <div>• Version: 1.0.0</div>
+                {jobConfiguration ? (
+                  <>
+                    <div className="setting-group">
+                      <h3>Model Configuration</h3>
+                      <div className="setting-details">
+                        <div>• Model: {jobConfiguration.parameters?.mjVersion ? `Midjourney v${jobConfiguration.parameters.mjVersion}` : 'Not specified'}</div>
+                        <div>• Process Mode: {jobConfiguration.parameters?.processMode || 'Not specified'}</div>
+                        <div>• OpenAI Model: {jobConfiguration.parameters?.openaiModel || 'Not specified'}</div>
+                      </div>
+                    </div>
+                    <div className="setting-group">
+                      <h3>Image Settings</h3>
+                      <div className="setting-details">
+                        <div>• Aspect Ratio: {jobConfiguration.parameters?.aspectRatios || 'Not specified'}</div>
+                        <div>• Image Count: {jobConfiguration.parameters?.count || 'Not specified'}</div>
+                        <div>• Convert to JPG: {jobConfiguration.processing?.convertToJpg ? 'Yes' : 'No'}</div>
+                      </div>
+                    </div>
+                    <div className="setting-group">
+                      <h3>Processing Options</h3>
+                      <div className="setting-details">
+                        <div>• Remove Background: {jobConfiguration.processing?.removeBg ? 'Yes' : 'No'}</div>
+                        <div>• Image Enhancement: {jobConfiguration.processing?.imageEnhancement ? 'Yes' : 'No'}</div>
+                        <div>• Quality Check: {jobConfiguration.processing?.runQualityCheck ? 'Yes' : 'No'}</div>
+                        <div>• Metadata Generation: {jobConfiguration.processing?.runMetadataGen ? 'Yes' : 'No'}</div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="no-configuration">
+                    <p>No configuration available for this job.</p>
+                    <p>This job was run with default settings.</p>
                   </div>
-                </div>
-                <div className="setting-group">
-                  <h3>Image Settings</h3>
-                  <div className="setting-details">
-                    <div>• Resolution: 1024x1024</div>
-                    <div>• Format: PNG</div>
-                    <div>• Quality: High</div>
-                  </div>
-                </div>
-                <div className="setting-group">
-                  <h3>Style Parameters</h3>
-                  <div className="setting-details">
-                    <div>• Background: Clean White</div>
-                    <div>• Lighting: Studio</div>
-                    <div>• Style: Professional Product</div>
-                  </div>
-                </div>
-                <div className="setting-group">
-                  <h3>Processing Options</h3>
-                  <div className="setting-details">
-                    <div>• Auto-enhance: Enabled</div>
-                    <div>• Noise reduction: Medium</div>
-                    <div>• Sharpening: Low</div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
