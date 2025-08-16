@@ -66,6 +66,10 @@ let backendAdapter;
 app.whenReady().then(() => {
   // Initialize Backend Adapter only once
   backendAdapter = new BackendAdapter();
+  
+  // Make backendAdapter globally accessible so other modules can use it
+  global.backendAdapter = backendAdapter;
+  
   createWindow();
 });
 

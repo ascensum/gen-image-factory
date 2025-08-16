@@ -22,7 +22,14 @@ class BackendAdapter {
     this.jobConfig = new JobConfiguration();
     this.jobExecution = new JobExecution();
     this.generatedImage = new GeneratedImage();
-    this.jobRunner = new JobRunner();
+    
+    // If an existing jobRunner is passed, use it; otherwise create a new one
+    if (options.existingJobRunner) {
+      this.jobRunner = options.existingJobRunner;
+    } else {
+      this.jobRunner = new JobRunner();
+    }
+    
     this.errorTranslation = new ErrorTranslationService();
     this.ipc = options.ipc || (typeof ipcMain !== 'undefined' ? ipcMain : undefined);
     
