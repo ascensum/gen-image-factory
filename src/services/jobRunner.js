@@ -252,9 +252,14 @@ class JobRunner extends EventEmitter {
       if (this.isStopping) return;
       this.emitProgress('parameter_generation', 10, 'Generating parameters from keywords...');
       
+      console.log('🔧 About to call generateParameters with config:', config);
+      console.log('🔧 Config.parameters:', config.parameters);
+      console.log('🔧 Config.parameters.aspectRatios:', config.parameters?.aspectRatios);
+      
       // Call the real paramsGeneratorModule
       const parameters = await this.generateParameters(config);
       console.log('✅ Parameters generated:', parameters);
+      console.log('✅ Parameters.aspectRatios:', parameters.aspectRatios);
       
       this.completedSteps.push('parameter_generation');
       this.emitProgress('parameter_generation', 15, 'Parameters generated successfully');
