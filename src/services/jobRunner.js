@@ -430,11 +430,24 @@ class JobRunner extends EventEmitter {
         let imagePaths = [];
         
         if (Array.isArray(result)) {
-          // If result is an array, use each path
-          imagePaths = result;
+          // If result is an array, extract paths from each item
+          imagePaths = result.map(item => {
+            if (item.outputPath) {
+              return item.outputPath;  // Use outputPath if available
+            } else if (typeof item === 'string') {
+              return item;  // Use string directly
+            } else if (item.path) {
+              return item.path;  // Use path property
+            } else {
+              return item;  // Fallback to item itself
+            }
+          });
         } else if (typeof result === 'string') {
           // If result is a string, use it directly
           imagePaths = [result];
+        } else if (result.outputPath) {
+          // If result has outputPath property
+          imagePaths = [result.outputPath];
         } else if (result.paths && Array.isArray(result.paths)) {
           // If result has a paths property
           imagePaths = result.paths;
