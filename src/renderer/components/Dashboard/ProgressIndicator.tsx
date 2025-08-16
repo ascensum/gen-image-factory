@@ -20,13 +20,55 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   const timeElapsedFormatted = formatTime(timeElapsed);
   const timeRemainingFormatted = estimatedTimeRemaining ? formatTime(estimatedTimeRemaining) : '--:--';
 
-  // Job steps configuration
-  const jobSteps = [
-    { id: 1, name: 'Initialize', description: 'Setting up job configuration' },
-    { id: 2, name: 'Generate Images', description: 'Creating images with AI models' },
-    { id: 3, name: 'Quality Check', description: 'Running quality assessment' },
-    { id: 4, name: 'Save Results', description: 'Storing generated images' }
-  ];
+  // Dynamic job steps based on actual backend response
+  const jobSteps = React.useMemo(() => {
+    // If we have totalSteps from backend, create dynamic steps
+    if (totalSteps > 0) {
+      const steps = [];
+      for (let i = 1; i <= totalSteps; i++) {
+        let name, description;
+        switch (i) {
+          case 1:
+            name = 'Initialize';
+            description = 'Setting up job configuration';
+            break;
+          case 2:
+            name = 'Generate Images';
+            description = 'Creating images with AI models';
+            break;
+          case 3:
+            name = 'Quality Check';
+            description = 'Running quality assessment';
+            break;
+          case 4:
+            name = 'Save Results';
+            description = 'Storing generated images';
+            break;
+          case 5:
+            name = 'Process Images';
+            description = 'Processing and enhancing images';
+            break;
+          case 6:
+            name = 'Finalize';
+            description = 'Completing job and cleanup';
+            break;
+          default:
+            name = `Step ${i}`;
+            description = `Processing step ${i}`;
+        }
+        steps.push({ id: i, name, description });
+      }
+      return steps;
+    }
+    
+    // Fallback to default steps if no totalSteps available
+    return [
+      { id: 1, name: 'Initialize', description: 'Setting up job configuration' },
+      { id: 2, name: 'Generate Images', description: 'Creating images with AI models' },
+      { id: 3, name: 'Quality Check', description: 'Running quality assessment' },
+      { id: 4, name: 'Save Results', description: 'Storing generated images' }
+    ];
+  }, [totalSteps]);
 
   const getStepStatus = (stepId: number) => {
     if (!isJobActive) return 'pending';
