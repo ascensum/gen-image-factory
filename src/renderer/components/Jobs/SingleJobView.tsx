@@ -194,8 +194,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
           apiKeys: { openai: '', piapi: '', removeBg: '' },
           filePaths: { outputDirectory: './pictures/toupload', tempDirectory: './pictures/generated' },
           parameters: { processMode: 'relax', aspectRatios: '1:1,16:9,9:16', mjVersion: '6.1' },
-          processing: { removeBg: false, imageEnhancement: false, sharpening: 5 },
-          ai: { runQualityCheck: true, runMetadataGen: true }
+          processing: { removeBg: false, imageConvert: false, imageEnhancement: false, sharpening: 5, saturation: 1.4, convertToJpg: false, trimTransparentBackground: false, jpgBackground: 'white', jpgQuality: 100, pngQuality: 100, removeBgSize: 'auto' },
+          ai: { runQualityCheck: true, runMetadataGen: true },
+          advanced: { debugMode: false }
         });
       }
     } catch (error) {
@@ -232,34 +233,24 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   const handleSettingsCancel = useCallback(() => {
     setIsEditingSettings(false);
-    setSettingsSaveError(null);
     setEditedSettings(null);
+    setSettingsSaveError(null);
   }, []);
 
-  const handleSettingChange = useCallback((key: string, value: any) => {
+  const handleSettingChange = useCallback((section: string, key: string, value: any) => {
     if (!editedSettings) return;
-    
     setEditedSettings(prev => {
       if (!prev) return prev;
-      
-      // Handle nested object updates (e.g., parameters.processMode)
-      const keys = key.split('.');
-      if (keys.length === 2) {
-        return {
-          ...prev,
-          [keys[0]]: {
-            ...prev[keys[0]],
-            [keys[1]]: value
-          }
-        };
-      }
-      
       return {
         ...prev,
-        [key]: value
+        [section]: { ...prev[section as keyof typeof prev], [key]: value }
       };
     });
   }, [editedSettings]);
+
+  const handleToggleChange = useCallback((section: string, key: string) => (checked: boolean) => {
+    handleSettingChange(section, key, checked);
+  }, [handleSettingChange]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -704,178 +695,370 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       {isEditingSettings && (
         <div className="modal-overlay">
           <div className="settings-modal">
-            <div className="modal-header">
-              <h3>Edit Job Settings</h3>
+            <div className="settings-header">
+              <h3 className="text-lg font-medium text-gray-900">Edit Job Settings</h3>
+              <button onClick={handleSettingsCancel} className="close-button" title="Close">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <div className="modal-body">
-              {isLoadingSettings ? (
-                <div className="loading-container">
-                  <div className="loading-spinner"></div>
-                  <p>Loading current settings...</p>
+            
+            {isLoadingSettings ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Loading current settings...</p>
+              </div>
+            ) : editedSettings ? (
+              <div className="settings-content">
+                {/* API Keys Section */}
+                <div className="setting-group">
+                  <h4 className="setting-group-title">API Keys</h4>
+                  <div className="setting-row">
+                    <label>OpenAI API Key</label>
+                    <input
+                      type="password"
+                      value={editedSettings.apiKeys?.openai || ''}
+                      onChange={(e) => handleSettingChange('apiKeys', 'openai', e.target.value)}
+                      placeholder="Enter OpenAI API key"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>PiAPI Key</label>
+                    <input
+                      type="password"
+                      value={editedSettings.apiKeys?.piapi || ''}
+                      onChange={(e) => handleSettingChange('apiKeys', 'piapi', e.target.value)}
+                      placeholder="Enter PiAPI key"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Remove.bg API Key</label>
+                    <input
+                      type="password"
+                      value={editedSettings.apiKeys?.removeBg || ''}
+                      onChange={(e) => handleSettingChange('apiKeys', 'removeBg', e.target.value)}
+                      placeholder="Enter Remove.bg API key"
+                    />
+                  </div>
                 </div>
-              ) : editedSettings ? (
-                <div className="settings-form">
-                  <div className="setting-group">
-                    <h4>API Configuration</h4>
-                    <div className="setting-row">
-                      <label>OpenAI API Key:</label>
-                      <input
-                        type="password"
-                        value={editedSettings.apiKeys?.openai || ''}
-                        onChange={(e) => handleSettingChange('apiKeys.openai', e.target.value)}
-                        placeholder="Enter OpenAI API key"
-                      />
-                    </div>
-                    <div className="setting-row">
-                      <label>Piapi API Key:</label>
-                      <input
-                        type="password"
-                        value={editedSettings.apiKeys?.piapi || ''}
-                        onChange={(e) => handleSettingChange('apiKeys.piapi', e.target.value)}
-                        placeholder="Enter Piapi API key"
-                      />
-                    </div>
-                    <div className="setting-row">
-                      <label>Remove BG API Key:</label>
-                      <input
-                        type="password"
-                        value={editedSettings.apiKeys?.removeBg || ''}
-                        onChange={(e) => handleSettingChange('apiKeys.removeBg', e.target.value)}
-                        placeholder="Enter Remove BG API key"
-                      />
-                    </div>
+
+                {/* File Paths Section */}
+                <div className="setting-group">
+                  <h4 className="setting-group-title">File Paths</h4>
+                  <div className="setting-row">
+                    <label>Output Directory</label>
+                    <input
+                      type="text"
+                      value={editedSettings.filePaths?.outputDirectory || ''}
+                      onChange={(e) => handleSettingChange('filePaths', 'outputDirectory', e.target.value)}
+                      placeholder="Output directory path"
+                    />
                   </div>
-                  
-                  <div className="setting-group">
-                    <h4>File Paths</h4>
-                    <div className="setting-row">
-                      <label>Output Directory:</label>
-                      <input
-                        type="text"
-                        value={editedSettings.filePaths?.outputDirectory || ''}
-                        onChange={(e) => handleSettingChange('filePaths.outputDirectory', e.target.value)}
-                        placeholder="Output directory path"
-                      />
-                    </div>
-                    <div className="setting-row">
-                      <label>Temp Directory:</label>
-                      <input
-                        type="text"
-                        value={editedSettings.filePaths?.tempDirectory || ''}
-                        onChange={(e) => handleSettingChange('filePaths.tempDirectory', e.target.value)}
-                        placeholder="Temporary directory path"
-                      />
-                    </div>
+                  <div className="setting-row">
+                    <label>Temp Directory</label>
+                    <input
+                      type="text"
+                      value={editedSettings.filePaths?.tempDirectory || ''}
+                      onChange={(e) => handleSettingChange('filePaths', 'tempDirectory', e.target.value)}
+                      placeholder="Temporary directory path"
+                    />
                   </div>
+                </div>
+
+                {/* Parameters Section */}
+                <div className="setting-group">
+                  <h4 className="setting-group-title">Parameters</h4>
+                  <div className="setting-row">
+                    <label>Process Mode</label>
+                    <select
+                      value={editedSettings.parameters?.processMode || 'relax'}
+                      onChange={(e) => handleSettingChange('parameters', 'processMode', e.target.value)}
+                    >
+                      <option value="relax">Relax</option>
+                      <option value="fast">Fast</option>
+                      <option value="turbo">Turbo</option>
+                    </select>
+                  </div>
+                  <div className="setting-row">
+                    <label>Aspect Ratios</label>
+                    <input
+                      type="text"
+                      value={editedSettings.parameters?.aspectRatios || '1:1,16:9,9:16'}
+                      onChange={(e) => handleSettingChange('parameters', 'aspectRatios', e.target.value)}
+                      placeholder="Comma-separated aspect ratios"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>MJ Version</label>
+                    <select
+                      value={editedSettings.parameters?.mjVersion || '6.1'}
+                      onChange={(e) => handleSettingChange('parameters', 'mjVersion', e.target.value)}
+                    >
+                      <option value="6.1">6.1</option>
+                      <option value="6.0">6.0</option>
+                      <option value="5.2">5.2</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Processing Section */}
+                <div className="setting-group">
+                  <h4 className="setting-group-title">Image Processing</h4>
                   
-                  <div className="setting-group">
-                    <h4>Processing Parameters</h4>
+                  {/* Background Removal */}
+                  <div className="setting-row toggle-row">
+                    <div>
+                      <label>Remove Background</label>
+                      <p className="setting-description">Remove background from generated images</p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={editedSettings.processing?.removeBg || false}
+                      onClick={() => handleToggleChange('processing', 'removeBg')(!editedSettings.processing?.removeBg)}
+                      className={`toggle-button ${editedSettings.processing?.removeBg ? 'toggle-on' : 'toggle-off'}`}
+                    >
+                      <span className="toggle-slider"></span>
+                    </button>
+                  </div>
+
+                  {/* Remove.bg Size - conditional */}
+                  {editedSettings.processing?.removeBg && (
                     <div className="setting-row">
-                      <label>Process Mode:</label>
+                      <label>Remove.bg Size</label>
                       <select
-                        value={editedSettings.parameters?.processMode || 'relax'}
-                        onChange={(e) => handleSettingChange('parameters.processMode', e.target.value)}
+                        value={editedSettings.processing?.removeBgSize || 'auto'}
+                        onChange={(e) => handleSettingChange('processing', 'removeBgSize', e.target.value)}
                       >
-                        <option value="relax">Relax</option>
-                        <option value="fast">Fast</option>
-                        <option value="turbo">Turbo</option>
+                        <option value="auto">Auto</option>
+                        <option value="preview">Preview</option>
+                        <option value="full">Full</option>
+                        <option value="50MP">50MP</option>
                       </select>
                     </div>
-                    <div className="setting-row">
-                      <label>Aspect Ratios:</label>
-                      <input
-                        type="text"
-                        value={editedSettings.parameters?.aspectRatios || '1:1,16:9,9:16'}
-                        onChange={(e) => handleSettingChange('parameters.aspectRatios', e.target.value)}
-                        placeholder="Comma-separated aspect ratios"
-                      />
+                  )}
+
+                  {/* Image Conversion */}
+                  <div className="setting-row toggle-row">
+                    <div>
+                      <label>Image Convert</label>
+                      <p className="setting-description">Enable image conversion and processing</p>
                     </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={editedSettings.processing?.imageConvert || false}
+                      onClick={() => handleToggleChange('processing', 'imageConvert')(!editedSettings.processing?.imageConvert)}
+                      className={`toggle-button ${editedSettings.processing?.imageConvert ? 'toggle-on' : 'toggle-off'}`}
+                    >
+                      <span className="toggle-slider"></span>
+                    </button>
+                  </div>
+
+                  {/* Convert Format - conditional */}
+                  {editedSettings.processing?.imageConvert && (
                     <div className="setting-row">
-                      <label>MJ Version:</label>
+                      <label>Convert Format</label>
                       <select
-                        value={editedSettings.parameters?.mjVersion || '6.1'}
-                        onChange={(e) => handleSettingChange('parameters.mjVersion', e.target.value)}
+                        value={editedSettings.processing?.convertToJpg ? 'jpg' : 'png'}
+                        onChange={(e) => handleSettingChange('processing', 'convertToJpg', e.target.value === 'jpg')}
                       >
-                        <option value="6.1">6.1</option>
-                        <option value="6.0">6.0</option>
-                        <option value="5.2">5.2</option>
+                        <option value="png">PNG</option>
+                        <option value="jpg">JPG</option>
                       </select>
                     </div>
+                  )}
+
+                  {/* Quality Settings - conditional */}
+                  {editedSettings.processing?.imageConvert && (
+                    <>
+                      <div className="setting-row">
+                        <label>JPG Quality (1-100)</label>
+                        <input
+                          type="number"
+                          value={editedSettings.processing?.jpgQuality || 100}
+                          onChange={(e) => handleSettingChange('processing', 'jpgQuality', parseInt(e.target.value))}
+                          min="1"
+                          max="100"
+                        />
+                      </div>
+                      <div className="setting-row">
+                        <label>PNG Quality (1-100)</label>
+                        <input
+                          type="number"
+                          value={editedSettings.processing?.pngQuality || 100}
+                          onChange={(e) => handleSettingChange('processing', 'pngQuality', parseInt(e.target.value))}
+                          min="1"
+                          max="100"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* JPG Background - conditional */}
+                  {editedSettings.processing?.removeBg && editedSettings.processing?.imageConvert && editedSettings.processing?.convertToJpg && (
+                    <div className="setting-row">
+                      <label>JPG Background Color</label>
+                      <select
+                        value={editedSettings.processing?.jpgBackground || 'white'}
+                        onChange={(e) => handleSettingChange('processing', 'jpgBackground', e.target.value)}
+                      >
+                        <option value="white">White</option>
+                        <option value="black">Black</option>
+                        <option value="transparent">Transparent</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Trim Transparent Background - conditional */}
+                  {editedSettings.processing?.removeBg && (
+                    <div className="setting-row toggle-row">
+                      <div>
+                        <label>Trim Transparent Background</label>
+                        <p className="setting-description">Remove transparent areas from images (PNG only)</p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={editedSettings.processing?.trimTransparentBackground || false}
+                        onClick={() => handleToggleChange('processing', 'trimTransparentBackground')(!editedSettings.processing?.trimTransparentBackground)}
+                        className={`toggle-button ${editedSettings.processing?.trimTransparentBackground ? 'toggle-on' : 'toggle-off'}`}
+                      >
+                        <span className="toggle-slider"></span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Image Enhancement - independent feature */}
+                  <div className="setting-row toggle-row">
+                    <div>
+                      <label>Image Enhancement</label>
+                      <p className="setting-description">Apply sharpening and saturation effects</p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={editedSettings.processing?.imageEnhancement || false}
+                      onClick={() => handleToggleChange('processing', 'imageEnhancement')(!editedSettings.processing?.imageEnhancement)}
+                      className={`toggle-button ${editedSettings.processing?.imageEnhancement ? 'toggle-on' : 'toggle-off'}`}
+                    >
+                      <span className="toggle-slider"></span>
+                    </button>
                   </div>
-                  
-                  <div className="setting-group">
-                    <h4>Processing Options</h4>
+
+                  {/* Sharpening Control - conditional */}
+                  {editedSettings.processing?.imageEnhancement && (
                     <div className="setting-row">
-                      <label>Remove Background:</label>
-                      <input
-                        type="checkbox"
-                        checked={editedSettings.processing?.removeBg || false}
-                        onChange={(e) => handleSettingChange('processing.removeBg', e.target.checked)}
-                      />
-                    </div>
-                    <div className="setting-row">
-                      <label>Image Enhancement:</label>
-                      <input
-                        type="checkbox"
-                        checked={editedSettings.processing?.imageEnhancement || false}
-                        onChange={(e) => handleSettingChange('processing.imageEnhancement', e.target.checked)}
-                      />
-                    </div>
-                    <div className="setting-row">
-                      <label>Sharpening:</label>
+                      <label>Sharpening Intensity (0-10)</label>
                       <input
                         type="range"
                         min="0"
                         max="10"
+                        step="0.5"
                         value={editedSettings.processing?.sharpening || 5}
-                        onChange={(e) => handleSettingChange('processing.sharpening', parseInt(e.target.value))}
+                        onChange={(e) => handleSettingChange('processing', 'sharpening', parseFloat(e.target.value))}
+                        className="range-slider"
                       />
-                      <span>{editedSettings.processing?.sharpening || 5}</span>
+                      <div className="range-labels">
+                        <span>0 (None)</span>
+                        <span>{editedSettings.processing?.sharpening || 5}</span>
+                        <span>10 (Maximum)</span>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="setting-group">
-                    <h4>AI Features</h4>
+                  )}
+
+                  {/* Saturation Control - conditional */}
+                  {editedSettings.processing?.imageEnhancement && (
                     <div className="setting-row">
-                      <label>Quality Check:</label>
+                      <label>Saturation Level (0-2)</label>
                       <input
-                        type="checkbox"
-                        checked={editedSettings.ai?.runQualityCheck || false}
-                        onChange={(e) => handleSettingChange('ai.runQualityCheck', e.target.checked)}
+                        type="range"
+                        min="0"
+                        max="2"
+                        step="0.1"
+                        value={editedSettings.processing?.saturation || 1.4}
+                        onChange={(e) => handleSettingChange('processing', 'saturation', parseFloat(e.target.value))}
+                        className="range-slider"
                       />
+                      <div className="range-labels">
+                        <span>0 (Grayscale)</span>
+                        <span>{editedSettings.processing?.saturation || 1.4}</span>
+                        <span>2 (Vibrant)</span>
+                      </div>
                     </div>
-                    <div className="setting-row">
-                      <label>Metadata Generation:</label>
-                      <input
-                        type="checkbox"
-                        checked={editedSettings.ai?.runMetadataGen || false}
-                        onChange={(e) => handleSettingChange('ai.runMetadataGen', e.target.checked)}
-                      />
+                  )}
+                </div>
+
+                {/* AI Section */}
+                <div className="setting-group">
+                  <h4 className="setting-group-title">AI Features</h4>
+                  <div className="setting-row toggle-row">
+                    <div>
+                      <label>AI Quality Check</label>
+                      <p className="setting-description">Use AI to check image quality</p>
                     </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={editedSettings.ai?.runQualityCheck || false}
+                      onClick={() => handleToggleChange('ai', 'runQualityCheck')(!editedSettings.ai?.runQualityCheck)}
+                      className={`toggle-button ${editedSettings.ai?.runQualityCheck ? 'toggle-on' : 'toggle-off'}`}
+                    >
+                      <span className="toggle-slider"></span>
+                    </button>
+                  </div>
+                  <div className="setting-row toggle-row">
+                    <div>
+                      <label>AI Metadata Generation</label>
+                      <p className="setting-description">Generate metadata using AI</p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={editedSettings.ai?.runMetadataGen || false}
+                      onClick={() => handleToggleChange('ai', 'runMetadataGen')(!editedSettings.ai?.runMetadataGen)}
+                      className={`toggle-button ${editedSettings.ai?.runMetadataGen ? 'toggle-on' : 'toggle-off'}`}
+                    >
+                      <span className="toggle-slider"></span>
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <div className="error-container">
-                  <p>Failed to load settings</p>
+
+                {/* Advanced Section */}
+                <div className="setting-group">
+                  <h4 className="setting-group-title">Advanced Settings</h4>
+                  <div className="setting-row toggle-row">
+                    <div>
+                      <label>Debug Mode</label>
+                      <p className="setting-description">Enable detailed logging and debugging</p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={editedSettings.advanced?.debugMode || false}
+                      onClick={() => handleToggleChange('advanced', 'debugMode')(!editedSettings.advanced?.debugMode)}
+                      className={`toggle-button ${editedSettings.advanced?.debugMode ? 'toggle-on' : 'toggle-off'}`}
+                    >
+                      <span className="toggle-slider"></span>
+                    </button>
+                  </div>
                 </div>
-              )}
-              
-              {/* Settings save error */}
-              {settingsSaveError && (
-                <div className="settings-error">
-                  {settingsSaveError}
-                </div>
-              )}
-            </div>
-            <div className="modal-actions">
+              </div>
+            ) : null}
+
+            {settingsSaveError && (
+              <div className="settings-error">
+                <span className="error-icon">⚠️</span>
+                {settingsSaveError}
+              </div>
+            )}
+
+            <div className="settings-actions">
               <button onClick={handleSettingsCancel} className="btn-cancel">
                 Cancel
               </button>
-              <button 
-                onClick={handleSettingsSave} 
-                disabled={isSavingSettings || isLoadingSettings || !editedSettings}
-                className="btn-save"
-              >
+              <button onClick={handleSettingsSave} disabled={isSavingSettings || isLoadingSettings || !editedSettings} className="btn-save">
                 {isSavingSettings ? 'Saving...' : 'Save Settings'}
               </button>
             </div>
