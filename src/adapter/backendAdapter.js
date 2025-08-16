@@ -929,7 +929,7 @@ class BackendAdapter {
         });
         
         const imagesSheet = XLSX.utils.aoa_to_sheet(imagesData);
-        XLSX.utils.book_append_sheet(workbook, imagesSheet, 'Generated Images');
+        XLSX.utils.book_append_sheet(workbook, imagesSheet, 'Images');
       }
       
       // Configuration Sheet (if available)
@@ -958,7 +958,7 @@ class BackendAdapter {
         configData.push(...flattenedSettings);
         
         const configSheet = XLSX.utils.aoa_to_sheet(configData);
-        XLSX.utils.book_append_sheet(workbook, configSheet, 'Job Configuration');
+        XLSX.utils.book_append_sheet(workbook, configSheet, 'Configuration');
       }
       
       // Generate filename
@@ -966,8 +966,9 @@ class BackendAdapter {
       const jobLabel = job.label && job.label.trim() !== '' ? job.label.replace(/[^a-zA-Z0-9]/g, '_') : 'Job';
       const filename = `${jobLabel}_${job.id}_${timestamp}.xlsx`;
       
-      // Create export directory if it doesn't exist
-      const exportDir = path.join(__dirname, '../../../exports');
+      // Create export directory in user's app data folder (works in both dev and production)
+      const { app } = require('electron');
+      const exportDir = path.join(app.getPath('userData'), 'exports');
       if (!fs.existsSync(exportDir)) {
         fs.mkdirSync(exportDir, { recursive: true });
       }
@@ -1533,7 +1534,9 @@ class BackendAdapter {
 
   async openExportsFolder() {
     try {
-      const exportDir = path.join(__dirname, '../../../exports');
+      // Use the same path as exportJobToExcel
+      const { app } = require('electron');
+      const exportDir = path.join(app.getPath('userData'), 'exports');
       
       // Create export directory if it doesn't exist
       if (!fs.existsSync(exportDir)) {
