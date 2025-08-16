@@ -265,7 +265,10 @@ class JobRunner extends EventEmitter {
       
       // Call the real producePictureModule
       const images = await this.generateImages(config, parameters);
-      console.log('✅ Images generated:', images);
+      console.log('✅ Images generated in executeJob:', images);
+      console.log('✅ Images type:', typeof images);
+      console.log('✅ Images length:', Array.isArray(images) ? images.length : 'Not an array');
+      console.log('✅ Images structure:', JSON.stringify(images, null, 2));
       
       this.completedSteps.push('image_generation');
       this.emitProgress('image_generation', 75, 'Images generated successfully');
@@ -458,7 +461,7 @@ class JobRunner extends EventEmitter {
         
         console.log('🔧 Processed image paths:', imagePaths);
         
-        // Create proper image objects
+        // Create separate image objects for each path
         const processedImages = imagePaths.map((path, index) => {
           console.log(`🔧 Processing image ${index}:`, path);
           console.log(`🔧 Path type:`, typeof path);
@@ -473,7 +476,7 @@ class JobRunner extends EventEmitter {
         });
         
         console.log('🔧 Final processed images:', processedImages);
-        return processedImages;
+        return processedImages;  // Return array of image objects
       } else {
         throw new Error('No images were generated');
       }
