@@ -68,7 +68,9 @@ function createWindow() {
 let backendAdapter;
 
 // This method will be called when Electron has finished initialization
+console.log('🚨 MAIN PROCESS: About to call app.whenReady()...');
 app.whenReady().then(() => {
+  console.log('🚨 MAIN PROCESS: app.whenReady() resolved successfully!');
   // Set up protocol handler for local files AFTER app is ready
   protocol.registerFileProtocol('local-file', (request, callback) => {
     console.log('🔗 Protocol handler called for:', request.url);
@@ -104,11 +106,13 @@ app.whenReady().then(() => {
   });
   
   // Initialize Backend Adapter only once
+  console.log('🚨 MAIN PROCESS: About to create BackendAdapter...');
   console.log('🔧 About to create BackendAdapter with ipcMain...');
   console.log('🔧 ipcMain type:', typeof ipcMain);
   console.log('🔧 ipcMain available:', ipcMain !== undefined);
   
   try {
+    console.log('🚨 MAIN PROCESS: Calling BackendAdapter constructor...');
     backendAdapter = new BackendAdapter({ ipc: ipcMain });
     console.log('✅ BackendAdapter created successfully');
     console.log('🔧 backendAdapter object:', backendAdapter);
