@@ -228,7 +228,7 @@ function readCsvFile(filePath) {
 
   // Centralized configuration object
   const config = {
-    aspectRatios: argv.aspectRatios && argv.aspectRatios.length > 0 ? argv.aspectRatios : process.env.ASPECT_RATIOS.split(','),
+    aspectRatios: argv.aspectRatios && argv.aspectRatios.length > 0 ? argv.aspectRatios.split(',') : process.env.ASPECT_RATIOS.split(','),
     removeBg: argv.removeBg !== undefined ? argv.removeBg : (process.env.REMOVE_BG === 'true'),
     imageConvert: argv.imageConvert !== undefined ? argv.imageConvert : (process.env.IMAGE_CONVERT === 'true'),
     imageEnhancement: argv.imageEnhancement !== undefined ? argv.imageEnhancement : (process.env.IMAGE_ENHANCEMENT === 'true'),
