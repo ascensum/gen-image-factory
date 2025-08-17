@@ -401,6 +401,7 @@ class JobRunner extends EventEmitter {
               
               if (executionId) {
                 const generatedImage = {
+                  imageMappingId: image.mappingId || `img_${Date.now()}_${i}`, // Use mapping ID from producePictureModule
                   executionId: executionId,
                   generationPrompt: image.metadata?.prompt || 'Generated image',
                   seed: null,
@@ -485,13 +486,13 @@ class JobRunner extends EventEmitter {
             
             // Update all images to approved status
             for (const image of savedImages) {
-              if (this.backendAdapter && image.id) {
+              if (this.backendAdapter && image.imageMappingId) {
                 try {
-                  console.log(`💾 Auto-approving image ${image.id} (QC disabled)`);
-                  await this.backendAdapter.updateQCStatus(image.id, 'approved', 'Auto-approved (quality checks disabled)');
-                  console.log(`✅ Image ${image.id} auto-approved successfully`);
+                  console.log(`💾 Auto-approving image ${image.imageMappingId} (QC disabled)`);
+                  await this.backendAdapter.updateQCStatusByMappingId(image.imageMappingId, 'approved', 'Auto-approved (quality checks disabled)');
+                  console.log(`✅ Image ${image.imageMappingId} auto-approved successfully`);
                 } catch (dbError) {
-                  console.error(`❌ Failed to auto-approve image ${image.id}:`, dbError);
+                  console.error(`❌ Failed to auto-approve image ${image.imageMappingId}:`, dbError);
                 }
               }
             }
@@ -760,6 +761,7 @@ class JobRunner extends EventEmitter {
           console.log(`🔧 Processing image ${index}:`, item);
           console.log(`🔧 Item type:`, typeof item);
           console.log(`🔧 Item keys:`, Object.keys(item));
+          console.log(`🔧 Item mappingId:`, item.mappingId);
           // Extract the outputPath from each item
           const imagePath = item.outputPath || item.path || item;
           console.log(`🔧 Extracted path for image ${index}:`, imagePath);
@@ -788,9 +790,12 @@ class JobRunner extends EventEmitter {
             path: imagePath,  // This should be a string path
             aspectRatio: aspectRatio,
             status: 'generated',
-            metadata: { prompt: parameters.prompt }
+            metadata: { prompt: parameters.prompt },
+            mappingId: item.mappingId || `img_${Date.now()}_${index}` // Preserve the mapping ID from producePictureModule
           };
           console.log(`🔧 Created image object ${index}:`, imageObject);
+          console.log(`🔧 Image object mappingId:`, imageObject.mappingId);
+          console.log(`🔧 Item mappingId:`, item.mappingId);
           return imageObject;
         });
         
@@ -798,6 +803,8 @@ class JobRunner extends EventEmitter {
         console.log('🔧 Processed images length:', processedImages.length);
         console.log('🔧 First image path type:', typeof processedImages[0]?.path);
         console.log('🔧 First image path value:', processedImages[0]?.path);
+        console.log('🔧 First image mappingId:', processedImages[0]?.mappingId);
+        console.log('🔧 All images mappingIds:', processedImages.map(img => img.mappingId));
         return processedImages;  // Return array of image objects
       } else if (result && typeof result === 'string') {
         // Fallback: single string path
@@ -871,20 +878,30 @@ class JobRunner extends EventEmitter {
       console.log(`🔍 Getting saved images for execution ${executionId}...`);
       const result = await this.backendAdapter.getAllGeneratedImages();
       console.log('🔍 DEBUG: getAllGeneratedImages result:', result);
-      console.log('🔍 DEBUG: result.success:', result.success);
-      console.log('🔍 DEBUG: result.images is array:', Array.isArray(result.images));
-      console.log('🔍 DEBUG: result.images length:', result.images ? result.images.length : 'undefined');
       
-      if (result.success && Array.isArray(result.images)) {
+      // Handle both response formats: direct array or {success, images} object
+      let images = result;
+      if (result && typeof result === 'object' && result.success !== undefined) {
+        // Response is wrapped in {success, images} format
+        images = result.images;
+        console.log('🔍 DEBUG: result.success:', result.success);
+        console.log('🔍 DEBUG: result.images is array:', Array.isArray(result.images));
+        console.log('🔍 DEBUG: result.images length:', result.images ? result.images.length : 'undefined');
+      } else {
+        // Response is direct array
+        console.log('🔍 DEBUG: result is direct array, length:', Array.isArray(result) ? result.length : 'not array');
+      }
+      
+      if (Array.isArray(images)) {
         // Filter images for this specific execution
         console.log('🔍 DEBUG: About to filter images for executionId:', executionId);
-        console.log('🔍 DEBUG: All images executionIds:', result.images.map(img => img.executionId));
-        const executionImages = result.images.filter(img => img.executionId === executionId);
+        console.log('🔍 DEBUG: All images executionIds:', images.map(img => img.executionId));
+        const executionImages = images.filter(img => img.executionId === executionId);
         console.log(`✅ Found ${executionImages.length} saved images for execution ${executionId}`);
         console.log('🔍 DEBUG: Filtered images:', executionImages);
         return executionImages;
       } else {
-        console.warn('⚠️ Failed to get saved images:', result);
+        console.warn('⚠️ Failed to get saved images - not an array:', images);
         return [];
       }
     } catch (error) {
@@ -938,40 +955,40 @@ class JobRunner extends EventEmitter {
           image.qualityDetails = result;
           
           // Update QC status in database based on quality check result
-          if (this.backendAdapter && image.id) {
+          if (this.backendAdapter && image.imageMappingId) {
             try {
               const qcStatus = result.passed ? "approved" : "failed";
               const qcReason = result.reason || (result.passed ? "Quality check passed" : "Quality check failed");
               
-              console.log(`💾 Updating QC status in database for image ${image.id}: ${qcStatus}`);
-              await this.backendAdapter.updateQCStatus(image.id, qcStatus, qcReason);
+              console.log(`💾 Updating QC status in database for image ${image.imageMappingId}: ${qcStatus}`);
+              await this.backendAdapter.updateQCStatusByMappingId(image.imageMappingId, qcStatus, qcReason);
               console.log(`✅ QC status updated in database: ${qcStatus}`);
               
               // Also update the local image object
               image.qcStatus = qcStatus;
               image.qcReason = qcReason;
             } catch (dbError) {
-              console.error(`❌ Failed to update QC status in database for image ${image.id}:`, dbError);
+              console.error(`❌ Failed to update QC status in database for image ${image.imageMappingId}:`, dbError);
             }
           } else {
-            console.warn(`⚠️ Cannot update QC status: backendAdapter=${!!this.backendAdapter}, image.id=${image.id}`);
+            console.warn(`⚠️ Cannot update QC status: backendAdapter=${!!this.backendAdapter}, image.imageMappingId=${image.imageMappingId}`);
           }
         } else {
           console.warn(`⚠️ Quality check failed for: ${image.finalImagePath}`);
           image.qualityDetails = { error: "Quality check failed" };
           
           // Update QC status to failed in database
-          if (this.backendAdapter && image.id) {
+          if (this.backendAdapter && image.imageMappingId) {
             try {
-              console.log(`💾 Updating QC status to failed in database for image ${image.id}`);
-              await this.backendAdapter.updateQCStatus(image.id, "failed", "Quality check failed");
+              console.log(`💾 Updating QC status to failed in database for image ${image.imageMappingId}`);
+              await this.backendAdapter.updateQCStatusByMappingId(image.imageMappingId, "failed", "Quality check failed");
               console.log(`✅ QC status updated to failed in database`);
               
               // Also update the local image object
               image.qcStatus = "failed";
               image.qcReason = "Quality check failed";
             } catch (dbError) {
-              console.error(`❌ Failed to update QC status to failed in database for image ${image.id}:`, dbError);
+              console.error(`❌ Failed to update QC status to failed in database for image ${image.imageMappingId}:`, dbError);
             }
           }
         }
