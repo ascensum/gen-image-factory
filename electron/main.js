@@ -113,7 +113,7 @@ app.whenReady().then(() => {
   
   try {
     console.log('🚨 MAIN PROCESS: Calling BackendAdapter constructor...');
-    backendAdapter = new BackendAdapter({ ipc: ipcMain });
+    backendAdapter = new BackendAdapter({ ipc: ipcMain, skipIpcSetup: true });
     console.log('✅ BackendAdapter created successfully');
     console.log('🔧 backendAdapter object:', backendAdapter);
   } catch (error) {
