@@ -434,10 +434,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
           await loadStatistics();
           break;
         case 'rerun':
-          const job = jobHistory.find(j => j.id === jobId);
-          if (job) {
-            await window.electronAPI.jobManagement.jobStart(job.configuration.parameters);
-          }
+          // Use the same rerun logic as Job Management to prevent duplicate jobs
+          await window.electronAPI.jobManagement.rerunJobExecution(jobId);
           break;
       }
     } catch (error) {
