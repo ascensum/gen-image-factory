@@ -448,8 +448,7 @@ class GeneratedImage {
         SELECT 
           COUNT(*) as totalImages,
           SUM(CASE WHEN qc_status = 'approved' THEN 1 ELSE 0 END) as approvedImages,
-          SUM(CASE WHEN qc_status = 'failed' THEN 1 ELSE 0 END) as failedImages,
-          AVG(CASE WHEN seed IS NOT NULL THEN seed ELSE NULL END) as averageSeed
+          SUM(CASE WHEN qc_status = 'failed' THEN 1 ELSE 0 END) as failedImages
         FROM generated_images
       `;
       
@@ -461,8 +460,7 @@ class GeneratedImage {
           const stats = {
             totalImages: row.totalImages || 0,
             approvedImages: row.approvedImages || 0,
-            failedImages: row.failedImages || 0,
-            averageSeed: row.averageSeed || 0
+            failedImages: row.failedImages || 0
           };
           resolve({ success: true, statistics: stats });
         }
