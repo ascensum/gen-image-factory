@@ -167,17 +167,7 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
-// Test IPC handler to verify basic functionality
-ipcMain.handle('test-ipc', () => {
-  console.log('🧪 Test IPC handler called successfully');
-  return { success: true, message: 'Test IPC working' };
-});
 
-// Simple ping handler that should definitely work
-ipcMain.handle('simple-ping', () => {
-  console.log('🏓 Simple ping handler called');
-  return 'pong';
-});
 
 // Handle any uncaught exceptions
 process.on('uncaughtException', (error) => {
