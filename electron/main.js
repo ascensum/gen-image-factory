@@ -100,7 +100,19 @@ app.whenReady().then(() => {
   });
   
   // Initialize Backend Adapter only once
-  backendAdapter = new BackendAdapter({ ipc: ipcMain });
+  console.log('🔧 About to create BackendAdapter with ipcMain...');
+  console.log('🔧 ipcMain type:', typeof ipcMain);
+  console.log('🔧 ipcMain available:', ipcMain !== undefined);
+  
+  try {
+    backendAdapter = new BackendAdapter({ ipc: ipcMain });
+    console.log('✅ BackendAdapter created successfully');
+    console.log('🔧 backendAdapter object:', backendAdapter);
+  } catch (error) {
+    console.error('❌ Failed to create BackendAdapter:', error);
+    console.error('❌ Error stack:', error.stack);
+    throw error;
+  }
   
   // Make backendAdapter globally accessible so other modules can use it
   global.backendAdapter = backendAdapter;
