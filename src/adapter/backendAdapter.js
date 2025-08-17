@@ -368,13 +368,21 @@ class BackendAdapter {
             return { success: false, error: 'Job execution not found' };
           }
           
+          // Check if the job has a configuration BEFORE trying to rerun
+          if (!jobData.execution.configurationId) {
+            return { 
+              success: false, 
+              error: 'Job has no configuration. Cannot rerun jobs started from Dashboard without saved settings.' 
+            };
+          }
+          
           // Get the CURRENT configuration from the database
           const configResult = await this.jobConfig.getConfigurationById(jobData.execution.configurationId);
           
           if (!configResult.success || !configResult.configuration || !configResult.configuration.settings) {
             return { 
               success: false, 
-              error: 'Job has no valid configuration. Cannot rerun without settings.' 
+              error: 'Job configuration not found or invalid. Cannot rerun without valid settings.' 
             };
           }
           
@@ -1736,6 +1744,16 @@ class BackendAdapter {
       // Process each job for rerun
       for (const job of jobs.executions) {
         try {
+          // Check if the job has a configuration BEFORE trying to rerun
+          if (!job.configurationId) {
+            failedJobs.push({
+              jobId: job.id,
+              label: job.label || 'No label',
+              error: 'Job has no configuration. Cannot rerun jobs started from Dashboard without saved settings.'
+            });
+            continue;
+          }
+          
           // Get the CURRENT configuration (don't corrupt the original job)
           const configResult = await this.jobConfig.getConfigurationById(job.configurationId);
           
@@ -1751,7 +1769,7 @@ class BackendAdapter {
             failedJobs.push({
               jobId: job.id,
               label: job.label || 'No label',
-              error: 'Invalid configuration'
+              error: 'Job configuration not found or invalid. Cannot rerun without valid settings.'
             });
           }
         } catch (error) {
