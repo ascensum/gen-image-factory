@@ -922,7 +922,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <label>Aspect Ratios</label>
                     <input
                       type="text"
-                      value={editedSettings.parameters?.aspectRatios || '1:1,16:9,9:16'}
+                      value={editedSettings.parameters?.aspectRatios || ['1:1', '16:9', '9:16']}
                       onChange={(e) => handleSettingChange('parameters', 'aspectRatios', e.target.value)}
                       placeholder="Comma-separated aspect ratios"
                     />

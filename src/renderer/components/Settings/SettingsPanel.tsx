@@ -84,7 +84,7 @@ const defaultSettings: SettingsObject = {
   },
   parameters: {
     processMode: 'relax',
-    aspectRatios: '1:1,16:9,9:16',
+            aspectRatios: ['1:1', '16:9', '9:16'],
     mjVersion: '6.1',
     openaiModel: 'gpt-4o',
     pollingTimeout: 15,
