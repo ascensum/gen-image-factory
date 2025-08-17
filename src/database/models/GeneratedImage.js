@@ -210,7 +210,7 @@ class GeneratedImage {
         image.executionId,
         image.generationPrompt,
         image.seed || null,
-        image.qcStatus || 'pending',
+        image.qcStatus || 'failed',
         image.qcReason || null,
         image.finalImagePath || null,
         image.metadata ? JSON.stringify(image.metadata) : null,
@@ -447,9 +447,8 @@ class GeneratedImage {
       const sql = `
         SELECT 
           COUNT(*) as totalImages,
-          SUM(CASE WHEN qc_status = 'passed' THEN 1 ELSE 0 END) as passedImages,
+          SUM(CASE WHEN qc_status = 'approved' THEN 1 ELSE 0 END) as approvedImages,
           SUM(CASE WHEN qc_status = 'failed' THEN 1 ELSE 0 END) as failedImages,
-          SUM(CASE WHEN qc_status = 'pending' THEN 1 ELSE 0 END) as pendingImages,
           AVG(CASE WHEN seed IS NOT NULL THEN seed ELSE NULL END) as averageSeed
         FROM generated_images
       `;
@@ -461,9 +460,8 @@ class GeneratedImage {
         } else {
           const stats = {
             totalImages: row.totalImages || 0,
-            passedImages: row.passedImages || 0,
+            approvedImages: row.approvedImages || 0,
             failedImages: row.failedImages || 0,
-            pendingImages: row.pendingImages || 0,
             averageSeed: row.averageSeed || 0
           };
           resolve({ success: true, statistics: stats });
