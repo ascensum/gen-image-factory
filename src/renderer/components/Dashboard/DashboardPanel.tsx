@@ -434,6 +434,9 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
           await loadStatistics();
           break;
         case 'rerun':
+          console.log('🚨 DEBUG RERUN: DashboardPanel rerun case triggered for jobId:', jobId);
+          console.log('🚨 DEBUG RERUN: Timestamp:', new Date().toISOString());
+          console.log('🚨 DEBUG RERUN: Stack trace:', new Error().stack);
           // Use the same rerun logic as Job Management to prevent duplicate jobs
           await window.electronAPI.jobManagement.rerunJobExecution(jobId);
           break;

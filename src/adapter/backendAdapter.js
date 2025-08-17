@@ -358,6 +358,11 @@ class BackendAdapter {
       });
 
       _ipc.handle('job-execution:rerun', async (event, id) => {
+        console.log('🚨 DEBUG RERUN: IPC handler called with id:', id);
+        console.log('🚨 DEBUG RERUN: Event source:', event.sender?.id);
+        console.log('🚨 DEBUG RERUN: Current timestamp:', new Date().toISOString());
+        console.log('🚨 DEBUG RERUN: Stack trace:', new Error().stack);
+        
         try {
           await this.ensureInitialized();
           

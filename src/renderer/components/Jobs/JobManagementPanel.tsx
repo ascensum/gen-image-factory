@@ -702,7 +702,12 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                         </svg>
                       </button>
                       <button 
-                        onClick={() => window.electronAPI.jobManagement.rerunJobExecution(job.id)}
+                        onClick={() => {
+                console.log('🚨 DEBUG RERUN: JobManagementPanel rerun button clicked for job:', job.id);
+                console.log('🚨 DEBUG RERUN: Timestamp:', new Date().toISOString());
+                console.log('🚨 DEBUG RERUN: Stack trace:', new Error().stack);
+                window.electronAPI.jobManagement.rerunJobExecution(job.id);
+              }}
                         className="p-1 hover:bg-[--secondary] rounded transition-colors"
                         title="Rerun Job"
                       >

@@ -174,6 +174,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   }, [jobId]);
   
   const handleRerun = useCallback(() => {
+    console.log('🚨 DEBUG RERUN: SingleJobView rerun button clicked for jobId:', jobId);
+    console.log('🚨 DEBUG RERUN: Timestamp:', new Date().toISOString());
+    console.log('🚨 DEBUG RERUN: Stack trace:', new Error().stack);
     onRerun(jobId);
   }, [onRerun, jobId]);
   

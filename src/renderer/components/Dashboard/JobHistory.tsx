@@ -86,9 +86,12 @@ const JobHistory: React.FC<JobHistoryProps> = ({
       case 'export':
         onJobAction('export', jobId);
         break;
-      case 'rerun':
-        onJobAction('rerun', jobId);
-        break;
+              case 'rerun':
+          console.log('🚨 DEBUG RERUN: JobHistory rerun case triggered for jobId:', jobId);
+          console.log('🚨 DEBUG RERUN: Timestamp:', new Date().toISOString());
+          console.log('🚨 DEBUG RERUN: Stack trace:', new Error().stack);
+          onJobAction('rerun', jobId);
+          break;
       case 'delete':
         setShowDeleteConfirm(jobId);
         break;
