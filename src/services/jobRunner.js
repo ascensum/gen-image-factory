@@ -84,6 +84,10 @@ class JobRunner extends EventEmitter {
       const wasCompleted = this.jobState.status === 'completed';
       console.log('🔍 Previous job status was:', this.jobState.status, wasCompleted ? '(completed)' : '');
       
+      // PRESERVE the configurationId that was set by backendAdapter!
+      const preservedConfigurationId = this.configurationId;
+      console.log('🔍 PRESERVING configurationId:', preservedConfigurationId);
+      
       this.jobState = {
         id: jobId,
         status: 'running',
@@ -98,6 +102,10 @@ class JobRunner extends EventEmitter {
       };
       this.completedSteps = [];
       this.isStopping = false;
+      
+      // RESTORE the configurationId after resetting jobState
+      this.configurationId = preservedConfigurationId;
+      console.log('🔍 RESTORED configurationId:', this.configurationId);
       
       // If previous job was completed, log it for debugging
       if (wasCompleted) {
@@ -174,7 +182,7 @@ class JobRunner extends EventEmitter {
         try {
           console.log("💾 Saving job execution to database...");
           const jobExecution = {
-            configurationId: null, // Will be set when job completes
+            configurationId: this.configurationId || null, // Use the configuration ID passed from backendAdapter
             startedAt: this.jobState.startTime,
             completedAt: null,
             status: "running",
@@ -550,7 +558,7 @@ class JobRunner extends EventEmitter {
           });
           
           const updatedJobExecution = {
-            configurationId: null, // Will be set when job completes
+            configurationId: this.configurationId, // Preserve the configuration ID
             startedAt: this.jobState.startTime,
             completedAt: this.jobState.endTime,
             status: "completed",
@@ -594,7 +602,7 @@ class JobRunner extends EventEmitter {
         try {
           console.log("💾 Updating job execution with error status in database...");
           const errorJobExecution = {
-            configurationId: null,
+            configurationId: this.configurationId, // Preserve the configuration ID
             startedAt: this.jobState.startTime,
             completedAt: this.jobState.endTime,
             status: "failed",

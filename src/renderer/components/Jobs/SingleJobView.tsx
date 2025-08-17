@@ -270,21 +270,27 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const handleSettingsEdit = useCallback(async () => {
     console.log('Edit button clicked, job:', job);
     console.log('Job configurationId:', job?.configurationId);
+    console.log('Already loaded jobConfiguration:', jobConfiguration);
     
     setIsEditingSettings(true);
     setSettingsSaveError(null);
-    setIsLoadingSettings(true);
+    setIsLoadingSettings(false); // Don't show loading since we already have the data
     
     try {
-      // Load job-specific settings from backend
-      if (job?.configurationId) {
-        console.log('Attempting to load configuration for ID:', job.configurationId);
+      // Use already-loaded jobConfiguration if available
+      if (jobConfiguration?.settings) {
+        console.log('Using already-loaded job configuration:', jobConfiguration.settings);
+        setEditedSettings(jobConfiguration.settings);
+      } else if (job?.configurationId) {
+        // Fallback: Load job-specific settings from backend if not already loaded
+        console.log('Job configuration not loaded yet, fetching from backend for ID:', job.configurationId);
+        setIsLoadingSettings(true);
         const result = await window.electronAPI.getJobConfigurationById(job.configurationId);
         console.log('Configuration load result:', result);
         
         if (result.success && result.configuration?.settings) {
           setEditedSettings(result.configuration.settings);
-          console.log('Loaded job configuration:', result.configuration.settings);
+          console.log('Loaded job configuration from backend:', result.configuration.settings);
         } else {
           // If job configuration not found, show error but keep modal open
           console.warn('Job configuration not found, showing error in modal');
@@ -304,7 +310,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     } finally {
       setIsLoadingSettings(false);
     }
-  }, [job?.configurationId]);
+  }, [job?.configurationId, jobConfiguration]);
 
   const handleSettingsSave = useCallback(async () => {
     if (!editedSettings || !job?.configurationId) return;
@@ -603,26 +609,26 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <div className="setting-group">
                       <h3>Model Configuration</h3>
                       <div className="setting-details">
-                        <div>• Model: {jobConfiguration.parameters?.mjVersion ? `Midjourney v${jobConfiguration.parameters.mjVersion}` : 'Not specified'}</div>
-                        <div>• Process Mode: {jobConfiguration.parameters?.processMode || 'Not specified'}</div>
-                        <div>• OpenAI Model: {jobConfiguration.parameters?.openaiModel || 'Not specified'}</div>
+                        <div>• Model: {jobConfiguration.settings?.parameters?.mjVersion ? `Midjourney v${jobConfiguration.settings.parameters.mjVersion}` : 'Not specified'}</div>
+                        <div>• Process Mode: {jobConfiguration.settings?.parameters?.processMode || 'Not specified'}</div>
+                        <div>• OpenAI Model: {jobConfiguration.settings?.parameters?.openaiModel || 'Not specified'}</div>
                       </div>
                     </div>
                     <div className="setting-group">
                       <h3>Image Settings</h3>
                       <div className="setting-details">
-                        <div>• Aspect Ratio: {jobConfiguration.parameters?.aspectRatios || 'Not specified'}</div>
-                        <div>• Image Count: {jobConfiguration.parameters?.count || 'Not specified'}</div>
-                        <div>• Convert to JPG: {jobConfiguration.processing?.convertToJpg ? 'Yes' : 'No'}</div>
+                        <div>• Aspect Ratio: {Array.isArray(jobConfiguration.settings?.parameters?.aspectRatios) ? jobConfiguration.settings.parameters.aspectRatios.join(', ') : jobConfiguration.settings?.parameters?.aspectRatios || 'Not specified'}</div>
+                        <div>• Image Count: {jobConfiguration.settings?.parameters?.count || 'Not specified'}</div>
+                        <div>• Convert to JPG: {jobConfiguration.settings?.processing?.convertToJpg ? 'Yes' : 'No'}</div>
                       </div>
                     </div>
                     <div className="setting-group">
                       <h3>Processing Options</h3>
                       <div className="setting-details">
-                        <div>• Remove Background: {jobConfiguration.processing?.removeBg ? 'Yes' : 'No'}</div>
-                        <div>• Image Enhancement: {jobConfiguration.processing?.imageEnhancement ? 'Yes' : 'No'}</div>
-                        <div>• Quality Check: {jobConfiguration.processing?.runQualityCheck ? 'Yes' : 'No'}</div>
-                        <div>• Metadata Generation: {jobConfiguration.processing?.runMetadataGen ? 'Yes' : 'No'}</div>
+                        <div>• Remove Background: {jobConfiguration.settings?.processing?.removeBg ? 'Yes' : 'No'}</div>
+                        <div>• Image Enhancement: {jobConfiguration.settings?.processing?.imageEnhancement ? 'Yes' : 'No'}</div>
+                        <div>• Quality Check: {jobConfiguration.settings?.ai?.runQualityCheck ? 'Yes' : 'No'}</div>
+                        <div>• Metadata Generation: {jobConfiguration.settings?.ai?.runMetadataGen ? 'Yes' : 'No'}</div>
                       </div>
                     </div>
                   </>
