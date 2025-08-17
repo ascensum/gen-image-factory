@@ -559,18 +559,28 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
               </div>
             </div>
 
-            {/* Settings */}
-            <div className="settings-section">
-              <div className="settings-header">
-                <h2 className="section-title">Settings</h2>
-                <button 
-                  className="edit-button"
-                  onClick={handleSettingsEdit}
-                  title="Edit job settings"
-                >
-                  Edit
-                </button>
-              </div>
+                    {/* Settings */}
+        <div className="settings-section">
+          <div className="settings-header">
+            <h2 className="section-title">Settings</h2>
+            <div className="settings-actions">
+              <button 
+                className="refresh-button"
+                onClick={loadJobData}
+                title="Refresh job data"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Refreshing...' : '🔄 Refresh'}
+              </button>
+              <button 
+                className="edit-button"
+                onClick={handleSettingsEdit}
+                title="Edit job settings"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
               <div className="settings-content">
                 {jobConfiguration ? (
                   <>
