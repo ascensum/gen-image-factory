@@ -132,7 +132,11 @@ class BackendAdapter {
 
       // Job Control
       _ipc.handle('job:start', async (event, config) => {
-        return await this.startJob(config);
+        console.log('🚨 IPC HANDLER: job:start called with config:', config);
+        console.log('🚨 IPC HANDLER: About to call this.startJob...');
+        const result = await this.startJob(config);
+        console.log('🚨 IPC HANDLER: this.startJob returned:', result);
+        return result;
       });
 
       _ipc.handle('job:stop', async () => {
@@ -699,6 +703,7 @@ class BackendAdapter {
   // Job Control Methods
   async startJob(config) {
     try {
+      console.log('🚨 METHOD ENTRY: backendAdapter.startJob method entered!');
       console.log('🔧 backendAdapter.startJob called with config:', config);
       
       // Save the job configuration first so it can be retrieved later
