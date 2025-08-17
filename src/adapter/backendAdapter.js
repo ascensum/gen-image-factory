@@ -361,15 +361,17 @@ class BackendAdapter {
         try {
           await this.ensureInitialized();
           
-          // First, reset the job execution and get its configuration
-          const result = await this.jobExecution.rerunJobExecution(id);
+          // Get the job execution with its CURRENT configuration (not the old one)
+          const jobData = await this.jobExecution.getJobExecution(id);
           
-          if (!result.success) {
-            return { success: false, error: result.error || 'Failed to reset job execution' };
+          if (!jobData.success) {
+            return { success: false, error: 'Job execution not found' };
           }
           
-          // Check if we have a valid configuration
-          if (!result.jobConfig || !result.jobConfig.settings) {
+          // Get the CURRENT configuration from the database
+          const configResult = await this.jobConfig.getConfigurationById(jobData.execution.configurationId);
+          
+          if (!configResult.success || !configResult.configuration || !configResult.configuration.settings) {
             return { 
               success: false, 
               error: 'Job has no valid configuration. Cannot rerun without settings.' 
@@ -385,23 +387,36 @@ class BackendAdapter {
             };
           }
           
-          // Start the job with the existing configuration
-          const jobResult = await this.jobRunner.startJob(result.jobConfig.settings);
+          // Start the job with the CURRENT configuration (respects user changes)
+          const jobResult = await this.jobRunner.startJob(configResult.configuration.settings);
           
           if (jobResult.success) {
-            // Update the job execution with the new job ID and status
-            await this.jobExecution.updateJobExecutionStatus(id, 'running', jobResult.jobId);
-            
-            return { 
-              success: true, 
-              message: 'Job rerun started successfully',
-              jobId: jobResult.jobId,
-              originalJobId: id
+            // Create a new job execution record (don't modify the original)
+            const newExecutionData = {
+              configurationId: jobData.execution.configurationId,
+              label: jobData.execution.label ? `${jobData.execution.label} (Rerun)` : 'Rerun Job',
+              status: 'running'
             };
-          } else {
-            // If job start failed, reset the status back to 'failed'
-            await this.jobExecution.updateJobExecutionStatus(id, 'failed', null, jobResult.error);
             
+            const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
+            
+            if (newExecution.success) {
+              return { 
+                success: true, 
+                message: 'Job rerun started successfully',
+                jobId: jobResult.jobId,
+                originalJobId: id,
+                newExecutionId: newExecution.execution.id
+              };
+            } else {
+              // If we couldn't create the execution record, stop the job
+              await this.jobRunner.stopJob(jobResult.jobId);
+              return { 
+                success: false, 
+                error: 'Failed to create job execution record' 
+              };
+            }
+          } else {
             return { 
               success: false, 
               error: `Failed to start job rerun: ${jobResult.error}` 
@@ -1721,21 +1736,22 @@ class BackendAdapter {
       // Process each job for rerun
       for (const job of jobs.executions) {
         try {
-          // Reset the job execution and get its configuration
-          const rerunResult = await this.jobExecution.rerunJobExecution(job.id);
+          // Get the CURRENT configuration (don't corrupt the original job)
+          const configResult = await this.jobConfig.getConfigurationById(job.configurationId);
           
-          if (rerunResult.success && rerunResult.jobConfig && rerunResult.jobConfig.settings) {
+          if (configResult.success && configResult.configuration && configResult.configuration.settings) {
             // Add to queue for execution
             queuedJobs.push({
               jobId: job.id,
               label: job.label || 'No label',
-              configuration: rerunResult.jobConfig.settings
+              configuration: configResult.configuration.settings,
+              configurationId: job.configurationId
             });
           } else {
             failedJobs.push({
               jobId: job.id,
               label: job.label || 'No label',
-              error: rerunResult.error || 'Invalid configuration'
+              error: 'Invalid configuration'
             });
           }
         } catch (error) {
@@ -1760,28 +1776,42 @@ class BackendAdapter {
       const jobResult = await this.jobRunner.startJob(firstJob.configuration);
       
       if (jobResult.success) {
-        // Update the job execution with the new job ID and status
-        await this.jobExecution.updateJobExecutionStatus(firstJob.jobId, 'running', jobResult.jobId);
-        
-        // Store remaining jobs in queue for sequential execution
-        const remainingJobs = queuedJobs.slice(1);
-        
-        return { 
-          success: true, 
-          startedJob: {
-            jobId: firstJob.jobId,
-            label: firstJob.label,
-            newJobId: jobResult.jobId
-          },
-          queuedJobs: remainingJobs.length,
-          totalJobs: jobs.executions.length,
-          failedJobs: failedJobs.length,
-          message: `Started rerun of ${firstJob.label || firstJob.jobId}. ${remainingJobs.length} jobs queued for sequential execution.`
+        // Create a new job execution record (don't modify the original)
+        const newExecutionData = {
+          configurationId: firstJob.configurationId,
+          label: firstJob.label ? `${firstJob.label} (Rerun)` : 'Rerun Job',
+          status: 'running'
         };
-      } else {
-        // If job start failed, reset the status back to 'failed'
-        await this.jobExecution.updateJobExecutionStatus(firstJob.jobId, 'failed', null, jobResult.error);
         
+        const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
+        
+        if (newExecution.success) {
+          // Store remaining jobs in queue for sequential execution
+          const remainingJobs = queuedJobs.slice(1);
+          
+          return { 
+            success: true, 
+            startedJob: {
+              jobId: firstJob.jobId,
+              label: firstJob.label,
+              newJobId: jobResult.jobId,
+              newExecutionId: newExecution.id
+            },
+            queuedJobs: remainingJobs.length,
+            totalJobs: jobs.executions.length,
+            failedJobs: failedJobs.length,
+            message: `Started rerun of ${firstJob.label || firstJob.jobId}. ${remainingJobs.length} jobs queued for sequential execution.`
+          };
+        } else {
+          // If we couldn't create the execution record, stop the job
+          await this.jobRunner.stopJob(jobResult.jobId);
+          return { 
+            success: false, 
+            error: 'Failed to create job execution record',
+            failedJobs: failedJobs
+          };
+        }
+      } else {
         return { 
           success: false, 
           error: `Failed to start job rerun: ${jobResult.error}`,
