@@ -1,3 +1,7 @@
+console.log('🚨 MAIN PROCESS: main.js file is being executed!');
+console.log('🚨 MAIN PROCESS: Node.js version:', process.version);
+console.log('🚨 MAIN PROCESS: Electron version:', process.versions.electron);
+
 const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -163,6 +167,12 @@ ipcMain.handle('get-app-version', () => {
 ipcMain.handle('test-ipc', () => {
   console.log('🧪 Test IPC handler called successfully');
   return { success: true, message: 'Test IPC working' };
+});
+
+// Simple ping handler that should definitely work
+ipcMain.handle('simple-ping', () => {
+  console.log('🏓 Simple ping handler called');
+  return 'pong';
 });
 
 // Handle any uncaught exceptions

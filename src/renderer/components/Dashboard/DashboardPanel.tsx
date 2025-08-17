@@ -225,7 +225,19 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         console.error('🧪 Test IPC failed:', error);
       }
     };
+    
+    // Test simple ping handler
+    const testSimplePing = async () => {
+      try {
+        const result = await window.electronAPI.invoke('simple-ping');
+        console.log('🏓 Simple ping result:', result);
+      } catch (error) {
+        console.error('🏓 Simple ping failed:', error);
+      }
+    };
+    
     testIpc();
+    testSimplePing();
     
     loadJobHistory();
     loadStatistics();
