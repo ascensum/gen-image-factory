@@ -757,7 +757,7 @@ class JobRunner extends EventEmitter {
         }
         
         if (result) {
-          console.log(`✅ Quality check completed for: ${image.finalImagePath || image.path}`, result);
+          console.log(`✅ Quality check completed for: ${image.finalImagePath}`, result);
           console.log(`🔍 DEBUG: Image object for QC update:`, image);
           console.log(`🔍 DEBUG: Image ID:`, typeof image.id);
           image.qualityDetails = result;
