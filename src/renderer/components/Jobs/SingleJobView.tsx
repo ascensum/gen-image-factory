@@ -76,6 +76,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
         console.log('🔄 SingleJobView: Images result:', imagesResult);
         if (imagesResult.success) {
           console.log('🔄 SingleJobView: Setting images:', imagesResult.images);
+          console.log('🔄 SingleJobView: Images QC statuses:', imagesResult.images?.map((img: any) => ({ id: img.id, qcStatus: img.qcStatus })));
           setImages(imagesResult.images || []);
         } else {
           console.warn('Failed to load images:', imagesResult.error);
