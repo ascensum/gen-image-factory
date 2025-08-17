@@ -20,7 +20,7 @@ interface SettingsObject {
   };
   parameters: {
     processMode: string;
-    aspectRatios: string;
+    aspectRatios: string[];
     mjVersion: string;
     openaiModel: string;
     pollingTimeout: number;
