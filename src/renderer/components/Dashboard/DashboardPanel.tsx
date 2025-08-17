@@ -435,6 +435,12 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         case 'view':
           // Handle view action
           break;
+        case 'update-qc-status':
+          if (data) {
+            await window.electronAPI.jobManagement.updateQCStatus(imageId, data);
+            await loadGeneratedImages();
+          }
+          break;
         // Note: Review actions (approve/reject) are handled in the separate Failed Images Review page
       }
     } catch (error) {
