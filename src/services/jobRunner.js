@@ -30,7 +30,10 @@ class JobRunner extends EventEmitter {
       endTime: null,
       error: null,
       progress: 0,
-      currentStep: null
+      currentStep: null,
+      totalImages: 0,
+      successfulImages: 0,
+      failedImages: 0
     };
     this.completedSteps = [];
     this.isStopping = false;
@@ -44,6 +47,9 @@ class JobRunner extends EventEmitter {
   async startJob(config) {
     try {
       console.log('🚀 JobRunner.startJob called with config:', config);
+      console.log('🔍 DEBUG: config.ai:', config.ai);
+      console.log('🔍 DEBUG: config.ai?.runQualityCheck:', config.ai?.runQualityCheck);
+      console.log('🔍 DEBUG: config.ai?.runMetadataGen:', config.ai?.runMetadataGen);
       
       // Check if job is already running
       if (this.jobState.status === 'running') {
@@ -74,6 +80,10 @@ class JobRunner extends EventEmitter {
       const jobId = uuidv4();
       console.log('🆔 Generated job ID:', jobId);
       
+      // Preserve completed status from previous job if it exists
+      const wasCompleted = this.jobState.status === 'completed';
+      console.log('🔍 Previous job status was:', this.jobState.status, wasCompleted ? '(completed)' : '');
+      
       this.jobState = {
         id: jobId,
         status: 'running',
@@ -81,10 +91,19 @@ class JobRunner extends EventEmitter {
         endTime: null,
         error: null,
         progress: 0,
-        currentStep: 'initialization'
+        currentStep: 'initialization',
+        totalImages: 0,
+        successfulImages: 0,
+        failedImages: 0
       };
       this.completedSteps = [];
       this.isStopping = false;
+      
+      // If previous job was completed, log it for debugging
+      if (wasCompleted) {
+        console.log('⚠️ WARNING: Previous job was completed but status was reset to running');
+        console.log('🔍 This explains why the frontend never sees completed status!');
+      }
 
       console.log('✅ Job state initialized:', this.jobState);
 
@@ -155,14 +174,15 @@ class JobRunner extends EventEmitter {
         try {
           console.log("💾 Saving job execution to database...");
           const jobExecution = {
-            id: jobId,
             configurationId: null, // Will be set when job completes
+            startedAt: this.jobState.startTime,
+            completedAt: null,
             status: "running",
-            startTime: this.jobState.startTime,
-            endTime: null,
-            error: null,
-            progress: 0,
-            currentStep: "initialization"
+            totalImages: 0,
+            successfulImages: 0,
+            failedImages: 0,
+            errorMessage: null,
+            label: null
           };
           
           const saveResult = await this.backendAdapter.saveJobExecution(jobExecution);
@@ -336,6 +356,9 @@ class JobRunner extends EventEmitter {
   async executeJob(config, jobId) {
     try {
       console.log('🚀 Starting real job execution with config:', config);
+      console.log('🔍 DEBUG: config.ai in executeJob:', config.ai);
+      console.log('🔍 DEBUG: config.ai?.runQualityCheck in executeJob:', config.ai?.runQualityCheck);
+      console.log('🔍 DEBUG: config.ai?.runMetadataGen in executeJob:', config.ai?.runMetadataGen);
       
       // Step 1: Parameter Generation
       if (this.isStopping) return;
@@ -381,7 +404,7 @@ class JobRunner extends EventEmitter {
                   executionId: executionId,
                   generationPrompt: image.metadata?.prompt || 'Generated image',
                   seed: null,
-                  qcStatus: 'pending',
+                  qcStatus: 'failed',
                   qcReason: null,
                   finalImagePath: image.path,
                   metadata: JSON.stringify(image.metadata || {}),
@@ -419,14 +442,70 @@ class JobRunner extends EventEmitter {
         this.emitProgress('background_removal', 90, 'Backgrounds removed successfully');
       }
 
-      // Step 4: Quality Check (if enabled)
+      // Step 4: Quality Check (if enabled) - Run after images are saved to database
+      // Note: If QC is disabled, images are automatically approved to maintain happy path
+      console.log('🔍 DEBUG: About to check quality check condition');
+      console.log('🔍 DEBUG: config.ai:', config.ai);
+      console.log('🔍 DEBUG: config.ai?.runQualityCheck:', config.ai?.runQualityCheck);
+      console.log('🔍 DEBUG: this.isStopping:', this.isStopping);
+      console.log('🔍 DEBUG: Full condition:', config.ai && config.ai.runQualityCheck && !this.isStopping);
+      
       if (config.ai && config.ai.runQualityCheck && !this.isStopping) {
+        console.log('✅ Quality check condition is TRUE - proceeding with quality checks');
         this.emitProgress('quality_check', 92, 'Running quality checks...');
         
-        await this.runQualityChecks(images, config);
+        // Get the saved images from database to have their IDs
+        console.log('🔍 DEBUG: About to call getSavedImagesForExecution with executionId:', this.databaseExecutionId);
+        const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
+        console.log('🔍 DEBUG: getSavedImagesForExecution returned:', savedImages);
+        console.log('🔍 DEBUG: savedImages length:', savedImages ? savedImages.length : 'undefined');
+        
+        if (savedImages && savedImages.length > 0) {
+          console.log('✅ Found saved images, running quality checks');
+          await this.runQualityChecks(savedImages, config);
+        } else {
+          console.warn('⚠️ No saved images found for quality checks');
+        }
         
         this.completedSteps.push('quality_check');
         this.emitProgress('quality_check', 95, 'Quality checks completed');
+      } else {
+        console.log('❌ Quality check condition is FALSE - skipping quality checks');
+        console.log('❌ Reason: config.ai =', config.ai, ', runQualityCheck =', config.ai?.runQualityCheck, ', isStopping =', this.isStopping);
+        
+        // When quality checks are disabled, automatically approve all images
+        console.log('✅ Quality checks disabled - automatically approving all images');
+        this.emitProgress('auto_approval', 92, 'Auto-approving images (QC disabled)...');
+        
+        try {
+          // Get the saved images from database to have their IDs
+          const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
+          if (savedImages && savedImages.length > 0) {
+            console.log(`✅ Auto-approving ${savedImages.length} images (QC disabled)`);
+            
+            // Update all images to approved status
+            for (const image of savedImages) {
+              if (this.backendAdapter && image.id) {
+                try {
+                  console.log(`💾 Auto-approving image ${image.id} (QC disabled)`);
+                  await this.backendAdapter.updateQCStatus(image.id, 'approved', 'Auto-approved (quality checks disabled)');
+                  console.log(`✅ Image ${image.id} auto-approved successfully`);
+                } catch (dbError) {
+                  console.error(`❌ Failed to auto-approve image ${image.id}:`, dbError);
+                }
+              }
+            }
+            
+            console.log(`✅ Auto-approved ${savedImages.length} images successfully`);
+          } else {
+            console.warn('⚠️ No saved images found for auto-approval');
+          }
+        } catch (error) {
+          console.error('❌ Error during auto-approval:', error);
+        }
+        
+        this.completedSteps.push('auto_approval');
+        this.emitProgress('auto_approval', 95, 'Images auto-approved successfully');
       }
 
       // Step 5: Metadata Generation (if enabled)
@@ -448,19 +527,39 @@ class JobRunner extends EventEmitter {
       if (this.backendAdapter) {
         try {
           console.log("💾 Updating job execution in database...");
-          const updatedJobExecution = {
-            id: jobId,
-            configurationId: null, // Will be set when job completes
-            status: "completed",
+          console.log("🔍 Job state before update:", {
+            totalImages: this.jobState.totalImages,
+            successfulImages: this.jobState.successfulImages,
+            failedImages: this.jobState.failedImages,
             startTime: this.jobState.startTime,
-            endTime: this.jobState.endTime,
-            error: null,
-            progress: 100,
-            currentStep: "completed"
+            endTime: this.jobState.endTime
+          });
+          
+          const updatedJobExecution = {
+            configurationId: null, // Will be set when job completes
+            startedAt: this.jobState.startTime,
+            completedAt: this.jobState.endTime,
+            status: "completed",
+            totalImages: this.jobState.totalImages || 0,
+            successfulImages: this.jobState.successfulImages || 0,
+            failedImages: this.jobState.failedImages || 0,
+            errorMessage: null,
+            label: null
           };
           
+          console.log("🔍 About to update job execution with data:", JSON.stringify(updatedJobExecution, null, 2));
           const updateResult = await this.backendAdapter.updateJobExecution(this.databaseExecutionId, updatedJobExecution);
           console.log("✅ Job execution updated in database:", updateResult);
+          
+          // Verify the update worked by reading back the job execution
+          if (updateResult.success) {
+            try {
+              const verifyResult = await this.backendAdapter.getJobExecution(this.databaseExecutionId);
+              console.log("🔍 Verification - job execution after update:", JSON.stringify(verifyResult, null, 2));
+            } catch (verifyError) {
+              console.error("❌ Failed to verify job execution update:", verifyError);
+            }
+          }
         } catch (error) {
           console.error("❌ Failed to update job execution in database:", error);
         }
@@ -475,6 +574,31 @@ class JobRunner extends EventEmitter {
       this.jobState.status = 'error';
       this.jobState.error = error.message;
       this.jobState.endTime = new Date();
+      
+      // Save error state to database if backendAdapter is available
+      if (this.backendAdapter) {
+        try {
+          console.log("💾 Updating job execution with error status in database...");
+          const errorJobExecution = {
+            configurationId: null,
+            startedAt: this.jobState.startTime,
+            completedAt: this.jobState.endTime,
+            status: "failed",
+            totalImages: this.jobState.totalImages || 0,
+            successfulImages: this.jobState.successfulImages || 0,
+            failedImages: this.jobState.failedImages || 0,
+            errorMessage: error.message,
+            label: null
+          };
+          
+          const updateResult = await this.backendAdapter.updateJobExecution(this.databaseExecutionId, errorJobExecution);
+          console.log("✅ Job execution error status updated in database:", updateResult);
+        } catch (dbError) {
+          console.error("❌ Failed to update job execution error status in database:", dbError);
+        }
+      } else {
+        console.warn("⚠️ No backendAdapter available - job error status will not be saved to database");
+      }
       
       this.emit('error', {
         jobId: jobId,
@@ -534,6 +658,8 @@ class JobRunner extends EventEmitter {
       console.log('✅ Parameters generated by module:', parameters);
       console.log('✅ Enhanced parameters with aspect ratios:', enhancedParameters);
       console.log('✅ FINAL aspectRatios being returned:', enhancedParameters.aspectRatios);
+      console.log('✅ FINAL aspectRatios type:', typeof enhancedParameters.aspectRatios);
+      console.log('✅ FINAL aspectRatios is array:', Array.isArray(enhancedParameters.aspectRatios));
       return enhancedParameters;
       
     } catch (error) {
@@ -587,6 +713,11 @@ class JobRunner extends EventEmitter {
       
       console.log('🔧 Module config prepared:', moduleConfig);
       console.log('🔧 Aspect ratios being used:', moduleConfig.aspectRatios);
+      console.log('🔧 Aspect ratios type:', typeof moduleConfig.aspectRatios);
+      console.log('🔧 Aspect ratios is array:', Array.isArray(moduleConfig.aspectRatios));
+      console.log('🔧 Parameters aspectRatios:', parameters.aspectRatios);
+      console.log('🔧 Parameters aspectRatios type:', typeof parameters.aspectRatios);
+      console.log('🔧 Parameters aspectRatios is array:', Array.isArray(parameters.aspectRatios));
       
       // Call the real producePictureModule with correct signature
       // Note: This is a simplified call - the real module expects more complex setup
@@ -618,6 +749,11 @@ class JobRunner extends EventEmitter {
       // The module returns an array of image objects, each with outputPath
       if (result && Array.isArray(result)) {
         console.log('🔧 Result is an array, processing', result.length, 'images');
+        
+        // Update job state with image counts
+        this.jobState.totalImages = result.length;
+        this.jobState.successfulImages = result.length; // All images are successful initially
+        this.jobState.failedImages = 0;
         
         // Create separate image objects for each result
         const processedImages = result.map((item, index) => {
@@ -666,6 +802,12 @@ class JobRunner extends EventEmitter {
       } else if (result && typeof result === 'string') {
         // Fallback: single string path
         console.log('🔧 Result is a string, creating single image object');
+        
+        // Update job state with image counts
+        this.jobState.totalImages = 1;
+        this.jobState.successfulImages = 1;
+        this.jobState.failedImages = 0;
+        
         return [{
           path: result,
           aspectRatio: parameters.aspectRatios?.[0] || '1:1',
@@ -712,15 +854,48 @@ class JobRunner extends EventEmitter {
   }
 
   /**
-   * Run quality checks on images
-   * @param {Array} images - List of image paths
-   * @param {Object} config - Job configuration
-   * @returns {Promise<void>}
+   * Get saved images from database for a specific execution
+   * @param {number} executionId - Database execution ID
+   * @returns {Promise<Array>} Array of saved images with database IDs
    */
+  async getSavedImagesForExecution(executionId) {
+    try {
+      console.log('🔍 DEBUG: getSavedImagesForExecution called with executionId:', executionId);
+      console.log('🔍 DEBUG: this.backendAdapter exists:', !!this.backendAdapter);
+      
+      if (!this.backendAdapter || !executionId) {
+        console.warn('⚠️ Cannot get saved images: missing backendAdapter or executionId');
+        return [];
+      }
+      
+      console.log(`🔍 Getting saved images for execution ${executionId}...`);
+      const result = await this.backendAdapter.getAllGeneratedImages();
+      console.log('🔍 DEBUG: getAllGeneratedImages result:', result);
+      console.log('🔍 DEBUG: result.success:', result.success);
+      console.log('🔍 DEBUG: result.images is array:', Array.isArray(result.images));
+      console.log('🔍 DEBUG: result.images length:', result.images ? result.images.length : 'undefined');
+      
+      if (result.success && Array.isArray(result.images)) {
+        // Filter images for this specific execution
+        console.log('🔍 DEBUG: About to filter images for executionId:', executionId);
+        console.log('🔍 DEBUG: All images executionIds:', result.images.map(img => img.executionId));
+        const executionImages = result.images.filter(img => img.executionId === executionId);
+        console.log(`✅ Found ${executionImages.length} saved images for execution ${executionId}`);
+        console.log('🔍 DEBUG: Filtered images:', executionImages);
+        return executionImages;
+      } else {
+        console.warn('⚠️ Failed to get saved images:', result);
+        return [];
+      }
+    } catch (error) {
+      console.error('❌ Error getting saved images:', error);
+      return [];
+    }
+  }
 
   /**
    * Run quality checks on images
-   * @param {Array} images - List of image objects
+   * @param {Array} images - List of image paths
    * @param {Object} config - Job configuration
    * @returns {Promise<void>}
    */
@@ -733,20 +908,20 @@ class JobRunner extends EventEmitter {
         if (this.isStopping) return;
         
         console.log(`🔍 Running quality check on image:`, image);
-        console.log(`🔍 Image path:`, image.path);
-        console.log(`🔍 Image path type:`, typeof image.path);
-        console.log(`🔍 Image path value:`, image.path);
+        console.log(`🔍 Image finalImagePath:`, image.finalImagePath);
+        console.log(`🔍 Image finalImagePath type:`, typeof image.finalImagePath);
+        console.log(`🔍 Image finalImagePath value:`, image.finalImagePath);
         
         // Call the real quality check from aiVision module with correct signature
         console.log("🔍 DEBUG: About to call aiVision.runQualityCheck");
-        console.log("🔍 DEBUG: image.path:", image.path);
+        console.log("🔍 DEBUG: image.finalImagePath:", image.finalImagePath);
         console.log("🔍 DEBUG: openaiModel:", config.parameters?.openaiModel || "gpt-4o");
         console.log("🔍 DEBUG: qualityCheckPrompt:", config.ai?.qualityCheckPrompt || null);
         
         let result;
         try {
           result = await aiVision.runQualityCheck(
-            image.path,
+            image.finalImagePath, // Use finalImagePath for database images
             config.parameters?.openaiModel || "gpt-4o",
             config.ai?.qualityCheckPrompt || null
           );
@@ -782,7 +957,7 @@ class JobRunner extends EventEmitter {
             console.warn(`⚠️ Cannot update QC status: backendAdapter=${!!this.backendAdapter}, image.id=${image.id}`);
           }
         } else {
-          console.warn(`⚠️ Quality check failed for: ${image.path}`);
+          console.warn(`⚠️ Quality check failed for: ${image.finalImagePath}`);
           image.qualityDetails = { error: "Quality check failed" };
           
           // Update QC status to failed in database
@@ -809,6 +984,13 @@ class JobRunner extends EventEmitter {
       throw new Error(`Quality checks failed: ${error.message}`);
     }
   }
+
+  /**
+   * Generate metadata for images
+   * @param {Array} images - List of image paths
+   * @param {Object} config - Job configuration
+   * @returns {Promise<void>}
+   */
   async generateMetadata(images, config) {
     try {
       console.log('📝 Starting metadata generation for', images.length, 'images');
