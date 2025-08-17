@@ -717,10 +717,17 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Job configuration
    * @returns {Promise<void>}
    */
+
+  /**
+   * Run quality checks on images
+   * @param {Array} images - List of image objects
+   * @param {Object} config - Job configuration
+   * @returns {Promise<void>}
+   */
   async runQualityChecks(images, config) {
     try {
-      console.log('🔍 Starting quality checks for', images.length, 'images');
-      console.log('🔍 Images array:', images);
+      console.log("🔍 Starting quality checks for", images.length, "images");
+      console.log("🔍 Images array:", images);
       
       for (const image of images) {
         if (this.isStopping) return;
@@ -731,34 +738,77 @@ class JobRunner extends EventEmitter {
         console.log(`🔍 Image path value:`, image.path);
         
         // Call the real quality check from aiVision module with correct signature
-        const result = await aiVision.runQualityCheck(
-          image.path,
-          config.parameters?.openaiModel || 'gpt-4o',
-          config.ai?.qualityCheckPrompt || null
-        );
+        console.log("🔍 DEBUG: About to call aiVision.runQualityCheck");
+        console.log("🔍 DEBUG: image.path:", image.path);
+        console.log("🔍 DEBUG: openaiModel:", config.parameters?.openaiModel || "gpt-4o");
+        console.log("🔍 DEBUG: qualityCheckPrompt:", config.ai?.qualityCheckPrompt || null);
+        
+        let result;
+        try {
+          result = await aiVision.runQualityCheck(
+            image.path,
+            config.parameters?.openaiModel || "gpt-4o",
+            config.ai?.qualityCheckPrompt || null
+          );
+          console.log("🔍 DEBUG: aiVision.runQualityCheck returned:", result);
+        } catch (aiError) {
+          console.error("❌ ERROR: aiVision.runQualityCheck failed:", aiError);
+          throw aiError;
+        }
         
         if (result) {
-          console.log(`✅ Quality check completed for: ${image.path}`, result);
+          console.log(`✅ Quality check completed for: ${image.finalImagePath || image.path}`, result);
+          console.log(`🔍 DEBUG: Image object for QC update:`, image);
+          console.log(`🔍 DEBUG: Image ID:`, typeof image.id);
           image.qualityDetails = result;
+          
+          // Update QC status in database based on quality check result
+          if (this.backendAdapter && image.id) {
+            try {
+              const qcStatus = result.passed ? "approved" : "failed";
+              const qcReason = result.reason || (result.passed ? "Quality check passed" : "Quality check failed");
+              
+              console.log(`💾 Updating QC status in database for image ${image.id}: ${qcStatus}`);
+              await this.backendAdapter.updateQCStatus(image.id, qcStatus, qcReason);
+              console.log(`✅ QC status updated in database: ${qcStatus}`);
+              
+              // Also update the local image object
+              image.qcStatus = qcStatus;
+              image.qcReason = qcReason;
+            } catch (dbError) {
+              console.error(`❌ Failed to update QC status in database for image ${image.id}:`, dbError);
+            }
+          } else {
+            console.warn(`⚠️ Cannot update QC status: backendAdapter=${!!this.backendAdapter}, image.id=${image.id}`);
+          }
         } else {
-          image.qualityDetails = { error: 'Quality check failed' };
+          console.warn(`⚠️ Quality check failed for: ${image.path}`);
+          image.qualityDetails = { error: "Quality check failed" };
+          
+          // Update QC status to failed in database
+          if (this.backendAdapter && image.id) {
+            try {
+              console.log(`💾 Updating QC status to failed in database for image ${image.id}`);
+              await this.backendAdapter.updateQCStatus(image.id, "failed", "Quality check failed");
+              console.log(`✅ QC status updated to failed in database`);
+              
+              // Also update the local image object
+              image.qcStatus = "failed";
+              image.qcReason = "Quality check failed";
+            } catch (dbError) {
+              console.error(`❌ Failed to update QC status to failed in database for image ${image.id}:`, dbError);
+            }
+          }
         }
       }
       
-      console.log('✅ Quality checks completed for all images');
+      console.log("✅ Quality checks completed for all images");
       
     } catch (error) {
-      console.error('❌ Error during quality checks:', error);
+      console.error("❌ Error during quality checks:", error);
       throw new Error(`Quality checks failed: ${error.message}`);
     }
   }
-
-  /**
-   * Generate metadata for images
-   * @param {Array} images - List of image paths
-   * @param {Object} config - Job configuration
-   * @returns {Promise<void>}
-   */
   async generateMetadata(images, config) {
     try {
       console.log('📝 Starting metadata generation for', images.length, 'images');
