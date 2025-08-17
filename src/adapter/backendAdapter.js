@@ -43,6 +43,9 @@ class BackendAdapter {
       this.setupIpcHandlers();
       this.setupJobEventListeners();
     }
+    
+    // Store the options for later use
+    this._constructorOptions = options;
   }
 
   async ensureInitialized() {
@@ -59,9 +62,20 @@ class BackendAdapter {
   }
 
   setupIpcHandlers() {
+    console.log('🔧 BackendAdapter.setupIpcHandlers() called');
+    console.log('🔧 this.ipc type:', typeof this.ipc);
+    console.log('🔧 ipcMain available:', typeof ipcMain !== 'undefined');
+    
     // Only set up IPC handlers if we have an IPC interface (electron main or injected)
     const _ipc = this.ipc;
-    if (typeof _ipc !== 'undefined' && _ipc) {
+    
+    // If no IPC interface in constructor, try to get it from global scope (for main.js usage)
+    if (!_ipc && typeof ipcMain !== 'undefined') {
+      this.ipc = ipcMain;
+      console.log('🔧 BackendAdapter: Using ipcMain from global scope');
+    }
+    
+    if (typeof this.ipc !== 'undefined' && this.ipc) {
       // Remove existing handlers to prevent duplicates
       const handlers = [
         'get-api-key', 'set-api-key', 'get-settings', 'save-settings', 'settings:get-configuration',
