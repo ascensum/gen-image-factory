@@ -701,6 +701,11 @@ class BackendAdapter {
     try {
       console.log('🔧 backendAdapter.startJob called with config:', config);
       
+      // Save the job configuration first so it can be retrieved later
+      console.log('💾 Saving job configuration for future retrieval...');
+      const configResult = await this.jobConfig.saveSettings(config, `job_${Date.now()}`);
+      console.log('💾 Configuration saved with ID:', configResult.id);
+      
       // Create a NEW JobRunner instance for each job to prevent state conflicts
       console.log('🆕 Creating new JobRunner instance for this job');
       const { JobRunner } = require('../services/jobRunner');
@@ -708,6 +713,9 @@ class BackendAdapter {
       
       // Set the backendAdapter reference
       jobRunner.backendAdapter = this;
+      
+      // Pass the configuration ID to the JobRunner so it can link the job execution
+      jobRunner.configurationId = configResult.id;
       
       console.log('🔧 jobRunner instance:', jobRunner);
       console.log('🔧 jobRunner.startJob method type:', typeof jobRunner.startJob);

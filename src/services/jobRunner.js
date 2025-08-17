@@ -380,8 +380,21 @@ class JobRunner extends EventEmitter {
       if (this.isStopping) return;
       this.emitProgress('image_generation', 25, 'Starting image generation...');
       
+      console.log('🔍 DEBUG: About to call generateImages');
+      console.log('🔍 DEBUG: config passed to generateImages:', config);
+      console.log('🔍 DEBUG: parameters passed to generateImages:', parameters);
+      
       // Call the real producePictureModule
-      const images = await this.generateImages(config, parameters);
+      let images;
+      try {
+        console.log('🔍 DEBUG: Calling generateImages...');
+        images = await this.generateImages(config, parameters);
+        console.log('🔍 DEBUG: generateImages completed successfully');
+      } catch (error) {
+        console.error('❌ ERROR: generateImages failed:', error);
+        console.error('❌ ERROR stack:', error.stack);
+        throw error;
+      }
       console.log('✅ Images generated in executeJob:', images);
       console.log('✅ Images type:', typeof images);
       console.log('✅ Images length:', Array.isArray(images) ? images.length : 'Not an array');
@@ -920,6 +933,8 @@ class JobRunner extends EventEmitter {
     try {
       console.log("🔍 Starting quality checks for", images.length, "images");
       console.log("🔍 Images array:", images);
+      console.log("🔍 DEBUG: First image structure:", JSON.stringify(images[0], null, 2));
+      console.log("🔍 DEBUG: All image mappingIds:", images.map(img => img.imageMappingId));
       
       for (const image of images) {
         if (this.isStopping) return;
@@ -961,6 +976,9 @@ class JobRunner extends EventEmitter {
               const qcReason = result.reason || (result.passed ? "Quality check passed" : "Quality check failed");
               
               console.log(`💾 Updating QC status in database for image ${image.imageMappingId}: ${qcStatus}`);
+              console.log(`🔍 DEBUG: image.imageMappingId:`, image.imageMappingId);
+              console.log(`🔍 DEBUG: image.id:`, image.id);
+              console.log(`🔍 DEBUG: image object keys:`, Object.keys(image));
               await this.backendAdapter.updateQCStatusByMappingId(image.imageMappingId, qcStatus, qcReason);
               console.log(`✅ QC status updated in database: ${qcStatus}`);
               
