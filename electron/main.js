@@ -105,6 +105,11 @@ app.whenReady().then(() => {
   // Make backendAdapter globally accessible so other modules can use it
   global.backendAdapter = backendAdapter;
   
+  // Register all IPC handlers from the backend adapter
+  console.log('🔧 Setting up IPC handlers from BackendAdapter...');
+  backendAdapter.setupIpcHandlers();
+  console.log('✅ IPC handlers registered successfully');
+  
   createWindow();
 });
 
