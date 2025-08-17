@@ -72,6 +72,29 @@ async function retryRemoveBg(inputPath, retries = 3, delay = 2000, removeBgSize)
 let aspectRatioIndex = 0;
 
 /**
+ * Generate unique image mapping ID from PiAPI URL
+ * @param {string} imageUrl - PiAPI image URL
+ * @param {number} index - Image index (1-based)
+ * @returns {string} - Unique mapping ID
+ */
+function generateImageMappingId(imageUrl, index) {
+  try {
+    // Extract trim part: "trim=0;1456;816;0"
+    const trimMatch = imageUrl.match(/trim=([^/]+)/);
+    if (trimMatch) {
+      const trimValues = trimMatch[1]; // "0;1456;816;0"
+      const cleanTrim = trimValues.replace(/;/g, ''); // "014568160"
+      return `${cleanTrim}${index}`; // "0145681601"
+    }
+    // Fallback if no trim found
+    return `img_${Date.now()}_${index}`;
+  } catch (error) {
+    console.warn('Error generating mapping ID, using fallback:', error);
+    return `img_${Date.now()}_${index}`;
+  }
+}
+
+/**
  * Produces pictures based on the provided settings and image name base.
  * Implements polling mechanism for image generation status.
  * 
@@ -248,6 +271,10 @@ async function producePictureModule(
       const imageUrl = imageUrls[i];
       const imageSuffix = `_${i + 1}`;
       
+      // Generate unique mapping ID for this image
+      const mappingId = generateImageMappingId(imageUrl, i + 1);
+      logDebug(`Generated mapping ID for image ${i + 1}: ${mappingId}`);
+      
       // Use settings path instead of hardcoded relative path
       const tempDir = config.tempDirectory || './pictures/generated';
       const inputImagePath = path.resolve(path.join(tempDir, `${imgNameBase}${imageSuffix}.png`));
@@ -266,24 +293,8 @@ async function producePictureModule(
             throw error;
           });
 
-        // --- Conditionally run Quality Check ---
-        if (runQualityCheck) {
-          try {
-            const qualityResult = await aiVision.runQualityCheck(inputImagePath, config.openaiModel, config.customQualityCheckPrompt);
-            // Handle both old format (image_quality: 'pass'/'fail') and new format (passed: true/false)
-            const isPassed = qualityResult.passed === true || qualityResult.image_quality?.toLowerCase() === 'pass';
-            if (!isPassed) {
-              console.warn(`⚠️ Image quality check failed: ${qualityResult.reason}. Proceeding anyway for testing.`);
-              // TEMPORARILY: Always proceed even if quality check fails
-              // TODO: Fix quality check logic and restore strict checking
-            }
-            logDebug('Image quality check completed.');
-          } catch (qualityError) {
-            console.warn(`⚠️ Quality check error: ${qualityError.message}. Proceeding anyway for testing.`);
-            // TEMPORARILY: Always proceed even if quality check fails
-            // TODO: Fix quality check logic and restore strict checking
-          }
-        }
+        // Quality checks are now handled by JobRunner after images are saved to database
+        // This ensures we have proper database IDs for QC status updates
 
         // --- Conditionally run Metadata Generation ---
         let updatedSettings = { ...settings }; // Create a local copy to modify
@@ -317,6 +328,7 @@ async function producePictureModule(
         processedImages.push({
           outputPath,
           settings: updatedSettings, // Push the modified settings
+          mappingId: mappingId, // Include the unique mapping ID
         });
       } catch (error) {
         console.error('Error during image processing steps:', error);

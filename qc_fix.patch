@@ -1,0 +1,45 @@
+--- a/src/services/jobRunner.js
++++ b/src/services/jobRunner.js
+@@ -740,7 +740,35 @@
+         if (result) {
+           console.log(`✅ Quality check completed for: ${image.path}`, result);
+           image.qualityDetails = result;
++          
++          // Update QC status in database based on quality check result
++          if (this.backendAdapter && image.id) {
++            try {
++              const qcStatus = result.passed ? 'approved' : 'failed';
++              const qcReason = result.reason || (result.passed ? 'Quality check passed' : 'Quality check failed');
++              
++              console.log(`💾 Updating QC status in database for image ${image.id}: ${qcStatus}`);
++              await this.backendAdapter.updateQCStatus(image.id, qcStatus, qcReason);
++              console.log(`✅ QC status updated in database: ${qcStatus}`);
++              
++              // Also update the local image object
++              image.qcStatus = qcStatus;
++              image.qcReason = qcReason;
++            } catch (dbError) {
++              console.error(`❌ Failed to update QC status in database for image ${image.id}:`, dbError);
++            }
++          } else {
++            console.warn(`⚠️ Cannot update QC status: backendAdapter=${!!this.backendAdapter}, image.id=${image.id}`);
++          }
+         } else {
++          console.warn(`⚠️ Quality check failed for: ${image.path}`);
+           image.qualityDetails = { error: 'Quality check failed' };
++          
++          // Update QC status to failed in database
++          if (this.backendAdapter && image.id) {
++            try {
++              console.log(`💾 Updating QC status to failed in database for image ${image.id}`);
++              await this.backendAdapter.updateQCStatus(image.id, 'failed', 'Quality check failed');
++              console.log(`✅ QC status updated to failed in database`);
++              
++              // Also update the local image object
++              image.qcStatus = 'failed';
++              image.qcReason = 'Quality check failed';
++            } catch (dbError) {
++              console.error(`❌ Failed to update QC status to failed in database for image ${image.id}:`, dbError);
++            }
++          }
+         }

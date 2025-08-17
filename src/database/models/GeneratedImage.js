@@ -31,10 +31,11 @@ class GeneratedImage {
       const createTableSQL = `
         CREATE TABLE IF NOT EXISTS generated_images (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
+          image_mapping_id VARCHAR(50) UNIQUE NOT NULL,
           execution_id INTEGER,
           generation_prompt TEXT NOT NULL,
           seed INTEGER,
-          qc_status VARCHAR(20) DEFAULT 'pending',
+          qc_status VARCHAR(20) DEFAULT 'failed',
           qc_reason TEXT,
           final_image_path VARCHAR(500),
           metadata TEXT,
@@ -48,6 +49,7 @@ class GeneratedImage {
       this.checkAndMigrateTable().then(() => {
         const createIndexesSQL = [
           'CREATE INDEX IF NOT EXISTS idx_generated_images_execution_id ON generated_images(execution_id)',
+          'CREATE INDEX IF NOT EXISTS idx_generated_images_image_mapping_id ON generated_images(image_mapping_id)',
           'CREATE INDEX IF NOT EXISTS idx_generated_images_qc_status ON generated_images(qc_status)',
           'CREATE INDEX IF NOT EXISTS idx_generated_images_created_at ON generated_images(created_at)'
         ];
@@ -104,7 +106,7 @@ class GeneratedImage {
           return;
         }
 
-        // Check if execution_id column exists and has NOT NULL constraint
+        // Check if execution_id column exists and has NOT NULL constraint, or if image_mapping_id is missing
         this.db.all("PRAGMA table_info(generated_images)", (err, columns) => {
           if (err) {
             console.warn('Could not check table columns, skipping migration:', err);
@@ -113,8 +115,10 @@ class GeneratedImage {
           }
 
           const executionIdColumn = columns.find(col => col.name === 'execution_id');
-          if (executionIdColumn && executionIdColumn.notnull === 1) {
-            console.log('🔄 Migrating generated_images table to allow nullable execution_id...');
+          const mappingIdColumn = columns.find(col => col.name === 'image_mapping_id');
+          
+          if ((executionIdColumn && executionIdColumn.notnull === 1) || !mappingIdColumn) {
+            console.log('🔄 Migrating generated_images table to add image_mapping_id and allow nullable execution_id...');
             this.migrateTable().then(resolve).catch(reject);
           } else {
             resolve();
@@ -131,14 +135,15 @@ class GeneratedImage {
     return new Promise((resolve, reject) => {
       console.log('🔄 Starting generated_images table migration...');
       
-      // Create new table with nullable execution_id
+      // Create new table with nullable execution_id and image_mapping_id
       const createNewTableSQL = `
         CREATE TABLE generated_images_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
+          image_mapping_id VARCHAR(50) UNIQUE NOT NULL,
           execution_id INTEGER,
           generation_prompt TEXT NOT NULL,
           seed INTEGER,
-          qc_status VARCHAR(20) DEFAULT 'pending',
+          qc_status VARCHAR(20) DEFAULT 'failed',
           qc_reason TEXT,
           final_image_path VARCHAR(500),
           metadata TEXT,
@@ -161,7 +166,7 @@ class GeneratedImage {
           // Copy data from old table to new table
           this.db.run(`
             INSERT INTO generated_images_new 
-            SELECT id, execution_id, generation_prompt, seed, qc_status, qc_reason, 
+            SELECT id, 'legacy_' || id as image_mapping_id, execution_id, generation_prompt, seed, qc_status, qc_reason, 
                    final_image_path, metadata, processing_settings, created_at
             FROM generated_images
           `, (err) => {
@@ -202,11 +207,12 @@ class GeneratedImage {
     return new Promise((resolve, reject) => {
       const sql = `
         INSERT INTO generated_images 
-        (execution_id, generation_prompt, seed, qc_status, qc_reason, final_image_path, metadata, processing_settings)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (image_mapping_id, execution_id, generation_prompt, seed, qc_status, qc_reason, final_image_path, metadata, processing_settings)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const params = [
+        image.imageMappingId,
         image.executionId,
         image.generationPrompt,
         image.seed || null,
@@ -241,6 +247,7 @@ class GeneratedImage {
           // Parse JSON fields and convert timestamps
           const image = {
             id: row.id,
+            imageMappingId: row.image_mapping_id,
             executionId: row.execution_id,
             generationPrompt: row.generation_prompt,
             seed: row.seed,
@@ -402,6 +409,22 @@ class GeneratedImage {
           reject(err);
         } else {
           console.log('QC status updated successfully');
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
+  }
+
+  async updateQCStatusByMappingId(mappingId, qcStatus, qcReason = null) {
+    return new Promise((resolve, reject) => {
+      const sql = 'UPDATE generated_images SET qc_status = ?, qc_reason = ? WHERE image_mapping_id = ?';
+      
+      this.db.run(sql, [qcStatus, qcReason, mappingId], function(err) {
+        if (err) {
+          console.error('Error updating QC status by mapping ID:', err);
+          reject(err);
+        } else {
+          console.log(`QC status updated successfully for mapping ID: ${mappingId}`);
           resolve({ success: true, changes: this.changes });
         }
       });
