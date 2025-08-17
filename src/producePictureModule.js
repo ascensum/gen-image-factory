@@ -75,22 +75,29 @@ let aspectRatioIndex = 0;
  * Generate unique image mapping ID from PiAPI URL
  * @param {string} imageUrl - PiAPI image URL
  * @param {number} index - Image index (1-based)
+ * @param {string} jobId - Job ID for uniqueness
  * @returns {string} - Unique mapping ID
  */
-function generateImageMappingId(imageUrl, index) {
+function generateImageMappingId(imageUrl, index, jobId) {
   try {
     // Extract trim part: "trim=0;1456;816;0"
     const trimMatch = imageUrl.match(/trim=([^/]+)/);
     if (trimMatch) {
       const trimValues = trimMatch[1]; // "0;1456;816;0"
       const cleanTrim = trimValues.replace(/;/g, ''); // "014568160"
-      return `${cleanTrim}${index}`; // "0145681601"
+      const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+      const randomSuffix = Math.random().toString(36).substring(2, 5); // 3 random chars
+      return `${cleanTrim}${index}_${timestamp}_${randomSuffix}`; // "0145681601_123456_abc"
     }
     // Fallback if no trim found
-    return `img_${Date.now()}_${index}`;
+    const timestamp = Date.now().toString().slice(-6);
+    const randomSuffix = Math.random().toString(36).substring(2, 5);
+    return `img_${timestamp}_${index}_${randomSuffix}`;
   } catch (error) {
     console.warn('Error generating mapping ID, using fallback:', error);
-    return `img_${Date.now()}_${index}`;
+    const timestamp = Date.now().toString().slice(-6);
+    const randomSuffix = Math.random().toString(36).substring(2, 5);
+    return `img_${timestamp}_${index}_${randomSuffix}`;
   }
 }
 
@@ -272,7 +279,7 @@ async function producePictureModule(
       const imageSuffix = `_${i + 1}`;
       
       // Generate unique mapping ID for this image
-      const mappingId = generateImageMappingId(imageUrl, i + 1);
+      const mappingId = generateImageMappingId(imageUrl, i + 1, imgNameBase);
       logDebug(`Generated mapping ID for image ${i + 1}: ${mappingId}`);
       
       // Use settings path instead of hardcoded relative path
