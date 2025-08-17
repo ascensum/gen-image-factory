@@ -739,11 +739,8 @@ class JobRunner extends EventEmitter {
         
         if (result) {
           console.log(`✅ Quality check completed for: ${image.path}`, result);
-          image.qualityScore = result.score || (result.passed ? 9 : 2);
           image.qualityDetails = result;
         } else {
-          console.warn(`⚠️ Quality check failed for: ${image.path}`);
-          image.qualityScore = 0;
           image.qualityDetails = { error: 'Quality check failed' };
         }
       }

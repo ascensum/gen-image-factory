@@ -14,20 +14,17 @@ IMPORTANT: If this is a typography design (t-shirt, sticker, etc.), only fail if
 Your response must be a JSON object with these fields:
 {
   "passed": boolean (true if NO issues found, false if ANY issues detected),
-  "score": number (1-10, 1-3 for fails, 8-10 for passes),
   "reason": string (detailed explanation of what you found or why it's safe)
 }
 
 Example responses:
 {
   "passed": false,
-  "score": 2,
   "reason": "Contains misspelled text 'Nike' on a t-shirt, which is a trademarked brand name."
 }
 
 {
   "passed": true,
-  "score": 9,
   "reason": "Clean image with no problematic text, recognizable people, brands, or copyright issues. Safe for commercial use."
 }
 

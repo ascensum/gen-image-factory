@@ -55,7 +55,6 @@ async function runQualityCheck(imagePath, openaiModel = 'gpt-4o', customQualityC
       
       parsedAnalysis = {
         passed: isPassed,
-        score: isPassed ? 9 : 2,
         reason: `Raw response analysis: ${analysis.substring(0, 200)}...`
       };
     }
