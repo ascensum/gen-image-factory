@@ -96,16 +96,27 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       }
       
       // Load job configuration if available
+      console.log('🔍 DEBUG: jobResult structure:', jobResult);
+      console.log('🔍 DEBUG: jobResult.execution:', jobResult.execution);
+      console.log('🔍 DEBUG: jobResult.execution?.configurationId:', jobResult.execution?.configurationId);
+      
       if (jobResult.execution?.configurationId) {
         try {
+          console.log('🔍 DEBUG: About to call getJobConfigurationById with:', jobResult.execution.configurationId);
           const configResult = await window.electronAPI.getJobConfigurationById(jobResult.execution.configurationId);
+          console.log('🔍 DEBUG: getJobConfigurationById result:', configResult);
           if (configResult.success && configResult.configuration) {
+            console.log('🔍 DEBUG: Setting job configuration:', configResult.configuration);
             setJobConfiguration(configResult.configuration);
+          } else {
+            console.warn('🔍 DEBUG: getJobConfigurationById failed:', configResult);
           }
         } catch (configError) {
           console.warn('Failed to load job configuration:', configError);
           // Don't fail the entire load for missing configuration
         }
+      } else {
+        console.warn('🔍 DEBUG: No configurationId found in jobResult.execution');
       }
       
     } catch (error) {
