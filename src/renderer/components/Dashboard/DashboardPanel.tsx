@@ -216,6 +216,17 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
   // Load initial data
   useEffect(() => {
+    // Test basic IPC functionality
+    const testIpc = async () => {
+      try {
+        const result = await window.electronAPI.invoke('test-ipc');
+        console.log('🧪 Test IPC result:', result);
+      } catch (error) {
+        console.error('🧪 Test IPC failed:', error);
+      }
+    };
+    testIpc();
+    
     loadJobHistory();
     loadStatistics();
     loadGeneratedImages();
