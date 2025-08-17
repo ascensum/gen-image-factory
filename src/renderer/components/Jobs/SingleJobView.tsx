@@ -49,6 +49,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   }, [jobId]);
 
   const loadJobData = async () => {
+    console.log('🔄 SingleJobView: loadJobData called');
     setIsLoading(true);
     setError(null);
     
@@ -70,8 +71,11 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       
       // Load job images - use the numeric database ID from job execution
       if (jobResult.execution?.id) {
+        console.log('🔄 SingleJobView: Loading images for execution ID:', jobResult.execution.id);
         const imagesResult = await window.electronAPI.generatedImages.getGeneratedImagesByExecution(jobResult.execution.id);
+        console.log('🔄 SingleJobView: Images result:', imagesResult);
         if (imagesResult.success) {
+          console.log('🔄 SingleJobView: Setting images:', imagesResult.images);
           setImages(imagesResult.images || []);
         } else {
           console.warn('Failed to load images:', imagesResult.error);
