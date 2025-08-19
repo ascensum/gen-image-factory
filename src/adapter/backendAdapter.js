@@ -336,6 +336,10 @@ class BackendAdapter {
         return await this.bulkRerunJobExecutions(ids);
       });
 
+      _ipc.handle('job-execution:process-next-bulk-rerun', async (event) => {
+        return await this.processNextBulkRerunJob();
+      });
+
       _ipc.handle('get-job-executions-with-filters', async (event, filters, page = 1, pageSize = 25) => {
         try {
           await this.ensureInitialized();
@@ -1810,52 +1814,66 @@ class BackendAdapter {
       // Start the first job in the queue
       const firstJob = queuedJobs[0];
       
+      // Create a new job execution record FIRST (before starting the job) - SAME AS SINGLE RERUN
+      const newExecutionData = {
+        configurationId: firstJob.configurationId,
+        label: firstJob.label ? `${firstJob.label} (Rerun)` : 'Rerun Job',
+        status: 'running'
+      };
+      
+      const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
+      
+      if (!newExecution.success) {
+        return { 
+          success: false, 
+          error: 'Failed to create job execution record',
+          failedJobs: failedJobs
+        };
+      }
+      
       // Configure JobRunner for rerun mode (same as individual reruns)
       this.jobRunner.configurationId = firstJob.configurationId;
+      this.jobRunner.databaseExecutionId = newExecution.id; // Set the execution ID for database operations
       this.jobRunner.isRerun = true; // Set rerun flag to prevent duplicate database saves
       
       const jobResult = await this.jobRunner.startJob(firstJob.configuration);
       
       if (jobResult.success) {
-        // Create a new job execution record (don't modify the original)
-        const newExecutionData = {
-          configurationId: firstJob.configurationId,
-          label: firstJob.label ? `${firstJob.label} (Rerun)` : 'Rerun Job',
-          status: 'running'
-        };
-        
-        const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
-        
-        if (newExecution.success) {
-          // Set the database execution ID for proper database integration
-          this.jobRunner.databaseExecutionId = newExecution.id;
-          
-          // Store remaining jobs in queue for sequential execution
-          const remainingJobs = queuedJobs.slice(1);
-          
-          return { 
-            success: true, 
-            startedJob: {
-              jobId: firstJob.jobId,
-              label: firstJob.label,
-              newJobId: jobResult.jobId,
-              newExecutionId: newExecution.id
-            },
-            queuedJobs: remainingJobs.length,
-            totalJobs: jobs.executions.length,
-            failedJobs: failedJobs.length,
-            message: `Started rerun of ${firstJob.label || firstJob.jobId}. ${remainingJobs.length} jobs queued for sequential execution.`
-          };
-        } else {
-          // If we couldn't create the execution record, stop the job
-          await this.jobRunner.stopJob(jobResult.jobId);
-          return { 
-            success: false, 
-            error: 'Failed to create job execution record',
-            failedJobs: failedJobs
-          };
+              // Store remaining jobs in queue for sequential execution
+      const remainingJobs = queuedJobs.slice(1);
+      
+      // Store the remaining jobs in a global queue for sequential execution
+      if (remainingJobs.length > 0) {
+        if (!global.bulkRerunQueue) {
+          global.bulkRerunQueue = [];
         }
+        
+        // Add remaining jobs to the global queue
+        global.bulkRerunQueue.push(...remainingJobs.map(job => ({
+          ...job,
+          originalJobIds: jobs.executions.map(j => j.id), // Track which original jobs this rerun is for
+          queueTimestamp: new Date().toISOString()
+        })));
+        
+        console.log(`📋 Bulk rerun: ${remainingJobs.length} jobs queued for sequential execution`);
+      }
+        
+        return { 
+          success: true, 
+          startedJob: {
+            jobId: firstJob.jobId,
+            label: firstJob.label,
+            newJobId: jobResult.jobId,
+            newExecutionId: newExecution.id
+          },
+          queuedJobs: remainingJobs.length,
+          totalJobs: jobs.executions.length,
+          failedJobs: failedJobs.length,
+          message: `Started rerun of ${firstJob.label || firstJob.jobId}. ${remainingJobs.length} jobs queued for sequential execution.`
+        };
       } else {
+        // If the job failed to start, update the execution record to failed
+        await this.jobExecution.updateJobExecution(newExecution.id, { status: 'failed' });
         return { 
           success: false, 
           error: `Failed to start job rerun: ${jobResult.error}`,
@@ -1887,6 +1905,70 @@ class BackendAdapter {
       return result;
     } catch (error) {
       console.error('Error getting job executions count:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Process the next job in the bulk rerun queue
+   * This method is called when a job finishes to start the next queued job
+   */
+  async processNextBulkRerunJob() {
+    try {
+      if (!global.bulkRerunQueue || global.bulkRerunQueue.length === 0) {
+        console.log('📋 Bulk rerun: No jobs in queue');
+        return { success: false, message: 'No jobs in queue' };
+      }
+
+      // Check if we can start another job
+      const currentStatus = await this.jobRunner.getJobStatus();
+      if (currentStatus.status === 'running') {
+        console.log('📋 Bulk rerun: Another job is running, waiting...');
+        return { success: false, message: 'Another job is running' };
+      }
+
+      // Get the next job from the queue
+      const nextJob = global.bulkRerunQueue.shift();
+      console.log(`📋 Bulk rerun: Processing next job: ${nextJob.label || nextJob.jobId}`);
+
+      // Create a new job execution record FIRST (before starting the job)
+      const newExecutionData = {
+        configurationId: nextJob.configurationId,
+        label: nextJob.label ? `${nextJob.label} (Rerun)` : 'Rerun Job',
+        status: 'running'
+      };
+
+      const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
+      if (!newExecution.success) {
+        console.error('📋 Bulk rerun: Failed to create execution record for queued job');
+        return { success: false, error: 'Failed to create execution record' };
+      }
+
+      // Configure JobRunner for rerun mode
+      this.jobRunner.configurationId = nextJob.configurationId;
+      this.jobRunner.databaseExecutionId = newExecution.id;
+      this.jobRunner.isRerun = true;
+
+      // Start the job
+      const jobResult = await this.jobRunner.startJob(nextJob.configuration);
+      if (jobResult.success) {
+        console.log(`📋 Bulk rerun: Started queued job: ${nextJob.label || nextJob.jobId}`);
+        return { 
+          success: true, 
+          message: 'Queued job started successfully',
+          jobId: jobResult.jobId,
+          executionId: newExecution.id,
+          remainingInQueue: global.bulkRerunQueue.length
+        };
+      } else {
+        // Update execution record to failed
+        await this.jobExecution.updateJobExecution(newExecution.id, { status: 'failed' });
+        console.error(`📋 Bulk rerun: Failed to start queued job: ${jobResult.error}`);
+        return { success: false, error: jobResult.error };
+      }
+
+    } catch (error) {
+      console.error('Error processing next bulk rerun job:', error);
       return { success: false, error: error.message };
     }
   }

@@ -594,6 +594,23 @@ class JobRunner extends EventEmitter {
       }
       
       console.log('🎉 Job execution completed successfully!');
+      
+      // Check if there are bulk rerun jobs in the queue and process the next one
+      if (this.backendAdapter && this.isRerun) {
+        try {
+          console.log('📋 Checking for next bulk rerun job in queue...');
+          const nextJobResult = await this.backendAdapter.processNextBulkRerunJob();
+          if (nextJobResult.success) {
+            console.log(`📋 Started next bulk rerun job: ${nextJobResult.message}`);
+          } else if (nextJobResult.message === 'No jobs in queue') {
+            console.log('📋 No more bulk rerun jobs in queue');
+          } else {
+            console.log(`📋 Next bulk rerun job not ready: ${nextJobResult.message}`);
+          }
+        } catch (error) {
+          console.error('❌ Error processing next bulk rerun job:', error);
+        }
+      }
 
     } catch (error) {
       console.error('❌ Job execution error:', error);

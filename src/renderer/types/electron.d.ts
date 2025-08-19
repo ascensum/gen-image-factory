@@ -39,6 +39,12 @@ declare global {
       
       // Generic invoke method
       invoke: (channel: string, ...args: any[]) => Promise<any>;
+      
+      // Job Management
+      jobManagement: {
+        bulkRerunJobExecutions: (ids: string[]) => Promise<any>;
+        processNextBulkRerunJob: () => Promise<any>;
+      };
     };
   }
 }

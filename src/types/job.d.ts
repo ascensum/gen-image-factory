@@ -175,7 +175,25 @@ export interface BulkExportJobsResult {
 
 export interface BulkRerunJobsResult {
   success: boolean;
+  startedJob?: {
+    jobId: string;
+    label: string;
+    newJobId: string;
+    newExecutionId: string;
+  };
   queuedJobs?: number;
+  totalJobs?: number;
+  failedJobs?: number;
+  message?: string;
+  error?: string;
+}
+
+export interface ProcessNextBulkRerunResult {
+  success: boolean;
+  message?: string;
+  jobId?: string;
+  executionId?: string;
+  remainingInQueue?: number;
   error?: string;
 }
 
