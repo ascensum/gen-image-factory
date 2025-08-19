@@ -408,42 +408,43 @@ class BackendAdapter {
             };
           }
           
+          // Create a new job execution record FIRST (before starting the job)
+          const newExecutionData = {
+            configurationId: jobData.execution.configurationId,
+            label: jobData.execution.label ? `${jobData.execution.label} (Rerun)` : 'Rerun Job',
+            status: 'running'
+          };
+          
+          const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
+          
+          if (!newExecution.success) {
+            return { 
+              success: false, 
+              error: 'Failed to create job execution record' 
+            };
+          }
+          
           // Start the job with the CURRENT configuration (respects user changes)
           // Create a NEW JobRunner instance for rerun to avoid conflicts with the main job
           const { JobRunner } = require('../services/jobRunner');
           const rerunJobRunner = new JobRunner({ isRerun: true }); // Set isRerun flag to prevent duplicate database saves
           rerunJobRunner.backendAdapter = this;
           rerunJobRunner.configurationId = jobData.execution.configurationId;
+          rerunJobRunner.databaseExecutionId = newExecution.id; // Set the execution ID BEFORE starting the job
           
           const jobResult = await rerunJobRunner.startJob(configResult.configuration.settings);
           
           if (jobResult.success) {
-            // Create a new job execution record (don't modify the original)
-            const newExecutionData = {
-              configurationId: jobData.execution.configurationId,
-              label: jobData.execution.label ? `${jobData.execution.label} (Rerun)` : 'Rerun Job',
-              status: 'running'
+            return { 
+              success: true, 
+              message: 'Job rerun started successfully',
+              jobId: jobResult.jobId,
+              originalJobId: id,
+              newExecutionId: newExecution.id
             };
-            
-            const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
-            
-            if (newExecution.success) {
-              return { 
-                success: true, 
-                message: 'Job rerun started successfully',
-                jobId: jobResult.jobId,
-                originalJobId: id,
-                newExecutionId: newExecution.id
-              };
-            } else {
-              // If we couldn't create the execution record, stop the job
-              await this.jobRunner.stopJob(jobResult.jobId);
-              return { 
-                success: false, 
-                error: 'Failed to create job execution record' 
-              };
-            }
           } else {
+            // If the job failed to start, update the execution record to failed
+            await this.jobExecution.updateJobExecution(newExecution.id, { status: 'failed' });
             return { 
               success: false, 
               error: `Failed to start job rerun: ${jobResult.error}` 

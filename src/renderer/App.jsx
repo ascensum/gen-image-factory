@@ -73,9 +73,8 @@ function App() {
             // TODO: Implement export functionality
           }}
           onRerun={(jobId) => {
-            console.log(`🚨 APP: Rerun job ${jobId} - NOT calling backend (handled by JobManagementPanel)`);
-            // Rerun is handled by JobManagementPanel, not here
-            // This prevents duplicate rerun calls
+            console.log(`🚨 APP: Rerun job ${jobId} - calling backend rerun function`);
+            window.electronAPI.jobManagement.rerunJobExecution(jobId);
           }}
           onDelete={(jobId) => {
             console.log(`Delete job ${jobId}`);
