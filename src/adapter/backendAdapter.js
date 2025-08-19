@@ -148,6 +148,7 @@ class BackendAdapter {
       _ipc.handle('job:start', async (event, config) => {
         console.log('🚨 IPC HANDLER: job:start called with config:', config);
         console.log('🚨 IPC HANDLER: About to call this.startJob...');
+        console.log('🚨 IPC HANDLER: Stack trace:', new Error().stack);
         const result = await this.startJob(config);
         console.log('🚨 IPC HANDLER: this.startJob returned:', result);
         return result;
@@ -358,10 +359,17 @@ class BackendAdapter {
       });
 
       _ipc.handle('job-execution:rerun', async (event, id) => {
+        // Global counter to track rerun calls
+        if (!global.rerunCallCount) global.rerunCallCount = 0;
+        global.rerunCallCount++;
+        
         console.log('🚨 DEBUG RERUN: IPC handler called with id:', id);
         console.log('🚨 DEBUG RERUN: Event source:', event.sender?.id);
         console.log('🚨 DEBUG RERUN: Current timestamp:', new Date().toISOString());
         console.log('🚨 DEBUG RERUN: Stack trace:', new Error().stack);
+        console.log('🚨 DEBUG RERUN: Global call count:', global.rerunCallCount);
+        console.log('🚨 DEBUG RERUN: Process ID:', process.pid);
+        console.log('🚨 DEBUG RERUN: Memory usage:', process.memoryUsage());
         
         try {
           await this.ensureInitialized();
@@ -401,7 +409,13 @@ class BackendAdapter {
           }
           
           // Start the job with the CURRENT configuration (respects user changes)
-          const jobResult = await this.jobRunner.startJob(configResult.configuration.settings);
+          // Create a NEW JobRunner instance for rerun to avoid conflicts with the main job
+          const { JobRunner } = require('../services/jobRunner');
+          const rerunJobRunner = new JobRunner({ isRerun: true }); // Set isRerun flag to prevent duplicate database saves
+          rerunJobRunner.backendAdapter = this;
+          rerunJobRunner.configurationId = jobData.execution.configurationId;
+          
+          const jobResult = await rerunJobRunner.startJob(configResult.configuration.settings);
           
           if (jobResult.success) {
             // Create a new job execution record (don't modify the original)
@@ -419,7 +433,7 @@ class BackendAdapter {
                 message: 'Job rerun started successfully',
                 jobId: jobResult.jobId,
                 originalJobId: id,
-                newExecutionId: newExecution.execution.id
+                newExecutionId: newExecution.id
               };
             } else {
               // If we couldn't create the execution record, stop the job

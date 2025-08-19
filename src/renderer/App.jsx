@@ -73,8 +73,9 @@ function App() {
             // TODO: Implement export functionality
           }}
           onRerun={(jobId) => {
-            console.log(`Rerun job ${jobId}`);
-            // TODO: Implement rerun functionality
+            console.log(`🚨 APP: Rerun job ${jobId} - NOT calling backend (handled by JobManagementPanel)`);
+            // Rerun is handled by JobManagementPanel, not here
+            // This prevents duplicate rerun calls
           }}
           onDelete={(jobId) => {
             console.log(`Delete job ${jobId}`);
