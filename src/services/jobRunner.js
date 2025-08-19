@@ -20,7 +20,7 @@ const PROGRESS_STEPS = [
 ];
 
 class JobRunner extends EventEmitter {
-  constructor() {
+  constructor(options = {}) {
     super();
     this.currentJob = null;
     this.jobState = {
@@ -37,6 +37,7 @@ class JobRunner extends EventEmitter {
     };
     this.completedSteps = [];
     this.isStopping = false;
+    this.isRerun = options.isRerun || false; // Flag to prevent duplicate database saves during reruns
   }
 
   /**
@@ -178,7 +179,8 @@ class JobRunner extends EventEmitter {
       console.log('🎯 Starting job execution...');
       this.currentJob = this.executeJob(config, jobId);
       // Save job execution to database if backendAdapter is available
-      if (this.backendAdapter) {
+      // BUT NOT during reruns (reruns are handled by the backend rerun handler)
+      if (this.backendAdapter && !this.isRerun) {
         try {
           console.log("💾 Saving job execution to database...");
           const jobExecution = {
@@ -211,6 +213,8 @@ class JobRunner extends EventEmitter {
         } catch (error) {
           console.error("❌ Failed to save job execution to database:", error);
         }
+      } else if (this.isRerun) {
+        console.log("🔄 Rerun mode - skipping JobRunner database save (handled by backend rerun handler)");
       } else {
         console.warn("⚠️ No backendAdapter available - job execution will not be saved to database");
       }

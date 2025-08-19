@@ -1,0 +1,1981 @@
+
+> gen-image-factory@1.0.0 electron:dev
+> NODE_ENV=development electron .
+
+🚨 MAIN PROCESS: main.js file is being executed!
+🚨 MAIN PROCESS: Node.js version: v22.17.1
+🚨 MAIN PROCESS: Electron version: 37.2.5
+🚨 MAIN PROCESS: About to call app.whenReady()...
+🚨 MAIN PROCESS: app.whenReady() resolved successfully!
+🚨 MAIN PROCESS: About to create BackendAdapter...
+🔧 About to create BackendAdapter with ipcMain...
+🔧 ipcMain type: object
+🔧 ipcMain available: true
+🚨 MAIN PROCESS: Calling BackendAdapter constructor...
+🆕 Creating new JobRunner instance
+✅ BackendAdapter created successfully
+🔧 backendAdapter object: BackendAdapter {
+  jobConfig: JobConfiguration {
+    dbPath: '/Users/vjatseslavjertsalov/Development/git_repos/gen-image-factory/data/settings.db',
+    db: Database {}
+  },
+  jobExecution: JobExecution {
+    dbPath: '/Users/vjatseslavjertsalov/Development/git_repos/gen-image-factory/data/settings.db',
+    db: Database {}
+  },
+  generatedImage: GeneratedImage {
+    dbPath: '/Users/vjatseslavjertsalov/Development/git_repos/gen-image-factory/data/settings.db',
+    db: Database {}
+  },
+  jobRunner: JobRunner {
+    _events: [Object: null prototype] {},
+    _eventsCount: 0,
+    _maxListeners: undefined,
+    currentJob: null,
+    jobState: {
+      id: null,
+      status: 'idle',
+      startTime: null,
+      endTime: null,
+      error: null,
+      progress: 0,
+      currentStep: null,
+      totalImages: 0,
+      successfulImages: 0,
+      failedImages: 0
+    },
+    completedSteps: [],
+    isStopping: false,
+    isRerun: false,
+    [Symbol(shapeMode)]: false,
+    [Symbol(kCapture)]: false
+  },
+  errorTranslation: ErrorTranslationService {
+    errorTranslations: {
+      OPENAI_API_ERROR: [Object],
+      PIAPI_API_ERROR: [Object],
+      REMOVE_BG_API_ERROR: [Object],
+      NETWORK_TIMEOUT: [Object],
+      NETWORK_CONNECTION: [Object],
+      FILE_NOT_FOUND: [Object],
+      PERMISSION_DENIED: [Object],
+      DISK_FULL: [Object],
+      JOB_CONFIGURATION_ERROR: [Object],
+      JOB_ALREADY_RUNNING: [Object],
+      JOB_NOT_FOUND: [Object],
+      INVALID_API_KEY: [Object],
+      INVALID_FILE_PATH: [Object],
+      INVALID_PARAMETERS: [Object]
+    }
+  },
+  ipc: IpcMainImpl {
+    _events: [Object: null prototype] { error: [Function (anonymous)] },
+    _eventsCount: 1,
+    _maxListeners: undefined,
+    _invokeHandlers: Map(2) {
+      'ping' => [Function (anonymous)],
+      'get-app-version' => [Function (anonymous)]
+    },
+    handle: [Function (anonymous)],
+    handleOnce: [Function (anonymous)],
+    [Symbol(shapeMode)]: false,
+    [Symbol(kCapture)]: false
+  },
+  _constructorOptions: {
+    ipc: IpcMainImpl {
+      _events: [Object: null prototype],
+      _eventsCount: 1,
+      _maxListeners: undefined,
+      _invokeHandlers: [Map],
+      handle: [Function (anonymous)],
+      handleOnce: [Function (anonymous)],
+      [Symbol(shapeMode)]: false,
+      [Symbol(kCapture)]: false
+    },
+    skipIpcSetup: true
+  }
+}
+🔧 Setting up IPC handlers from BackendAdapter...
+🔧 backendAdapter type: object
+🔧 backendAdapter.setupIpcHandlers type: function
+🔧 BackendAdapter.setupIpcHandlers() called
+🔧 this.ipc type: object
+🔧 ipcMain available: true
+✅ IPC handlers registered successfully
+Loading from Vite dev server: http://localhost:5173
+Job executions table created successfully
+Job configurations table created successfully
+Index 0 created successfully
+Index 1 created successfully
+Generated images table created successfully
+Index 2 created successfully
+Index 0 created successfully
+Index 1 created successfully
+Label index created successfully
+Index 2 created successfully
+Index 3 created successfully
+Successfully loaded page
+[27723:0819/185647.308789:ERROR:CONSOLE:1] "Request Autofill.enable failed. {"code":-32601,"message":"'Autofill.enable' wasn't found"}", source: devtools://devtools/bundled/core/protocol_client/protocol_client.js (1)
+[27723:0819/185647.308893:ERROR:CONSOLE:1] "Request Autofill.setAddresses failed. {"code":-32601,"message":"'Autofill.setAddresses' wasn't found"}", source: devtools://devtools/bundled/core/protocol_client/protocol_client.js (1)
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+Job execution deleted successfully
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔗 Protocol handler called for: local-file:///Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_1.png
+🔗 Extracted file path: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_1.png
+🔗 Allowed paths: [
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/exports',
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/generated',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_ToUpload',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated'
+]
+🔗 Path allowed by: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated
+🔗 File exists and allowed, serving: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_1.png
+🔗 Protocol handler called for: local-file:///Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_2.png
+🔗 Extracted file path: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_2.png
+🔗 Allowed paths: [
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/exports',
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/generated',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_ToUpload',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated'
+]
+🔗 Path allowed by: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated
+🔗 File exists and allowed, serving: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_2.png
+🔗 Protocol handler called for: local-file:///Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_3.png
+🔗 Extracted file path: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_3.png
+🔗 Allowed paths: [
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/exports',
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/generated',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_ToUpload',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated'
+]
+🔗 Path allowed by: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated
+🔗 File exists and allowed, serving: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_3.png
+🔗 Protocol handler called for: local-file:///Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_4.png
+🔗 Extracted file path: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_4.png
+🔗 Allowed paths: [
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/exports',
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/generated',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_ToUpload',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated'
+]
+🔗 Path allowed by: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated
+🔗 File exists and allowed, serving: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_4.png
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔗 Protocol handler called for: local-file:///Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_1.png
+🔗 Extracted file path: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_1.png
+🔗 Allowed paths: [
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/exports',
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/generated',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_ToUpload',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated'
+]
+🔗 Path allowed by: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated
+🔗 File exists and allowed, serving: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_1.png
+🔗 Protocol handler called for: local-file:///Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_2.png
+🔗 Extracted file path: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_2.png
+🔗 Allowed paths: [
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/exports',
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/generated',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_ToUpload',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated'
+]
+🔗 Path allowed by: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated
+🔗 File exists and allowed, serving: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_2.png
+🔗 Protocol handler called for: local-file:///Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_3.png
+🔗 Extracted file path: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_3.png
+🔗 Allowed paths: [
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/exports',
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/generated',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_ToUpload',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated'
+]
+🔗 Path allowed by: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated
+🔗 File exists and allowed, serving: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_3.png
+🔗 Protocol handler called for: local-file:///Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_4.png
+🔗 Extracted file path: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_4.png
+🔗 Allowed paths: [
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/exports',
+  '/Users/vjatseslavjertsalov/Library/Application Support/gen-image-factory/generated',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_ToUpload',
+  '/Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated'
+]
+🔗 Path allowed by: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated
+🔗 File exists and allowed, serving: /Users/vjatseslavjertsalov/Desktop/Gen_Image_Factory_Generated/job_1755581337501_4.png
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - Raw status from jobRunner: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+🔍 getJobStatus - status.state: idle
+🔍 getJobStatus - status.currentJob: null
+🔍 getJobStatus - Returning result: {
+  state: 'idle',
+  currentJob: null,
+  progress: 0,
+  currentStep: 0,
+  totalSteps: 6,
+  startTime: null,
+  estimatedTimeRemaining: null
+}
+/Users/vjatseslavjertsalov/Development/git_repos/gen-image-factory/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron exited with signal SIGINT

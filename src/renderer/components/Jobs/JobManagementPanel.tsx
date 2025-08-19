@@ -157,6 +157,9 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     };
   }, [jobs]);
 
+  // Global rerun call counter to debug duplicate job creation
+  const rerunCallCounter = useRef(0);
+  
   // Debounced search handler following BMad-Method performance principles
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -192,14 +195,12 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       console.error('Error loading jobs:', err);
       
       // No sample data - show empty state
-      if (jobs.length === 0) {
-        setJobs([]);
-        setTotalJobs(0);
-      }
+      setJobs([]);
+      setTotalJobs(0);
     } finally {
       setIsLoading(false);
     }
-  }, [filters, currentPage, pageSize, jobs.length]);
+  }, [filters, currentPage, pageSize]);
 
   // Load jobs on mount and when dependencies change
   useEffect(() => {
@@ -612,8 +613,6 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 <tr 
                   key={job.id} 
                   className={`job-row ${selectedJobs.has(job.id) ? 'selected' : ''}`}
-                  onClick={() => handleOpenSingleJob(job.id)}
-                  style={{ cursor: 'pointer' }}
                 >
                   <td>
                     <div 
@@ -702,12 +701,30 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                         </svg>
                       </button>
                       <button 
-                        onClick={() => {
-                console.log('🚨 DEBUG RERUN: JobManagementPanel rerun button clicked for job:', job.id);
-                console.log('🚨 DEBUG RERUN: Timestamp:', new Date().toISOString());
-                console.log('🚨 DEBUG RERUN: Stack trace:', new Error().stack);
-                window.electronAPI.jobManagement.rerunJobExecution(job.id);
-              }}
+                        onClick={async (e) => {
+                          e.preventDefault(); // Prevent default behavior
+                          e.stopPropagation(); // Prevent row click from firing
+                          
+                          console.log('🚨 DEBUG RERUN: JobManagementPanel rerun button clicked for job:', job.id);
+                          console.log('🚨 DEBUG RERUN: Timestamp:', new Date().toISOString());
+                          console.log('🚨 DEBUG RERUN: Event type:', e.type);
+                          console.log('🚨 DEBUG RERUN: Event target:', e.target);
+                          console.log('🚨 DEBUG RERUN: Event currentTarget:', e.currentTarget);
+                          
+                          try {
+                            // Call the rerun function
+                            await window.electronAPI.jobManagement.rerunJobExecution(job.id);
+                            
+                            // Add a small delay to ensure the job is fully registered, then refresh UI
+                            console.log('🔄 Waiting for job registration to complete...');
+                            setTimeout(async () => {
+                              console.log('🔄 Refreshing Job Management UI after rerun...');
+                              await loadJobs();
+                            }, 1000);
+                          } catch (error) {
+                            console.error('Failed to rerun job:', error);
+                          }
+                        }}
                         className="p-1 hover:bg-[--secondary] rounded transition-colors"
                         title="Rerun Job"
                       >
