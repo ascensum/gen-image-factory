@@ -1809,6 +1809,11 @@ class BackendAdapter {
       
       // Start the first job in the queue
       const firstJob = queuedJobs[0];
+      
+      // Configure JobRunner for rerun mode (same as individual reruns)
+      this.jobRunner.configurationId = firstJob.configurationId;
+      this.jobRunner.isRerun = true; // Set rerun flag to prevent duplicate database saves
+      
       const jobResult = await this.jobRunner.startJob(firstJob.configuration);
       
       if (jobResult.success) {
@@ -1822,6 +1827,9 @@ class BackendAdapter {
         const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
         
         if (newExecution.success) {
+          // Set the database execution ID for proper database integration
+          this.jobRunner.databaseExecutionId = newExecution.id;
+          
           // Store remaining jobs in queue for sequential execution
           const remainingJobs = queuedJobs.slice(1);
           
