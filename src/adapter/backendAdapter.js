@@ -425,14 +425,12 @@ class BackendAdapter {
           }
           
           // Start the job with the CURRENT configuration (respects user changes)
-          // Create a NEW JobRunner instance for rerun to avoid conflicts with the main job
-          const { JobRunner } = require('../services/jobRunner');
-          const rerunJobRunner = new JobRunner({ isRerun: true }); // Set isRerun flag to prevent duplicate database saves
-          rerunJobRunner.backendAdapter = this;
-          rerunJobRunner.configurationId = jobData.execution.configurationId;
-          rerunJobRunner.databaseExecutionId = newExecution.id; // Set the execution ID BEFORE starting the job
+          // Use the main JobRunner for reruns to ensure proper UI integration and progress tracking
+          this.jobRunner.configurationId = jobData.execution.configurationId;
+          this.jobRunner.databaseExecutionId = newExecution.id; // Set the execution ID for database operations
+          this.jobRunner.isRerun = true; // Set rerun flag to prevent duplicate database saves
           
-          const jobResult = await rerunJobRunner.startJob(configResult.configuration.settings);
+          const jobResult = await this.jobRunner.startJob(configResult.configuration.settings);
           
           if (jobResult.success) {
             return { 
