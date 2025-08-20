@@ -22,7 +22,12 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
-    "test:all": "npm run test:run && npm run test:e2e"
+    "test:all": "npm run test:run && npm run test:e2e",
+    "test:regression": "./scripts/run-regression-tests.sh",
+    "test:regression:fast": "./scripts/run-regression-tests.sh --fast",
+    "test:regression:e2e": "./scripts/run-regression-tests.sh --e2e",
+    "test:regression:unit": "./scripts/run-regression-tests.sh --unit",
+    "test:regression:integration": "./scripts/run-regression-tests.sh --integration"
   },
   "author": "Gen Image Factory Team",
   "license": "MIT",
