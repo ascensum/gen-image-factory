@@ -3,7 +3,7 @@ import React, { useState, useCallback } from 'react';
 interface ExportDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onExport: () => Promise<{ success: boolean; message?: string; error?: string; filename?: string }>;
+  onExport: () => Promise<{ success: boolean; message?: string; error?: string; filename?: string; isProgress?: boolean }>;
   title: string;
   description?: string;
 }
@@ -21,6 +21,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
     message?: string;
     error?: string;
     filename?: string;
+    isProgress?: boolean;
   } | null>(null);
 
   const handleExport = useCallback(async () => {
@@ -28,14 +29,25 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
     setExportResult(null);
     
     try {
+      // Show initial progress
+      setExportResult({
+        success: true,
+        message: 'Starting export...',
+        isProgress: true
+      });
+      
       const result = await onExport();
+      
+      // Add small delay to show completion
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       setExportResult(result);
       
       if (result.success) {
-        // Auto-close after 3 seconds on success
+        // Auto-close after 5 seconds on success
         setTimeout(() => {
-          onClose();
-        }, 3000);
+          handleClose();
+        }, 5000);
       }
     } catch (error) {
       setExportResult({
@@ -55,6 +67,13 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
     }
   }, []);
 
+  const handleClose = useCallback(() => {
+    // Reset all state when closing
+    setIsExporting(false);
+    setExportResult(null);
+    onClose();
+  }, [onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -63,7 +82,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
             disabled={isExporting}
           >
@@ -87,12 +106,12 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
               >
                 Export
               </button>
-              <button
-                onClick={onClose}
-                className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
-              >
-                Cancel
-              </button>
+                                        <button
+                            onClick={handleClose}
+                            className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                          >
+                            Cancel
+                          </button>
             </div>
           </div>
         )}
@@ -103,7 +122,18 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
               <span className="text-gray-700">Exporting...</span>
             </div>
-            <p className="text-sm text-gray-500">Please wait while we prepare your export.</p>
+            <p className="text-sm text-gray-500">Creating Excel file with job details and settings...</p>
+            
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out" style={{ width: '100%' }}></div>
+            </div>
+            
+            {exportResult?.isProgress && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">{exportResult.message}</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -131,7 +161,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
                     Open Exports Folder
                   </button>
                   <button
-                    onClick={onClose}
+                    onClick={handleClose}
                     className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
                   >
                     Close
@@ -155,7 +185,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
                     Try Again
                   </button>
                   <button
-                    onClick={onClose}
+                    onClick={handleClose}
                     className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
                   >
                     Close

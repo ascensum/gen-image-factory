@@ -316,9 +316,7 @@ class BackendAdapter {
         return await this.deleteJobExecution(jobId);
       });
 
-      _ipc.handle('export-job-to-excel', async (event, jobId) => {
-        return await this.exportJobToExcel(jobId);
-      });
+      // Removed duplicate export handler - all exports now go through job-execution:export-to-excel
 
       _ipc.handle('job-execution:rename', async (event, id, label) => {
         return await this.renameJobExecution(id, label);
@@ -1145,6 +1143,19 @@ class BackendAdapter {
       
       // Write Excel file
       XLSX.writeFile(workbook, filePath);
+      
+      // Ensure file is fully written to disk
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Verify file exists and has content
+      if (!fs.existsSync(filePath)) {
+        throw new Error('Export file was not created successfully');
+      }
+      
+      const stats = fs.statSync(filePath);
+      if (stats.size === 0) {
+        throw new Error('Export file is empty');
+      }
       
       console.log('Excel export created successfully:', filePath);
       
