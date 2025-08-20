@@ -1203,36 +1203,57 @@ class JobRunner extends EventEmitter {
    */
   getJobLogs(mode = 'standard') {
     // This would typically come from a log service
-    // For now, return mock logs based on current state
-    const logs = [];
+    // For now, generate incremental logs to visualize stacking
+    if (!this._inMemoryLogs) {
+      this._inMemoryLogs = [];
+    }
+    const logs = this._inMemoryLogs;
     
     if (this.jobState.status === 'running' && this.jobState.currentStep) {
       const currentStepConfig = PROGRESS_STEPS.find(s => s.name === this.jobState.currentStep);
-      logs.push({
-        id: Date.now().toString(),
-        timestamp: new Date(),
-        level: 'info',
-        message: `Currently executing: ${currentStepConfig ? currentStepConfig.description : this.jobState.currentStep}`,
-        source: 'job-runner'
-      });
+      const msg = `Currently executing: ${currentStepConfig ? currentStepConfig.description : this.jobState.currentStep}`;
+      // Avoid duplicate consecutive messages
+      if (!logs.length || logs[logs.length - 1].message !== msg) {
+        logs.push({
+          id: Date.now().toString(),
+          timestamp: new Date(),
+          level: 'info',
+          message: msg,
+          source: 'job-runner'
+        });
+      }
     }
 
     if (this.jobState.error) {
-      logs.push({
-        id: (Date.now() + 1).toString(),
-        timestamp: new Date(),
-        level: 'error',
-        message: this.jobState.error,
-        source: 'job-runner'
-      });
+      const msg = this.jobState.error;
+      if (!logs.length || logs[logs.length - 1].message !== msg) {
+        logs.push({
+          id: (Date.now() + 1).toString(),
+          timestamp: new Date(),
+          level: 'error',
+          message: msg,
+          source: 'job-runner'
+        });
+      }
     }
 
     // Filter logs based on mode
-    if (mode === 'standard') {
-      return logs.filter(log => log.level !== 'debug');
+    // Optionally add a lightweight debug heartbeat when debug mode is enabled
+    if (process.env.DEBUG_MODE === 'true' && this.jobState.status === 'running') {
+      const dbgMsg = `debug: step=${this.jobState.currentStep || '-'} progress=${this.jobState.progress || 0}%`;
+      if (!logs.length || logs[logs.length - 1].message !== dbgMsg) {
+        logs.push({
+          id: (Date.now() + 2).toString(),
+          timestamp: new Date(),
+          level: 'debug',
+          message: dbgMsg,
+          source: 'job-runner'
+        });
+      }
     }
-    
-    return logs;
+    // Return a copy, filtered by mode
+    const output = mode === 'standard' ? logs.filter(log => log.level !== 'debug') : logs;
+    return output.slice(-300);
   }
 
   /**
