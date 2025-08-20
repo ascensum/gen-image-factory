@@ -491,13 +491,15 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
         >
           Images
         </button>
-        <button 
-          className={`tab-button ${activeTab === 'logs' ? 'active' : ''}`}
-          onClick={() => handleTabChange('logs')}
-          data-tab="logs"
-        >
-          Logs
-        </button>
+        {job?.status === 'running' && (
+          <button 
+            className={`tab-button ${activeTab === 'logs' ? 'active' : ''}`}
+            onClick={() => handleTabChange('logs')}
+            data-tab="logs"
+          >
+            Logs
+          </button>
+        )}
       </div>
 
       {/* Tab Contents Container */}
@@ -758,29 +760,35 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
         </div>
 
         {/* Logs Content */}
-        <div 
-          id="logs" 
-          className={`tab-content ${activeTab === 'logs' ? 'active' : ''}`}
-        >
-          <div className="logs-content">
-            <div className="logs-timeline">
-              {logs.map((log, index) => (
-                <div key={index} className="log-entry">
-                  <div className="log-dot"></div>
-                  <div className="log-content">
-                    <div className="log-header">
-                      <div className="log-title">Log Entry {index + 1}</div>
-                      <div className="log-time">
-                        {job?.startedAt ? formatDate(job.startedAt) : 'Unknown time'}
+        {job?.status === 'running' && (
+          <div 
+            id="logs" 
+            className={`tab-content ${activeTab === 'logs' ? 'active' : ''}`}
+          >
+            <div className="logs-content">
+              <div className="logs-timeline">
+                {logs.length === 0 ? (
+                  <div className="no-logs">No logs yet…</div>
+                ) : (
+                  logs.map((log: any, index: number) => (
+                    <div key={index} className="log-entry">
+                      <div className="log-dot"></div>
+                      <div className="log-content">
+                        <div className="log-header">
+                          <div className="log-title">{log.level?.toUpperCase?.() || 'INFO'}</div>
+                          <div className="log-time">
+                            {log.timestamp ? formatDate(log.timestamp) : (job?.startedAt ? formatDate(job.startedAt) : 'Unknown time')}
+                          </div>
+                        </div>
+                        <div className="log-message">{typeof log === 'string' ? log : log.message}</div>
                       </div>
                     </div>
-                    <div className="log-message">{log}</div>
-                  </div>
-                </div>
-              ))}
+                  ))
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Footer */}

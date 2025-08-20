@@ -225,18 +225,34 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     loadLogs();
   }, []);
 
-  // Load logs whenever status changes (including completed) to capture final messages
+  // Track last completion time for brief post-run visibility
+  const lastCompletionRef = React.useRef<number | null>(null);
+
   useEffect(() => {
+    if (jobStatus.state === 'completed') {
+      lastCompletionRef.current = Date.now();
+    }
+    if (jobStatus.state === 'running') {
+      lastCompletionRef.current = null;
+    }
+    // Attempt an immediate refresh when state changes
     loadLogs();
   }, [jobStatus.state]);
 
-  // Poll logs periodically for live updates
+  // Poll logs periodically only while running or briefly after completion
   useEffect(() => {
     const interval = setInterval(() => {
-      loadLogs();
+      const withinGrace =
+        lastCompletionRef.current !== null && Date.now() - lastCompletionRef.current < 60_000;
+      if (jobStatus.state === 'running' || withinGrace) {
+        loadLogs();
+      } else {
+        // Clear logs when outside grace period
+        setLogs([]);
+      }
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [jobStatus.state]);
 
   // Refresh data when job status changes to completed
   useEffect(() => {
@@ -304,6 +320,12 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
   const loadLogs = async () => {
     try {
+      const withinGrace =
+        lastCompletionRef.current !== null && Date.now() - lastCompletionRef.current < 60_000;
+      if (!(jobStatus.state === 'running' || withinGrace)) {
+        setLogs([]);
+        return;
+      }
       const jobLogs = await window.electronAPI.jobManagement.getJobLogs('standard');
       console.log('Logs loaded:', jobLogs);
       if (jobLogs && Array.isArray(jobLogs)) {
