@@ -278,17 +278,23 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       setIsProcessing(true);
       const jobIds = Array.from(selectedJobs);
       
-      // Process jobs sequentially to avoid overwhelming the system
-      for (const jobId of jobIds) {
-        await window.electronAPI.jobManagement.rerunJobExecution(jobId);
-      }
+      // Use the actual bulk rerun endpoint instead of individual reruns
+      const result = await window.electronAPI.jobManagement.bulkRerunJobExecutions(jobIds);
       
-      // Refresh jobs and clear selection
-      await loadJobs();
-      setSelectedJobs(new Set());
+      if (result.success) {
+        console.log('Bulk rerun started:', result.message);
+        // Refresh jobs and clear selection
+        await loadJobs();
+        setSelectedJobs(new Set());
+      } else {
+        console.error('Bulk rerun failed:', result.error);
+        // Show error to user
+        alert(`Bulk rerun failed: ${result.error}`);
+      }
       
     } catch (err) {
       console.error('Error rerunning jobs:', err);
+      alert(`Error rerunning jobs: ${err.message}`);
     } finally {
       setIsProcessing(false);
     }
