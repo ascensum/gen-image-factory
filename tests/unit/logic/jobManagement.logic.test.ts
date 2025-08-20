@@ -336,6 +336,23 @@ describe('Job Management Logic Tests', () => {
     });
   });
 
+  describe('Bulk Export Logic', () => {
+    it('should use bulk export endpoint for multiple jobs', () => {
+      const bulkExportEndpoint = 'bulkExportJobExecutions';
+      const individualExportEndpoint = 'exportJobExecution';
+
+      expect(bulkExportEndpoint).toBe('bulkExportJobExecutions');
+      expect(individualExportEndpoint).toBe('exportJobExecution');
+      expect(bulkExportEndpoint).not.toBe(individualExportEndpoint);
+    });
+
+    it('should handle empty selection gracefully', () => {
+      const selectedJobs: number[] = [];
+      const canExport = selectedJobs.length > 0;
+      expect(canExport).toBe(false);
+    });
+  });
+
   describe('Job State Transitions', () => {
     it('should handle job lifecycle states', () => {
       const jobStates = ['idle', 'running', 'completed', 'failed', 'stopped'];

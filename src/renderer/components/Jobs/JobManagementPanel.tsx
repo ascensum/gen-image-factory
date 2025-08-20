@@ -307,9 +307,10 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       setIsProcessing(true);
       const jobIds = Array.from(selectedJobs);
       
-      // Export jobs sequentially
-      for (const jobId of jobIds) {
-        await window.electronAPI.jobManagement.exportJobExecution(jobId);
+      // Use bulk export endpoint for proper batched handling
+      const result = await window.electronAPI.jobManagement.bulkExportJobExecutions(jobIds);
+      if (!result?.success) {
+        console.error('Bulk export failed:', result?.error);
       }
       
       // Clear selection after export
