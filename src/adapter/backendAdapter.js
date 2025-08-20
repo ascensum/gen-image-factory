@@ -1053,25 +1053,31 @@ class BackendAdapter {
       // Create Excel workbook
       const workbook = XLSX.utils.book_new();
       
-      // Job Summary Sheet - Use proper table format (fields as headers, values below)
+      // Job Summary Sheet - Use classic table format (fields as headers, values below)
       const jobSummaryData = [
-        ['Field', 'Value'],
-        ['Job ID', job.id],
-        ['Label', job.label || 'No label'],
-        ['Status', job.status],
-        ['Started At', job.startedAt ? new Date(job.startedAt).toLocaleString() : 'N/A'],
-        ['Completed At', job.completedAt ? new Date(job.completedAt).toLocaleString() : 'N/A'],
-        ['Total Images', job.totalImages || 0],
-        ['Successful Images', job.successfulImages || 0],
-        ['Failed Images', job.failedImages || 0],
-        ['Error Message', job.errorMessage || 'None'],
-        ['Configuration ID', job.configurationId || 'None']
+        ['Job ID', 'Label', 'Status', 'Started At', 'Completed At', 'Total Images', 'Successful Images', 'Failed Images', 'Error Message', 'Configuration ID'],
+        [
+          job.id,
+          job.label || 'No label',
+          job.status,
+          job.startedAt ? new Date(job.startedAt).toLocaleString() : 'N/A',
+          job.completedAt ? new Date(job.completedAt).toLocaleString() : 'N/A',
+          job.totalImages || 0,
+          job.successfulImages || 0,
+          job.failedImages || 0,
+          job.errorMessage || 'None',
+          job.configurationId || 'None'
+        ]
       ];
       
       if (jobConfig) {
-        jobSummaryData.push(['Configuration Name', jobConfig.name || 'Unknown']);
-        jobSummaryData.push(['Created At', jobConfig.createdAt ? new Date(jobConfig.createdAt).toLocaleString() : 'N/A']);
-        jobSummaryData.push(['Updated At', jobConfig.updatedAt ? new Date(jobConfig.updatedAt).toLocaleString() : 'N/A']);
+        // Add configuration info to the first row headers
+        jobSummaryData[0].push('Configuration Name', 'Created At', 'Updated At');
+        jobSummaryData[1].push(
+          jobConfig.name || 'Unknown',
+          jobConfig.createdAt ? new Date(jobConfig.createdAt).toLocaleString() : 'N/A',
+          jobConfig.updatedAt ? new Date(jobConfig.updatedAt).toLocaleString() : 'N/A'
+        );
       }
       
       const jobSummarySheet = XLSX.utils.aoa_to_sheet(jobSummaryData);
@@ -1100,12 +1106,8 @@ class BackendAdapter {
         XLSX.utils.book_append_sheet(workbook, imagesSheet, 'Images');
       }
       
-      // Configuration Sheet (if available) - Use proper table format
+      // Configuration Sheet (if available) - Use classic table format
       if (jobConfig && jobConfig.settings) {
-        const configData = [
-          ['Setting', 'Value']
-        ];
-        
         // Flatten nested settings object
         const flattenSettings = (obj, prefix = '') => {
           const result = [];
@@ -1121,10 +1123,15 @@ class BackendAdapter {
         };
         
         const flattenedSettings = flattenSettings(jobConfig.settings);
-        configData.push(...flattenedSettings);
         
-        const configSheet = XLSX.utils.aoa_to_sheet(configData);
-        XLSX.utils.book_append_sheet(workbook, configSheet, 'Configuration');
+        if (flattenedSettings.length > 0) {
+          // Create classic table format: settings as headers, values below
+          const configData = [flattenedSettings.map(([key]) => key)];
+          configData.push(flattenedSettings.map(([, value]) => value));
+          
+          const configSheet = XLSX.utils.aoa_to_sheet(configData);
+          XLSX.utils.book_append_sheet(workbook, configSheet, 'Configuration');
+        }
       }
       
       // Generate filename

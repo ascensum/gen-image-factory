@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { JobExecution, GeneratedImage } from '../../../types/job';
+import ExportDialog from '../Common/ExportDialog';
 import './SingleJobView.css';
 
 interface SingleJobViewProps {
@@ -43,6 +44,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   
   // Job configuration state
   const [jobConfiguration, setJobConfiguration] = useState(null);
+  
+  // Export dialog state
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   useEffect(() => {
     loadJobData();
@@ -136,42 +140,8 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   }, [onBack]);
   
   const handleExport = useCallback(async () => {
-    try {
-      // Show loading state
-      const exportButton = document.querySelector('.btn-export');
-      if (exportButton) {
-        exportButton.textContent = 'Exporting...';
-        exportButton.disabled = true;
-      }
-      
-      // Call the export function
-      const result = await window.electronAPI.exportJobToExcel(jobId);
-      
-      if (result.success) {
-        // Show success message
-        console.log('Export successful:', result.message);
-        
-        // Ask user if they want to open the exports folder
-        if (confirm(`Export completed successfully!\n\nFile: ${result.filename}\n\nWould you like to open the exports folder?`)) {
-          await window.electronAPI.openExportsFolder();
-        }
-      } else {
-        // Show error message
-        console.error('Export failed:', result.error);
-        alert(`Export failed: ${result.error}`);
-      }
-    } catch (error) {
-      console.error('Error during export:', error);
-      alert(`Export error: ${error.message}`);
-    } finally {
-      // Reset button state
-      const exportButton = document.querySelector('.btn-export');
-      if (exportButton) {
-        exportButton.textContent = 'Export';
-        exportButton.disabled = false;
-      }
-    }
-  }, [jobId]);
+    setShowExportDialog(true);
+  }, []);
   
   const handleRerun = useCallback(() => {
     console.log('🚨 DEBUG RERUN: SingleJobView rerun button clicked for jobId:', jobId);
@@ -1230,6 +1200,17 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
           </div>
         </div>
       )}
+      
+      {/* Export Dialog */}
+      <ExportDialog
+        isOpen={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
+        onExport={async () => {
+          return await window.electronAPI.exportJobToExcel(jobId);
+        }}
+        title="Export Job"
+        description="Export this job to Excel format with all details and settings."
+      />
     </div>
   );
 };

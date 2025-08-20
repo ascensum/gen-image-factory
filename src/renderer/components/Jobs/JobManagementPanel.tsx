@@ -892,7 +892,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
         }}
         onExport={async () => {
           if (exportType === 'single' && exportJobId) {
-            return await window.electronAPI.jobManagement.exportJobExecution(exportJobId);
+            return await window.electronAPI.exportJobToExcel(exportJobId);
           } else if (exportType === 'bulk') {
             const jobIds = Array.from(selectedJobs);
             return await window.electronAPI.jobManagement.bulkExportJobExecutions(jobIds);
