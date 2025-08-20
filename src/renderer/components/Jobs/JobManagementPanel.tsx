@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { JobExecution, JobFilters } from '../../../types/job';
+import ExportDialog from '../Common/ExportDialog';
 import './JobManagementPanel.css';
 
 interface JobManagementPanelProps {
@@ -27,6 +28,9 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportType, setExportType] = useState<'single' | 'bulk'>('single');
+  const [exportJobId, setExportJobId] = useState<string | number | null>(null);
 
   // Refs for performance optimization
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
@@ -740,7 +744,11 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                         </svg>
                       </button>
                       <button 
-                        onClick={() => window.electronAPI.jobManagement.exportJobExecution(job.id)}
+                        onClick={() => {
+                          setExportType('single');
+                          setExportJobId(job.id);
+                          setShowExportDialog(true);
+                        }}
                         className="p-1 hover:bg-[--secondary] rounded transition-colors"
                         title="Export Job"
                       >
@@ -793,7 +801,11 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 Rerun Selected
               </button>
               <button 
-                onClick={handleBulkExport}
+                onClick={() => {
+                  setExportType('bulk');
+                  setExportJobId(null);
+                  setShowExportDialog(true);
+                }}
                 disabled={isProcessing}
                 className="bg-[--action-export] text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
               >
@@ -869,6 +881,30 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           </div>
         </div>
       )}
+
+      {/* Export Dialog */}
+      <ExportDialog
+        isOpen={showExportDialog}
+        onClose={() => {
+          setShowExportDialog(false);
+          setExportType('single');
+          setExportJobId(null);
+        }}
+        onExport={async () => {
+          if (exportType === 'single' && exportJobId) {
+            return await window.electronAPI.jobManagement.exportJobExecution(exportJobId);
+          } else if (exportType === 'bulk') {
+            const jobIds = Array.from(selectedJobs);
+            return await window.electronAPI.jobManagement.bulkExportJobExecutions(jobIds);
+          }
+          return { success: false, error: 'Invalid export type' };
+        }}
+        title={exportType === 'single' ? 'Export Job' : `Export ${selectedJobs.size} Jobs`}
+        description={exportType === 'single' 
+          ? 'Export this job to Excel format with all details and settings.'
+          : `Export ${selectedJobs.size} selected jobs to Excel format.`
+        }
+      />
     </div>
   );
 };

@@ -5,6 +5,7 @@ import LogViewer from './LogViewer';
 import JobHistory from './JobHistory';
 import ImageGallery from './ImageGallery';
 import ForceStopButton from './ForceStopButton';
+import ExportDialog from '../Common/ExportDialog';
 // Failed images review is a separate top-level view now
 
 const HeaderMenu: React.FC<{
@@ -195,6 +196,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportJobId, setExportJobId] = useState<string | null>(null);
   // Removed local failed images review state; navigation handled at App level
 
   // Poll for job status updates
@@ -403,7 +406,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
           onOpenSingleJobView && onOpenSingleJobView(jobId);
           break;
         case 'export':
-          await window.electronAPI.jobManagement.exportJobToExcel(jobId);
+          setExportJobId(jobId);
+          setShowExportDialog(true);
           break;
         case 'delete':
           await window.electronAPI.jobManagement.deleteJobExecution(jobId);
@@ -639,6 +643,23 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       )}
 
       {/* Failed Images Review is now a separate page, navigated from App */}
+
+      {/* Export Dialog */}
+      <ExportDialog
+        isOpen={showExportDialog}
+        onClose={() => {
+          setShowExportDialog(false);
+          setExportJobId(null);
+        }}
+        onExport={async () => {
+          if (exportJobId) {
+            return await window.electronAPI.jobManagement.exportJobToExcel(exportJobId);
+          }
+          return { success: false, error: 'No job ID specified' };
+        }}
+        title="Export Job"
+        description="Export this job to Excel format with all details and settings."
+      />
     </div>
   );
 };
