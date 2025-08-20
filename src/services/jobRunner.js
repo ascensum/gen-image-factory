@@ -290,8 +290,9 @@ class JobRunner extends EventEmitter {
    * @returns {Object} Validation result
    */
   validateConfiguration(config) {
-    console.log('🔍 validateConfiguration called with config:', config);
-    console.log('🔍 config.apiKeys:', config.apiKeys);
+    console.log('🔍 validateConfiguration called');
+    // Never log raw API keys
+    console.log('🔍 config.apiKeys: [REDACTED]');
     console.log('🔍 config.filePaths:', config.filePaths);
     console.log('🔍 config.parameters:', config.parameters);
     
@@ -326,7 +327,8 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Job configuration
    */
   setEnvironmentFromConfig(config) {
-    console.log('🔧 Setting environment variables from config:', config.apiKeys);
+    // Never log raw API keys
+    console.log('🔧 Setting environment variables from config: [REDACTED]');
     console.log('🔧 Before setting - Environment variables:');
     console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
     console.log('  - PIAPI_API_KEY:', process.env.PIAPI_API_KEY ? 'SET' : 'NOT SET');
@@ -335,15 +337,15 @@ class JobRunner extends EventEmitter {
     // Set API keys
     if (config.apiKeys.openai) {
       process.env.OPENAI_API_KEY = config.apiKeys.openai;
-      console.log('✅ OpenAI API key set to:', config.apiKeys.openai.substring(0, 10) + '...');
+      console.log('✅ OpenAI API key set');
     }
     if (config.apiKeys.piapi) {
       process.env.PIAPI_API_KEY = config.apiKeys.piapi;  // Fixed: was PIAPI_KEY
-      console.log('✅ PiAPI key set to:', config.apiKeys.piapi.substring(0, 10) + '...');
+      console.log('✅ PiAPI key set');
     }
     if (config.apiKeys.removeBg) {
       process.env.REMOVE_BG_API_KEY = config.apiKeys.removeBg;
-      console.log('✅ RemoveBG API key set to:', config.apiKeys.removeBg.substring(0, 10) + '...');
+      console.log('✅ RemoveBG API key set');
     }
 
     // Set other environment variables as needed
@@ -367,7 +369,8 @@ class JobRunner extends EventEmitter {
    */
   async executeJob(config, jobId) {
     try {
-      console.log('🚀 Starting real job execution with config:', config);
+      // Do not log entire config to avoid leaking secrets
+      console.log('🚀 Starting real job execution');
       console.log('🔍 DEBUG: config.ai in executeJob:', config.ai);
       console.log('🔍 DEBUG: config.ai?.runQualityCheck in executeJob:', config.ai?.runQualityCheck);
       console.log('🔍 DEBUG: config.ai?.runMetadataGen in executeJob:', config.ai?.runMetadataGen);
@@ -377,7 +380,12 @@ class JobRunner extends EventEmitter {
       this.emitProgress('parameter_generation', 10, 'Generating parameters from keywords...');
       
       console.log('🔧 About to call generateParameters with config:', config);
-      console.log('🔧 Config.parameters:', config.parameters);
+      console.log('🔧 Config.parameters:', {
+        processMode: config.parameters?.processMode,
+        aspectRatios: Array.isArray(config.parameters?.aspectRatios) ? '[array]' : config.parameters?.aspectRatios,
+        mjVersion: config.parameters?.mjVersion,
+        openaiModel: config.parameters?.openaiModel,
+      });
       console.log('🔧 Config.parameters.aspectRatios:', config.parameters?.aspectRatios);
       
       // Call the real paramsGeneratorModule
