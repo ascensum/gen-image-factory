@@ -1055,12 +1055,9 @@ class BackendAdapter {
       // Create Excel workbook
       const workbook = XLSX.utils.book_new();
       
-      // Job Summary Sheet
+      // Job Summary Sheet - Use proper table format (fields as headers, values below)
       const jobSummaryData = [
-        ['Job Export Report', ''],
-        ['Generated:', new Date().toISOString()],
-        ['', ''],
-        ['Job Information', ''],
+        ['Field', 'Value'],
         ['Job ID', job.id],
         ['Label', job.label || 'No label'],
         ['Status', job.status],
@@ -1070,7 +1067,6 @@ class BackendAdapter {
         ['Successful Images', job.successfulImages || 0],
         ['Failed Images', job.failedImages || 0],
         ['Error Message', job.errorMessage || 'None'],
-        ['', ''],
         ['Configuration ID', job.configurationId || 'None']
       ];
       
@@ -1106,12 +1102,10 @@ class BackendAdapter {
         XLSX.utils.book_append_sheet(workbook, imagesSheet, 'Images');
       }
       
-      // Configuration Sheet (if available)
+      // Configuration Sheet (if available) - Use proper table format
       if (jobConfig && jobConfig.settings) {
         const configData = [
-          ['Job Configuration Settings', ''],
-          ['Exported:', new Date().toISOString()],
-          ['', '']
+          ['Setting', 'Value']
         ];
         
         // Flatten nested settings object
@@ -1689,38 +1683,54 @@ class BackendAdapter {
         return { success: false, error: 'Failed to export any jobs' };
       }
       
-      // Create a summary Excel file
-      const summaryData = [
-        ['Bulk Export Summary', ''],
-        ['Generated:', new Date().toISOString()],
-        ['Total Jobs:', jobs.executions.length],
-        ['Successfully Exported:', exportedFiles.length],
-        ['', ''],
-        ['Exported Jobs:', ''],
-        ['Job ID', 'Label', 'Filename']
-      ];
+      // Create ZIP file with all exported Excel files
+      const archiver = require('archiver');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const zipFilename = `bulk_export_${timestamp}.zip`;
+      const zipFilePath = path.join(exportDir, zipFilename);
       
-      exportedFiles.forEach(file => {
-        summaryData.push([file.jobId, file.label, file.filename]);
+      const output = fs.createWriteStream(zipFilePath);
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      
+      output.on('close', () => {
+        console.log('Bulk export ZIP created successfully:', zipFilePath);
       });
       
-      const workbook = XLSX.utils.book_new();
-      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Export Summary');
+      archive.on('error', (err) => {
+        console.error('Error creating ZIP:', err);
+      });
       
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const summaryFilename = `bulk_export_summary_${timestamp}.xlsx`;
-      const summaryFilePath = path.join(exportDir, summaryFilename);
+      archive.pipe(output);
       
-      XLSX.writeFile(workbook, summaryFilePath);
+      // Add each Excel file to the ZIP
+      exportedFiles.forEach(file => {
+        const filePath = path.join(exportDir, file.filename);
+        if (fs.existsSync(filePath)) {
+          archive.file(filePath, { name: file.filename });
+        }
+      });
+      
+      // Add a summary text file
+      const summaryContent = `Bulk Export Summary
+Generated: ${new Date().toISOString()}
+Total Jobs: ${jobs.executions.length}
+Successfully Exported: ${exportedFiles.length}
+
+Exported Jobs:
+${exportedFiles.map(file => `- ${file.label} (ID: ${file.jobId}): ${file.filename}`).join('\n')}
+`;
+      
+      archive.append(summaryContent, { name: 'export_summary.txt' });
+      
+      await archive.finalize();
       
       return { 
         success: true, 
         exportedFiles: exportedFiles,
-        summaryFile: summaryFilename,
+        zipFile: zipFilename,
         totalJobs: jobs.executions.length,
         successfulExports: exportedFiles.length,
-        message: `Successfully exported ${exportedFiles.length} out of ${jobs.executions.length} jobs`
+        message: `Successfully exported ${exportedFiles.length} out of ${jobs.executions.length} jobs to ZIP file`
       };
       
     } catch (error) {
