@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Husky pre-commit hook: job management regression tests only
+
+echo "🧪 Running job management tests..."
+npm run test:job-management || exit 1

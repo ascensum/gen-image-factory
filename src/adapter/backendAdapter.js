@@ -59,6 +59,17 @@ class BackendAdapter {
     if (this.generatedImage && !this.generatedImage.db) {
       await this.generatedImage.init();
     }
+
+    // Ensure required tables exist to avoid race conditions on first access
+    if (this.jobConfig && this.jobConfig.createTables) {
+      try { await this.jobConfig.createTables(); } catch (e) {}
+    }
+    if (this.jobExecution && this.jobExecution.createTables) {
+      try { await this.jobExecution.createTables(); } catch (e) {}
+    }
+    if (this.generatedImage && this.generatedImage.createTables) {
+      try { await this.generatedImage.createTables(); } catch (e) {}
+    }
   }
 
   setupIpcHandlers() {
@@ -1041,18 +1052,13 @@ class BackendAdapter {
       let jobConfig = null;
       if (job.configurationId) {
         try {
-          console.log('🔍 DEBUG: Loading configuration for job:', job.id, 'configId:', job.configurationId);
           const configResult = await this.jobConfig.getConfigurationById(job.configurationId);
-          console.log('🔍 DEBUG: Configuration result:', configResult);
           if (configResult.success) {
             jobConfig = configResult.configuration;
-            console.log('🔍 DEBUG: Job config loaded:', jobConfig ? 'YES' : 'NO', 'Settings:', jobConfig?.settings ? 'YES' : 'NO');
           }
         } catch (error) {
           console.warn('Could not load job configuration:', error);
         }
-      } else {
-        console.log('🔍 DEBUG: Job has no configurationId:', job.id);
       }
       
       // Create Excel workbook
@@ -1076,13 +1082,72 @@ class BackendAdapter {
       ];
       
       if (jobConfig) {
-        // Add configuration info to the first row headers
+        // Add configuration meta info to the first row headers
         jobSummaryData[0].push('Configuration Name', 'Created At', 'Updated At');
         jobSummaryData[1].push(
           jobConfig.name || 'Unknown',
           jobConfig.createdAt ? new Date(jobConfig.createdAt).toLocaleString() : 'N/A',
           jobConfig.updatedAt ? new Date(jobConfig.updatedAt).toLocaleString() : 'N/A'
         );
+      }
+
+      // Merge settings into the same Job Summary sheet (no separate sheet)
+      if (jobConfig && jobConfig.settings) {
+        const formatSettingLabel = (key) => {
+          const mapping = {
+            'parameters.processMode': 'Process Mode',
+            'parameters.aspectRatios': 'Aspect Ratios',
+            'parameters.mjVersion': 'MJ Version',
+            'parameters.openaiModel': 'OpenAI Model',
+            'parameters.enablePollingTimeout': 'Enable Polling Timeout',
+            'parameters.pollingTimeout': 'Polling Timeout (seconds)',
+            'parameters.keywordRandom': 'Keyword Random',
+            'processing.removeBg': 'Remove Background',
+            'processing.imageConvert': 'Image Convert',
+            'processing.imageEnhancement': 'Image Enhancement',
+            'processing.sharpening': 'Sharpening Intensity (0-10)',
+            'processing.saturation': 'Saturation Level (0-2)',
+            'processing.convertToJpg': 'Convert to JPG',
+            'processing.trimTransparentBackground': 'Trim Transparent Background',
+            'processing.jpgBackground': 'JPG Background',
+            'processing.jpgQuality': 'JPG Quality',
+            'processing.pngQuality': 'PNG Quality',
+            'processing.removeBgSize': 'Remove.bg Size',
+            'filePaths.outputDirectory': 'Output Directory',
+            'filePaths.tempDirectory': 'Temp Directory',
+            'filePaths.systemPromptFile': 'System Prompt File',
+            'filePaths.keywordsFile': 'Keywords File',
+            'filePaths.qualityCheckPromptFile': 'Quality Check Prompt File',
+            'filePaths.metadataPromptFile': 'Metadata Prompt File',
+            'ai.runQualityCheck': 'Run Quality Check',
+            'ai.runMetadataGen': 'Run Metadata Generation',
+            'advanced.debugMode': 'Debug Mode'
+          };
+          if (mapping[key]) return mapping[key];
+          const last = key.split('.').pop();
+          return last
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/^./, (c) => c.toUpperCase());
+        };
+        const flattenSettings = (obj, prefix = '') => {
+          const result = [];
+          for (const [key, value] of Object.entries(obj)) {
+            const fullKey = prefix ? `${prefix}.${key}` : key;
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+              result.push(...flattenSettings(value, fullKey));
+            } else {
+              result.push([fullKey, value]);
+            }
+          }
+          return result;
+        };
+
+        const flattenedSettings = flattenSettings(jobConfig.settings)
+          .filter(([key]) => !key.startsWith('apiKeys.'));
+        flattenedSettings.forEach(([key, value]) => {
+          jobSummaryData[0].push(formatSettingLabel(key));
+          jobSummaryData[1].push(value);
+        });
       }
       
       const jobSummarySheet = XLSX.utils.aoa_to_sheet(jobSummaryData);
@@ -1111,52 +1176,17 @@ class BackendAdapter {
         XLSX.utils.book_append_sheet(workbook, imagesSheet, 'Images');
       }
       
-      // Configuration Sheet (if available) - Use classic table format
-      if (jobConfig && jobConfig.settings) {
-        console.log('🔍 DEBUG: Creating configuration sheet with settings:', Object.keys(jobConfig.settings));
-        
-        // Flatten nested settings object
-        const flattenSettings = (obj, prefix = '') => {
-          const result = [];
-          for (const [key, value] of Object.entries(obj)) {
-            const fullKey = prefix ? `${prefix}.${key}` : key;
-            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-              result.push(...flattenSettings(value, fullKey));
-            } else {
-              result.push([fullKey, value]);
-            }
-          }
-          return result;
-        };
-        
-        const flattenedSettings = flattenSettings(jobConfig.settings);
-        console.log('🔍 DEBUG: Flattened settings count:', flattenedSettings.length);
-        
-        if (flattenedSettings.length > 0) {
-          // Create classic table format: settings as headers, values below
-          const configData = [flattenedSettings.map(([key]) => key)];
-          configData.push(flattenedSettings.map(([, value]) => value));
-          
-          console.log('🔍 DEBUG: Configuration sheet data:', configData);
-          
-          const configSheet = XLSX.utils.aoa_to_sheet(configData);
-          XLSX.utils.book_append_sheet(workbook, configSheet, 'Configuration');
-          console.log('🔍 DEBUG: Configuration sheet added to workbook');
-        } else {
-          console.log('🔍 DEBUG: No flattened settings to create sheet');
-        }
-      } else {
-        console.log('🔍 DEBUG: No job config or settings available for configuration sheet');
-      }
-      
       // Generate filename
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const jobLabel = job.label && job.label.trim() !== '' ? job.label.replace(/[^a-zA-Z0-9]/g, '_') : 'Job';
       const filename = `${jobLabel}_${job.id}_${timestamp}.xlsx`;
       
       // Create export directory in user's app data folder (works in both dev and production)
-      const { app } = require('electron');
-      const exportDir = path.join(app.getPath('userData'), 'exports');
+      const electronMod = require('electron');
+      const app = electronMod && electronMod.app ? electronMod.app : undefined;
+      const exportDir = app && typeof app.getPath === 'function'
+        ? path.join(app.getPath('userData'), 'exports')
+        : path.join(require('os').tmpdir(), 'gen-image-factory-exports');
       if (!fs.existsSync(exportDir)) {
         fs.mkdirSync(exportDir, { recursive: true });
       }
@@ -1674,8 +1704,8 @@ class BackendAdapter {
   async bulkExportJobExecutions(ids) {
     try {
       await this.ensureInitialized();
-      const jobs = await this.jobExecution.getJobExecutionsByIds(ids);
       
+      const jobs = await this.jobExecution.getJobExecutionsByIds(ids);
       if (!jobs.success) {
         return { success: false, error: 'Failed to retrieve jobs for export' };
       }
@@ -1684,45 +1714,33 @@ class BackendAdapter {
         return { success: false, error: 'No jobs found for export' };
       }
       
-      // Create exports directory if it doesn't exist
-      const { app } = require('electron');
-      const exportDir = path.join(app.getPath('userData'), 'exports');
+      const archiver = require('archiver');
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      
+      // Prepare export directory
+      const electronMod = require('electron');
+      const app = electronMod && electronMod.app ? electronMod.app : undefined;
+      const exportDir = app && typeof app.getPath === 'function'
+        ? path.join(app.getPath('userData'), 'exports')
+        : path.join(require('os').tmpdir(), 'gen-image-factory-exports');
       if (!fs.existsSync(exportDir)) {
         fs.mkdirSync(exportDir, { recursive: true });
       }
       
-      const exportedFiles = [];
-      
-      // Create ZIP file directly without creating individual files
-      const archiver = require('archiver');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const zipFilename = `bulk_export_${timestamp}.zip`;
-      const zipFilePath = path.join(exportDir, zipFilename);
-      
-      const output = fs.createWriteStream(zipFilePath);
-      const archive = archiver('zip', { zlib: { level: 9 } });
-      
-      output.on('close', () => {
-        console.log('Bulk export ZIP created successfully:', zipFilePath);
-      });
-      
-      archive.on('error', (err) => {
-        console.error('Error creating ZIP:', err);
-      });
-      
+      const zipPath = path.join(exportDir, zipFilename);
+      const output = fs.createWriteStream(zipPath);
       archive.pipe(output);
       
-      // Export each job directly to ZIP without creating individual files
+      const exportedFiles = [];
+      
       for (const job of jobs.executions) {
         try {
-          // Get job data and create Excel content in memory
-          const jobResult = await this.jobExecution.getJobExecution(job.id);
-          if (!jobResult.success) {
-            console.warn(`Failed to get job ${job.id}:`, jobResult.error);
-            continue;
-          }
+          // Get job execution details
+          const jobData = job;
           
-          const jobData = jobResult.execution;
+          // Get generated images for this job
           const imagesResult = await this.generatedImage.getGeneratedImagesByExecution(job.id);
           const images = imagesResult.success ? imagesResult.images || [] : [];
           
@@ -1739,7 +1757,7 @@ class BackendAdapter {
             }
           }
           
-          // Create Excel workbook in memory
+          // Create Excel workbook
           const workbook = XLSX.utils.book_new();
           
           // Job Summary Sheet - Use classic table format
@@ -1758,7 +1776,7 @@ class BackendAdapter {
               jobData.configurationId || 'None'
             ]
           ];
-          
+
           if (jobConfig) {
             jobSummaryData[0].push('Configuration Name', 'Created At', 'Updated At');
             jobSummaryData[1].push(
@@ -1766,6 +1784,65 @@ class BackendAdapter {
               jobConfig.createdAt ? new Date(jobConfig.createdAt).toLocaleString() : 'N/A',
               jobConfig.updatedAt ? new Date(jobConfig.updatedAt).toLocaleString() : 'N/A'
             );
+          }
+
+          // Merge settings into the same Job Summary sheet (no separate sheet)
+          if (jobConfig && jobConfig.settings) {
+            const formatSettingLabel = (key) => {
+              const mapping = {
+                'parameters.processMode': 'Process Mode',
+                'parameters.aspectRatios': 'Aspect Ratios',
+                'parameters.mjVersion': 'MJ Version',
+                'parameters.openaiModel': 'OpenAI Model',
+                'parameters.enablePollingTimeout': 'Enable Polling Timeout',
+                'parameters.pollingTimeout': 'Polling Timeout (seconds)',
+                'parameters.keywordRandom': 'Keyword Random',
+                'processing.removeBg': 'Remove Background',
+                'processing.imageConvert': 'Image Convert',
+                'processing.imageEnhancement': 'Image Enhancement',
+                'processing.sharpening': 'Sharpening Intensity (0-10)',
+                'processing.saturation': 'Saturation Level (0-2)',
+                'processing.convertToJpg': 'Convert to JPG',
+                'processing.trimTransparentBackground': 'Trim Transparent Background',
+                'processing.jpgBackground': 'JPG Background',
+                'processing.jpgQuality': 'JPG Quality',
+                'processing.pngQuality': 'PNG Quality',
+                'processing.removeBgSize': 'Remove.bg Size',
+                'filePaths.outputDirectory': 'Output Directory',
+                'filePaths.tempDirectory': 'Temp Directory',
+                'filePaths.systemPromptFile': 'System Prompt File',
+                'filePaths.keywordsFile': 'Keywords File',
+                'filePaths.qualityCheckPromptFile': 'Quality Check Prompt File',
+                'filePaths.metadataPromptFile': 'Metadata Prompt File',
+                'ai.runQualityCheck': 'Run Quality Check',
+                'ai.runMetadataGen': 'Run Metadata Generation',
+                'advanced.debugMode': 'Debug Mode'
+              };
+              if (mapping[key]) return mapping[key];
+              const last = key.split('.').pop();
+              return last
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, (c) => c.toUpperCase());
+            };
+            const flattenSettings = (obj, prefix = '') => {
+              const result = [];
+              for (const [key, value] of Object.entries(obj)) {
+                const fullKey = prefix ? `${prefix}.${key}` : key;
+                if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                  result.push(...flattenSettings(value, fullKey));
+                } else {
+                  result.push([fullKey, value]);
+                }
+              }
+              return result;
+            };
+
+            const flattenedSettings = flattenSettings(jobConfig.settings)
+              .filter(([key]) => !key.startsWith('apiKeys.'));
+            flattenedSettings.forEach(([key, value]) => {
+              jobSummaryData[0].push(formatSettingLabel(key));
+              jobSummaryData[1].push(value);
+            });
           }
           
           const jobSummarySheet = XLSX.utils.aoa_to_sheet(jobSummaryData);
@@ -1794,32 +1871,6 @@ class BackendAdapter {
             XLSX.utils.book_append_sheet(workbook, imagesSheet, 'Images');
           }
           
-          // Configuration Sheet (if available) - Use classic table format
-          if (jobConfig && jobConfig.settings) {
-            const flattenSettings = (obj, prefix = '') => {
-              const result = [];
-              for (const [key, value] of Object.entries(obj)) {
-                const fullKey = prefix ? `${prefix}.${key}` : key;
-                if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                  result.push(...flattenSettings(value, fullKey));
-                } else {
-                  result.push([fullKey, value]);
-                }
-              }
-              return result;
-            };
-            
-            const flattenedSettings = flattenSettings(jobConfig.settings);
-            
-            if (flattenedSettings.length > 0) {
-              const configData = [flattenedSettings.map(([key]) => key)];
-              configData.push(flattenedSettings.map(([, value]) => value));
-              
-              const configSheet = XLSX.utils.aoa_to_sheet(configData);
-              XLSX.utils.book_append_sheet(workbook, configSheet, 'Configuration');
-            }
-          }
-          
           // Generate filename for this job
           const jobLabel = jobData.label && jobData.label.trim() !== '' ? jobData.label.replace(/[^a-zA-Z0-9]/g, '_') : 'Job';
           const filename = `${jobLabel}_${jobData.id}_${timestamp}.xlsx`;
@@ -1843,14 +1894,7 @@ class BackendAdapter {
       }
       
       // Add a summary text file
-      const summaryContent = `Bulk Export Summary
-Generated: ${new Date().toISOString()}
-Total Jobs: ${jobs.executions.length}
-Successfully Exported: ${exportedFiles.length}
-
-Exported Jobs:
-${exportedFiles.map(file => `- ${file.label} (ID: ${file.jobId}): ${file.filename}`).join('\n')}
-`;
+      const summaryContent = `Bulk Export Summary\nGenerated: ${new Date().toISOString()}\nTotal Jobs: ${jobs.executions.length}\nSuccessfully Exported: ${exportedFiles.length}\n\nExported Jobs:\n${exportedFiles.map(file => `- ${file.label} (ID: ${file.jobId}): ${file.filename}`).join('\n')}\n`;
       
       archive.append(summaryContent, { name: 'export_summary.txt' });
       
@@ -2118,8 +2162,11 @@ ${exportedFiles.map(file => `- ${file.label} (ID: ${file.jobId}): ${file.filenam
   async openExportsFolder() {
     try {
       // Use the same path as exportJobToExcel
-      const { app } = require('electron');
-      const exportDir = path.join(app.getPath('userData'), 'exports');
+      const electronMod = require('electron');
+      const app = electronMod && electronMod.app ? electronMod.app : undefined;
+      const exportDir = app && typeof app.getPath === 'function'
+        ? path.join(app.getPath('userData'), 'exports')
+        : path.join(require('os').tmpdir(), 'gen-image-factory-exports');
       
       // Create export directory if it doesn't exist
       if (!fs.existsSync(exportDir)) {
