@@ -124,22 +124,16 @@ const LogViewer: React.FC<LogViewerProps> = ({
     }
     
     try {
-      const blob = new Blob([logContent], { type: 'text/plain' });
+      const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
-      
-      // Use window.open for test compatibility
-      if (window.open) {
-        window.open(url, '_blank');
-      } else {
-        // Fallback for environments without window.open
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'logs.txt';
-        a.click();
-      }
-      
-      // Clean up
-      setTimeout(() => URL.revokeObjectURL(url), 100);
+      // Prefer anchor download to avoid blank window in Electron
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'logs.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 200);
     } catch (error) {
       console.error('Failed to export logs:', error);
     }
