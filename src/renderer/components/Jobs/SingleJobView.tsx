@@ -21,7 +21,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const [activeTab, setActiveTab] = useState('overview');
   const [job, setJob] = useState<JobExecution | null>(null);
   const [images, setImages] = useState<GeneratedImage[]>([]);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -91,12 +91,16 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
         setImages([]);
       }
       
-      // Load job logs from actual job execution
-      if (jobResult.execution?.logs) {
-        setLogs(jobResult.execution.logs);
-      } else {
-        // If no logs available, show a message
-        setLogs(['No logs available for this job']);
+      // Load job logs via IPC (standard mode)
+      try {
+        const jobLogs = await window.electronAPI.jobManagement.getJobLogs('standard');
+        if (jobLogs && Array.isArray(jobLogs)) {
+          setLogs(jobLogs);
+        } else {
+          setLogs([]);
+        }
+      } catch (e) {
+        setLogs([]);
       }
       
       // Load job configuration if available
@@ -133,6 +137,12 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   const handleTabChange = useCallback((tabId: string) => {
     setActiveTab(tabId);
+    if (tabId === 'logs') {
+      // Refresh logs when switching to Logs tab
+      window.electronAPI.jobManagement.getJobLogs('standard')
+        .then((jobLogs: any[]) => setLogs(Array.isArray(jobLogs) ? jobLogs : []))
+        .catch(() => setLogs([]));
+    }
   }, []);
   
   const handleBack = useCallback(() => {

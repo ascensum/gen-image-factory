@@ -225,12 +225,18 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     loadLogs();
   }, []);
 
-  // Load logs when job status changes to running
+  // Load logs whenever status changes (including completed) to capture final messages
   useEffect(() => {
-    if (jobStatus.state === 'running') {
-      loadLogs();
-    }
+    loadLogs();
   }, [jobStatus.state]);
+
+  // Poll logs periodically for live updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadLogs();
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Refresh data when job status changes to completed
   useEffect(() => {
@@ -298,21 +304,17 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
   const loadLogs = async () => {
     try {
-      if (jobStatus.state === 'running') {
-        const jobLogs = await window.electronAPI.jobManagement.getJobLogs('standard');
-        console.log('Logs loaded:', jobLogs);
-        // Ensure logs is always an array
-        if (jobLogs && Array.isArray(jobLogs)) {
-          setLogs(jobLogs);
-        } else {
-          console.warn('getJobLogs returned non-array:', jobLogs);
-          setLogs([]);
-        }
+      const jobLogs = await window.electronAPI.jobManagement.getJobLogs('standard');
+      console.log('Logs loaded:', jobLogs);
+      if (jobLogs && Array.isArray(jobLogs)) {
+        setLogs(jobLogs);
+      } else {
+        console.warn('getJobLogs returned non-array:', jobLogs);
+        setLogs([]);
       }
     } catch (error) {
       console.error('Failed to load logs:', error);
       setLogs([]);
-      // Don't set error for logs as it's not critical
     }
   };
 
