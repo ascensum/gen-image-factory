@@ -1041,13 +1041,18 @@ class BackendAdapter {
       let jobConfig = null;
       if (job.configurationId) {
         try {
+          console.log('🔍 DEBUG: Loading configuration for job:', job.id, 'configId:', job.configurationId);
           const configResult = await this.jobConfig.getConfigurationById(job.configurationId);
+          console.log('🔍 DEBUG: Configuration result:', configResult);
           if (configResult.success) {
             jobConfig = configResult.configuration;
+            console.log('🔍 DEBUG: Job config loaded:', jobConfig ? 'YES' : 'NO', 'Settings:', jobConfig?.settings ? 'YES' : 'NO');
           }
         } catch (error) {
           console.warn('Could not load job configuration:', error);
         }
+      } else {
+        console.log('🔍 DEBUG: Job has no configurationId:', job.id);
       }
       
       // Create Excel workbook
@@ -1108,6 +1113,8 @@ class BackendAdapter {
       
       // Configuration Sheet (if available) - Use classic table format
       if (jobConfig && jobConfig.settings) {
+        console.log('🔍 DEBUG: Creating configuration sheet with settings:', Object.keys(jobConfig.settings));
+        
         // Flatten nested settings object
         const flattenSettings = (obj, prefix = '') => {
           const result = [];
@@ -1123,15 +1130,23 @@ class BackendAdapter {
         };
         
         const flattenedSettings = flattenSettings(jobConfig.settings);
+        console.log('🔍 DEBUG: Flattened settings count:', flattenedSettings.length);
         
         if (flattenedSettings.length > 0) {
           // Create classic table format: settings as headers, values below
           const configData = [flattenedSettings.map(([key]) => key)];
           configData.push(flattenedSettings.map(([, value]) => value));
           
+          console.log('🔍 DEBUG: Configuration sheet data:', configData);
+          
           const configSheet = XLSX.utils.aoa_to_sheet(configData);
           XLSX.utils.book_append_sheet(workbook, configSheet, 'Configuration');
+          console.log('🔍 DEBUG: Configuration sheet added to workbook');
+        } else {
+          console.log('🔍 DEBUG: No flattened settings to create sheet');
         }
+      } else {
+        console.log('🔍 DEBUG: No job config or settings available for configuration sheet');
       }
       
       // Generate filename
@@ -1678,30 +1693,7 @@ class BackendAdapter {
       
       const exportedFiles = [];
       
-      // Export each job individually
-      for (const job of jobs.executions) {
-        try {
-          const exportResult = await this.exportJobToExcel(job.id);
-          if (exportResult.success) {
-            exportedFiles.push({
-              jobId: job.id,
-              label: job.label || 'No label',
-              filename: exportResult.filename,
-              filePath: exportResult.filePath
-            });
-          } else {
-            console.warn(`Failed to export job ${job.id}:`, exportResult.error);
-          }
-        } catch (error) {
-          console.warn(`Error exporting job ${job.id}:`, error);
-        }
-      }
-      
-      if (exportedFiles.length === 0) {
-        return { success: false, error: 'Failed to export any jobs' };
-      }
-      
-      // Create ZIP file with all exported Excel files
+      // Create ZIP file directly without creating individual files
       const archiver = require('archiver');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const zipFilename = `bulk_export_${timestamp}.zip`;
@@ -1720,13 +1712,135 @@ class BackendAdapter {
       
       archive.pipe(output);
       
-      // Add each Excel file to the ZIP
-      exportedFiles.forEach(file => {
-        const filePath = path.join(exportDir, file.filename);
-        if (fs.existsSync(filePath)) {
-          archive.file(filePath, { name: file.filename });
+      // Export each job directly to ZIP without creating individual files
+      for (const job of jobs.executions) {
+        try {
+          // Get job data and create Excel content in memory
+          const jobResult = await this.jobExecution.getJobExecution(job.id);
+          if (!jobResult.success) {
+            console.warn(`Failed to get job ${job.id}:`, jobResult.error);
+            continue;
+          }
+          
+          const jobData = jobResult.execution;
+          const imagesResult = await this.generatedImage.getGeneratedImagesByExecution(job.id);
+          const images = imagesResult.success ? imagesResult.images || [] : [];
+          
+          // Get job configuration if available
+          let jobConfig = null;
+          if (jobData.configurationId) {
+            try {
+              const configResult = await this.jobConfig.getConfigurationById(jobData.configurationId);
+              if (configResult.success) {
+                jobConfig = configResult.configuration;
+              }
+            } catch (error) {
+              console.warn('Could not load job configuration:', error);
+            }
+          }
+          
+          // Create Excel workbook in memory
+          const workbook = XLSX.utils.book_new();
+          
+          // Job Summary Sheet - Use classic table format
+          const jobSummaryData = [
+            ['Job ID', 'Label', 'Status', 'Started At', 'Completed At', 'Total Images', 'Successful Images', 'Failed Images', 'Error Message', 'Configuration ID'],
+            [
+              jobData.id,
+              jobData.label || 'No label',
+              jobData.status,
+              jobData.startedAt ? new Date(jobData.startedAt).toLocaleString() : 'N/A',
+              jobData.completedAt ? new Date(jobData.completedAt).toLocaleString() : 'N/A',
+              jobData.totalImages || 0,
+              jobData.successfulImages || 0,
+              jobData.failedImages || 0,
+              jobData.errorMessage || 'None',
+              jobData.configurationId || 'None'
+            ]
+          ];
+          
+          if (jobConfig) {
+            jobSummaryData[0].push('Configuration Name', 'Created At', 'Updated At');
+            jobSummaryData[1].push(
+              jobConfig.name || 'Unknown',
+              jobConfig.createdAt ? new Date(jobConfig.createdAt).toLocaleString() : 'N/A',
+              jobConfig.updatedAt ? new Date(jobConfig.updatedAt).toLocaleString() : 'N/A'
+            );
+          }
+          
+          const jobSummarySheet = XLSX.utils.aoa_to_sheet(jobSummaryData);
+          XLSX.utils.book_append_sheet(workbook, jobSummarySheet, 'Job Summary');
+          
+          // Images Sheet
+          if (images.length > 0) {
+            const imagesData = [
+              ['Image ID', 'Execution ID', 'Generation Prompt', 'Seed', 'QC Status', 'QC Reason', 'Final Image Path', 'Created At']
+            ];
+            
+            images.forEach(image => {
+              imagesData.push([
+                image.id,
+                image.executionId,
+                image.generationPrompt || 'N/A',
+                image.seed || 'N/A',
+                image.qcStatus || 'N/A',
+                image.qcReason || 'N/A',
+                image.finalImagePath || 'N/A',
+                image.createdAt ? new Date(image.createdAt).toLocaleString() : 'N/A'
+              ]);
+            });
+            
+            const imagesSheet = XLSX.utils.aoa_to_sheet(imagesData);
+            XLSX.utils.book_append_sheet(workbook, imagesSheet, 'Images');
+          }
+          
+          // Configuration Sheet (if available) - Use classic table format
+          if (jobConfig && jobConfig.settings) {
+            const flattenSettings = (obj, prefix = '') => {
+              const result = [];
+              for (const [key, value] of Object.entries(obj)) {
+                const fullKey = prefix ? `${prefix}.${key}` : key;
+                if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                  result.push(...flattenSettings(value, fullKey));
+                } else {
+                  result.push([fullKey, value]);
+                }
+              }
+              return result;
+            };
+            
+            const flattenedSettings = flattenSettings(jobConfig.settings);
+            
+            if (flattenedSettings.length > 0) {
+              const configData = [flattenedSettings.map(([key]) => key)];
+              configData.push(flattenedSettings.map(([, value]) => value));
+              
+              const configSheet = XLSX.utils.aoa_to_sheet(configData);
+              XLSX.utils.book_append_sheet(workbook, configSheet, 'Configuration');
+            }
+          }
+          
+          // Generate filename for this job
+          const jobLabel = jobData.label && jobData.label.trim() !== '' ? jobData.label.replace(/[^a-zA-Z0-9]/g, '_') : 'Job';
+          const filename = `${jobLabel}_${jobData.id}_${timestamp}.xlsx`;
+          
+          // Convert workbook to buffer and add to ZIP
+          const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+          archive.append(excelBuffer, { name: filename });
+          
+          exportedFiles.push({
+            jobId: jobData.id,
+            label: jobData.label || 'No label',
+            filename: filename
+          });
+        } catch (error) {
+          console.warn(`Error exporting job ${job.id}:`, error);
         }
-      });
+      }
+      
+      if (exportedFiles.length === 0) {
+        return { success: false, error: 'Failed to export any jobs' };
+      }
       
       // Add a summary text file
       const summaryContent = `Bulk Export Summary
