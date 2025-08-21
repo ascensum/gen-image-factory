@@ -1738,36 +1738,7 @@ class JobRunner extends EventEmitter {
     }
 
     // Filter logs based on mode
-    // Smart heartbeat: Add progress update only when needed for UI responsiveness
-    if (this.jobState.status === 'running' && this.jobState.currentStep) {
-      const currentStepConfig = PROGRESS_STEPS.find(s => s.name === this.jobState.currentStep);
-      const progressMsg = `Progress: ${this.jobState.progress}% - ${currentStepConfig ? currentStepConfig.description : this.jobState.currentStep}`;
-      
-      // Only add progress message if it's different from the last one
-      const lastLog = logs[logs.length - 1];
-      if (!lastLog || lastLog.message !== progressMsg) {
-        logs.push({
-          id: Date.now().toString(),
-          timestamp: new Date(),
-          level: 'info',
-          message: progressMsg,
-          source: 'job-runner',
-          stepName: this.jobState.currentStep,
-          subStep: 'progress_update',
-          imageIndex: null,
-          durationMs: null,
-          errorCode: null,
-          metadata: { 
-            progress: this.jobState.progress,
-            step: this.jobState.currentStep
-          },
-          progress: this.jobState.progress,
-          totalImages: this.jobState.totalImages,
-          successfulImages: this.jobState.successfulImages,
-          failedImages: this.jobState.failedImages
-        });
-      }
-    }
+    // No more old-style progress heartbeat - structured logging handles all progress updates
     
     // Return a copy, filtered by mode
     const output = mode === 'standard' ? logs.filter(log => log.level !== 'debug') : logs;
