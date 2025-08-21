@@ -326,13 +326,25 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         setLogs([]);
         return;
       }
-      const jobLogs = await window.electronAPI.jobManagement.getJobLogs('standard');
+      // Use debug mode if enabled in settings
+      let mode = 'standard';
+      try {
+        const settingsRes = await window.electronAPI.getSettings?.();
+        if (settingsRes?.settings?.advanced?.debugMode) {
+          mode = 'debug';
+        }
+      } catch {}
+      const jobLogs = await window.electronAPI.jobManagement.getJobLogs(mode);
       console.log('Logs loaded:', jobLogs);
       if (jobLogs && Array.isArray(jobLogs)) {
-        setLogs(jobLogs);
+        // Append to existing logs with a simple ring buffer (max 1000)
+        setLogs((prev) => {
+          const merged = [...prev, ...jobLogs];
+          return merged.length > 1000 ? merged.slice(merged.length - 1000) : merged;
+        });
       } else {
         console.warn('getJobLogs returned non-array:', jobLogs);
-        setLogs([]);
+        // Do not clear existing logs on malformed response
       }
     } catch (error) {
       console.error('Failed to load logs:', error);
@@ -591,8 +603,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
             />
           </div>
           
-          {/* Real-time Logs - Takes remaining space but with reduced height */}
-          <div className="h-48 overflow-y-auto">
+          {/* Real-time Logs - Allow component to control scrolling; fill available space */}
+          <div className="flex-1 min-h-0">
             <LogViewer
               logs={logs}
               jobStatus={jobStatus.state}

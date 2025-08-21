@@ -1253,7 +1253,8 @@ class JobRunner extends EventEmitter {
     }
     // Return a copy, filtered by mode
     const output = mode === 'standard' ? logs.filter(log => log.level !== 'debug') : logs;
-    return output.slice(-300);
+    // Increase server-side cap so UI and export can include deeper traces
+    return output.slice(-1000);
   }
 
   /**

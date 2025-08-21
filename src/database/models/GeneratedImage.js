@@ -1,16 +1,95 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
 /**
  * GeneratedImage Database Model
  * 
- * Stores individual image generation results with metadata and processing settings
- * Implements QC status tracking and image result queries with foreign key to JobExecution
+ * Stores metadata and file paths for generated images with foreign key relationship to JobExecution
+ * Implements image metadata storage, retrieval, and cleanup operations
  */
 class GeneratedImage {
   constructor() {
-    this.dbPath = path.join(__dirname, '../../../data/settings.db');
+    // Cross-platform database path resolution
+    this.dbPath = this.resolveDatabasePath();
     this.init();
+  }
+
+  resolveDatabasePath() {
+    // Cross-platform database path resolution that works on all OS
+    const possiblePaths = [];
+    
+    // 1. PRIMARY: Use Electron's built-in cross-platform userData path (most reliable)
+    try {
+      const { app } = require('electron');
+      if (app && app.getPath) {
+        const userDataPath = app.getPath('userData');
+        possiblePaths.push(path.join(userDataPath, 'gen-image-factory.db'));
+        console.log('✅ Using Electron cross-platform userData path');
+      }
+    } catch (error) {
+      // Electron not available or app not ready
+      console.log('ℹ️ Electron not available, using fallback paths');
+    }
+    
+    // 2. FALLBACK: Use OS-agnostic home directory approach (works on all platforms)
+    try {
+      const os = require('os');
+      const homeDir = os.homedir();
+      
+      // Create a hidden folder in user's home directory (works on all OS)
+      const appDataDir = path.join(homeDir, '.gen-image-factory');
+      possiblePaths.push(path.join(appDataDir, 'gen-image-factory.db'));
+      console.log('✅ Using cross-platform home directory fallback');
+    } catch (error) {
+      console.log('❌ Home directory detection failed:', error.message);
+    }
+    
+    // 3. DEVELOPMENT: Use project-relative paths for development/testing
+    try {
+      const projectRoot = process.cwd();
+      possiblePaths.push(path.join(projectRoot, 'data', 'gen-image-factory.db'));
+      console.log('✅ Using development project path');
+    } catch (error) {
+      console.log('❌ Project path detection failed:', error.message);
+    }
+    
+    // 4. LAST RESORT: Use __dirname-based paths
+    try {
+      const currentDir = __dirname;
+      possiblePaths.push(path.join(currentDir, '..', '..', '..', 'data', 'gen-image-factory.db'));
+      console.log('✅ Using __dirname fallback path');
+    } catch (error) {
+      console.log('❌ __dirname resolution failed:', error.message);
+    }
+    
+    // Find the first accessible path
+    for (const dbPath of possiblePaths) {
+      try {
+        const dbDir = path.dirname(dbPath);
+        
+        // Ensure directory exists
+        if (!fs.existsSync(dbDir)) {
+          fs.mkdirSync(dbDir, { recursive: true });
+        }
+        
+        // Test write access
+        const testFile = path.join(dbDir, '.test-write');
+        fs.writeFileSync(testFile, 'test');
+        fs.unlinkSync(testFile);
+        
+        console.log(`✅ Database path resolved: ${dbPath}`);
+        return dbPath;
+      } catch (error) {
+        console.log(`❌ Path not accessible: ${dbPath} - ${error.message}`);
+        continue;
+      }
+    }
+    
+    // Final fallback: use home directory with hidden folder (works on all OS)
+    const finalFallback = path.join(require('os').homedir(), '.gen-image-factory', 'gen-image-factory.db');
+    console.warn(`⚠️ Using final cross-platform fallback: ${finalFallback}`);
+    return finalFallback;
   }
 
   async init() {
@@ -44,50 +123,50 @@ class GeneratedImage {
           FOREIGN KEY (execution_id) REFERENCES job_executions(id) ON DELETE CASCADE
         )
       `;
-      
-      // Check if we need to migrate existing table
-      this.checkAndMigrateTable().then(() => {
-        const createIndexesSQL = [
-          'CREATE INDEX IF NOT EXISTS idx_generated_images_execution_id ON generated_images(execution_id)',
-          'CREATE INDEX IF NOT EXISTS idx_generated_images_image_mapping_id ON generated_images(image_mapping_id)',
-          'CREATE INDEX IF NOT EXISTS idx_generated_images_qc_status ON generated_images(qc_status)',
-          'CREATE INDEX IF NOT EXISTS idx_generated_images_created_at ON generated_images(created_at)'
-        ];
 
-        this.db.serialize(() => {
-          // Create table
-          this.db.run(createTableSQL, (err) => {
-            if (err) {
-              console.error('Error creating generated_images table:', err);
-              reject(err);
-              return;
-            }
-            console.log('Generated images table created successfully');
-          });
+      const createIndexesSQL = [
+        'CREATE INDEX IF NOT EXISTS idx_generated_images_execution_id ON generated_images(execution_id)',
+        'CREATE INDEX IF NOT EXISTS idx_generated_images_image_mapping_id ON generated_images(image_mapping_id)',
+        'CREATE INDEX IF NOT EXISTS idx_generated_images_qc_status ON generated_images(qc_status)',
+        'CREATE INDEX IF NOT EXISTS idx_generated_images_created_at ON generated_images(created_at)'
+      ];
 
-          // Create indexes
-          createIndexesSQL.forEach((indexSQL, index) => {
-            this.db.run(indexSQL, (err) => {
+      this.db.serialize(() => {
+        // First, ensure the table exists to avoid PRAGMA/migration against a missing table
+        this.db.run(createTableSQL, (err) => {
+          if (err) {
+            console.error('Error creating generated_images table:', err);
+            reject(err);
+            return;
+          }
+          console.log('Generated images table ensured (created if missing)');
+
+          // Now check if we need to migrate an older schema
+          this.checkAndMigrateTable().then(() => {
+            // Create indexes
+            createIndexesSQL.forEach((indexSQL, index) => {
+              this.db.run(indexSQL, (err) => {
+                if (err) {
+                  console.error(`Error creating index ${index}:`, err);
+                } else {
+                  console.log(`Index ${index} created successfully`);
+                }
+              });
+            });
+
+            // Wait for all operations to complete
+            this.db.wait((err) => {
               if (err) {
-                console.error(`Error creating index ${index}:`, err);
+                reject(err);
               } else {
-                console.log(`Index ${index} created successfully`);
+                resolve();
               }
             });
-          });
-
-          // Wait for all operations to complete
-          this.db.wait((err) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
-            }
+          }).catch((error) => {
+            console.error('Migration failed:', error);
+            reject(error);
           });
         });
-      }).catch((error) => {
-        console.error('Migration failed:', error);
-        reject(error);
       });
     });
   }
@@ -154,47 +233,54 @@ class GeneratedImage {
       `;
 
       this.db.serialize(() => {
-        // Create new table
-        this.db.run(createNewTableSQL, (err) => {
+        // Clean up any partial migration remnants first
+        this.db.run('DROP TABLE IF EXISTS generated_images_new', (err) => {
           if (err) {
-            console.error('Error creating new generated_images table:', err);
-            reject(err);
-            return;
+            console.error('Error dropping leftover generated_images_new table:', err);
           }
-          console.log('✅ New generated_images table created');
 
-          // Copy data from old table to new table
-          this.db.run(`
-            INSERT INTO generated_images_new 
-            SELECT id, 'legacy_' || id as image_mapping_id, execution_id, generation_prompt, seed, qc_status, qc_reason, 
-                   final_image_path, metadata, processing_settings, created_at
-            FROM generated_images
-          `, (err) => {
+          // Create new table
+          this.db.run(createNewTableSQL, (err) => {
             if (err) {
-              console.error('Error copying data to new table:', err);
+              console.error('Error creating new generated_images table:', err);
               reject(err);
               return;
             }
-            console.log('✅ Data copied to new table');
+            console.log('✅ New generated_images table created');
 
-            // Drop old table
-            this.db.run('DROP TABLE generated_images', (err) => {
+            // Copy data from old table to new table
+            this.db.run(`
+              INSERT INTO generated_images_new 
+              SELECT id, 'legacy_' || id as image_mapping_id, execution_id, generation_prompt, seed, qc_status, qc_reason, 
+                     final_image_path, metadata, processing_settings, created_at
+              FROM generated_images
+            `, (err) => {
               if (err) {
-                console.error('Error dropping old table:', err);
+                console.error('Error copying data to new table:', err);
                 reject(err);
                 return;
               }
-              console.log('✅ Old table dropped');
+              console.log('✅ Data copied to new table');
 
-              // Rename new table
-              this.db.run('ALTER TABLE generated_images_new RENAME TO generated_images', (err) => {
+              // Drop old table
+              this.db.run('DROP TABLE generated_images', (err) => {
                 if (err) {
-                  console.error('Error renaming new table:', err);
+                  console.error('Error dropping old table:', err);
                   reject(err);
                   return;
                 }
-                console.log('✅ Table migration completed successfully');
-                resolve();
+                console.log('✅ Old table dropped');
+
+                // Rename new table
+                this.db.run('ALTER TABLE generated_images_new RENAME TO generated_images', (err) => {
+                  if (err) {
+                    console.error('Error renaming new table:', err);
+                    reject(err);
+                    return;
+                  }
+                  console.log('✅ Table migration completed successfully');
+                  resolve();
+                });
               });
             });
           });
@@ -204,6 +290,8 @@ class GeneratedImage {
   }
 
   async saveGeneratedImage(image) {
+    // Ensure tables exist before insert (handles first-run race conditions)
+    await this.createTables().catch(() => {});
     return new Promise((resolve, reject) => {
       const sql = `
         INSERT INTO generated_images 
@@ -267,6 +355,8 @@ class GeneratedImage {
   }
 
   async getGeneratedImagesByExecution(executionId) {
+    // Ensure tables exist before query (handles first-run race conditions)
+    await this.createTables().catch(() => {});
     return new Promise((resolve, reject) => {
       const sql = 'SELECT * FROM generated_images WHERE execution_id = ? ORDER BY created_at DESC';
       

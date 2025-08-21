@@ -29,8 +29,8 @@
     "test:regression:unit": "./scripts/run-regression-tests.sh --unit",
     "test:regression:integration": "./scripts/run-regression-tests.sh --integration",
     "prepare": "husky install",
-    "test:job-management": "vitest run tests/unit/logic/jobManagement.logic.test.ts && vitest run tests/integration/backend/ExportExcel.integration.test.ts",
-    "test:job-management:watch": "vitest tests/unit/logic/jobManagement.logic.test.ts && vitest tests/integration/backend/ExportExcel.integration.test.ts"
+    "test:job-management": "vitest run tests/unit/logic/jobManagement.logic.test.ts tests/integration/backend/ExportExcel.integration.test.ts",
+    "test:job-management:watch": "vitest tests/unit/logic/jobManagement.logic.test.ts tests/integration/backend/ExportExcel.integration.test.ts"
   },
   "author": "Gen Image Factory Team",
   "license": "MIT",

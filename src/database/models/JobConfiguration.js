@@ -1,5 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
 /**
  * JobConfiguration Database Model
@@ -11,8 +12,86 @@ const path = require('path');
  */
 class JobConfiguration {
   constructor() {
-    this.dbPath = path.join(__dirname, '../../../data/settings.db');
+    // Cross-platform database path resolution
+    this.dbPath = this.resolveDatabasePath();
     this.init();
+  }
+
+  resolveDatabasePath() {
+    // Cross-platform database path resolution that works on all OS
+    const possiblePaths = [];
+    
+    // 1. PRIMARY: Use Electron's built-in cross-platform userData path (most reliable)
+    try {
+      const { app } = require('electron');
+      if (app && app.getPath) {
+        const userDataPath = app.getPath('userData');
+        possiblePaths.push(path.join(userDataPath, 'gen-image-factory.db'));
+        console.log('✅ Using Electron cross-platform userData path');
+      }
+    } catch (error) {
+      // Electron not available or app not ready
+      console.log('ℹ️ Electron not available, using fallback paths');
+    }
+    
+    // 2. FALLBACK: Use OS-agnostic home directory approach (works on all platforms)
+    try {
+      const os = require('os');
+      const homeDir = os.homedir();
+      
+      // Create a hidden folder in user's home directory (works on all OS)
+      const appDataDir = path.join(homeDir, '.gen-image-factory');
+      possiblePaths.push(path.join(appDataDir, 'gen-image-factory.db'));
+      console.log('✅ Using cross-platform home directory fallback');
+    } catch (error) {
+      console.log('❌ Home directory detection failed:', error.message);
+    }
+    
+    // 3. DEVELOPMENT: Use project-relative paths for development/testing
+    try {
+      const projectRoot = process.cwd();
+      possiblePaths.push(path.join(projectRoot, 'data', 'gen-image-factory.db'));
+      console.log('✅ Using development project path');
+    } catch (error) {
+      console.log('❌ Project path detection failed:', error.message);
+    }
+    
+    // 4. LAST RESORT: Use __dirname-based paths
+    try {
+      const currentDir = __dirname;
+      possiblePaths.push(path.join(currentDir, '..', '..', '..', 'data', 'gen-image-factory.db'));
+      console.log('✅ Using __dirname fallback path');
+    } catch (error) {
+      console.log('❌ __dirname resolution failed:', error.message);
+    }
+    
+    // Find the first accessible path
+    for (const dbPath of possiblePaths) {
+      try {
+        const dbDir = path.dirname(dbPath);
+        
+        // Ensure directory exists
+        if (!fs.existsSync(dbDir)) {
+          fs.mkdirSync(dbDir, { recursive: true });
+        }
+        
+        // Test write access
+        const testFile = path.join(dbDir, '.test-write');
+        fs.writeFileSync(testFile, 'test');
+        fs.unlinkSync(testFile);
+        
+        console.log(`✅ Database path resolved: ${dbPath}`);
+        return dbPath;
+      } catch (error) {
+        console.log(`❌ Path not accessible: ${dbPath} - ${error.message}`);
+        continue;
+      }
+    }
+    
+    // Final fallback: use home directory with hidden folder (works on all OS)
+    const finalFallback = path.join(require('os').homedir(), '.gen-image-factory', 'gen-image-factory.db');
+    console.warn(`⚠️ Using final cross-platform fallback: ${finalFallback}`);
+    return finalFallback;
   }
 
   async init() {
@@ -107,7 +186,7 @@ class JobConfiguration {
         } else if (row) {
           try {
             const settings = JSON.parse(row.settings);
-            resolve({ 
+            const result = { 
               success: true, 
               configuration: {
                 id: row.id,
@@ -116,7 +195,8 @@ class JobConfiguration {
                 createdAt: row.created_at,
                 updatedAt: row.updated_at
               }
-            });
+            };
+            resolve(result);
           } catch (parseError) {
             console.error('Error parsing settings JSON:', parseError);
             reject(parseError);
