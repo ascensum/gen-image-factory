@@ -64,6 +64,9 @@ class JobRunner extends EventEmitter {
       metadata = {}
     } = options;
 
+    // Security: Sanitize metadata to remove any potential sensitive information
+    const sanitizedMetadata = this._sanitizeMetadata(metadata);
+
     // Create structured log entry
     const structuredLog = {
       id: Date.now().toString(),
@@ -77,7 +80,7 @@ class JobRunner extends EventEmitter {
       imageIndex,
       durationMs,
       errorCode,
-      metadata,
+      metadata: sanitizedMetadata,
       // Progress context
       progress: this.jobState.progress,
       totalImages: this.jobState.totalImages,
@@ -101,6 +104,48 @@ class JobRunner extends EventEmitter {
     console.log(`${prefix} ${stepPrefix} ${level.toUpperCase()}: ${message}${durationSuffix}`);
 
     return structuredLog;
+  }
+
+  /**
+   * Security: Sanitize metadata to remove sensitive information
+   * @param {Object} metadata - Raw metadata object
+   * @returns {Object} Sanitized metadata object
+   */
+  _sanitizeMetadata(metadata) {
+    if (!metadata || typeof metadata !== 'object') {
+      return metadata;
+    }
+
+    const sanitized = {};
+    const sensitivePatterns = [
+      /api[_-]?key/i,
+      /password/i,
+      /secret/i,
+      /token/i,
+      /auth/i,
+      /credential/i
+    ];
+
+    for (const [key, value] of Object.entries(metadata)) {
+      // Check if key contains sensitive patterns
+      const isSensitiveKey = sensitivePatterns.some(pattern => pattern.test(key));
+      
+      if (isSensitiveKey) {
+        // Replace sensitive values with [REDACTED]
+        sanitized[key] = '[REDACTED]';
+      } else if (typeof value === 'string' && value.length > 100) {
+        // Truncate long strings to prevent potential sensitive data exposure
+        sanitized[key] = value.substring(0, 100) + '...';
+      } else if (typeof value === 'object' && value !== null) {
+        // Recursively sanitize nested objects
+        sanitized[key] = this._sanitizeMetadata(value);
+      } else {
+        // Safe to include
+        sanitized[key] = value;
+      }
+    }
+
+    return sanitized;
   }
 
   /**
@@ -738,7 +783,14 @@ class JobRunner extends EventEmitter {
         stepName: 'parameter_generation',
         subStep: 'start',
         message: 'Starting parameter generation',
-        metadata: { configKeys: Object.keys(config || {}) }
+        metadata: { 
+          configKeys: Object.keys(config || {}).filter(key => key !== 'apiKeys'),
+          hasApiKeys: !!config?.apiKeys,
+          hasParameters: !!config?.parameters,
+          hasProcessing: !!config?.processing,
+          hasAI: !!config?.ai,
+          hasFilePaths: !!config?.filePaths
+        }
       });
 
       console.log('🔧 generateParameters called with config:', config);
@@ -775,7 +827,11 @@ class JobRunner extends EventEmitter {
         stepName: 'parameter_generation',
         subStep: 'generate',
         message: 'Calling paramsGeneratorModule',
-        metadata: { systemPrompt: config.parameters?.systemPrompt, openaiModel: config.parameters?.openaiModel }
+        metadata: { 
+          hasSystemPrompt: !!config.parameters?.systemPrompt,
+          systemPromptLength: config.parameters?.systemPrompt?.length || 0,
+          openaiModel: config.parameters?.openaiModel 
+        }
       });
       
       const parameters = await paramsGeneratorModule.paramsGeneratorModule(
