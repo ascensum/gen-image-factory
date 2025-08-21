@@ -18,6 +18,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
   const [autoScroll, setAutoScroll] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState<'all' | 'info' | 'warn' | 'error' | 'debug'>('all');
+  const [showStructured, setShowStructured] = useState(false);
   const [scrollPosition, setScrollPosition] = useState(0);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
@@ -206,6 +207,18 @@ const LogViewer: React.FC<LogViewerProps> = ({
                 <option value="debug">Debug Level</option>
               </select>
             </div>
+
+            {/* Structured view toggle */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium text-gray-700">Structured:</span>
+              <input
+                type="checkbox"
+                checked={showStructured}
+                onChange={(e) => setShowStructured(e.target.checked)}
+                aria-label="Show structured log view"
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+            </div>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -331,6 +344,68 @@ const LogViewer: React.FC<LogViewerProps> = ({
                   {/* Message */}
                   <div className="flex-1 text-gray-900 break-words whitespace-pre">
                     {log.message}
+                    
+                    {/* Structured information when enabled */}
+                    {showStructured && (
+                      <div className="mt-1 text-xs text-gray-600 space-y-1">
+                        {/* Step and sub-step */}
+                        {(log.stepName || log.subStep) && (
+                          <div className="flex items-center space-x-2">
+                            {log.stepName && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                {log.stepName}
+                              </span>
+                            )}
+                            {log.subStep && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                {log.subStep}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Image index */}
+                        {log.imageIndex !== null && log.imageIndex !== undefined && (
+                          <div className="text-purple-600">
+                            📷 Image {log.imageIndex + 1}
+                          </div>
+                        )}
+                        
+                        {/* Duration */}
+                        {log.durationMs !== null && log.durationMs !== undefined && (
+                          <div className="text-orange-600">
+                            ⏱️ {log.durationMs}ms
+                          </div>
+                        )}
+                        
+                        {/* Progress info */}
+                        {(log.progress !== undefined || log.totalImages !== undefined) && (
+                          <div className="text-gray-600">
+                            {log.progress !== undefined && `Progress: ${log.progress}%`}
+                            {log.totalImages !== undefined && ` | Images: ${log.successfulImages || 0}/${log.totalImages}`}
+                          </div>
+                        )}
+                        
+                        {/* Metadata */}
+                        {log.metadata && Object.keys(log.metadata).length > 0 && (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+                              📋 Metadata ({Object.keys(log.metadata).length} fields)
+                            </summary>
+                            <div className="mt-1 pl-2 text-gray-600">
+                              {Object.entries(log.metadata).map(([key, value]) => (
+                                <div key={key} className="flex justify-between">
+                                  <span className="font-medium">{key}:</span>
+                                  <span className="ml-2">
+                                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Source */}

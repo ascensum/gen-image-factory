@@ -134,6 +134,17 @@ export interface LogEntry {
   level: 'info' | 'warn' | 'error' | 'debug';
   message: string;
   source: string;
+  // New structured logging fields
+  stepName?: string;
+  subStep?: string;
+  imageIndex?: number | null;
+  durationMs?: number | null;
+  errorCode?: string | null;
+  metadata?: Record<string, any>;
+  progress?: number;
+  totalImages?: number;
+  successfulImages?: number;
+  failedImages?: number;
 }
 
 export interface GeneratedImage {
