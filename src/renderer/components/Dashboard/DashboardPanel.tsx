@@ -348,11 +348,9 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       const jobLogs = await window.electronAPI.jobManagement.getJobLogs(mode);
       console.log('Logs loaded:', jobLogs);
       if (jobLogs && Array.isArray(jobLogs)) {
-        // Append to existing logs with a simple ring buffer (max 1000)
-        setLogs((prev) => {
-          const merged = [...prev, ...jobLogs];
-          return merged.length > 1000 ? merged.slice(merged.length - 1000) : merged;
-        });
+        // Replace logs instead of appending to prevent duplication
+        // Backend already maintains the log buffer, so we just use what it gives us
+        setLogs(jobLogs);
       } else {
         console.warn('getJobLogs returned non-array:', jobLogs);
         // Do not clear existing logs on malformed response
