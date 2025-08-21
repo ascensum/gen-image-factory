@@ -492,7 +492,6 @@ class JobRunner extends EventEmitter {
       
       // Step 1: Parameter Generation
       if (this.isStopping) return;
-      this.emitProgress('parameter_generation', 10, 'Generating parameters from keywords...');
       
       console.log('🔧 About to call generateParameters with config:', config);
       console.log('🔧 Config.parameters:', {
@@ -509,11 +508,9 @@ class JobRunner extends EventEmitter {
       console.log('✅ Parameters.aspectRatios:', parameters.aspectRatios);
       
       this.completedSteps.push('parameter_generation');
-      this.emitProgress('parameter_generation', 15, 'Parameters generated successfully');
 
       // Step 2: Image Generation
       if (this.isStopping) return;
-      this.emitProgress('image_generation', 25, 'Starting image generation...');
       
       console.log('🔍 DEBUG: About to call generateImages');
       console.log('🔍 DEBUG: config passed to generateImages:', config);
@@ -579,16 +576,12 @@ class JobRunner extends EventEmitter {
       
       
       this.completedSteps.push('image_generation');
-      this.emitProgress('image_generation', 75, 'Images generated successfully');
 
       // Step 3: Background Removal (if enabled)
       if (config.processing && config.processing.removeBg && !this.isStopping) {
-        this.emitProgress('background_removal', 80, 'Removing backgrounds...');
-        
         await this.removeBackgrounds(images, config);
         
         this.completedSteps.push('background_removal');
-        this.emitProgress('background_removal', 90, 'Backgrounds removed successfully');
       }
 
       // Step 4: Quality Check (if enabled) - Run after images are saved to database
@@ -601,7 +594,6 @@ class JobRunner extends EventEmitter {
       
       if (config.ai && config.ai.runQualityCheck && !this.isStopping) {
         console.log('✅ Quality check condition is TRUE - proceeding with quality checks');
-        this.emitProgress('quality_check', 92, 'Running quality checks...');
         
         // Get the saved images from database to have their IDs
         console.log('🔍 DEBUG: About to call getSavedImagesForExecution with executionId:', this.databaseExecutionId);
@@ -617,14 +609,12 @@ class JobRunner extends EventEmitter {
         }
         
         this.completedSteps.push('quality_check');
-        this.emitProgress('quality_check', 95, 'Quality checks completed');
       } else {
         console.log('❌ Quality check condition is FALSE - skipping quality checks');
         console.log('❌ Reason: config.ai =', config.ai, ', runQualityCheck =', config.ai?.runQualityCheck, ', isStopping =', this.isStopping);
         
         // When quality checks are disabled, automatically approve all images
         console.log('✅ Quality checks disabled - automatically approving all images');
-        this.emitProgress('auto_approval', 92, 'Auto-approving images (QC disabled)...');
         
         try {
           // Get the saved images from database to have their IDs
@@ -654,23 +644,18 @@ class JobRunner extends EventEmitter {
         }
         
         this.completedSteps.push('auto_approval');
-        this.emitProgress('auto_approval', 95, 'Images auto-approved successfully');
       }
 
       // Step 5: Metadata Generation (if enabled)
       if (config.ai && config.ai.runMetadataGen && !this.isStopping) {
-        this.emitProgress('metadata_generation', 97, 'Generating metadata...');
-        
         await this.generateMetadata(images, config);
         
         this.completedSteps.push('metadata_generation');
-        this.emitProgress('metadata_generation', 100, 'Metadata generated successfully');
       }
 
       // Job completed successfully
       this.jobState.status = 'completed';
       this.jobState.endTime = new Date();
-      this.emitProgress('completed', 100, 'Job completed successfully');
       
       // Save completed job execution to database if backendAdapter is available
       if (this.backendAdapter) {
