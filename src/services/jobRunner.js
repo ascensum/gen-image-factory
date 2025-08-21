@@ -1239,7 +1239,7 @@ class JobRunner extends EventEmitter {
 
     // Filter logs based on mode
     // Optionally add a lightweight debug heartbeat when debug mode is enabled
-    if (process.env.DEBUG_MODE === 'true' && this.jobState.status === 'running') {
+    if (String(process.env.DEBUG_MODE).toLowerCase() === 'true' && this.jobState.status === 'running') {
       const dbgMsg = `debug: step=${this.jobState.currentStep || '-'} progress=${this.jobState.progress || 0}%`;
       if (!logs.length || logs[logs.length - 1].message !== dbgMsg) {
         logs.push({

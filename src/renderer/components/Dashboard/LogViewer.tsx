@@ -14,7 +14,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
   isLoading = false,
   onRefresh
 }) => {
-  const [logMode, setLogMode] = useState<'standard' | 'debug'>('standard');
+  const [logMode, setLogMode] = useState<'standard' | 'debug'>('debug');
   const [autoScroll, setAutoScroll] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState<'all' | 'info' | 'warn' | 'error' | 'debug'>('all');
@@ -109,9 +109,10 @@ const LogViewer: React.FC<LogViewerProps> = ({
   };
 
   const exportLogs = () => {
-    const logContent = filteredLogs
+    const list = filteredLogs && filteredLogs.length > 0 ? filteredLogs : logs;
+    const logContent = list
       .map(log => `[${formatTimestamp(log.timestamp)}] [${log.level.toUpperCase()}] ${log.message}`)
-      .join('\\n');
+      .join('\n');
     
     // For test environment, just log the content and call window.open if available
     if (typeof window === 'undefined' || !window.URL || !window.URL.createObjectURL) {
@@ -273,8 +274,8 @@ const LogViewer: React.FC<LogViewerProps> = ({
           ref={logContainerRef}
           role="list"
           aria-label="Log entries"
-          className="flex-1 overflow-y-auto font-mono text-sm bg-gray-50 rounded-lg p-4 min-h-0 logs-scroll border border-gray-200"
-          style={{ minHeight: '300px' }}
+          className="flex-1 font-mono text-sm bg-gray-50 rounded-lg p-4 min-h-0 logs-scroll border border-gray-200"
+          style={{ minHeight: '144px', maxHeight: '320px', overflowY: 'auto' }}
         >
           {/* Scroll indicator */}
           <div className="text-xs text-gray-500 text-center py-2 border-b border-gray-200 mb-2">
@@ -312,7 +313,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
                   }`}
                 >
                   {/* Timestamp */}
-                  <div className="flex-shrink-0 text-xs text-gray-500 w-16">
+                  <div className="flex-shrink-0 text-xs text-gray-500 w-20">
                     {formatTimestamp(log.timestamp)}
                   </div>
 
@@ -328,7 +329,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
                   </div>
 
                   {/* Message */}
-                  <div className="flex-1 text-gray-900 break-words">
+                  <div className="flex-1 text-gray-900 break-words whitespace-pre">
                     {log.message}
                   </div>
 
