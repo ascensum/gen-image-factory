@@ -68,7 +68,12 @@ class JobRunner extends EventEmitter {
 
     // Update progress state if requested (for major step transitions)
     if (updateProgress && stepName !== this.jobState.currentStep) {
-      this.updateProgress(stepName);
+      // Update internal state
+      this.jobState.currentStep = stepName;
+      
+      // Calculate and emit progress for UI updates
+      const progress = this.calculateProgress(this.completedSteps, stepName);
+      this.emitProgress(stepName, progress, `Step: ${stepName}`);
     }
 
     // Security: Sanitize metadata to remove any potential sensitive information
@@ -292,6 +297,21 @@ class JobRunner extends EventEmitter {
 
       // Start the job execution
       console.log('🎯 Starting job execution...');
+      
+      // Log job start with structured logging
+      this._logStructured({
+        level: 'info',
+        stepName: 'initialization',
+        subStep: 'start',
+        message: 'Starting job execution',
+        updateProgress: true, // Update progress for job start
+        metadata: { 
+          jobId,
+          hasBackendAdapter: !!this.backendAdapter,
+          isRerun: this.isRerun
+        }
+      });
+      
       this.currentJob = this.executeJob(config, jobId);
       // Save job execution to database if backendAdapter is available
       // BUT NOT during reruns (reruns are handled by the backend rerun handler)
@@ -850,6 +870,7 @@ class JobRunner extends EventEmitter {
         subStep: 'complete',
         message: 'Parameter generation completed successfully',
         durationMs: duration,
+        updateProgress: true, // Update progress for step completion
         metadata: { 
           finalAspectRatios: enhancedParameters.aspectRatios,
           aspectRatiosType: typeof enhancedParameters.aspectRatios,
@@ -1118,6 +1139,7 @@ class JobRunner extends EventEmitter {
           subStep: 'complete',
           message: `Image generation completed successfully: ${processedImages.length} images`,
           durationMs: duration,
+          updateProgress: true, // Update progress for step completion
           metadata: { 
             totalImages: processedImages.length,
             successfulImages: processedImages.length,
@@ -1461,6 +1483,7 @@ class JobRunner extends EventEmitter {
         subStep: 'complete',
         message: `Quality checks completed for all ${images.length} images`,
         durationMs: duration,
+        updateProgress: true, // Update progress for step completion
         metadata: { 
           totalImages: images.length,
           successfulChecks: images.filter(img => img.qcStatus === 'approved').length,
@@ -1552,6 +1575,7 @@ class JobRunner extends EventEmitter {
         subStep: 'complete',
         message: `Metadata generation completed for all ${images.length} images`,
         durationMs: duration,
+        updateProgress: true, // Update progress for step completion
         metadata: { 
           totalImages: images.length,
           successfulMetadata: images.filter(img => !img.metadata?.error).length,
