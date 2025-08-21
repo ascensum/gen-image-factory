@@ -1641,38 +1641,15 @@ class JobRunner extends EventEmitter {
    * @returns {Array} Array of log entries
    */
   getJobLogs(mode = 'standard') {
-    // This would typically come from a log service
-    // For now, generate incremental logs to visualize stacking
+    // Return only the structured logs from _inMemoryLogs
+    // Legacy "Currently executing" messages removed - they were not synchronized with actual progress
     if (!this._inMemoryLogs) {
       this._inMemoryLogs = [];
     }
     const logs = this._inMemoryLogs;
     
-    if (this.jobState.status === 'running' && this.jobState.currentStep) {
-      const currentStepConfig = PROGRESS_STEPS.find(s => s.name === this.jobState.currentStep);
-      const msg = `Currently executing: ${currentStepConfig ? currentStepConfig.description : this.jobState.currentStep}`;
-      // Avoid duplicate consecutive messages
-      if (!logs.length || logs[logs.length - 1].message !== msg) {
-        logs.push({
-          id: Date.now().toString(),
-          timestamp: new Date(),
-          level: 'info',
-          message: msg,
-          source: 'job-runner',
-          // Add structured fields for backward compatibility
-          stepName: this.jobState.currentStep,
-          subStep: 'progress',
-          imageIndex: null,
-          durationMs: null,
-          errorCode: null,
-          metadata: {},
-          progress: this.jobState.progress,
-          totalImages: this.jobState.totalImages,
-          successfulImages: this.jobState.successfulImages,
-          failedImages: this.jobState.failedImages
-        });
-      }
-    }
+    // No more legacy progress messages - rely entirely on structured logging
+    // which is properly synchronized with actual job execution
 
     if (this.jobState.error) {
       const msg = this.jobState.error;
@@ -1699,33 +1676,7 @@ class JobRunner extends EventEmitter {
     }
 
     // Filter logs based on mode
-    // Optionally add a lightweight debug heartbeat when debug mode is enabled
-    if (String(process.env.DEBUG_MODE).toLowerCase() === 'true' && this.jobState.status === 'running') {
-      const dbgMsg = `debug: step=${this.jobState.currentStep || '-'} progress=${this.jobState.progress || 0}%`;
-      if (!logs.length || logs[logs.length - 1].message !== dbgMsg) {
-        logs.push({
-          id: (Date.now() + 2).toString(),
-          timestamp: new Date(),
-          level: 'debug',
-          message: dbgMsg,
-          source: 'job-runner',
-          // Add structured fields for backward compatibility
-          stepName: this.jobState.currentStep || 'debug',
-          subStep: 'heartbeat',
-          imageIndex: null,
-          durationMs: null,
-          errorCode: null,
-          metadata: { 
-            step: this.jobState.currentStep || '-',
-            progress: this.jobState.progress || 0
-          },
-          progress: this.jobState.progress,
-          totalImages: this.jobState.totalImages,
-          successfulImages: this.jobState.successfulImages,
-          failedImages: this.jobState.failedImages
-        });
-      }
-    }
+    // Legacy debug heartbeat removed - structured logging provides better progress tracking
     // Return a copy, filtered by mode
     const output = mode === 'standard' ? logs.filter(log => log.level !== 'debug') : logs;
     // Increase server-side cap so UI and export can include deeper traces
