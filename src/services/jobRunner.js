@@ -51,6 +51,7 @@ class JobRunner extends EventEmitter {
    * @param {number} options.durationMs - Operation duration in milliseconds
    * @param {string} options.errorCode - Specific error identifier
    * @param {Object} options.metadata - Additional context
+   * @param {boolean} options.updateProgress - Whether to update progress state for this log
    */
   _logStructured(options) {
     const {
@@ -61,8 +62,14 @@ class JobRunner extends EventEmitter {
       message,
       durationMs = null,
       errorCode = null,
-      metadata = {}
+      metadata = {},
+      updateProgress = false
     } = options;
+
+    // Update progress state if requested (for major step transitions)
+    if (updateProgress && stepName !== this.jobState.currentStep) {
+      this.updateProgress(stepName);
+    }
 
     // Security: Sanitize metadata to remove any potential sensitive information
     const sanitizedMetadata = this._sanitizeMetadata(metadata);
@@ -783,6 +790,7 @@ class JobRunner extends EventEmitter {
         stepName: 'parameter_generation',
         subStep: 'start',
         message: 'Starting parameter generation',
+        updateProgress: true, // Update progress state for major step transition
         metadata: { 
           configKeys: Object.keys(config || {}).filter(key => key !== 'apiKeys'),
           hasApiKeys: !!config?.apiKeys,
@@ -902,6 +910,7 @@ class JobRunner extends EventEmitter {
         stepName: 'image_generation',
         subStep: 'start',
         message: 'Starting image generation',
+        updateProgress: true, // Update progress state for major step transition
         metadata: { 
           totalImages: config.parameters?.processMode === 'single' ? 1 : 4,
           aspectRatios: parameters.aspectRatios,
@@ -1276,6 +1285,7 @@ class JobRunner extends EventEmitter {
         stepName: 'quality_check',
         subStep: 'start',
         message: `Starting quality checks for ${images.length} images`,
+        updateProgress: true, // Update progress state for major step transition
         metadata: { 
           imageCount: images.length,
           openaiModel: config.parameters?.openaiModel || "gpt-4o",
@@ -1503,7 +1513,21 @@ class JobRunner extends EventEmitter {
    * @returns {Promise<void>}
    */
   async generateMetadata(images, config) {
+    const startTime = Date.now();
     try {
+      this._logStructured({
+        level: 'info',
+        stepName: 'metadata_generation',
+        subStep: 'start',
+        message: `Starting metadata generation for ${images.length} images`,
+        updateProgress: true, // Update progress state for major step transition
+        metadata: { 
+          imageCount: images.length,
+          openaiModel: config.parameters?.openaiModel || 'gpt-4o',
+          hasMetadataPrompt: !!config.ai?.metadataPrompt
+        }
+      });
+      
       console.log('📝 Starting metadata generation for', images.length, 'images');
       
       for (const image of images) {
@@ -1536,9 +1560,38 @@ class JobRunner extends EventEmitter {
         }
       }
       
+      const duration = Date.now() - startTime;
+      this._logStructured({
+        level: 'info',
+        stepName: 'metadata_generation',
+        subStep: 'complete',
+        message: `Metadata generation completed for all ${images.length} images`,
+        durationMs: duration,
+        metadata: { 
+          totalImages: images.length,
+          successfulMetadata: images.filter(img => !img.metadata?.error).length,
+          failedMetadata: images.filter(img => img.metadata?.error).length
+        }
+      });
+      
       console.log('✅ Metadata generation completed for all images');
       
     } catch (error) {
+      const duration = Date.now() - startTime;
+      this._logStructured({
+        level: 'error',
+        stepName: 'metadata_generation',
+        subStep: 'error',
+        message: `Metadata generation failed: ${error.message}`,
+        durationMs: duration,
+        errorCode: 'METADATA_GEN_ERROR',
+        metadata: { 
+          error: error.message,
+          stack: error.stack,
+          imageCount: images.length
+        }
+      });
+      
       console.error('❌ Error during metadata generation:', error);
       throw new Error(`Metadata generation failed: ${error.message}`);
     }
@@ -1676,7 +1729,37 @@ class JobRunner extends EventEmitter {
     }
 
     // Filter logs based on mode
-    // Legacy debug heartbeat removed - structured logging provides better progress tracking
+    // Smart heartbeat: Add progress update only when needed for UI responsiveness
+    if (this.jobState.status === 'running' && this.jobState.currentStep) {
+      const currentStepConfig = PROGRESS_STEPS.find(s => s.name === this.jobState.currentStep);
+      const progressMsg = `Progress: ${this.jobState.progress}% - ${currentStepConfig ? currentStepConfig.description : this.jobState.currentStep}`;
+      
+      // Only add progress message if it's different from the last one
+      const lastLog = logs[logs.length - 1];
+      if (!lastLog || lastLog.message !== progressMsg) {
+        logs.push({
+          id: Date.now().toString(),
+          timestamp: new Date(),
+          level: 'info',
+          message: progressMsg,
+          source: 'job-runner',
+          stepName: this.jobState.currentStep,
+          subStep: 'progress_update',
+          imageIndex: null,
+          durationMs: null,
+          errorCode: null,
+          metadata: { 
+            progress: this.jobState.progress,
+            step: this.jobState.currentStep
+          },
+          progress: this.jobState.progress,
+          totalImages: this.jobState.totalImages,
+          successfulImages: this.jobState.successfulImages,
+          failedImages: this.jobState.failedImages
+        });
+      }
+    }
+    
     // Return a copy, filtered by mode
     const output = mode === 'standard' ? logs.filter(log => log.level !== 'debug') : logs;
     // Increase server-side cap so UI and export can include deeper traces
