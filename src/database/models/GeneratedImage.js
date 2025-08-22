@@ -304,7 +304,7 @@ class GeneratedImage {
         image.executionId,
         image.generationPrompt,
         image.seed || null,
-        image.qcStatus || 'failed',
+        image.qcStatus || 'qc_failed',
         image.qcReason || null,
         image.finalImagePath || null,
         image.metadata ? JSON.stringify(image.metadata) : null,

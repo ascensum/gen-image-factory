@@ -254,7 +254,7 @@ class JobRunner extends EventEmitter {
         progress: 0,
         currentStep: 'initialization',
         totalImages: 0,
-        successfulImages: 0,
+        generatedImages: 0,      // Renamed from successfulImages for clarity
         failedImages: 0
       };
       this.completedSteps = [];
@@ -563,7 +563,7 @@ class JobRunner extends EventEmitter {
               
               if (executionId) {
                 // Determine initial QC status based on settings
-                const initialQCStatus = (this.jobConfiguration?.ai?.runQualityCheck) ? 'failed' : 'approved';
+                const initialQCStatus = (this.jobConfiguration?.ai?.runQualityCheck) ? 'qc_failed' : 'approved';
                 const initialQCReason = (this.jobConfiguration?.ai?.runQualityCheck) ? null : 'Auto-approved (quality checks disabled)';
                 
                 const generatedImage = {
@@ -683,7 +683,7 @@ class JobRunner extends EventEmitter {
           console.log("💾 Updating job execution in database...");
           console.log("🔍 Job state before update:", {
             totalImages: this.jobState.totalImages,
-            successfulImages: this.jobState.successfulImages,
+            generatedImages: this.jobState.generatedImages,
             failedImages: this.jobState.failedImages,
             startTime: this.jobState.startTime,
             endTime: this.jobState.endTime
@@ -695,7 +695,7 @@ class JobRunner extends EventEmitter {
             completedAt: this.jobState.endTime,
             status: "completed",
             totalImages: this.jobState.totalImages || 0,
-            successfulImages: this.jobState.successfulImages || 0,
+            generatedImages: this.jobState.generatedImages || 0,
             failedImages: this.jobState.failedImages || 0,
             errorMessage: null,
             label: null
@@ -756,7 +756,7 @@ class JobRunner extends EventEmitter {
             completedAt: this.jobState.endTime,
             status: "failed",
             totalImages: this.jobState.totalImages || 0,
-            successfulImages: this.jobState.successfulImages || 0,
+            generatedImages: this.jobState.generatedImages || 0,
             failedImages: this.jobState.failedImages || 0,
             errorMessage: error.message,
             label: null
@@ -1018,7 +1018,7 @@ class JobRunner extends EventEmitter {
         
         // Update job state with image counts
         this.jobState.totalImages = result.length;
-        this.jobState.successfulImages = result.length; // All images are successful initially
+        this.jobState.generatedImages = result.length; // All images are generated initially
         this.jobState.failedImages = 0;
         
         // Create separate image objects for each result
@@ -1109,7 +1109,7 @@ class JobRunner extends EventEmitter {
           updateProgress: true, // Update progress for step completion
           metadata: { 
             totalImages: processedImages.length,
-            successfulImages: processedImages.length,
+            generatedImages: processedImages.length,
             failedImages: 0,
             allMappingIds: processedImages.map(img => img.mappingId)
           }
@@ -1128,7 +1128,7 @@ class JobRunner extends EventEmitter {
         
         // Update job state with image counts
         this.jobState.totalImages = 1;
-        this.jobState.successfulImages = 1;
+        this.jobState.generatedImages = 1;
         this.jobState.failedImages = 0;
         
         return [{
@@ -1287,7 +1287,7 @@ class JobRunner extends EventEmitter {
           // Update QC status in database based on quality check result
           if (this.backendAdapter && image.imageMappingId) {
             try {
-              const qcStatus = result.passed ? "approved" : "failed";
+              const qcStatus = result.passed ? "approved" : "qc_failed";
               const qcReason = result.reason || (result.passed ? "Quality check passed" : "Quality check failed");
               
               this._logStructured({
@@ -1363,10 +1363,10 @@ class JobRunner extends EventEmitter {
                 metadata: { imageMappingId: image.imageMappingId }
               });
               
-              await this.backendAdapter.updateQCStatusByMappingId(image.imageMappingId, "failed", "Quality check failed");
+              await this.backendAdapter.updateQCStatusByMappingId(image.imageMappingId, "qc_failed", "Quality check failed");
               
               // Also update the local image object
-              image.qcStatus = "failed";
+              image.qcStatus = "qc_failed";
               image.qcReason = "Quality check failed";
             } catch (dbError) {
               this._logStructured({
@@ -1399,7 +1399,7 @@ class JobRunner extends EventEmitter {
         metadata: { 
           totalImages: images.length,
           successfulChecks: images.filter(img => img.qcStatus === 'approved').length,
-          failedChecks: images.filter(img => img.qcStatus === 'failed').length
+          failedChecks: images.filter(img => img.qcStatus === 'qc_failed').length
         }
       });
       
@@ -1633,7 +1633,7 @@ class JobRunner extends EventEmitter {
           metadata: { error: msg },
           progress: this.jobState.progress,
           totalImages: this.jobState.totalImages,
-          successfulImages: this.jobState.successfulImages,
+          generatedImages: this.jobState.generatedImages,
           failedImages: this.jobState.failedImages
         });
       }
