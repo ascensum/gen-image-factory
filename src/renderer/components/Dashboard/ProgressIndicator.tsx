@@ -20,53 +20,62 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   const timeElapsedFormatted = formatTime(timeElapsed);
   const timeRemainingFormatted = estimatedTimeRemaining ? formatTime(estimatedTimeRemaining) : '--:--';
 
-  // Dynamic job steps based on actual backend response
+  // Dynamic job steps based on actual backend response - horizontal carousel design
   const jobSteps = React.useMemo(() => {
     // If we have totalSteps from backend, create dynamic steps
     if (totalSteps > 0) {
       const steps = [];
       for (let i = 1; i <= totalSteps; i++) {
-        let name, description;
+        let name, description, icon;
         switch (i) {
           case 1:
             name = 'Initialize';
             description = 'Setting up job configuration';
+            icon = '⚙️';
             break;
           case 2:
-            name = 'Generate Images';
-            description = 'Creating images with AI models';
+            name = 'Parameters';
+            description = 'Generating parameters from keywords';
+            icon = '📝';
             break;
           case 3:
-            name = 'Quality Check';
-            description = 'Running quality assessment';
+            name = 'AI Generation';
+            description = 'Creating images with AI models';
+            icon = '🎨';
             break;
           case 4:
-            name = 'Save Results';
-            description = 'Storing generated images';
+            name = 'Processing';
+            description = 'Processing individual images';
+            icon = '🔄';
             break;
           case 5:
-            name = 'Process Images';
-            description = 'Processing and enhancing images';
+            name = 'Quality Check';
+            description = 'Running quality assessment';
+            icon = '🔍';
             break;
           case 6:
-            name = 'Finalize';
-            description = 'Completing job and cleanup';
+            name = 'Metadata';
+            description = 'Generating metadata';
+            icon = '📊';
             break;
           default:
             name = `Step ${i}`;
             description = `Processing step ${i}`;
+            icon = '⚡';
         }
-        steps.push({ id: i, name, description });
+        steps.push({ id: i, name, description, icon });
       }
       return steps;
     }
     
     // Fallback to default steps if no totalSteps available
     return [
-      { id: 1, name: 'Initialize', description: 'Setting up job configuration' },
-      { id: 2, name: 'Generate Images', description: 'Creating images with AI models' },
-      { id: 3, name: 'Quality Check', description: 'Running quality assessment' },
-      { id: 4, name: 'Save Results', description: 'Storing generated images' }
+      { id: 1, name: 'Initialize', description: 'Setting up job configuration', icon: '⚙️' },
+      { id: 2, name: 'Parameters', description: 'Generating parameters from keywords', icon: '📝' },
+      { id: 3, name: 'AI Generation', description: 'Creating images with AI models', icon: '🎨' },
+      { id: 4, name: 'Processing', description: 'Processing individual images', icon: '🔄' },
+      { id: 5, name: 'Quality Check', description: 'Running quality assessment', icon: '🔍' },
+      { id: 6, name: 'Metadata', description: 'Generating metadata', icon: '📊' }
     ];
   }, [totalSteps]);
 
@@ -172,64 +181,100 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         </div>
       )}
 
-      {/* Step Timeline */}
-      <div className="space-y-4">
+      {/* Horizontal Step Carousel/Roulette */}
+      <div className="space-y-3">
         <h4 className="text-sm font-medium text-gray-900">Job Steps</h4>
-        <div className="space-y-3">
-          {jobSteps.map((step, index) => {
-            const status = getStepStatus(step.id);
-            const isLast = index === jobSteps.length - 1;
-            
-            return (
-              <div key={step.id} className="flex items-start">
-                {/* Step indicator */}
-                <div className="flex items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    status === 'completed' ? 'bg-green-500 text-white' :
-                    status === 'current' ? 'bg-blue-500 text-white' :
-                    'bg-gray-200 text-gray-600'
+        
+        {/* Horizontal step carousel */}
+        <div className="relative overflow-hidden">
+          <div className="flex items-center space-x-2 transition-transform duration-500 ease-in-out">
+            {jobSteps.map((step, index) => {
+              const status = getStepStatus(step.id);
+              const isLast = index === jobSteps.length - 1;
+              
+              return (
+                <React.Fragment key={step.id}>
+                  {/* Step card */}
+                  <div className={`flex-shrink-0 transition-all duration-300 ${
+                    status === 'completed' ? 'opacity-60 scale-90' :
+                    status === 'current' ? 'opacity-100 scale-100' :
+                    'opacity-40 scale-95'
                   }`}>
-                    {status === 'completed' ? (
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    ) : (
-                      step.id
-                    )}
-                  </div>
-                  {!isLast && (
-                    <div className={`w-0.5 h-8 ml-4 ${
-                      status === 'completed' ? 'bg-green-500' : 'bg-gray-200'
-                    }`} />
-                  )}
-                </div>
-                
-                {/* Step content */}
-                <div className="ml-4 flex-1">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className={`text-sm font-medium ${
-                        status === 'completed' ? 'text-green-900' :
-                        status === 'current' ? 'text-blue-900' :
+                    <div className={`bg-white border-2 rounded-lg p-3 min-w-[120px] ${
+                      status === 'completed' ? 'border-green-200 bg-green-50' :
+                      status === 'current' ? 'border-blue-300 bg-blue-50 shadow-md' :
+                      'border-gray-200 bg-gray-50'
+                    }`}>
+                      {/* Step icon and number */}
+                      <div className="flex items-center justify-center mb-2">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                          status === 'completed' ? 'bg-green-500 text-white' :
+                          status === 'current' ? 'bg-blue-500 text-white' :
+                          'bg-gray-300 text-gray-600'
+                        }`}>
+                          {status === 'completed' ? (
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          ) : (
+                            <span className="text-lg">{step.icon}</span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Step name */}
+                      <div className={`text-center text-xs font-medium mb-1 ${
+                        status === 'completed' ? 'text-green-700' :
+                        status === 'current' ? 'text-blue-700' :
                         'text-gray-500'
                       }`}>
                         {step.name}
                       </div>
-                      <div className="text-xs text-gray-500">{step.description}</div>
+                      
+                      {/* Step description - only show for current step */}
+                      {status === 'current' && (
+                        <div className="text-center text-xs text-gray-600 leading-tight">
+                          {step.description}
+                        </div>
+                      )}
+                      
+                      {/* Current step indicator */}
+                      {status === 'current' && (
+                        <div className="flex items-center justify-center mt-2">
+                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                        </div>
+                      )}
                     </div>
-                    
-                    {status === 'current' && (
-                      <div className="flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                        <span className="text-xs text-blue-600">In Progress</span>
-                      </div>
-                    )}
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                  
+                  {/* Connection line */}
+                  {!isLast && (
+                    <div className={`flex-shrink-0 w-8 h-0.5 ${
+                      status === 'completed' ? 'bg-green-300' : 'bg-gray-200'
+                    }`} />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
+        
+        {/* Current step details - below carousel */}
+        {isJobActive && (
+          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                <span className="text-sm font-medium text-gray-900">
+                  Currently: {jobSteps.find(s => s.id === currentStep)?.name || 'Processing'}
+                </span>
+              </div>
+              <span className="text-xs text-gray-600">
+                Step {currentStep} of {totalSteps}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Loading State */}

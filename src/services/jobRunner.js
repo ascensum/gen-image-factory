@@ -9,14 +9,14 @@ const producePictureModule = require('../producePictureModule');
 const paramsGeneratorModule = require('../paramsGeneratorModule');
 const aiVision = require('../aiVision');
 
-// Progress steps with weights
+// Progress steps with weights - more granular for better synchronization
 const PROGRESS_STEPS = [
   { name: 'initialization', weight: 5, description: 'Initializing job configuration' },
-  { name: 'parameter_generation', weight: 15, description: 'Generating parameters from keywords' },
-  { name: 'image_generation', weight: 50, description: 'Generating images with AI' },
-  { name: 'background_removal', weight: 15, description: 'Removing backgrounds' },
-  { name: 'quality_check', weight: 10, description: 'Running quality checks' },
-  { name: 'metadata_generation', weight: 5, description: 'Generating metadata' }
+  { name: 'parameter_generation', weight: 10, description: 'Generating parameters from keywords' },
+  { name: 'image_generation', weight: 25, description: 'Generating images with AI' },
+  { name: 'image_processing', weight: 20, description: 'Processing individual images' },
+  { name: 'quality_check', weight: 25, description: 'Running quality checks' },
+  { name: 'metadata_generation', weight: 15, description: 'Generating metadata' }
 ];
 
 class JobRunner extends EventEmitter {
@@ -563,7 +563,8 @@ class JobRunner extends EventEmitter {
       }
       
       
-      this.completedSteps.push('image_generation');
+              this.completedSteps.push('image_generation');
+        this.completedSteps.push('image_processing');
 
       // Step 3: Background Removal (if enabled)
       if (config.processing && config.processing.removeBg && !this.isStopping) {
@@ -993,27 +994,24 @@ class JobRunner extends EventEmitter {
         
         // Create separate image objects for each result
         const processedImages = result.map((item, index) => {
+          // Update to image_processing step for individual image handling
           this._logStructured({
-            level: 'debug',
-            stepName: 'image_generation',
+            level: 'info',
+            stepName: 'image_processing',
             subStep: 'process_image',
             imageIndex: index,
             message: `Processing image ${index + 1}/${result.length}`,
+            updateProgress: index === 0, // Update progress only on first image to transition to processing step
             metadata: { 
               itemType: typeof item,
               itemKeys: Object.keys(item),
-              mappingId: item.mappingId
+              mappingId: item.mappingId,
+              currentImageProgress: Math.round(((index + 1) / result.length) * 100)
             }
           });
           
-          console.log(`🔧 Processing image ${index}:`, item);
-          console.log(`🔧 Item type:`, typeof item);
-          console.log(`🔧 Item keys:`, Object.keys(item));
-          console.log(`🔧 Item mappingId:`, item.mappingId);
           // Extract the outputPath from each item
           const imagePath = item.outputPath || item.path || item;
-          console.log(`🔧 Extracted path for image ${index}:`, imagePath);
-          console.log(`🔧 Path type:`, typeof imagePath);
           
           // Get the correct aspect ratio for this image
           // If we have multiple aspect ratios, cycle through them
@@ -1045,7 +1043,7 @@ class JobRunner extends EventEmitter {
             }
           });
           
-          console.log(`🔧 Using aspect ratio for image ${index}:`, aspectRatio);
+
           
           const imageObject = {
             path: imagePath,  // This should be a string path
