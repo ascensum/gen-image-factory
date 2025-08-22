@@ -614,13 +614,17 @@ class JobRunner extends EventEmitter {
               console.log('🔍 this object keys:', Object.keys(this));
               
               if (executionId) {
+                // Determine initial QC status based on settings
+                const initialQCStatus = (this.jobConfiguration?.ai?.runQualityCheck) ? 'failed' : 'approved';
+                const initialQCReason = (this.jobConfiguration?.ai?.runQualityCheck) ? null : 'Auto-approved (quality checks disabled)';
+                
                 const generatedImage = {
                   imageMappingId: image.mappingId || `img_${Date.now()}_${i}`, // Use mapping ID from producePictureModule
                   executionId: executionId,
                   generationPrompt: image.metadata?.prompt || 'Generated image',
                   seed: null,
-                  qcStatus: 'failed',
-                  qcReason: null,
+                  qcStatus: initialQCStatus,
+                  qcReason: initialQCReason,
                   finalImagePath: image.path,
                   metadata: JSON.stringify(image.metadata || {}),
                   processingSettings: JSON.stringify({
