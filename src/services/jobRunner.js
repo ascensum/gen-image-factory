@@ -38,6 +38,9 @@ class JobRunner extends EventEmitter {
     this.completedSteps = [];
     this.isStopping = false;
     this.isRerun = options.isRerun || false; // Flag to prevent duplicate database saves during reruns
+    
+    // Set global reference so logDebug can find us
+    global.currentJobRunner = this;
   }
 
   /**
@@ -108,12 +111,6 @@ class JobRunner extends EventEmitter {
 
     // Emit event for real-time listeners (new capability)
     this.emit('log', structuredLog);
-
-    // Keep existing console logging for backward compatibility
-    const prefix = imageIndex !== null ? `[Image ${imageIndex + 1}]` : '';
-    const stepPrefix = `[${stepName}:${subStep}]`;
-    const durationSuffix = durationMs !== null ? ` (${durationMs}ms)` : '';
-    console.log(`${prefix} ${stepPrefix} ${level.toUpperCase()}: ${message}${durationSuffix}`);
 
     return structuredLog;
   }
@@ -203,7 +200,7 @@ class JobRunner extends EventEmitter {
       
       // Preserve completed status from previous job if it exists
       const wasCompleted = this.jobState.status === 'completed';
-      console.log('🔍 Previous job status was:', this.jobState.status, wasCompleted ? '(completed)' : '');
+
       
       // PRESERVE the configurationId that was set by backendAdapter!
       const preservedConfigurationId = this.configurationId;
@@ -230,8 +227,7 @@ class JobRunner extends EventEmitter {
       
       // If previous job was completed, log it for debugging
       if (wasCompleted) {
-        console.log('⚠️ WARNING: Previous job was completed but status was reset to running');
-        console.log('🔍 This explains why the frontend never sees completed status!');
+
       }
 
       console.log('✅ Job state initialized:', this.jobState);
@@ -244,7 +240,7 @@ class JobRunner extends EventEmitter {
       try {
         console.log('🔧 About to call setEnvironmentFromConfig...');
         this.setEnvironmentFromConfig(config);
-        console.log('🔧 setEnvironmentFromConfig completed successfully');
+  
       } catch (error) {
         console.error('❌ Error in setEnvironmentFromConfig:', error);
         console.error('❌ Error stack:', error.stack);
@@ -256,7 +252,7 @@ class JobRunner extends EventEmitter {
       console.log('🔧 DEBUG: If you see this, the issue is after this point');
 
       // Initialize backend adapter
-      console.log('🔧 MODULE LOAD: Starting backendAdapter initialization...');
+
       console.log('🔧 MODULE LOAD: About to enter try block');
       try {
         console.log('🔧 MODULE LOAD: Inside try block - about to log first message');
@@ -693,7 +689,7 @@ class JobRunner extends EventEmitter {
         console.warn("⚠️ No backendAdapter available - job execution will not be saved to database");
       }
       
-      console.log('🎉 Job execution completed successfully!');
+
       
       // Check if there are bulk rerun jobs in the queue and process the next one
       if (this.backendAdapter && this.isRerun) {
@@ -1226,10 +1222,8 @@ class JobRunner extends EventEmitter {
         }
       });
       
-      console.log("🔍 Starting quality checks for", images.length, "images");
-      console.log("🔍 Images array:", images);
-      console.log("🔍 DEBUG: First image structure:", JSON.stringify(images[0], null, 2));
-      console.log("🔍 DEBUG: All image mappingIds:", images.map(img => img.imageMappingId));
+
+
       
       for (const image of images) {
         if (this.isStopping) return;
@@ -1247,16 +1241,7 @@ class JobRunner extends EventEmitter {
           }
         });
         
-        console.log(`🔍 Running quality check on image:`, image);
-        console.log(`🔍 Image finalImagePath:`, image.finalImagePath);
-        console.log(`🔍 Image finalImagePath type:`, typeof image.finalImagePath);
-        console.log(`🔍 Image finalImagePath value:`, image.finalImagePath);
-        
-        // Call the real quality check from aiVision module with correct signature
-        console.log("🔍 DEBUG: About to call aiVision.runQualityCheck");
-        console.log("🔍 DEBUG: image.finalImagePath:", image.finalImagePath);
-        console.log("🔍 DEBUG: openaiModel:", config.parameters?.openaiModel || "gpt-4o");
-        console.log("🔍 DEBUG: qualityCheckPrompt:", config.ai?.qualityCheckPrompt || null);
+
         
         let result;
         try {
@@ -1265,9 +1250,7 @@ class JobRunner extends EventEmitter {
             config.parameters?.openaiModel || "gpt-4o",
             config.ai?.qualityCheckPrompt || null
           );
-          console.log("🔍 DEBUG: aiVision.runQualityCheck returned:", result);
         } catch (aiError) {
-          console.error("❌ ERROR: aiVision.runQualityCheck failed:", aiError);
           throw aiError;
         }
         
@@ -1285,9 +1268,6 @@ class JobRunner extends EventEmitter {
             }
           });
           
-          console.log(`✅ Quality check completed for: ${image.finalImagePath}`, result);
-          console.log(`🔍 DEBUG: Image object for QC update:`, image);
-          console.log(`🔍 DEBUG: Image ID:`, typeof image.id);
           image.qualityDetails = result;
           
           // Update QC status in database based on quality check result
@@ -1409,7 +1389,6 @@ class JobRunner extends EventEmitter {
         }
       });
       
-      console.log("✅ Quality checks completed for all images");
       
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -1427,7 +1406,6 @@ class JobRunner extends EventEmitter {
         }
       });
       
-      console.error("❌ Error during quality checks:", error);
       throw new Error(`Quality checks failed: ${error.message}`);
     }
   }
