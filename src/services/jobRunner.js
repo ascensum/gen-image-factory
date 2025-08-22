@@ -41,6 +41,7 @@ class JobRunner extends EventEmitter {
     this.completedSteps = [];
     this.isStopping = false;
     this.isRerun = options.isRerun || false; // Flag to prevent duplicate database saves during reruns
+    this.jobConfiguration = null; // Store the actual job configuration
     
     // Set global reference so logDebug can find us
     global.currentJobRunner = this;
@@ -52,9 +53,17 @@ class JobRunner extends EventEmitter {
    * @returns {Array} Filtered progress steps
    */
   _getEnabledProgressSteps(config) {
+    console.log('🔧 _getEnabledProgressSteps called with config:', config);
+    console.log('🔧 config.ai:', config?.ai);
+    console.log('🔧 config.ai.runQualityCheck:', config?.ai?.runQualityCheck);
+    console.log('🔧 config.ai.runMetadataGen:', config?.ai?.runMetadataGen);
+    
     const enabledSteps = BASE_PROGRESS_STEPS.filter(step => {
       // Always include required steps
-      if (step.required) return true;
+      if (step.required) {
+        console.log(`✅ Including required step: ${step.name}`);
+        return true;
+      }
       
       // Check if optional step is enabled in configuration
       if (step.settingKey && config) {
@@ -63,19 +72,27 @@ class JobRunner extends EventEmitter {
         for (const key of settingPath) {
           settingValue = settingValue?.[key];
         }
-        return settingValue === true;
+        const isEnabled = settingValue === true;
+        console.log(`🔧 Step ${step.name} (${step.settingKey}): ${isEnabled ? 'ENABLED' : 'DISABLED'} (value: ${settingValue})`);
+        return isEnabled;
       }
       
       // If no configuration available, include all steps (fallback)
+      console.log(`⚠️ Step ${step.name}: No settingKey or config, including by default`);
       return true;
     });
 
+    console.log('🔧 Final enabled steps:', enabledSteps.map(s => s.name));
+
     // Recalculate weights to ensure they sum to 100
     const totalWeight = enabledSteps.reduce((sum, step) => sum + step.weight, 0);
-    return enabledSteps.map(step => ({
+    const rebalancedSteps = enabledSteps.map(step => ({
       ...step,
       weight: Math.round((step.weight / totalWeight) * 100)
     }));
+    
+    console.log('🔧 Rebalanced step weights:', rebalancedSteps.map(s => `${s.name}: ${s.weight}%`));
+    return rebalancedSteps;
   }
 
   /**
@@ -326,6 +343,14 @@ class JobRunner extends EventEmitter {
       }
       console.log('🔧 MODULE LOAD: After try-catch block - about to start job execution');
 
+      // Store the job configuration for progress step filtering
+      this.jobConfiguration = config;
+      
+      console.log('🔧 CONFIGURATION DEBUG: Full config received:', JSON.stringify(config, null, 2));
+      console.log('🔧 CONFIGURATION DEBUG: config.ai:', config?.ai);
+      console.log('🔧 CONFIGURATION DEBUG: config.parameters:', config?.parameters);
+      console.log('🔧 CONFIGURATION DEBUG: config.processing:', config?.processing);
+      
       // Update progress steps based on job configuration
       PROGRESS_STEPS = this._getEnabledProgressSteps(config);
       
