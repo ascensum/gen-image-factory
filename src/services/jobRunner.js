@@ -577,7 +577,18 @@ class JobRunner extends EventEmitter {
                   metadata: JSON.stringify(image.metadata || {}),
                   processingSettings: JSON.stringify({
                     aspectRatio: image.aspectRatio || '16:9',
-                    status: image.status
+                    status: image.status,
+                    // Include user's processing settings
+                    sharpening: config.processing?.sharpening || 0,
+                    saturation: config.processing?.saturation || 1.0,
+                    imageEnhancement: config.processing?.imageEnhancement || false,
+                    imageConvert: config.processing?.imageConvert || false,
+                    convertToJpg: config.processing?.convertToJpg || false,
+                    jpgQuality: config.processing?.jpgQuality || 100,
+                    pngQuality: config.processing?.pngQuality || 100,
+                    removeBg: config.processing?.removeBg || false,
+                    trimTransparentBackground: config.processing?.trimTransparentBackground || false,
+                    jpgBackground: config.processing?.jpgBackground || 'white'
                   })
                 };
                 
@@ -806,8 +817,51 @@ class JobRunner extends EventEmitter {
         }
       });
 
-      // Extract keywords from config
-      const keywords = config.parameters?.keywords || config.parameters?.prompt || 'default image';
+      // Read keywords from file
+      let keywords = 'default image';
+      let systemPrompt = null;
+      
+      try {
+        // Read keywords file
+        if (config.filePaths?.keywordsFile) {
+          const fs = require('fs').promises;
+          const keywordsContent = await fs.readFile(config.filePaths.keywordsFile, 'utf8');
+          const keywordsList = keywordsContent.trim().split('\n').filter(line => line.trim());
+          
+          if (keywordsList.length > 0) {
+            // Select first keyword (or implement random selection later)
+            keywords = keywordsList[0].trim();
+            this._logStructured({
+              level: 'debug',
+              stepName: 'parameter_generation',
+              subStep: 'keywords_read',
+              message: `Read keywords from file: ${keywords}`,
+              metadata: { keywordsFile: config.filePaths.keywordsFile, selectedKeyword: keywords }
+            });
+          }
+        }
+        
+        // Read system prompt template
+        if (config.filePaths?.systemPromptFile) {
+          const fs = require('fs').promises;
+          systemPrompt = await fs.readFile(config.filePaths.systemPromptFile, 'utf8');
+          this._logStructured({
+            level: 'debug',
+            stepName: 'parameter_generation',
+            subStep: 'system_prompt_read',
+            message: `Read system prompt template from file`,
+            metadata: { systemPromptFile: config.filePaths.systemPromptFile, systemPromptLength: systemPrompt.length }
+          });
+        }
+      } catch (fileError) {
+        this._logStructured({
+          level: 'warn',
+          stepName: 'parameter_generation',
+          subStep: 'file_read_warning',
+          message: `Warning: Could not read keywords or system prompt files, using defaults`,
+          metadata: { error: fileError.message, keywordsFile: config.filePaths?.keywordsFile, systemPromptFile: config.filePaths?.systemPromptFile }
+        });
+      }
       
       // Ensure aspectRatios is always an array
       let aspectRatios = config.parameters?.aspectRatios || ['1:1'];
@@ -842,7 +896,7 @@ class JobRunner extends EventEmitter {
       
       const parameters = await paramsGeneratorModule.paramsGeneratorModule(
         keywords,
-        config.parameters?.systemPrompt || null,
+        systemPrompt, // Use the system prompt we read from file
         null, // keywordFilePath not needed
         {
           mjVersion: mjVersion,
@@ -1464,6 +1518,28 @@ class JobRunner extends EventEmitter {
             description: result.new_description,
             tags: result.uploadTags
           };
+          
+          // Update the image in the database with new metadata
+          if (this.backendAdapter && image.id) {
+            try {
+              await this.backendAdapter.updateGeneratedImage(image.id, image);
+              this._logStructured({
+                level: 'debug',
+                stepName: 'metadata_generation',
+                subStep: 'db_update',
+                message: `Updated metadata in database for image ${image.id}`,
+                metadata: { imageId: image.id, title: result.new_title }
+              });
+            } catch (dbError) {
+              this._logStructured({
+                level: 'warn',
+                stepName: 'metadata_generation',
+                subStep: 'db_update_warning',
+                message: `Warning: Could not update metadata in database for image ${image.id}`,
+                metadata: { imageId: image.id, error: dbError.message }
+              });
+            }
+          }
         } else {
           image.metadata = {
             ...image.metadata,
