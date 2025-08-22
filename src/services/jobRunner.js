@@ -53,15 +53,19 @@ class JobRunner extends EventEmitter {
    * @returns {Array} Filtered progress steps
    */
   _getEnabledProgressSteps(config) {
+    // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
     console.log('🔧 _getEnabledProgressSteps called with config:', config);
     console.log('🔧 config.ai:', config?.ai);
     console.log('🔧 config.ai.runQualityCheck:', config?.ai?.runQualityCheck);
     console.log('🔧 config.ai.runMetadataGen:', config?.ai?.runMetadataGen);
+    // 🔧 END DEBUG LOGS 🔧
     
     const enabledSteps = BASE_PROGRESS_STEPS.filter(step => {
       // Always include required steps
       if (step.required) {
+        // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
         console.log(`✅ Including required step: ${step.name}`);
+        // 🔧 END DEBUG LOGS 🔧
         return true;
       }
       
@@ -73,16 +77,22 @@ class JobRunner extends EventEmitter {
           settingValue = settingValue?.[key];
         }
         const isEnabled = settingValue === true;
+        // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
         console.log(`🔧 Step ${step.name} (${step.settingKey}): ${isEnabled ? 'ENABLED' : 'DISABLED'} (value: ${settingValue})`);
+        // 🔧 END DEBUG LOGS 🔧
         return isEnabled;
       }
       
       // If no configuration available, include all steps (fallback)
+      // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
       console.log(`⚠️ Step ${step.name}: No settingKey or config, including by default`);
+      // 🔧 END DEBUG LOGS 🔧
       return true;
     });
 
+    // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
     console.log('🔧 Final enabled steps:', enabledSteps.map(s => s.name));
+    // 🔧 END DEBUG LOGS 🔧
 
     // Recalculate weights to ensure they sum to 100
     const totalWeight = enabledSteps.reduce((sum, step) => sum + step.weight, 0);
@@ -91,7 +101,9 @@ class JobRunner extends EventEmitter {
       weight: Math.round((step.weight / totalWeight) * 100)
     }));
     
+    // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
     console.log('🔧 Rebalanced step weights:', rebalancedSteps.map(s => `${s.name}: ${s.weight}%`));
+    // 🔧 END DEBUG LOGS 🔧
     return rebalancedSteps;
   }
 
@@ -216,10 +228,12 @@ class JobRunner extends EventEmitter {
    */
   async startJob(config) {
     try {
+      // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
       console.log('🚀 JobRunner.startJob called with config:', config);
       console.log('🔍 DEBUG: config.ai:', config.ai);
       console.log('🔍 DEBUG: config.ai?.runQualityCheck:', config.ai?.runQualityCheck);
       console.log('🔍 DEBUG: config.ai?.runMetadataGen:', config.ai?.runMetadataGen);
+      // 🔧 END DEBUG LOGS 🔧
       
       // Check if job is already running
       if (this.jobState.status === 'running') {
@@ -346,10 +360,12 @@ class JobRunner extends EventEmitter {
       // Store the job configuration for progress step filtering
       this.jobConfiguration = config;
       
+      // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
       console.log('🔧 CONFIGURATION DEBUG: Full config received:', JSON.stringify(config, null, 2));
       console.log('🔧 CONFIGURATION DEBUG: config.ai:', config?.ai);
       console.log('🔧 CONFIGURATION DEBUG: config.parameters:', config?.parameters);
       console.log('🔧 CONFIGURATION DEBUG: config.processing:', config?.processing);
+      // 🔧 END DEBUG LOGS 🔧
       
       // Update progress steps based on job configuration
       PROGRESS_STEPS = this._getEnabledProgressSteps(config);
