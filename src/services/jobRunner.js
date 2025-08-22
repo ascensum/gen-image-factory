@@ -674,6 +674,9 @@ class JobRunner extends EventEmitter {
       this.jobState.status = 'completed';
       this.jobState.endTime = new Date();
       
+      // Send final progress update to reach 100%
+      this.emitProgress('completed', 100, 'Job completed successfully');
+      
       // Save completed job execution to database if backendAdapter is available
       if (this.backendAdapter) {
         try {
