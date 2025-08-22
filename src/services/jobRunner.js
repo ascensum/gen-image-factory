@@ -53,19 +53,10 @@ class JobRunner extends EventEmitter {
    * @returns {Array} Filtered progress steps
    */
   _getEnabledProgressSteps(config) {
-    // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
-    console.log('🔧 _getEnabledProgressSteps called with config:', config);
-    console.log('🔧 config.ai:', config?.ai);
-    console.log('🔧 config.ai.runQualityCheck:', config?.ai?.runQualityCheck);
-    console.log('🔧 config.ai.runMetadataGen:', config?.ai?.runMetadataGen);
-    // 🔧 END DEBUG LOGS 🔧
     
     const enabledSteps = BASE_PROGRESS_STEPS.filter(step => {
       // Always include required steps
       if (step.required) {
-        // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
-        console.log(`✅ Including required step: ${step.name}`);
-        // 🔧 END DEBUG LOGS 🔧
         return true;
       }
       
@@ -77,22 +68,13 @@ class JobRunner extends EventEmitter {
           settingValue = settingValue?.[key];
         }
         const isEnabled = settingValue === true;
-        // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
-        console.log(`🔧 Step ${step.name} (${step.settingKey}): ${isEnabled ? 'ENABLED' : 'DISABLED'} (value: ${settingValue})`);
-        // 🔧 END DEBUG LOGS 🔧
         return isEnabled;
       }
       
       // If no configuration available, include all steps (fallback)
-      // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
-      console.log(`⚠️ Step ${step.name}: No settingKey or config, including by default`);
-      // 🔧 END DEBUG LOGS 🔧
       return true;
     });
 
-    // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
-    console.log('🔧 Final enabled steps:', enabledSteps.map(s => s.name));
-    // 🔧 END DEBUG LOGS 🔧
 
     // Recalculate weights to ensure they sum to 100
     const totalWeight = enabledSteps.reduce((sum, step) => sum + step.weight, 0);
@@ -101,9 +83,6 @@ class JobRunner extends EventEmitter {
       weight: Math.round((step.weight / totalWeight) * 100)
     }));
     
-    // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
-    console.log('🔧 Rebalanced step weights:', rebalancedSteps.map(s => `${s.name}: ${s.weight}%`));
-    // 🔧 END DEBUG LOGS 🔧
     return rebalancedSteps;
   }
 
@@ -228,12 +207,6 @@ class JobRunner extends EventEmitter {
    */
   async startJob(config) {
     try {
-      // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
-      console.log('🚀 JobRunner.startJob called with config:', config);
-      console.log('🔍 DEBUG: config.ai:', config.ai);
-      console.log('🔍 DEBUG: config.ai?.runQualityCheck:', config.ai?.runQualityCheck);
-      console.log('🔍 DEBUG: config.ai?.runMetadataGen:', config.ai?.runMetadataGen);
-      // 🔧 END DEBUG LOGS 🔧
       
       // Check if job is already running
       if (this.jobState.status === 'running') {
@@ -302,9 +275,7 @@ class JobRunner extends EventEmitter {
       this.emitProgress('initialization', 0, 'Initializing job configuration...');
 
       // Set environment variables from config
-      console.log('🔧 Setting environment variables...');
       try {
-        console.log('🔧 About to call setEnvironmentFromConfig...');
         this.setEnvironmentFromConfig(config);
   
       } catch (error) {
@@ -312,22 +283,13 @@ class JobRunner extends EventEmitter {
         console.error('❌ Error stack:', error.stack);
         throw error; // Re-throw to prevent silent failure
       }
-      console.log('🔧 AFTER setEnvironmentFromConfig - about to start backendAdapter initialization');
-      console.log('🔧 DEBUG: About to log next line');
-      console.log('🔧 DEBUG: This line should appear');
-      console.log('🔧 DEBUG: If you see this, the issue is after this point');
 
       // Initialize backend adapter
 
-      console.log('🔧 MODULE LOAD: About to enter try block');
       try {
-        console.log('🔧 MODULE LOAD: Inside try block - about to log first message');
         // Try to get the backend adapter instance
-        console.log('🔧 MODULE LOAD: Attempting to initialize backend adapter for database integration...');
-        console.log('🔧 MODULE LOAD: Current directory:', __dirname);
         // Instead of creating a new instance, try to get the existing one
         // This avoids IPC handler conflicts
-        console.log("🔧 MODULE LOAD: Attempting to get existing backend adapter instance...");
         
         // Try to get the existing backend adapter from the parent process
         // Since we are in the main process, we can access the existing instance
@@ -338,13 +300,11 @@ class JobRunner extends EventEmitter {
           this.backendAdapter = global.backendAdapter;
           console.log("✅ MODULE LOAD: Using existing global backend adapter");
         } else {
-          console.log("🔧 MODULE LOAD: No existing backend adapter found, will skip database integration");
           this.backendAdapter = null;
         }
         
         if (this.backendAdapter) {
           console.log("✅ MODULE LOAD: Database integration enabled - job executions will be saved");
-          console.log("🔧 MODULE LOAD: backendAdapter object:", typeof this.backendAdapter, this.backendAdapter ? "AVAILABLE" : "NULL");
         } else {
           console.warn("⚠️ MODULE LOAD: No backend adapter available - job executions will not be saved to database");
         }
@@ -353,19 +313,11 @@ class JobRunner extends EventEmitter {
         console.error('❌ MODULE LOAD: Error stack:', error.stack);
         console.warn('❌ MODULE LOAD: Job executions will not be saved to database');
         console.warn('❌ MODULE LOAD: Frontend will continue to show no data');
-        console.log('🔧 MODULE LOAD: Exiting catch block');
       }
-      console.log('🔧 MODULE LOAD: After try-catch block - about to start job execution');
 
       // Store the job configuration for progress step filtering
       this.jobConfiguration = config;
       
-      // 🔧 DEBUG LOGS - REMOVE AFTER SETTINGS ISSUE IS FIXED 🔧
-      console.log('🔧 CONFIGURATION DEBUG: Full config received:', JSON.stringify(config, null, 2));
-      console.log('🔧 CONFIGURATION DEBUG: config.ai:', config?.ai);
-      console.log('🔧 CONFIGURATION DEBUG: config.parameters:', config?.parameters);
-      console.log('🔧 CONFIGURATION DEBUG: config.processing:', config?.processing);
-      // 🔧 END DEBUG LOGS 🔧
       
       // Update progress steps based on job configuration
       PROGRESS_STEPS = this._getEnabledProgressSteps(config);
@@ -539,8 +491,6 @@ class JobRunner extends EventEmitter {
    */
   setEnvironmentFromConfig(config) {
     // Never log raw API keys
-    console.log('🔧 Setting environment variables from config: [REDACTED]');
-    console.log('🔧 Before setting - Environment variables:');
     console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
     console.log('  - PIAPI_API_KEY:', process.env.PIAPI_API_KEY ? 'SET' : 'NOT SET');
     console.log('  - REMOVE_BG_API_KEY:', process.env.REMOVE_BG_API_KEY ? 'SET' : 'NOT SET');
@@ -565,11 +515,9 @@ class JobRunner extends EventEmitter {
       console.log('✅ Debug mode enabled');
     }
     
-    console.log('🔧 After setting - Environment variables:');
     console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
     console.log('  - PIAPI_API_KEY:', process.env.PIAPI_API_KEY ? 'SET' : 'NOT SET');
     console.log('  - REMOVE_BG_API_KEY:', process.env.REMOVE_BG_API_KEY ? 'SET' : 'NOT SET');
-    console.log('🔧 Environment variables set successfully');
   }
 
   /**
@@ -666,10 +614,7 @@ class JobRunner extends EventEmitter {
         console.log('✅ Quality check condition is TRUE - proceeding with quality checks');
         
         // Get the saved images from database to have their IDs
-        console.log('🔍 DEBUG: About to call getSavedImagesForExecution with executionId:', this.databaseExecutionId);
         const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
-        console.log('🔍 DEBUG: getSavedImagesForExecution returned:', savedImages);
-        console.log('🔍 DEBUG: savedImages length:', savedImages ? savedImages.length : 'undefined');
         
         if (savedImages && savedImages.length > 0) {
           console.log('✅ Found saved images, running quality checks');
@@ -1031,7 +976,6 @@ class JobRunner extends EventEmitter {
         }
       });
       
-      console.log('🔧 Settings prepared for producePictureModule:', settings);
       
       const result = await producePictureModule.producePictureModule(
         settings, // Pass settings with API keys as first parameter
@@ -1068,7 +1012,6 @@ class JobRunner extends EventEmitter {
           metadata: { imageCount: result.length }
         });
         
-        console.log('🔧 Result is an array, processing', result.length, 'images');
         
         // Update job state with image counts
         this.jobState.totalImages = result.length;
@@ -1150,9 +1093,6 @@ class JobRunner extends EventEmitter {
             }
           });
           
-          console.log(`🔧 Created image object ${index}:`, imageObject);
-          console.log(`🔧 Image object mappingId:`, imageObject.mappingId);
-          console.log(`🔧 Item mappingId:`, item.mappingId);
           return imageObject;
         });
         
@@ -1238,8 +1178,6 @@ class JobRunner extends EventEmitter {
    */
   async getSavedImagesForExecution(executionId) {
     try {
-      console.log('🔍 DEBUG: getSavedImagesForExecution called with executionId:', executionId);
-      console.log('🔍 DEBUG: this.backendAdapter exists:', !!this.backendAdapter);
       
       if (!this.backendAdapter || !executionId) {
         console.warn('⚠️ Cannot get saved images: missing backendAdapter or executionId');
@@ -1248,28 +1186,20 @@ class JobRunner extends EventEmitter {
       
       console.log(`🔍 Getting saved images for execution ${executionId}...`);
       const result = await this.backendAdapter.getAllGeneratedImages();
-      console.log('🔍 DEBUG: getAllGeneratedImages result:', result);
       
       // Handle both response formats: direct array or {success, images} object
       let images = result;
       if (result && typeof result === 'object' && result.success !== undefined) {
         // Response is wrapped in {success, images} format
         images = result.images;
-        console.log('🔍 DEBUG: result.success:', result.success);
-        console.log('🔍 DEBUG: result.images is array:', Array.isArray(result.images));
-        console.log('🔍 DEBUG: result.images length:', result.images ? result.images.length : 'undefined');
       } else {
         // Response is direct array
-        console.log('🔍 DEBUG: result is direct array, length:', Array.isArray(result) ? result.length : 'not array');
       }
       
       if (Array.isArray(images)) {
         // Filter images for this specific execution
-        console.log('🔍 DEBUG: About to filter images for executionId:', executionId);
-        console.log('🔍 DEBUG: All images executionIds:', images.map(img => img.executionId));
         const executionImages = images.filter(img => img.executionId === executionId);
         console.log(`✅ Found ${executionImages.length} saved images for execution ${executionId}`);
-        console.log('🔍 DEBUG: Filtered images:', executionImages);
         return executionImages;
       } else {
         console.warn('⚠️ Failed to get saved images - not an array:', images);
