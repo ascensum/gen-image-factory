@@ -4,11 +4,13 @@ import { JobStatus } from './DashboardPanel';
 interface ProgressIndicatorProps {
   jobStatus: JobStatus;
   isLoading: boolean;
+  jobConfiguration?: any; // Job configuration to determine enabled steps
 }
 
 const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   jobStatus,
-  isLoading
+  isLoading,
+  jobConfiguration
 }) => {
   const { state, progress, currentStep, totalSteps, startTime, estimatedTimeRemaining } = jobStatus;
   
@@ -20,64 +22,42 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   const timeElapsedFormatted = formatTime(timeElapsed);
   const timeRemainingFormatted = estimatedTimeRemaining ? formatTime(estimatedTimeRemaining) : '--:--';
 
-  // Dynamic job steps based on actual backend response - horizontal carousel design
+  // Dynamic job steps based on user settings - only show enabled steps
   const jobSteps = React.useMemo(() => {
-    // If we have totalSteps from backend, create dynamic steps
-    if (totalSteps > 0) {
-      const steps = [];
-      for (let i = 1; i <= totalSteps; i++) {
-        let name, description, icon;
-        switch (i) {
-          case 1:
-            name = 'Initialize';
-            description = 'Setting up job configuration';
-            icon = '⚙️';
-            break;
-          case 2:
-            name = 'Parameters';
-            description = 'Generating parameters from keywords';
-            icon = '📝';
-            break;
-          case 3:
-            name = 'AI Generation';
-            description = 'Creating images with AI models';
-            icon = '🎨';
-            break;
-          case 4:
-            name = 'Processing';
-            description = 'Processing individual images';
-            icon = '🔄';
-            break;
-          case 5:
-            name = 'Quality Check';
-            description = 'Running quality assessment';
-            icon = '🔍';
-            break;
-          case 6:
-            name = 'Metadata';
-            description = 'Generating metadata';
-            icon = '📊';
-            break;
-          default:
-            name = `Step ${i}`;
-            description = `Processing step ${i}`;
-            icon = '⚡';
-        }
-        steps.push({ id: i, name, description, icon });
-      }
-      return steps;
-    }
-    
-    // Fallback to default steps if no totalSteps available
-    return [
-      { id: 1, name: 'Initialize', description: 'Setting up job configuration', icon: '⚙️' },
-      { id: 2, name: 'Parameters', description: 'Generating parameters from keywords', icon: '📝' },
-      { id: 3, name: 'AI Generation', description: 'Creating images with AI models', icon: '🎨' },
-      { id: 4, name: 'Processing', description: 'Processing individual images', icon: '🔄' },
-      { id: 5, name: 'Quality Check', description: 'Running quality assessment', icon: '🔍' },
-      { id: 6, name: 'Metadata', description: 'Generating metadata', icon: '📊' }
+    const allPossibleSteps = [
+      { id: 1, name: 'Initialize', description: 'Setting up job configuration', icon: '⚙️', required: true },
+      { id: 2, name: 'Parameters', description: 'Generating parameters from keywords', icon: '📝', required: true },
+      { id: 3, name: 'AI Generation', description: 'Creating images with AI models', icon: '🎨', required: true },
+      { id: 4, name: 'Processing', description: 'Processing individual images', icon: '🔄', required: true },
+      { id: 5, name: 'Quality Check', description: 'Running quality assessment', icon: '🔍', required: false, settingKey: 'ai.runQualityCheck' },
+      { id: 6, name: 'Metadata', description: 'Generating metadata', icon: '📊', required: false, settingKey: 'ai.runMetadataGen' }
     ];
-  }, [totalSteps]);
+
+    // Filter steps based on job configuration settings
+    const enabledSteps = allPossibleSteps.filter(step => {
+      // Always include required steps
+      if (step.required) return true;
+      
+      // Check if optional step is enabled in configuration
+      if (step.settingKey && jobConfiguration) {
+        const settingPath = step.settingKey.split('.');
+        let settingValue = jobConfiguration;
+        for (const key of settingPath) {
+          settingValue = settingValue?.[key];
+        }
+        return settingValue === true;
+      }
+      
+      // If no configuration available, include all steps (fallback)
+      return true;
+    });
+
+    // Reassign sequential IDs to enabled steps
+    return enabledSteps.map((step, index) => ({
+      ...step,
+      id: index + 1
+    }));
+  }, [totalSteps, jobConfiguration]);
 
   const getStepStatus = (stepId: number) => {
     if (!isJobActive) return 'pending';

@@ -9,15 +9,18 @@ const producePictureModule = require('../producePictureModule');
 const paramsGeneratorModule = require('../paramsGeneratorModule');
 const aiVision = require('../aiVision');
 
-// Progress steps with weights - more granular for better synchronization
-const PROGRESS_STEPS = [
-  { name: 'initialization', weight: 5, description: 'Initializing job configuration' },
-  { name: 'parameter_generation', weight: 10, description: 'Generating parameters from keywords' },
-  { name: 'image_generation', weight: 25, description: 'Generating images with AI' },
-  { name: 'image_processing', weight: 20, description: 'Processing individual images' },
-  { name: 'quality_check', weight: 25, description: 'Running quality checks' },
-  { name: 'metadata_generation', weight: 15, description: 'Generating metadata' }
+// Base progress steps - will be filtered based on job configuration
+const BASE_PROGRESS_STEPS = [
+  { name: 'initialization', weight: 5, description: 'Initializing job configuration', required: true },
+  { name: 'parameter_generation', weight: 10, description: 'Generating parameters from keywords', required: true },
+  { name: 'image_generation', weight: 25, description: 'Generating images with AI', required: true },
+  { name: 'image_processing', weight: 20, description: 'Processing individual images', required: true },
+  { name: 'quality_check', weight: 25, description: 'Running quality checks', required: false, settingKey: 'ai.runQualityCheck' },
+  { name: 'metadata_generation', weight: 15, description: 'Generating metadata', required: false, settingKey: 'ai.runMetadataGen' }
 ];
+
+// Dynamic progress steps based on job configuration
+let PROGRESS_STEPS = BASE_PROGRESS_STEPS;
 
 class JobRunner extends EventEmitter {
   constructor(options = {}) {
@@ -41,6 +44,38 @@ class JobRunner extends EventEmitter {
     
     // Set global reference so logDebug can find us
     global.currentJobRunner = this;
+  }
+
+  /**
+   * Filter progress steps based on job configuration settings
+   * @param {Object} config - Job configuration
+   * @returns {Array} Filtered progress steps
+   */
+  _getEnabledProgressSteps(config) {
+    const enabledSteps = BASE_PROGRESS_STEPS.filter(step => {
+      // Always include required steps
+      if (step.required) return true;
+      
+      // Check if optional step is enabled in configuration
+      if (step.settingKey && config) {
+        const settingPath = step.settingKey.split('.');
+        let settingValue = config;
+        for (const key of settingPath) {
+          settingValue = settingValue?.[key];
+        }
+        return settingValue === true;
+      }
+      
+      // If no configuration available, include all steps (fallback)
+      return true;
+    });
+
+    // Recalculate weights to ensure they sum to 100
+    const totalWeight = enabledSteps.reduce((sum, step) => sum + step.weight, 0);
+    return enabledSteps.map(step => ({
+      ...step,
+      weight: Math.round((step.weight / totalWeight) * 100)
+    }));
   }
 
   /**
@@ -291,6 +326,9 @@ class JobRunner extends EventEmitter {
       }
       console.log('🔧 MODULE LOAD: After try-catch block - about to start job execution');
 
+      // Update progress steps based on job configuration
+      PROGRESS_STEPS = this._getEnabledProgressSteps(config);
+      
       // Start the job execution
       
       // Log job start with structured logging
@@ -303,7 +341,9 @@ class JobRunner extends EventEmitter {
         metadata: { 
           jobId,
           hasBackendAdapter: !!this.backendAdapter,
-          isRerun: this.isRerun
+          isRerun: this.isRerun,
+          enabledSteps: PROGRESS_STEPS.map(s => s.name),
+          totalSteps: PROGRESS_STEPS.length
         }
       });
       
@@ -575,13 +615,9 @@ class JobRunner extends EventEmitter {
 
       // Step 4: Quality Check (if enabled) - Run after images are saved to database
       // Note: If QC is disabled, images are automatically approved to maintain happy path
-      console.log('🔍 DEBUG: About to check quality check condition');
-      console.log('🔍 DEBUG: config.ai:', config.ai);
-      console.log('🔍 DEBUG: config.ai?.runQualityCheck:', config.ai?.runQualityCheck);
-      console.log('🔍 DEBUG: this.isStopping:', this.isStopping);
-      console.log('🔍 DEBUG: Full condition:', config.ai && config.ai.runQualityCheck && !this.isStopping);
+      const isQualityCheckEnabled = PROGRESS_STEPS.some(step => step.name === 'quality_check');
       
-      if (config.ai && config.ai.runQualityCheck && !this.isStopping) {
+      if (isQualityCheckEnabled && config.ai && config.ai.runQualityCheck && !this.isStopping) {
         console.log('✅ Quality check condition is TRUE - proceeding with quality checks');
         
         // Get the saved images from database to have their IDs
@@ -636,7 +672,9 @@ class JobRunner extends EventEmitter {
       }
 
       // Step 5: Metadata Generation (if enabled)
-      if (config.ai && config.ai.runMetadataGen && !this.isStopping) {
+      const isMetadataGenerationEnabled = PROGRESS_STEPS.some(step => step.name === 'metadata_generation');
+      
+      if (isMetadataGenerationEnabled && config.ai && config.ai.runMetadataGen && !this.isStopping) {
         await this.generateMetadata(images, config);
         
         this.completedSteps.push('metadata_generation');

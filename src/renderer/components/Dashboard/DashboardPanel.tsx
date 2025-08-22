@@ -209,6 +209,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   const [isLoading, setIsLoading] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportJobId, setExportJobId] = useState<string | null>(null);
+  const [jobConfiguration, setJobConfiguration] = useState<any>(null);
   // Removed local failed images review state; navigation handled at App level
 
   // Poll for job status updates
@@ -228,12 +229,25 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     return () => clearInterval(interval);
   }, []);
 
+  // Load job configuration for dynamic progress steps
+  const loadJobConfiguration = async () => {
+    try {
+      const configResponse = await window.electronAPI.jobManagement.getConfiguration();
+      if (configResponse?.success) {
+        setJobConfiguration(configResponse.settings);
+      }
+    } catch (error) {
+      console.error('Failed to load job configuration:', error);
+    }
+  };
+
   // Load initial data
   useEffect(() => {
     loadJobHistory();
     loadStatistics();
     loadGeneratedImages();
     loadLogs();
+    loadJobConfiguration();
   }, []);
 
   // Track last completion time for brief post-run visibility
@@ -609,6 +623,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
             <ProgressIndicator
               jobStatus={jobStatus}
               isLoading={isLoading}
+              jobConfiguration={jobConfiguration}
             />
           </div>
           
