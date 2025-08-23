@@ -675,10 +675,35 @@ class JobRunner extends EventEmitter {
       // Step 5: Metadata Generation (if enabled)
       const isMetadataGenerationEnabled = PROGRESS_STEPS.some(step => step.name === 'metadata_generation');
       
+      this._logStructured({
+        level: 'debug',
+        stepName: 'metadata_generation',
+        subStep: 'check_enabled',
+        message: `Checking metadata generation configuration`,
+        metadata: { 
+          isMetadataGenerationEnabled,
+          configAi: config.ai,
+          runMetadataGen: config.ai?.runMetadataGen,
+          progressSteps: PROGRESS_STEPS.map(s => s.name)
+        }
+      });
+      
       if (isMetadataGenerationEnabled && config.ai && config.ai.runMetadataGen && !this.isStopping) {
         await this.generateMetadata(images, config);
         
         this.completedSteps.push('metadata_generation');
+      } else {
+        this._logStructured({
+          level: 'info',
+          stepName: 'metadata_generation',
+          subStep: 'skipped',
+          message: `Metadata generation skipped - not enabled in configuration`,
+          metadata: { 
+            isMetadataGenerationEnabled,
+            runMetadataGen: config.ai?.runMetadataGen,
+            hasConfigAi: !!config.ai
+          }
+        });
       }
 
       // Job completed successfully
@@ -1534,7 +1559,7 @@ class JobRunner extends EventEmitter {
         const result = await aiVision.generateMetadata(
           image.path,
           image.metadata?.prompt || 'default image',
-          config.ai?.metadataPrompt || null,
+          config.ai?.runMetadataGen || null,
           config.parameters?.openaiModel || 'gpt-4o'
         );
         

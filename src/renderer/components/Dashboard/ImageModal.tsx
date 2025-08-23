@@ -80,6 +80,14 @@ const ImageModal: React.FC<ImageModalProps> = ({
 
   const processingSettings = image.processingSettings || {};
   const metadata = image.metadata || {};
+  
+  // Debug logging for metadata
+  console.log('ImageModal - Image object:', image);
+  console.log('ImageModal - Raw metadata:', image.metadata);
+  console.log('ImageModal - Processed metadata:', metadata);
+  console.log('ImageModal - Metadata title:', metadata.title);
+  console.log('ImageModal - Metadata description:', metadata.description);
+  console.log('ImageModal - Metadata tags:', metadata.tags);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
