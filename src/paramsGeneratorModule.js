@@ -56,13 +56,21 @@ async function paramsGeneratorModule(
       logDebug('Selected keyword:', selectedKeyword);
 
       if (customSystemPrompt) {
-        // If we have a template, use it with the keyword as Subject
-        systemPrompt = customSystemPrompt.replace(/\$\{\{Subject\}\}/g, selectedKeyword);
-        // Set empty values for other template variables
-        systemPrompt = systemPrompt
-          .replace(/\$\{\{Setting\}\}/g, '')
-          .replace(/\$\{\{Style\}\}/g, '')
-          .replace(/\$\{\{Mood\}\}/g, '');
+        // If we have a template, use it with the keyword replacement
+        systemPrompt = customSystemPrompt
+          .replace(/\$\{\{Subject\}\}/g, selectedKeyword)  // Support {{Subject}} format for CSV compatibility
+          .replace(/\{keyword\}/g, selectedKeyword)        // Support {keyword} format for TXT files
+          .replace(/\$\{keyword\}/g, selectedKeyword)      // Support ${keyword} format for TXT files
+          .replace(/\$\{\{Setting\}\}/g, '')              // Clear unused CSV placeholders
+          .replace(/\$\{\{Style\}\}/g, '')                // Clear unused CSV placeholders
+          .replace(/\$\{\{Mood\}\}/g, '');                // Clear unused CSV placeholders
+        
+        logDebug('Template processed:', {
+          original: customSystemPrompt,
+          processed: systemPrompt,
+          keyword: selectedKeyword
+        });
+        
         userPrompt = 'Generate one prompt now based on your instructions.';
       } else {
         systemPrompt = `You are an assistant creating high-quality stock photo prompts for an AI image generator. Your response must be a single JSON object with one key: "prompt". The prompt should describe a stock photo image based on the provided keywords. The prompt must be in a single line and in English.`;
