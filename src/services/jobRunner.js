@@ -675,6 +675,20 @@ class JobRunner extends EventEmitter {
       // Step 5: Metadata Generation (if enabled)
       const isMetadataGenerationEnabled = PROGRESS_STEPS.some(step => step.name === 'metadata_generation');
       
+      this._logStructured({
+        level: 'debug',
+        stepName: 'metadata_generation',
+        subStep: 'check_enabled',
+        message: 'Checking metadata generation configuration',
+        metadata: { 
+          isMetadataGenerationEnabled,
+          hasMetadataStep: PROGRESS_STEPS.some(step => step.name === 'metadata_generation'),
+          configAiRunMetadataGen: config.ai?.runMetadataGen,
+          configAiMetadataPrompt: config.ai?.metadataPrompt,
+          progressSteps: PROGRESS_STEPS.map(step => step.name)
+        }
+      });
+      
       if (isMetadataGenerationEnabled && config.ai && config.ai.runMetadataGen && !this.isStopping) {
         try {
           await this.generateMetadata(images, config);

@@ -255,7 +255,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                         onClick={async () => {
                           try {
                             console.log('🔄 Refreshing metadata for image:', image.id);
-                            const refreshedImage = await window.electronAPI.jobManagement.getGeneratedImage(image.id);
+                            const refreshedImage = await window.electronAPI.generatedImages.getGeneratedImage(image.id);
                             if (refreshedImage.success) {
                               // Update the local image state with fresh data
                               setImage(refreshedImage.image);
