@@ -702,7 +702,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     >
                       <option value="white">White</option>
                       <option value="black">Black</option>
-                      <option value="transparent">Transparent</option>
                     </select>
                     <p className="text-xs text-gray-500 mt-1">Background color for JPG conversion (JPG cannot be transparent)</p>
                   </div>

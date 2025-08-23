@@ -328,25 +328,6 @@ const ImageModal: React.FC<ImageModalProps> = ({
                 {/* Processing Settings Tab */}
                 {activeTab === 'processing' && (
                   <div className="space-y-4">
-                    {/* Enhancement Status Note */}
-                    {!processingSettings.imageEnhancement && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
-                        <div className="flex">
-                          <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                          <div className="ml-3">
-                            <h3 className="text-sm font-medium text-yellow-800">Image Enhancement Disabled</h3>
-                            <div className="mt-2 text-sm text-yellow-700">
-                              <p>Sharpening and saturation adjustments are not being applied to images. Enable Image Enhancement in settings to use these features.</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Image Enhancement</label>
@@ -379,18 +360,33 @@ const ImageModal: React.FC<ImageModalProps> = ({
                       </div>
                       
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Convert to JPG</label>
-                        <p className="text-sm text-gray-900">{processingSettings.convertToJpg ? 'Yes' : 'No'}</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Convert Format</label>
+                        <p className="text-sm text-gray-900">
+                          {processingSettings.imageConvert ? 
+                            (processingSettings.convertToJpg ? 'JPG' : 'PNG') : 
+                            <span className="text-gray-500 italic">Not applied (Image Convert OFF)</span>
+                          }
+                        </p>
                       </div>
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">JPG Quality</label>
-                        <p className="text-sm text-gray-900">{processingSettings.jpgQuality || 'N/A'}</p>
+                        <p className="text-sm text-gray-900">
+                          {processingSettings.imageConvert && processingSettings.convertToJpg ? 
+                            (processingSettings.jpgQuality || 100) : 
+                            <span className="text-gray-500 italic">Not applied (Convert Format is not JPG)</span>
+                          }
+                        </p>
                       </div>
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">PNG Quality</label>
-                        <p className="text-sm text-gray-900">{processingSettings.pngQuality || 'N/A'}</p>
+                        <p className="text-sm text-gray-900">
+                          {processingSettings.imageConvert && !processingSettings.convertToJpg ? 
+                            (processingSettings.pngQuality || 100) : 
+                            <span className="text-gray-500 italic">Not applied (Convert Format is not PNG)</span>
+                          }
+                        </p>
                       </div>
                       
                       <div>
@@ -398,24 +394,30 @@ const ImageModal: React.FC<ImageModalProps> = ({
                         <p className="text-sm text-gray-900">{processingSettings.removeBg ? 'Yes' : 'No'}</p>
                       </div>
                       
-                      {processingSettings.removeBg && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Remove BG Size</label>
-                          <p className="text-sm text-gray-900">{processingSettings.removeBgSize || 'N/A'}</p>
-                        </div>
-                      )}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Remove.bg Size</label>
+                        <p className="text-sm text-gray-900">
+                          {processingSettings.removeBg ? 
+                            (processingSettings.removeBgSize || 'auto') : 
+                            <span className="text-gray-500 italic">Not applied (Remove Background OFF)</span>
+                          }
+                        </p>
+                      </div>
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Trim Transparent</label>
                         <p className="text-sm text-gray-900">{processingSettings.trimTransparentBackground ? 'Yes' : 'No'}</p>
                       </div>
                       
-                      {processingSettings.convertToJpg && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">JPG Background</label>
-                          <p className="text-sm text-gray-900">{processingSettings.jpgBackground || 'N/A'}</p>
-                        </div>
-                      )}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">JPG Background Colour</label>
+                        <p className="text-sm text-gray-900">
+                          {processingSettings.imageConvert && processingSettings.convertToJpg && processingSettings.removeBg ? 
+                            (processingSettings.jpgBackground || 'white') : 
+                            <span className="text-gray-500 italic">Not applied (Remove Background, Image Convert are set to OFF and Convert Format is not JPG)</span>
+                          }
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}

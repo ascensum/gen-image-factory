@@ -611,7 +611,16 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <h3>Processing Options</h3>
                       <div className="setting-details">
                         <div>• Remove Background: {jobConfiguration.settings?.processing?.removeBg ? 'Yes' : 'No'}</div>
+                        <div>• Remove.bg Size: {jobConfiguration.settings?.processing?.removeBg ? (jobConfiguration.settings?.processing?.removeBgSize || 'auto') : 'Not applied (Remove Background OFF)'}</div>
                         <div>• Image Enhancement: {jobConfiguration.settings?.processing?.imageEnhancement ? 'Yes' : 'No'}</div>
+                        <div>• Sharpening: {jobConfiguration.settings?.processing?.imageEnhancement ? (jobConfiguration.settings?.processing?.sharpening || 0) : 'Not applied (Image Enhancement OFF)'}</div>
+                        <div>• Saturation: {jobConfiguration.settings?.processing?.imageEnhancement ? (jobConfiguration.settings?.processing?.saturation || 1.4) : 'Not applied (Image Enhancement OFF)'}</div>
+                        <div>• Image Convert: {jobConfiguration.settings?.processing?.imageConvert ? 'Yes' : 'No'}</div>
+                        <div>• Convert Format: {jobConfiguration.settings?.processing?.imageConvert ? (jobConfiguration.settings?.processing?.convertToJpg ? 'JPG' : 'PNG') : 'Not applied (Image Convert OFF)'}</div>
+                        <div>• JPG Quality: {jobConfiguration.settings?.processing?.imageConvert && jobConfiguration.settings?.processing?.convertToJpg ? (jobConfiguration.settings?.processing?.jpgQuality || 100) : 'Not applied (Convert Format is not JPG)'}</div>
+                        <div>• PNG Quality: {jobConfiguration.settings?.processing?.imageConvert && !jobConfiguration.settings?.processing?.convertToJpg ? (jobConfiguration.settings?.processing?.pngQuality || 100) : 'Not applied (Convert Format is not PNG)'}</div>
+                        <div>• Trim Transparent: {jobConfiguration.settings?.processing?.trimTransparentBackground ? 'Yes' : 'No'}</div>
+                        <div>• JPG Background Colour: {jobConfiguration.settings?.processing?.imageConvert && jobConfiguration.settings?.processing?.convertToJpg && jobConfiguration.settings?.processing?.removeBg ? (jobConfiguration.settings?.processing?.jpgBackground || 'white') : 'Not applied (Remove Background, Image Convert are set to OFF and Convert Format is not JPG)'}</div>
                         <div>• Quality Check: {jobConfiguration.settings?.ai?.runQualityCheck ? 'Yes' : 'No'}</div>
                         <div>• Metadata Generation: {jobConfiguration.settings?.ai?.runMetadataGen ? 'Yes' : 'No'}</div>
                       </div>
