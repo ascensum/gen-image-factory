@@ -826,18 +826,45 @@ class JobRunner extends EventEmitter {
         if (config.filePaths?.keywordsFile) {
           const fs = require('fs').promises;
           const keywordsContent = await fs.readFile(config.filePaths.keywordsFile, 'utf8');
-          const keywordsList = keywordsContent.trim().split('\n').filter(line => line.trim());
           
-          if (keywordsList.length > 0) {
-            // Select first keyword (or implement random selection later)
-            keywords = keywordsList[0].trim();
-            this._logStructured({
-              level: 'debug',
-              stepName: 'parameter_generation',
-              subStep: 'keywords_read',
-              message: `Read keywords from file: ${keywords}`,
-              metadata: { keywordsFile: config.filePaths.keywordsFile, selectedKeyword: keywords }
-            });
+          // Check if this is a CSV file (contains commas and quotes)
+          if (keywordsContent.includes(',') && keywordsContent.includes('"')) {
+            // Parse CSV format
+            const lines = keywordsContent.trim().split('\n').filter(line => line.trim());
+            if (lines.length > 1) { // Need at least header + one data row
+              const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+              const dataRow = lines[1].split(',').map(cell => cell.trim().replace(/"/g, ''));
+              
+              // Create object mapping headers to values
+              const csvRow = {};
+              headers.forEach((header, index) => {
+                csvRow[header] = dataRow[index] || '';
+              });
+              
+              keywords = csvRow; // Pass as object for CSV mode
+              this._logStructured({
+                level: 'debug',
+                stepName: 'parameter_generation',
+                subStep: 'csv_parsed',
+                message: `Parsed CSV keywords: ${JSON.stringify(csvRow)}`,
+                metadata: { keywordsFile: config.filePaths.keywordsFile, csvRow, headers }
+              });
+            }
+          } else {
+            // Parse as TXT format (one keyword per line)
+            const keywordsList = keywordsContent.trim().split('\n').filter(line => line.trim());
+            
+            if (keywordsList.length > 0) {
+              // Select first keyword (or implement random selection later)
+              keywords = keywordsList[0].trim();
+              this._logStructured({
+                level: 'debug',
+                stepName: 'parameter_generation',
+                subStep: 'txt_parsed',
+                message: `Read TXT keywords: ${keywords}`,
+                metadata: { keywordsFile: config.filePaths.keywordsFile, selectedKeyword: keywords }
+              });
+            }
           }
         }
         
