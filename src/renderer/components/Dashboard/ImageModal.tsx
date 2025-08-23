@@ -216,10 +216,12 @@ const ImageModal: React.FC<ImageModalProps> = ({
                       <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md border">{image.generationPrompt}</p>
                     </div>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Seed</label>
-                      <p className="text-sm text-gray-900 font-mono">{image.seed || 'N/A'}</p>
-                    </div>
+                    {image.seed && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Seed</label>
+                        <p className="text-sm text-gray-900 font-mono">{image.seed}</p>
+                      </div>
+                    )}
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">QC Status</label>
