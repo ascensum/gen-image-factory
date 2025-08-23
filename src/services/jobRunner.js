@@ -691,6 +691,8 @@ class JobRunner extends EventEmitter {
       
       if (isMetadataGenerationEnabled && config.ai && config.ai.runMetadataGen && !this.isStopping) {
         try {
+          // Use the images from producePictureModule which have mappingId
+          // These are the same images that were processed and saved to database
           await this.generateMetadata(images, config);
           this.completedSteps.push('metadata_generation');
           
@@ -1623,26 +1625,35 @@ class JobRunner extends EventEmitter {
             }
           });
           
-          // Update the image in the database with new metadata
-          if (this.backendAdapter && image.id) {
+          // Update the image in the database with new metadata using mappingId
+          if (this.backendAdapter && image.mappingId) {
             try {
-              await this.backendAdapter.updateGeneratedImage(image.id, image);
+              // Find the database record by mappingId and update it
+              const updateResult = await this.backendAdapter.updateGeneratedImageByMappingId(image.mappingId, image);
               this._logStructured({
                 level: 'debug',
                 stepName: 'metadata_generation',
                 subStep: 'db_update',
-                message: `Updated metadata in database for image ${image.id}`,
-                metadata: { imageId: image.id, title: result.new_title }
+                message: `Updated metadata in database for image with mappingId ${image.mappingId}`,
+                metadata: { mappingId: image.mappingId, title: result.new_title, updateResult }
               });
             } catch (dbError) {
               this._logStructured({
                 level: 'warn',
                 stepName: 'metadata_generation',
                 subStep: 'db_update_warning',
-                message: `Warning: Could not update metadata in database for image ${image.id}`,
-                metadata: { imageId: image.id, error: dbError.message }
+                message: `Warning: Could not update metadata in database for image with mappingId ${image.mappingId}`,
+                metadata: { mappingId: image.mappingId, error: dbError.message }
               });
             }
+          } else {
+            this._logStructured({
+              level: 'warn',
+              stepName: 'metadata_generation',
+              subStep: 'missing_mapping_id',
+              message: `Cannot update metadata - missing mappingId for image`,
+              metadata: { image: { mappingId: image.mappingId, id: image.id } }
+            });
           }
         } else {
           this._logStructured({

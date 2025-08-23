@@ -282,6 +282,10 @@ class BackendAdapter {
         return await this.updateQCStatusByMappingId(mappingId, status, reason);
       });
 
+      _ipc.handle('generated-image:update-by-mapping', async (event, { mappingId, image }) => {
+        return await this.updateGeneratedImageByMappingId(mappingId, image);
+      });
+
       _ipc.handle('generated-image:metadata', async (event, executionId) => {
         return await this.getImageMetadata(executionId);
       });
@@ -1347,6 +1351,17 @@ class BackendAdapter {
       return result;
     } catch (error) {
       console.error('Error updating QC status by mapping ID:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateGeneratedImageByMappingId(mappingId, image) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.generatedImage.updateGeneratedImageByMappingId(mappingId, image);
+      return result;
+    } catch (error) {
+      console.error('Error updating generated image by mapping ID:', error);
       return { success: false, error: error.message };
     }
   }

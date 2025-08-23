@@ -521,6 +521,39 @@ class GeneratedImage {
     });
   }
 
+  async updateGeneratedImageByMappingId(mappingId, image) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        UPDATE generated_images 
+        SET execution_id = ?, generation_prompt = ?, seed = ?, qc_status = ?, 
+            qc_reason = ?, final_image_path = ?, metadata = ?, processing_settings = ?
+        WHERE image_mapping_id = ?
+      `;
+
+      const params = [
+        image.executionId,
+        image.generationPrompt,
+        image.seed || null,
+        image.qcStatus,
+        image.qcReason || null,
+        image.finalImagePath || null,
+        image.metadata ? JSON.stringify(image.metadata) : null,
+        image.processingSettings ? JSON.stringify(image.processingSettings) : null,
+        mappingId
+      ];
+
+      this.db.run(sql, params, function(err) {
+        if (err) {
+          console.error('Error updating generated image by mapping ID:', err);
+          reject(err);
+        } else {
+          console.log(`Generated image updated successfully for mapping ID: ${mappingId}`);
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
+  }
+
   async getImageMetadata(executionId) {
     return new Promise((resolve, reject) => {
       const sql = `

@@ -93,6 +93,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getImagesByQCStatus: (qcStatus) => ipcRenderer.invoke('generated-image:get-by-qc-status', { qcStatus }),
     updateQCStatus: (imageId, status) => ipcRenderer.invoke('generated-image:update-qc-status', { imageId, status }),
     updateQCStatusByMappingId: (mappingId, status, reason) => ipcRenderer.invoke('generated-image:update-qc-status-by-mapping', { mappingId, status, reason }),
+    updateGeneratedImageByMappingId: (mappingId, image) => ipcRenderer.invoke('generated-image:update-by-mapping', { mappingId, image }),
     getImageMetadata: (executionId) => ipcRenderer.invoke('generated-image:metadata', executionId),
     getImageStatistics: () => ipcRenderer.invoke('generated-image:statistics'),
     manualApproveImage: (imageId) => ipcRenderer.invoke('generated-image:manual-approve', { imageId }),

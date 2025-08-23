@@ -258,8 +258,9 @@ const ImageModal: React.FC<ImageModalProps> = ({
                             const refreshedImage = await window.electronAPI.generatedImages.getGeneratedImage(image.id);
                             if (refreshedImage.success) {
                               // Update the local image state with fresh data
-                              setImage(refreshedImage.image);
+                              // Note: We can't update the parent state, so just log the result
                               console.log('✅ Metadata refreshed:', refreshedImage.image.metadata);
+                              console.log('🔄 To see updated metadata, close and reopen the image modal');
                             }
                           } catch (error) {
                             console.error('❌ Failed to refresh metadata:', error);
