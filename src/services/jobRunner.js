@@ -676,33 +676,44 @@ class JobRunner extends EventEmitter {
       const isMetadataGenerationEnabled = PROGRESS_STEPS.some(step => step.name === 'metadata_generation');
       
       if (isMetadataGenerationEnabled && config.ai && config.ai.runMetadataGen && !this.isStopping) {
-        await this.generateMetadata(images, config);
-        
-        this.completedSteps.push('metadata_generation');
-        
-        // Ensure all metadata updates are committed to database before marking job complete
-        if (this.backendAdapter) {
-          try {
-            this._logStructured({
-              level: 'info',
-              stepName: 'metadata_generation',
-              subStep: 'final_commit',
-              message: 'Ensuring all metadata updates are committed to database',
-              metadata: { imageCount: images.length }
-            });
-            
-            // Small delay to ensure database writes are committed
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-          } catch (error) {
-            this._logStructured({
-              level: 'warn',
-              stepName: 'metadata_generation',
-              subStep: 'commit_warning',
-              message: 'Warning: Could not ensure metadata commit completion',
-              metadata: { error: error.message }
-            });
+        try {
+          await this.generateMetadata(images, config);
+          this.completedSteps.push('metadata_generation');
+          
+          // Ensure all metadata updates are committed to database before marking job complete
+          if (this.backendAdapter) {
+            try {
+              this._logStructured({
+                level: 'info',
+                stepName: 'metadata_generation',
+                subStep: 'final_commit',
+                message: 'Ensuring all metadata updates are committed to database',
+                metadata: { imageCount: images.length }
+              });
+              
+              // Small delay to ensure database writes are committed
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+            } catch (error) {
+              this._logStructured({
+                level: 'warn',
+                stepName: 'metadata_generation',
+                subStep: 'commit_warning',
+                message: 'Warning: Could not ensure metadata commit completion',
+                metadata: { error: error.message }
+              });
+            }
           }
+        } catch (error) {
+          this._logStructured({
+            level: 'error',
+            stepName: 'metadata_generation',
+            subStep: 'error_handled',
+            message: `Metadata generation failed but continuing job completion: ${error.message}`,
+            metadata: { error: error.message, stack: error.stack }
+          });
+          // Don't let metadata generation failure stop the job from completing
+          this.completedSteps.push('metadata_generation_failed');
         }
       }
 
@@ -1559,7 +1570,7 @@ class JobRunner extends EventEmitter {
         const result = await aiVision.generateMetadata(
           image.path,
           image.metadata?.prompt || 'default image',
-          config.ai?.runMetadataGen || null,
+          config.ai?.metadataPrompt || null,  // Fixed: use metadataPrompt, not runMetadataGen
           config.parameters?.openaiModel || 'gpt-4o'
         );
         
