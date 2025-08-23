@@ -83,7 +83,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     try {
       setIsLoading(true);
       setError(null);
-      const images = await window.electronAPI.getImagesByQCStatus('failed');
+      const images = await window.electronAPI.generatedImages.getImagesByQCStatus('qc_failed');
       if (images && Array.isArray(images)) {
         setFailedImages(images);
       } else {
@@ -123,16 +123,16 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       switch (action) {
         case 'approve':
           // Move image to main dashboard success view
-          await window.electronAPI.updateQCStatus(imageId, 'approved');
+          await window.electronAPI.generatedImages.updateQCStatus(imageId, 'approved');
           await loadFailedImages();
           break;
         case 'retry':
           // Add image to retry pool
-          await window.electronAPI.updateQCStatus(imageId, 'retry_pending');
+          await window.electronAPI.generatedImages.updateQCStatus(imageId, 'retry_pending');
           await loadFailedImages();
           break;
         case 'delete':
-          await window.electronAPI.deleteGeneratedImage(imageId);
+          await window.electronAPI.generatedImages.deleteGeneratedImage(imageId);
           await loadFailedImages();
           break;
         case 'view':
@@ -158,7 +158,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         case 'approve':
           // Bulk approve images
           for (const imageId of selectedImages) {
-            await window.electronAPI.updateQCStatus(imageId, 'approved');
+            await window.electronAPI.generatedImages.updateQCStatus(imageId, 'approved');
           }
           break;
         case 'retry':
@@ -168,7 +168,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         case 'delete':
           // Bulk delete images
           for (const imageId of selectedImages) {
-            await window.electronAPI.deleteGeneratedImage(imageId);
+            await window.electronAPI.generatedImages.deleteGeneratedImage(imageId);
           }
           break;
       }

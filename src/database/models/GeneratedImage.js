@@ -368,6 +368,7 @@ class GeneratedImage {
           // Parse JSON fields and convert timestamps
           const images = rows.map(row => ({
             id: row.id,
+            imageMappingId: row.image_mapping_id,
             executionId: row.execution_id,
             generationPrompt: row.generation_prompt,
             seed: row.seed,
@@ -396,6 +397,7 @@ class GeneratedImage {
           // Parse JSON fields and convert timestamps
           const images = rows.map(row => ({
             id: row.id,
+            imageMappingId: row.image_mapping_id,
             executionId: row.execution_id,
             generationPrompt: row.generation_prompt,
             seed: row.seed,
@@ -473,6 +475,7 @@ class GeneratedImage {
           // Parse JSON fields and convert timestamps
           const images = rows.map(row => ({
             id: row.id,
+            imageMappingId: row.image_mapping_id,
             executionId: row.execution_id,
             generationPrompt: row.generation_prompt,
             seed: row.seed,
