@@ -1589,12 +1589,39 @@ class JobRunner extends EventEmitter {
         );
         
         if (result) {
+          this._logStructured({
+            level: 'debug',
+            stepName: 'metadata_generation',
+            subStep: 'ai_result',
+            message: `AI metadata generation result for image ${image.id}`,
+            metadata: { 
+              imageId: image.id,
+              aiResult: result,
+              aiResultKeys: Object.keys(result),
+              hasTitle: !!result.new_title,
+              hasDescription: !!result.new_description,
+              hasTags: !!result.uploadTags
+            }
+          });
+          
           image.metadata = {
             ...image.metadata,
             title: result.new_title,
             description: result.new_description,
             tags: result.uploadTags
           };
+          
+          this._logStructured({
+            level: 'debug',
+            stepName: 'metadata_generation',
+            subStep: 'image_metadata_updated',
+            message: `Image metadata object updated for image ${image.id}`,
+            metadata: { 
+              imageId: image.id,
+              finalMetadata: image.metadata,
+              metadataKeys: Object.keys(image.metadata)
+            }
+          });
           
           // Update the image in the database with new metadata
           if (this.backendAdapter && image.id) {
@@ -1618,6 +1645,14 @@ class JobRunner extends EventEmitter {
             }
           }
         } else {
+          this._logStructured({
+            level: 'warn',
+            stepName: 'metadata_generation',
+            subStep: 'no_result',
+            message: `No metadata result returned for image ${image.id}`,
+            metadata: { imageId: image.id }
+          });
+          
           image.metadata = {
             ...image.metadata,
             error: 'Metadata generation failed'
