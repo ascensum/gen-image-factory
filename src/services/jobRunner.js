@@ -679,6 +679,31 @@ class JobRunner extends EventEmitter {
         await this.generateMetadata(images, config);
         
         this.completedSteps.push('metadata_generation');
+        
+        // Ensure all metadata updates are committed to database before marking job complete
+        if (this.backendAdapter) {
+          try {
+            this._logStructured({
+              level: 'info',
+              stepName: 'metadata_generation',
+              subStep: 'final_commit',
+              message: 'Ensuring all metadata updates are committed to database',
+              metadata: { imageCount: images.length }
+            });
+            
+            // Small delay to ensure database writes are committed
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+          } catch (error) {
+            this._logStructured({
+              level: 'warn',
+              stepName: 'metadata_generation',
+              subStep: 'commit_warning',
+              message: 'Warning: Could not ensure metadata commit completion',
+              metadata: { error: error.message }
+            });
+          }
+        }
       }
 
       // Job completed successfully

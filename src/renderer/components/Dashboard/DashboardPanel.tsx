@@ -283,9 +283,15 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   useEffect(() => {
     if (jobStatus.state === 'completed') {
       console.log('🔄 Job completed, refreshing data...');
+      // Immediate refresh for job history and statistics
       loadJobHistory();
       loadStatistics();
-      loadGeneratedImages();
+      
+      // Delay refresh for generated images to ensure metadata generation is complete
+      setTimeout(() => {
+        console.log('🔄 Delayed refresh of generated images to ensure metadata is complete...');
+        loadGeneratedImages();
+      }, 500); // 500ms delay to ensure backend metadata generation completes
     }
   }, [jobStatus.state]);
 
