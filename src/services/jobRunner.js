@@ -1602,7 +1602,29 @@ class JobRunner extends EventEmitter {
               aiResultKeys: Object.keys(result),
               hasTitle: !!result.new_title,
               hasDescription: !!result.new_description,
-              hasTags: !!result.uploadTags
+              hasTags: !!result.uploadTags,
+              titleValue: result.new_title,
+              descriptionValue: result.new_description,
+              tagsValue: result.uploadTags,
+              tagsType: typeof result.uploadTags
+            }
+          });
+          
+          // Check for different possible tag field names
+          const tags = result.uploadTags || result.tags || result.upload_tags || null;
+          
+          this._logStructured({
+            level: 'debug',
+            stepName: 'metadata_generation',
+            subStep: 'tags_processing',
+            message: `Processing tags for image ${image.id}`,
+            metadata: { 
+              imageId: image.id,
+              uploadTags: result.uploadTags,
+              tags: result.tags,
+              upload_tags: result.upload_tags,
+              selectedTags: tags,
+              tagsType: typeof tags
             }
           });
           
@@ -1610,7 +1632,7 @@ class JobRunner extends EventEmitter {
             ...image.metadata,
             title: result.new_title,
             description: result.new_description,
-            tags: result.uploadTags
+            tags: tags
           };
           
           this._logStructured({

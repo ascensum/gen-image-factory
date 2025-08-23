@@ -289,32 +289,39 @@ const ImageModal: React.FC<ImageModalProps> = ({
                       </p>
                     </div>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">AI-Generated Tags</label>
-                      <div className="bg-gray-50 p-3 rounded-md border">
-                        {Array.isArray(metadata.tags) && metadata.tags.length > 0 ? (
-                          <div className="flex flex-wrap gap-2">
-                            {metadata.tags.map((tag: string, index: number) => (
-                              <span 
-                                key={index}
-                                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-gray-500">No tags generated</p>
-                        )}
+                                          <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">AI-Generated Tags</label>
+                        <div className="bg-gray-50 p-3 rounded-md border">
+                          {(() => {
+                            // Handle both array and comma-separated string formats
+                            let tagsArray = [];
+                            if (Array.isArray(metadata.tags)) {
+                              tagsArray = metadata.tags;
+                            } else if (typeof metadata.tags === 'string' && metadata.tags.trim()) {
+                              tagsArray = metadata.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+                            }
+                            
+                            if (tagsArray.length > 0) {
+                              return (
+                                <div className="flex flex-wrap gap-2">
+                                  {tagsArray.map((tag: string, index: number) => (
+                                    <span 
+                                      key={index}
+                                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                    >
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            } else {
+                              return <p className="text-sm text-gray-500">No tags generated</p>;
+                            }
+                          })()}
+                        </div>
                       </div>
-                    </div>
                     
-                    {metadata.prompt && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Metadata Prompt</label>
-                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md border">{metadata.prompt}</p>
-                      </div>
-                    )}
+                    {/* Metadata Prompt hidden - internal reference only */}
                   </div>
                 )}
 
