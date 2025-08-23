@@ -523,33 +523,64 @@ class GeneratedImage {
 
   async updateGeneratedImageByMappingId(mappingId, image) {
     return new Promise((resolve, reject) => {
-      const sql = `
-        UPDATE generated_images 
-        SET execution_id = ?, generation_prompt = ?, seed = ?, qc_status = ?, 
-            qc_reason = ?, final_image_path = ?, metadata = ?, processing_settings = ?
-        WHERE image_mapping_id = ?
-      `;
-
-      const params = [
-        image.executionId,
-        image.generationPrompt,
-        image.seed || null,
-        image.qcStatus,
-        image.qcReason || null,
-        image.finalImagePath || null,
-        image.metadata ? JSON.stringify(image.metadata) : null,
-        image.processingSettings ? JSON.stringify(image.processingSettings) : null,
-        mappingId
-      ];
-
-      this.db.run(sql, params, function(err) {
+      // First, get the existing image data to merge metadata properly
+      const selectSql = 'SELECT metadata FROM generated_images WHERE image_mapping_id = ?';
+      
+      this.db.get(selectSql, [mappingId], (err, row) => {
         if (err) {
-          console.error('Error updating generated image by mapping ID:', err);
+          console.error('Error getting existing image data:', err);
           reject(err);
-        } else {
-          console.log(`Generated image updated successfully for mapping ID: ${mappingId}`);
-          resolve({ success: true, changes: this.changes });
+          return;
         }
+        
+        if (!row) {
+          reject(new Error(`Image with mapping ID ${mappingId} not found`));
+          return;
+        }
+        
+        // Parse existing metadata and merge with new metadata
+        let existingMetadata = {};
+        if (row.metadata) {
+          try {
+            existingMetadata = JSON.parse(row.metadata);
+          } catch (parseError) {
+            console.warn(`Failed to parse existing metadata for ${mappingId}:`, parseError);
+            existingMetadata = {};
+          }
+        }
+        
+        // Merge existing metadata with new metadata
+        const mergedMetadata = {
+          ...existingMetadata,
+          ...image.metadata
+        };
+        
+        console.log(`Merging metadata for ${mappingId}:`, {
+          existing: existingMetadata,
+          new: image.metadata,
+          merged: mergedMetadata
+        });
+        
+        const updateSql = `
+          UPDATE generated_images 
+          SET metadata = ?
+          WHERE image_mapping_id = ?
+        `;
+
+        const params = [
+          JSON.stringify(mergedMetadata),
+          mappingId
+        ];
+
+        this.db.run(updateSql, params, function(err) {
+          if (err) {
+            console.error('Error updating generated image by mapping ID:', err);
+            reject(err);
+          } else {
+            console.log(`Generated image metadata updated successfully for mapping ID: ${mappingId}`);
+            resolve({ success: true, changes: this.changes });
+          }
+        });
       });
     });
   }

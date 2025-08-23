@@ -1635,7 +1635,14 @@ class JobRunner extends EventEmitter {
                 stepName: 'metadata_generation',
                 subStep: 'db_update',
                 message: `Updated metadata in database for image with mappingId ${image.mappingId}`,
-                metadata: { mappingId: image.mappingId, title: result.new_title, updateResult }
+                metadata: { 
+                  mappingId: image.mappingId, 
+                  title: result.new_title, 
+                  description: result.new_description,
+                  tags: result.uploadTags,
+                  fullMetadata: image.metadata,
+                  updateResult 
+                }
               });
             } catch (dbError) {
               this._logStructured({
