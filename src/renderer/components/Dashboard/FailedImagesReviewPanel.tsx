@@ -23,6 +23,8 @@ interface ProcessingSettings {
 }
 
 const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBack }) => {
+  console.log('🔍 FailedImagesReviewPanel: Component mounting...');
+  
   const [failedImages, setFailedImages] = useState<GeneratedImage[]>([]);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [selectedImageForReview, setSelectedImageForReview] = useState<GeneratedImage | null>(null);
@@ -63,6 +65,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
 
   // Load failed images on component mount
   useEffect(() => {
+    console.log('🔍 FailedImagesReviewPanel: useEffect running...');
     loadFailedImages();
     loadRetryQueueStatus();
   }, []);
@@ -80,21 +83,36 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   };
 
   const loadFailedImages = async () => {
+    console.log('🔍 loadFailedImages: Starting...');
     try {
       setIsLoading(true);
       setError(null);
+      console.log('🔍 loadFailedImages: Calling electronAPI.generatedImages.getImagesByQCStatus("qc_failed")...');
       const images = await window.electronAPI.generatedImages.getImagesByQCStatus('qc_failed');
-      if (images && Array.isArray(images)) {
-        setFailedImages(images);
+      console.log('🔍 loadFailedImages: Response received:', images);
+      
+      // Handle both response formats: direct array or {success, images} object
+      let imageArray = images;
+      if (images && typeof images === 'object' && images.success !== undefined) {
+        // Response is wrapped in {success, images} format
+        imageArray = images.images;
+        console.log('🔍 loadFailedImages: Extracted images array:', imageArray);
+      }
+      
+      if (imageArray && Array.isArray(imageArray)) {
+        console.log('🔍 loadFailedImages: Setting failed images:', imageArray.length);
+        setFailedImages(imageArray);
       } else {
+        console.log('🔍 loadFailedImages: No images or invalid format, setting empty array');
         setFailedImages([]);
       }
     } catch (error) {
-      console.error('Failed to load failed images:', error);
+      console.error('🔍 loadFailedImages: Error occurred:', error);
       setError('Failed to load failed images');
       setFailedImages([]);
     } finally {
       setIsLoading(false);
+      console.log('🔍 loadFailedImages: Loading complete');
     }
   };
 
@@ -127,9 +145,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
           await loadFailedImages();
           break;
         case 'retry':
-          // Add image to retry pool
-          await window.electronAPI.generatedImages.updateQCStatus(imageId, 'retry_pending');
-          await loadFailedImages();
+          // Add image to retry selection bucket
+          const newSelected = new Set(selectedImages);
+          newSelected.add(imageId);
+          setSelectedImages(newSelected);
+          console.log('🔍 Image added to retry selection:', imageId, 'Total selected:', newSelected.size);
           break;
         case 'delete':
           await window.electronAPI.generatedImages.deleteGeneratedImage(imageId);

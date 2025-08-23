@@ -109,9 +109,9 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
           <button
             onClick={() => onAction('retry', image.id)}
             className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-            title="Add to retry pool"
+            title="Add to retry selection bucket"
           >
-            🔄 Retry
+            🔄 Add To Retry
           </button>
           <button
             onClick={() => onAction('view', image.id)}
