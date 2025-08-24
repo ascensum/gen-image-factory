@@ -677,23 +677,27 @@ class JobRunner extends EventEmitter {
         this.completedSteps.push('ai_operations');
       }
 
-      // Step 4: Image Processing (only for approved images)
-      // Note: This step only runs for images that passed QC or were auto-approved
+      // Step 4: Image Processing (for approved images or when QC is disabled)
+      // Note: This step processes images that passed QC or were auto-approved
       if (!this.isStopping) {
-        console.log('🔄 Starting image processing for approved images...');
+        console.log('🔄 Starting image processing...');
         
         try {
           // Get the saved images from database to have their IDs
           const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
           
           if (savedImages && savedImages.length > 0) {
-            // Filter for approved images only
-            const approvedImages = savedImages.filter(img => img.qcStatus === 'approved');
-            console.log(`✅ Processing ${approvedImages.length} approved images out of ${savedImages.length} total`);
+            // When QC is disabled, process ALL images (they were auto-approved)
+            // When QC is enabled, only process approved images
+            const imagesToProcess = this.jobConfiguration?.ai?.runQualityCheck 
+              ? savedImages.filter(img => img.qcStatus === 'approved')
+              : savedImages; // Process all images when QC is disabled
             
-            if (approvedImages.length > 0) {
-              // Process each approved image
-              for (const imageData of approvedImages) {
+            console.log(`✅ Processing ${imagesToProcess.length} images out of ${savedImages.length} total (QC ${this.jobConfiguration?.ai?.runQualityCheck ? 'enabled' : 'disabled'})`);
+            
+            if (imagesToProcess.length > 0) {
+              // Process each image
+              for (const imageData of imagesToProcess) {
                 if (this.isStopping) break;
                 
                 try {
@@ -732,7 +736,7 @@ class JobRunner extends EventEmitter {
         // this.completedSteps.push('image_processing');
               console.log('✅ Image processing completed successfully');
             } else {
-              console.log('ℹ️ No approved images to process');
+              console.log('ℹ️ No images to process');
             }
           } else {
             console.warn('⚠️ No saved images found for processing');
