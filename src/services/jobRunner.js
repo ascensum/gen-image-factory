@@ -13,7 +13,7 @@ const aiVision = require('../aiVision');
 const BASE_PROGRESS_STEPS = [
   { name: 'initialization', weight: 10, description: 'Initializing job configuration and setup', required: true },
   { name: 'image_generation', weight: 45, description: 'Generating images and metadata', required: true },
-  { name: 'ai_operations', weight: 45, description: 'Quality checks and image processing', required: false, settingKey: 'ai.enabled' }
+  { name: 'ai_operations', weight: 45, description: 'Quality checks and image processing', required: false }
 ];
 
 // Dynamic progress steps based on job configuration
@@ -39,6 +39,10 @@ class JobRunner extends EventEmitter {
     this.isStopping = false;
     this.isRerun = options.isRerun || false; // Flag to prevent duplicate database saves during reruns
     this.jobConfiguration = null; // Store the actual job configuration
+    
+    // Initialize PROGRESS_STEPS with default configuration to ensure proper step count
+    // This prevents getJobStatus from returning incorrect totalSteps when idle
+    PROGRESS_STEPS = this._getEnabledProgressSteps({});
     
     // Set global reference so logDebug can find us
     global.currentJobRunner = this;
@@ -86,17 +90,12 @@ class JobRunner extends EventEmitter {
       return true;
     });
 
-    return enabledSteps;
-
-
     // Recalculate weights to ensure they sum to 100
     const totalWeight = enabledSteps.reduce((sum, step) => sum + step.weight, 0);
     const rebalancedSteps = enabledSteps.map(step => ({
       ...step,
       weight: Math.round((step.weight / totalWeight) * 100)
     }));
-    
-
     
     return rebalancedSteps;
   }
@@ -1862,8 +1861,23 @@ class JobRunner extends EventEmitter {
    * @returns {Object} Job status object
    */
   getJobStatus() {
+    // Ensure PROGRESS_STEPS is up-to-date with current job configuration
+    if (this.jobConfiguration) {
+      PROGRESS_STEPS = this._getEnabledProgressSteps(this.jobConfiguration);
+    }
+    
     const currentStepConfig = PROGRESS_STEPS.find(s => s.name === this.jobState.currentStep);
     const currentStepIndex = PROGRESS_STEPS.findIndex(s => s.name === this.jobState.currentStep);
+    
+    // Debug logging to help troubleshoot progress step issues
+    console.log('🔍 getJobStatus debug:', {
+      PROGRESS_STEPS_length: PROGRESS_STEPS.length,
+      PROGRESS_STEPS_names: PROGRESS_STEPS.map(s => s.name),
+      currentStep: this.jobState.currentStep,
+      currentStepIndex,
+      jobState_status: this.jobState.status,
+      hasJobConfig: !!this.jobConfiguration
+    });
     
     return {
       state: this.jobState.status,
