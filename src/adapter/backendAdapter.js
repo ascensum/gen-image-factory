@@ -1377,6 +1377,17 @@ class BackendAdapter {
     }
   }
 
+  async updateImagePathsByMappingId(mappingId, tempImagePath, finalImagePath) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.generatedImage.updateImagePathsByMappingId(mappingId, tempImagePath, finalImagePath);
+      return result;
+    } catch (error) {
+      console.error('Error updating image paths by mapping ID:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async getImageMetadata(executionId) {
     try {
       await this.ensureInitialized();

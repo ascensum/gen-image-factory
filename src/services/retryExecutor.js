@@ -355,17 +355,23 @@ class RetryExecutor extends EventEmitter {
       // Get the actual image data from the database
       const image = await this.generatedImage.getGeneratedImage(imageId);
       
-      if (!image) {
+      if (!image.success || !image.image) {
         throw new Error(`Image ${imageId} not found in database`);
       }
       
-      // Priority 1: Use tempImagePath from database if available
-      if (image.tempImagePath) {
-        console.log(`🔧 RetryExecutor: Using database tempImagePath for image ${imageId}: ${image.tempImagePath}`);
-        return image.tempImagePath;
+      // Priority 1: Use finalImagePath from database (where processed images actually exist)
+      if (image.image.finalImagePath) {
+        console.log(`🔧 RetryExecutor: Using database finalImagePath for image ${imageId}: ${image.image.finalImagePath}`);
+        return image.image.finalImagePath;
       }
       
-      // Priority 2: Fallback to constructed temp directory path
+      // Priority 2: Fallback to tempImagePath if available (for edge cases)
+      if (image.image.tempImagePath) {
+        console.log(`🔧 RetryExecutor: Using database tempImagePath for image ${imageId}: ${image.image.tempImagePath}`);
+        return image.image.tempImagePath;
+      }
+      
+      // Priority 3: Last resort - construct path in temp directory
       const fallbackTempPath = path.join(this.tempDirectory, `image_${imageId}.png`);
       console.log(`🔧 RetryExecutor: Using fallback temp directory path for image ${imageId}: ${fallbackTempPath}`);
       console.log(`🔧 RetryExecutor: tempDirectory: ${this.tempDirectory}`);

@@ -53,7 +53,6 @@ class JobRunner extends EventEmitter {
    * @returns {Array} Filtered progress steps
    */
   _getEnabledProgressSteps(config) {
-    
     const enabledSteps = BASE_PROGRESS_STEPS.filter(step => {
       // Always include required steps
       if (step.required) {
@@ -75,6 +74,8 @@ class JobRunner extends EventEmitter {
       return true;
     });
 
+    return enabledSteps;
+
 
     // Recalculate weights to ensure they sum to 100
     const totalWeight = enabledSteps.reduce((sum, step) => sum + step.weight, 0);
@@ -82,6 +83,8 @@ class JobRunner extends EventEmitter {
       ...step,
       weight: Math.round((step.weight / totalWeight) * 100)
     }));
+    
+
     
     return rebalancedSteps;
   }
@@ -548,32 +551,31 @@ class JobRunner extends EventEmitter {
       } catch (error) {
         throw error;
       }
-      // Save generated images to database if backendAdapter is available
+      
+      // Save generated images to database with tempImagePath (original downloaded images)
       if (this.backendAdapter && Array.isArray(images)) {
         try {
-          console.log("💾 Saving generated images to database...");
+          console.log("💾 Saving generated images to database with tempImagePath...");
           for (const image of images) {
             if (image.path && image.status === "generated") {
               // Use the stored database execution ID
               const executionId = this.databaseExecutionId;
               console.log('🔍 Using stored database execution ID for generated image:', executionId);
-              console.log('🔍 this.databaseExecutionId type:', typeof this.databaseExecutionId);
-              console.log('🔍 this.databaseExecutionId value:', this.databaseExecutionId);
-              console.log('🔍 this object keys:', Object.keys(this));
               
               if (executionId) {
-                // Determine initial QC status based on settings
+                // Save with tempImagePath (original downloaded image) and qc_failed status
                 const initialQCStatus = (this.jobConfiguration?.ai?.runQualityCheck) ? 'qc_failed' : 'approved';
                 const initialQCReason = (this.jobConfiguration?.ai?.runQualityCheck) ? null : 'Auto-approved (quality checks disabled)';
                 
                 const generatedImage = {
-                  imageMappingId: image.mappingId || `img_${Date.now()}_${i}`, // Use mapping ID from producePictureModule
+                  imageMappingId: image.mappingId || `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   executionId: executionId,
                   generationPrompt: image.metadata?.prompt || 'Generated image',
                   seed: null,
                   qcStatus: initialQCStatus,
                   qcReason: initialQCReason,
-                  finalImagePath: image.path,
+                  tempImagePath: image.path, // Save original image path for retry
+                  finalImagePath: null, // Will be set after processing (if QC passes)
                   metadata: JSON.stringify(image.metadata || {}),
                   processingSettings: JSON.stringify({
                     aspectRatio: image.aspectRatio || '16:9',
@@ -593,7 +595,7 @@ class JobRunner extends EventEmitter {
                 };
                 
                 const saveResult = await this.backendAdapter.saveGeneratedImage(generatedImage);
-                console.log("✅ Generated image saved to database:", saveResult);
+                console.log("✅ Generated image saved to database with tempImagePath:", saveResult);
               } else {
                 console.warn('⚠️ Skipping image save - no execution ID available');
               }
@@ -606,22 +608,13 @@ class JobRunner extends EventEmitter {
         console.warn("⚠️ No backendAdapter available or no images - generated images will not be saved to database");
       }
       
-      
-              this.completedSteps.push('image_generation');
-        this.completedSteps.push('image_processing');
+      this.completedSteps.push('image_generation');
 
-      // Step 3: Background Removal (if enabled)
-      if (config.processing && config.processing.removeBg && !this.isStopping) {
-        await this.removeBackgrounds(images, config);
-        
-        this.completedSteps.push('background_removal');
-      }
-
-      // Step 4: Quality Check (if enabled) - Run after images are saved to database
+      // Step 3: Quality Check FIRST (before any processing)
       // Note: If QC is disabled, images are automatically approved to maintain happy path
-      const isQualityCheckEnabled = PROGRESS_STEPS.some(step => step.name === 'quality_check');
+      const isQualityCheckEnabled = this.jobConfiguration && this.jobConfiguration.ai && this.jobConfiguration.ai.runQualityCheck;
       
-      if (isQualityCheckEnabled && config.ai && config.ai.runQualityCheck && !this.isStopping) {
+      if (isQualityCheckEnabled && !this.isStopping) {
         console.log('✅ Quality check condition is TRUE - proceeding with quality checks');
         
         // Get the saved images from database to have their IDs
@@ -672,8 +665,72 @@ class JobRunner extends EventEmitter {
         this.completedSteps.push('auto_approval');
       }
 
+      // Step 4: Image Processing (only for approved images)
+      // Note: This step only runs for images that passed QC or were auto-approved
+      if (!this.isStopping) {
+        console.log('🔄 Starting image processing for approved images...');
+        
+        try {
+          // Get the saved images from database to have their IDs
+          const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
+          
+          if (savedImages && savedImages.length > 0) {
+            // Filter for approved images only
+            const approvedImages = savedImages.filter(img => img.qcStatus === 'approved');
+            console.log(`✅ Processing ${approvedImages.length} approved images out of ${savedImages.length} total`);
+            
+            if (approvedImages.length > 0) {
+              // Process each approved image
+              for (const imageData of approvedImages) {
+                if (this.isStopping) break;
+                
+                try {
+                  console.log(`🔄 Processing image ${imageData.imageMappingId}...`);
+                  
+                  // Get the image file path from tempImagePath
+                  const tempImagePath = imageData.tempImagePath;
+                  if (!tempImagePath) {
+                    console.warn(`⚠️ No tempImagePath found for image ${imageData.imageMappingId}, skipping processing`);
+                    continue;
+                  }
+                  
+                  // Process the image (enhancement, conversion, etc.)
+                  const processedImagePath = await this.processSingleImage(tempImagePath, config);
+                  
+                  if (processedImagePath) {
+                    // Move the processed image to finalImagePath
+                    const finalImagePath = await this.moveImageToFinalLocation(processedImagePath, imageData.imageMappingId);
+                    
+                    if (finalImagePath) {
+                      // Update database: set finalImagePath and clear tempImagePath
+                      await this.updateImagePaths(imageData.imageMappingId, null, finalImagePath);
+                      console.log(`✅ Image ${imageData.imageMappingId} processed and moved to final location: ${finalImagePath}`);
+                    } else {
+                      console.error(`❌ Failed to move processed image ${imageData.imageMappingId} to final location`);
+                    }
+                  } else {
+                    console.error(`❌ Failed to process image ${imageData.imageMappingId}`);
+                  }
+                } catch (error) {
+                  console.error(`❌ Error processing image ${imageData.imageMappingId}:`, error);
+                }
+              }
+              
+              this.completedSteps.push('image_processing');
+              console.log('✅ Image processing completed successfully');
+            } else {
+              console.log('ℹ️ No approved images to process');
+            }
+          } else {
+            console.warn('⚠️ No saved images found for processing');
+          }
+        } catch (error) {
+          console.error('❌ Error during image processing:', error);
+        }
+      }
+
       // Step 5: Metadata Generation (if enabled)
-      const isMetadataGenerationEnabled = PROGRESS_STEPS.some(step => step.name === 'metadata_generation');
+      const isMetadataGenerationEnabled = this.jobConfiguration && this.jobConfiguration.ai && this.jobConfiguration.ai.runMetadataGen;
       
       this._logStructured({
         level: 'debug',
@@ -682,14 +739,14 @@ class JobRunner extends EventEmitter {
         message: 'Checking metadata generation configuration',
         metadata: { 
           isMetadataGenerationEnabled,
-          hasMetadataStep: PROGRESS_STEPS.some(step => step.name === 'metadata_generation'),
+          hasMetadataStep: isMetadataGenerationEnabled,
           configAiRunMetadataGen: config.ai?.runMetadataGen,
           configAiMetadataPrompt: config.ai?.metadataPrompt,
           progressSteps: PROGRESS_STEPS.map(step => step.name)
         }
       });
       
-      if (isMetadataGenerationEnabled && config.ai && config.ai.runMetadataGen && !this.isStopping) {
+      if (isMetadataGenerationEnabled && !this.isStopping) {
         try {
           // Use the images from producePictureModule which have mappingId
           // These are the same images that were processed and saved to database
@@ -1894,6 +1951,84 @@ class JobRunner extends EventEmitter {
 
     const totalEstimatedTime = elapsed / progress;
     return Math.max(0, totalEstimatedTime - elapsed);
+  }
+
+  /**
+   * Process a single image with all configured processing options
+   * @param {string} tempImagePath - Path to the temporary image
+   * @param {Object} config - Job configuration
+   * @returns {Promise<string|null>} Path to processed image or null if failed
+   */
+  async processSingleImage(tempImagePath, config) {
+    try {
+      console.log(`🔄 Processing image: ${tempImagePath}`);
+      
+      // For now, return the same path (no processing applied)
+      // TODO: Implement actual image processing based on config
+      console.log(`ℹ️ Image processing not yet implemented, returning original path: ${tempImagePath}`);
+      return tempImagePath;
+    } catch (error) {
+      console.error(`❌ Error processing image ${tempImagePath}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Move a processed image to its final location
+   * @param {string} processedImagePath - Path to the processed image
+   * @param {string} imageMappingId - Unique identifier for the image
+   * @returns {Promise<string|null>} Final image path or null if failed
+   */
+  async moveImageToFinalLocation(processedImagePath, imageMappingId) {
+    try {
+      const fs = require('fs').promises;
+      const path = require('path');
+      
+      // Determine final location based on user configuration or default
+      const finalDirectory = this.jobConfiguration?.output?.directory || 
+                            path.join(require('os').homedir(), 'Desktop', 'Gen_Image_Factory_ToUpload');
+      
+      // Ensure final directory exists
+      await fs.mkdir(finalDirectory, { recursive: true });
+      
+      // Generate final filename
+      const originalFilename = path.basename(processedImagePath);
+      const finalFilename = `${imageMappingId}_${originalFilename}`;
+      const finalImagePath = path.join(finalDirectory, finalFilename);
+      
+      // Move the file (not copy) using fs.rename
+      await fs.rename(processedImagePath, finalImagePath);
+      
+      console.log(`✅ Image moved from ${processedImagePath} to ${finalImagePath}`);
+      return finalImagePath;
+    } catch (error) {
+      console.error(`❌ Error moving image to final location:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Update image paths in database after processing
+   * @param {string} imageMappingId - Unique identifier for the image
+   * @param {string|null} tempImagePath - New temp image path (null to clear)
+   * @param {string|null} finalImagePath - New final image path (null to clear)
+   * @returns {Promise<boolean>} Success status
+   */
+  async updateImagePaths(imageMappingId, tempImagePath, finalImagePath) {
+    try {
+      if (this.backendAdapter) {
+        // Update the database with new paths
+        await this.backendAdapter.updateImagePathsByMappingId(imageMappingId, tempImagePath, finalImagePath);
+        console.log(`✅ Updated image paths for ${imageMappingId}: temp=${tempImagePath}, final=${finalImagePath}`);
+        return true;
+      } else {
+        console.warn('⚠️ No backendAdapter available for updating image paths');
+        return false;
+      }
+    } catch (error) {
+      console.error(`❌ Error updating image paths for ${imageMappingId}:`, error);
+      return false;
+    }
   }
 }
 

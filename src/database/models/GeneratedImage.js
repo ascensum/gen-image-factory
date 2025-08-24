@@ -449,19 +449,65 @@ class GeneratedImage {
     });
   }
 
+  /**
+   * Helper function to delete image file from disk
+   * @param {string} imagePath - Path to the image file
+   * @returns {Promise<boolean>} - True if file was deleted or didn't exist
+   */
+  async deleteImageFile(imagePath) {
+    if (!imagePath) return true;
+    
+    try {
+      await fs.promises.access(imagePath);
+      await fs.promises.unlink(imagePath);
+      console.log(`🗑️ Deleted image file: ${imagePath}`);
+      return true;
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        // File doesn't exist, which is fine
+        console.log(`ℹ️ Image file not found (already deleted): ${imagePath}`);
+        return true;
+      } else {
+        console.warn(`⚠️ Could not delete image file ${imagePath}:`, error.message);
+        return false;
+      }
+    }
+  }
+
   async deleteGeneratedImage(id) {
-    return new Promise((resolve, reject) => {
-      const sql = 'DELETE FROM generated_images WHERE id = ?';
-      
-      this.db.run(sql, [id], function(err) {
-        if (err) {
-          console.error('Error deleting generated image:', err);
-          reject(err);
-        } else {
-          console.log('Generated image deleted successfully');
-          resolve({ success: true, deletedRows: this.changes });
+    return new Promise(async (resolve, reject) => {
+      try {
+        // First, get the image data to find the file path
+        const imageResult = await this.getGeneratedImage(id);
+        if (!imageResult.success || !imageResult.image) {
+          reject(new Error(`Image ${id} not found`));
+          return;
         }
-      });
+
+        const image = imageResult.image;
+        const filePath = image.finalImagePath || image.tempImagePath;
+
+        // Delete the database record first
+        const sql = 'DELETE FROM generated_images WHERE id = ?';
+        
+        this.db.run(sql, [id], async (err) => {
+          if (err) {
+            console.error('Error deleting generated image from database:', err);
+            reject(err);
+          } else {
+            console.log('Generated image deleted from database successfully');
+            
+            // Now delete the actual file
+            if (filePath) {
+              await this.deleteImageFile(filePath);
+            }
+            
+            resolve({ success: true, deletedRows: this.changes, fileDeleted: !!filePath });
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
@@ -651,43 +697,115 @@ class GeneratedImage {
   }
 
   async bulkDeleteGeneratedImages(imageIds) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       if (!Array.isArray(imageIds) || imageIds.length === 0) {
         resolve({ success: false, error: 'No image IDs provided' });
         return;
       }
 
-      const placeholders = imageIds.map(() => '?').join(',');
-      const sql = `DELETE FROM generated_images WHERE id IN (${placeholders})`;
-      
-      this.db.run(sql, imageIds, function(err) {
-        if (err) {
-          console.error('Error bulk deleting generated images:', err);
-          reject(err);
-        } else {
-          console.log(`Bulk deleted ${this.changes} generated images`);
-          resolve({ success: true, deletedRows: this.changes });
+      try {
+        // First, get all image data to find file paths
+        const imagesToDelete = [];
+        for (const id of imageIds) {
+          const imageResult = await this.getGeneratedImage(id);
+          if (imageResult.success && imageResult.image) {
+            imagesToDelete.push(imageResult.image);
+          }
         }
-      });
+
+        // Delete the database records
+        const placeholders = imageIds.map(() => '?').join(',');
+        const sql = `DELETE FROM generated_images WHERE id IN (${placeholders})`;
+        
+        this.db.run(sql, imageIds, async (err) => {
+          if (err) {
+            console.error('Error bulk deleting generated images from database:', err);
+            reject(err);
+          } else {
+            console.log(`Bulk deleted ${this.changes} generated images from database`);
+            
+            // Now delete all the actual files
+            let filesDeleted = 0;
+            for (const image of imagesToDelete) {
+              const filePath = image.finalImagePath || image.tempImagePath;
+              if (filePath) {
+                const deleted = await this.deleteImageFile(filePath);
+                if (deleted) filesDeleted++;
+              }
+            }
+            
+            resolve({ 
+              success: true, 
+              deletedRows: this.changes, 
+              filesDeleted,
+              totalImages: imagesToDelete.length
+            });
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
   async cleanupOldImages(daysToKeep = 30) {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        DELETE FROM generated_images 
-        WHERE created_at < datetime('now', '-${daysToKeep} days')
-      `;
-      
-      this.db.run(sql, [], function(err) {
-        if (err) {
-          console.error('Error cleaning up old images:', err);
-          reject(err);
-        } else {
-          console.log(`Cleaned up ${this.changes} old generated images`);
-          resolve({ success: true, deletedRows: this.changes });
-        }
-      });
+    return new Promise(async (resolve, reject) => {
+      try {
+        // First, get all old images to find file paths
+        const sql = `
+          SELECT id, final_image_path, temp_image_path 
+          FROM generated_images 
+          WHERE created_at < datetime('now', '-${daysToKeep} days')
+        `;
+        
+        this.db.all(sql, [], async (err, rows) => {
+          if (err) {
+            console.error('Error getting old images for cleanup:', err);
+            reject(err);
+            return;
+          }
+
+          if (rows.length === 0) {
+            console.log('No old images to clean up');
+            resolve({ success: true, deletedRows: 0, filesDeleted: 0 });
+            return;
+          }
+
+          // Delete the database records
+          const deleteSql = `
+            DELETE FROM generated_images 
+            WHERE created_at < datetime('now', '-${daysToKeep} days')
+          `;
+          
+          this.db.run(deleteSql, [], async (err) => {
+            if (err) {
+              console.error('Error cleaning up old images from database:', err);
+              reject(err);
+            } else {
+              console.log(`Cleaned up ${this.changes} old generated images from database`);
+              
+              // Now delete all the actual files
+              let filesDeleted = 0;
+              for (const row of rows) {
+                const filePath = row.final_image_path || row.temp_image_path;
+                if (filePath) {
+                  const deleted = await this.deleteImageFile(filePath);
+                  if (deleted) filesDeleted++;
+                }
+              }
+              
+              resolve({ 
+                success: true, 
+                deletedRows: this.changes, 
+                filesDeleted,
+                totalImages: rows.length
+              });
+            }
+          });
+        });
+      } catch (error) {
+        reject(error);
+      }
     });
   }
 
@@ -701,6 +819,28 @@ class GeneratedImage {
         }
       });
     }
+  }
+
+  async updateImagePathsByMappingId(mappingId, tempImagePath, finalImagePath) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        UPDATE generated_images 
+        SET temp_image_path = ?, final_image_path = ?, updated_at = datetime('now')
+        WHERE image_mapping_id = ?
+      `;
+
+      const params = [tempImagePath, finalImagePath, mappingId];
+
+      this.db.run(sql, params, function(err) {
+        if (err) {
+          console.error('Error updating image paths by mapping ID:', err);
+          reject(err);
+        } else {
+          console.log(`Image paths updated successfully for mapping ID: ${mappingId}`);
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
   }
 }
 
