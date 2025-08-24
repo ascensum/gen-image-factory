@@ -10,15 +10,15 @@ module.exports = {
   description: 'Add tempImagePath field to generated_images table for retry mechanism',
   
   up: `
-    -- Add tempImagePath column to generated_images table
-    ALTER TABLE generated_images ADD COLUMN tempImagePath TEXT;
+    -- Add temp_image_path column to generated_images table
+    ALTER TABLE generated_images ADD COLUMN temp_image_path TEXT;
     
-    -- Create index on tempImagePath for retry operations
-    CREATE INDEX IF NOT EXISTS idx_generated_images_temp_image_path ON generated_images(tempImagePath);
+    -- Create index on temp_image_path for retry operations
+    CREATE INDEX IF NOT EXISTS idx_generated_images_temp_image_path ON generated_images(temp_image_path);
     
     -- Add comment explaining the field purpose
-    -- tempImagePath: Path to unprocessed image in tempDirectory (for retry mechanism)
-    -- finalImagePath: Path to processed image in output directory (for display/export)
+    -- temp_image_path: Path to unprocessed image in tempDirectory (for retry mechanism)
+    -- final_image_path: Path to processed image in output directory (for display/export)
   `,
   
   down: `
