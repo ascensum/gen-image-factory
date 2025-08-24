@@ -4,6 +4,12 @@ const fs = require('fs').promises;
 
 /**
  * RetryExecutor - Handles post-processing retry for failed images
+ * 
+ * IMPORTANT: QC failed images stay in tempDirectory until successfully processed
+ * - tempDirectory: Contains unprocessed images that failed QC (e.g., /Desktop/Gen_Image_Factory_Generated/)
+ * - finalImagePath: Contains successfully processed images (e.g., /Desktop/Gen_Image_Factory_ToUpload/)
+ * 
+ * Retry mechanism works with UNPROCESSED images from tempDirectory
  * Only processes existing files, never regenerates images
  */
 class RetryExecutor extends EventEmitter {
@@ -274,16 +280,20 @@ class RetryExecutor extends EventEmitter {
       // Get image data from database (this would be injected)
       // For now, we'll simulate the process
       
-      // Resolve source file path
+      // Resolve source file path (should be in tempDirectory for QC failed images)
       const sourcePath = await this.resolveSourceFilePath(imageId);
       if (!sourcePath) {
         throw new Error(`Could not resolve source file path for image ${imageId}`);
       }
 
+      console.log(`🔧 RetryExecutor: Checking if source file exists: ${sourcePath}`);
+
       // Verify source file exists
       try {
         await fs.access(sourcePath);
+        console.log(`🔧 RetryExecutor: Source file found: ${sourcePath}`);
       } catch (error) {
+        console.error(`🔧 RetryExecutor: Source file not found: ${sourcePath}`);
         throw new Error(`Source file not found: ${sourcePath}`);
       }
 
@@ -349,12 +359,14 @@ class RetryExecutor extends EventEmitter {
         throw new Error(`Image ${imageId} not found in database`);
       }
       
-      if (!image.finalImagePath) {
-        throw new Error(`Image ${imageId} has no finalImagePath`);
-      }
+      // For retry, we need the TEMP directory path where unprocessed images are stored
+      // QC failed images stay in tempDirectory until they are successfully processed
+      const tempImagePath = path.join(this.tempDirectory, `image_${imageId}.png`);
       
-      console.log(`🔧 RetryExecutor: Resolved source path for image ${imageId}: ${image.finalImagePath}`);
-      return image.finalImagePath;
+      console.log(`🔧 RetryExecutor: Using temp directory path for retry - Image ${imageId}: ${tempImagePath}`);
+      console.log(`🔧 RetryExecutor: tempDirectory: ${this.tempDirectory}`);
+      
+      return tempImagePath;
       
     } catch (error) {
       console.error(`🔧 RetryExecutor: Error resolving source path for image ${imageId}:`, error);
