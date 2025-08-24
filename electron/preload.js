@@ -105,6 +105,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   retryFailedImagesBatch: (imageIds, useOriginalSettings, modifiedSettings, includeMetadata) => ipcRenderer.invoke('failed-image:retry-batch', { imageIds, useOriginalSettings, modifiedSettings, includeMetadata }),
   getRetryQueueStatus: () => ipcRenderer.invoke('failed-image:get-queue-status'),
   
+  // Retry Event Listeners
+  onRetryProgress: (callback) => ipcRenderer.on('retry-progress', callback),
+  onRetryCompleted: (callback) => ipcRenderer.on('retry-completed', callback),
+  onRetryError: (callback) => ipcRenderer.on('retry-error', callback),
+  onRetryQueueUpdated: (callback) => ipcRenderer.on('retry-queue-updated', callback),
+  onRetryStatusUpdated: (callback) => ipcRenderer.on('retry-status-updated', callback),
+  
+  // Remove retry event listeners
+  removeRetryProgress: (callback) => ipcRenderer.removeListener('retry-progress', callback),
+  removeRetryCompleted: (callback) => ipcRenderer.removeListener('retry-completed', callback),
+  removeRetryError: (callback) => ipcRenderer.removeListener('retry-error', callback),
+  removeRetryQueueUpdated: (callback) => ipcRenderer.removeListener('retry-queue-updated', callback),
+  removeRetryStatusUpdated: (callback) => ipcRenderer.removeListener('retry-status-updated', callback),
+  
   // Error handling wrapper
   invoke: (channel, ...args) => {
     // Whitelist channels for security

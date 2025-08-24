@@ -7,6 +7,7 @@ const { JobConfiguration } = require('../database/models/JobConfiguration');
 const { JobExecution } = require('../database/models/JobExecution');
 const { GeneratedImage } = require('../database/models/GeneratedImage');
 const { JobRunner } = require('../services/jobRunner');
+const RetryExecutor = require('../services/retryExecutor');
 const { ErrorTranslationService } = require('../services/errorTranslation');
 
 // Service names for keytar
@@ -1495,41 +1496,89 @@ class BackendAdapter {
 
       // Initialize RetryExecutor if not already done
       if (!this.retryExecutor) {
-        const RetryExecutor = require('../services/retryExecutor');
-        this.retryExecutor = new RetryExecutor({
-          tempDirectory: this.settings?.filePaths?.tempDirectory || './picture/generated'
-        });
+        console.log('🔧 Initializing RetryExecutor...');
+        
+        // Ensure settings are loaded before creating RetryExecutor
+        if (!this.settings) {
+          try {
+            console.log('🔧 Loading settings for RetryExecutor...');
+            const settingsResult = await this.getSettings();
+            this.settings = settingsResult.settings || {};
+            console.log('🔧 Settings loaded:', Object.keys(this.settings));
+          } catch (error) {
+            console.warn('Failed to load settings for RetryExecutor, using defaults:', error.message);
+            this.settings = {};
+          }
+        }
+        
+        const tempDir = this.settings?.filePaths?.tempDirectory || './picture/generated';
+        console.log('🔧 Creating RetryExecutor with tempDirectory:', tempDir);
+        
+        try {
+          this.retryExecutor = new RetryExecutor({
+            tempDirectory: tempDir
+          });
+          console.log('🔧 RetryExecutor created successfully');
+        } catch (error) {
+          console.error('🔧 Failed to create RetryExecutor:', error);
+          throw error;
+        }
 
         // Set up event listeners for progress tracking
         if (this.retryExecutor && typeof this.retryExecutor.on === 'function') {
           this.retryExecutor.on('progress', (data) => {
-            // Emit progress via existing job channels with retry context
-            if (typeof this.emit === 'function') {
-              this.emit('retry-progress', {
+            // Send progress event to frontend via IPC
+            if (this.ipc && typeof this.ipc.send === 'function') {
+              this.ipc.send('retry-progress', {
                 ...data,
                 context: 'retry'
               });
             }
+            console.log('🔧 RetryExecutor progress event:', data);
           });
 
           this.retryExecutor.on('job-completed', (data) => {
-            // Emit completion event
-            if (typeof this.emit === 'function') {
-              this.emit('retry-completed', {
+            // Send completion event to frontend via IPC
+            if (this.ipc && typeof this.ipc.send === 'function') {
+              this.ipc.send('retry-completed', {
                 ...data,
                 context: 'retry'
               });
             }
+            console.log('🔧 RetryExecutor job completed:', data);
           });
 
           this.retryExecutor.on('job-error', (data) => {
-            // Emit error event
-            if (typeof this.emit === 'function') {
-              this.emit('retry-error', {
+            // Send error event to frontend via IPC
+            if (this.ipc && typeof this.ipc.send === 'function') {
+              this.ipc.send('retry-error', {
                 ...data,
                 context: 'retry'
               });
             }
+            console.log('🔧 RetryExecutor job error:', data);
+          });
+
+          this.retryExecutor.on('queue-updated', (data) => {
+            // Send queue update event to frontend via IPC
+            if (this.ipc && typeof this.ipc.send === 'function') {
+              this.ipc.send('retry-queue-updated', {
+                ...data,
+                context: 'retry'
+              });
+            }
+            console.log('🔧 RetryExecutor queue updated:', data);
+          });
+
+          this.retryExecutor.on('job-status-updated', (data) => {
+            // Send status update event to frontend via IPC
+            if (this.ipc && typeof this.ipc.send === 'function') {
+              this.ipc.send('retry-status-updated', {
+                ...data,
+                context: 'retry'
+              });
+            }
+            console.log('🔧 RetryExecutor status updated:', data);
           });
         }
       }

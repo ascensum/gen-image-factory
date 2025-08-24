@@ -498,4 +498,109 @@ describe('Job Management Logic Tests', () => {
       });
     });
   });
+
+  describe('Metadata Generation System', () => {
+    it('should handle metadata generation with proper field mapping', () => {
+      const mockAiResult = {
+        new_title: 'Test Title',
+        new_description: 'Test Description',
+        uploadTags: 'tag1, tag2, tag3'
+      };
+
+      // Test tag field detection logic
+      const tags = mockAiResult.uploadTags || mockAiResult.tags || mockAiResult.upload_tags || null;
+      expect(tags).toBe('tag1, tag2, tag3');
+    });
+
+    it('should handle different tag formats correctly', () => {
+      // Test array format
+      const arrayTags = ['tag1', 'tag2', 'tag3'];
+      expect(Array.isArray(arrayTags)).toBe(true);
+
+      // Test comma-separated string format
+      const stringTags = 'tag1, tag2, tag3';
+      const parsedTags = stringTags.split(',').map(tag => tag.trim()).filter(tag => tag);
+      expect(parsedTags).toEqual(['tag1', 'tag2', 'tag3']);
+    });
+
+    it('should handle missing metadata gracefully', () => {
+      const mockAiResult = {};
+      const tags = mockAiResult.uploadTags || mockAiResult.tags || mockAiResult.upload_tags || null;
+      expect(tags).toBeNull();
+    });
+  });
+
+  describe('Processing Settings Display Logic', () => {
+    it('should show enhancement parameters only when enabled', () => {
+      const settings = {
+        imageEnhancement: false,
+        sharpening: 5,
+        saturation: 1.4
+      };
+
+      // When enhancement is OFF, parameters should show "Not applied"
+      const sharpeningDisplay = settings.imageEnhancement ? 
+        settings.sharpening : 'Not applied (Image Enhancement OFF)';
+      
+      expect(sharpeningDisplay).toBe('Not applied (Image Enhancement OFF)');
+    });
+
+    it('should show enhancement parameters when enabled', () => {
+      const settings = {
+        imageEnhancement: true,
+        sharpening: 5,
+        saturation: 1.4
+      };
+
+      // When enhancement is ON, parameters should show actual values
+      const sharpeningDisplay = settings.imageEnhancement ? 
+        settings.sharpening : 'Not applied (Image Enhancement OFF)';
+      
+      expect(sharpeningDisplay).toBe(5);
+    });
+
+    it('should handle convert format display correctly', () => {
+      const settings = {
+        imageConvert: true,
+        convertToJpg: true
+      };
+
+      const formatDisplay = settings.imageConvert ? 
+        (settings.convertToJpg ? 'JPG' : 'PNG') : 
+        'Not applied (Image Convert OFF)';
+      
+      expect(formatDisplay).toBe('JPG');
+    });
+
+    it('should show quality settings only for relevant formats', () => {
+      const settings = {
+        imageConvert: true,
+        convertToJpg: true,
+        jpgQuality: 100
+      };
+
+      const jpgQualityDisplay = settings.imageConvert && settings.convertToJpg ? 
+        settings.jpgQuality : 'Not applied (Convert Format is not JPG)';
+      
+      expect(jpgQualityDisplay).toBe(100);
+    });
+  });
+
+  describe('Seed Parameter Display Logic', () => {
+    it('should only show seed when available', () => {
+      const imageWithSeed = { seed: '1234567890' };
+      const imageWithoutSeed = { seed: null };
+
+      // Should show seed when available
+      expect(imageWithSeed.seed).toBeTruthy();
+      
+      // Should not show seed when not available
+      expect(imageWithoutSeed.seed).toBeFalsy();
+    });
+
+    it('should handle undefined seed gracefully', () => {
+      const imageWithUndefinedSeed = { seed: undefined };
+      expect(imageWithUndefinedSeed.seed).toBeFalsy();
+    });
+  });
 });

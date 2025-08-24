@@ -12,7 +12,7 @@ vi.mock('../../../src/database/models/JobConfiguration', () => ({
   JobConfiguration: vi.fn().mockImplementation(() => ({
     init: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
-    getJobConfiguration: vi.fn().mockResolvedValue({ success: true, configuration: {} }),
+    getJobConfigurationById: vi.fn().mockResolvedValue({ success: true, configuration: {} }),
     saveJobConfiguration: vi.fn().mockResolvedValue({ success: true, id: 1 }),
   }))
 }));

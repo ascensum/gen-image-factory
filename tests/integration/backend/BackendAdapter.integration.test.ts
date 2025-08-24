@@ -23,7 +23,7 @@ vi.mock('../../../src/database/models/JobConfiguration', () => ({
   JobConfiguration: vi.fn().mockImplementation(() => ({
     init: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
-    getJobConfiguration: vi.fn().mockResolvedValue({ success: true, configuration: {} }),
+    getJobConfigurationById: vi.fn().mockResolvedValue({ success: true, configuration: {} }),
     saveJobConfiguration: vi.fn().mockResolvedValue({ success: true, id: 1 }),
   }))
 }));
@@ -108,7 +108,7 @@ describe('BackendAdapter Integration Tests', () => {
       id: 2
     });
 
-    vi.spyOn(backendAdapter.jobConfig, 'getJobConfiguration').mockResolvedValue({
+    vi.spyOn(backendAdapter.jobConfig, 'getJobConfigurationById').mockResolvedValue({
       success: true,
       configuration: {
         id: 1,
@@ -357,7 +357,7 @@ describe('BackendAdapter Integration Tests', () => {
       
       expect(result.success).toBe(true);
       // Verify that the rerun uses the original configuration
-      expect(backendAdapter.jobConfig.getJobConfiguration).toHaveBeenCalledWith(1);
+      expect(backendAdapter.jobConfig.getJobConfigurationById).toHaveBeenCalledWith(1);
     });
 
     it('should handle rerun with modified configuration', async () => {

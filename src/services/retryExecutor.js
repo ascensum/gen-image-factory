@@ -55,9 +55,12 @@ class RetryExecutor extends EventEmitter {
       jobId: queuedJob.id
     });
 
-    // If not currently processing, start processing
+    // If not currently processing, start processing asynchronously
     if (!this.isProcessing) {
-      this.processQueue();
+      // Use setImmediate to avoid blocking the current execution
+      setImmediate(() => {
+        this.processQueue();
+      });
     }
 
     return queuedJob;
@@ -74,17 +77,26 @@ class RetryExecutor extends EventEmitter {
     this.isProcessing = true;
 
     try {
-      while (this.retryQueue.length > 0) {
-        const job = this.retryQueue.shift();
-        
-        // Emit queue update event
-        this.emit('queue-updated', {
-          queueLength: this.retryQueue.length,
-          jobId: job.id
-        });
+      // Process one job at a time to maintain proper queue status
+      const job = this.retryQueue.shift();
+      
+      // Emit queue update event
+      this.emit('queue-updated', {
+        queueLength: this.retryQueue.length,
+        jobId: job.id
+      });
 
-        // Process the retry job
-        await this.processRetryJob(job);
+      // Process the retry job
+      await this.processRetryJob(job);
+      
+      // After processing, check if there are more jobs and continue
+      if (this.retryQueue.length > 0) {
+        // Add a small delay to make progress visible and prevent overwhelming the system
+        await this.delay(100);
+        // Use setImmediate to avoid blocking and allow other operations
+        setImmediate(() => {
+          this.processQueue();
+        });
       }
     } catch (error) {
       console.error('Error processing retry queue:', error);

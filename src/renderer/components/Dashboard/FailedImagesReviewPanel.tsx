@@ -22,13 +22,31 @@ interface ProcessingSettings {
   jpgBackground: string;
 }
 
+type QCStatus = 'qc_failed' | 'retry_pending' | 'processing' | 'retry_failed' | 'approved';
+
+interface RetryJob {
+  id: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  imageCount: number;
+  settings: 'original' | 'modified';
+  metadata: boolean;
+  createdAt: Date;
+  completedAt?: Date;
+  successCount?: number;
+  failureCount?: number;
+}
+
 const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBack }) => {
   console.log('🔍 FailedImagesReviewPanel: Component mounting...');
   
   const [failedImages, setFailedImages] = useState<GeneratedImage[]>([]);
+  const [retryPendingImages, setRetryPendingImages] = useState<GeneratedImage[]>([]);
+  const [processingImages, setProcessingImages] = useState<GeneratedImage[]>([]);
+  const [retryFailedImages, setRetryFailedImages] = useState<GeneratedImage[]>([]);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [selectedImageForReview, setSelectedImageForReview] = useState<GeneratedImage | null>(null);
   const [showProcessingSettingsModal, setShowProcessingSettingsModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<QCStatus>('qc_failed');
   const [processingSettings, setProcessingSettings] = useState<ProcessingSettings>({
     imageEnhancement: false,
     sharpening: 0,
@@ -54,6 +72,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     processingJobs: number;
     completedJobs: number;
     failedJobs: number;
+    currentJob?: RetryJob;
   }>({
     isProcessing: false,
     queueLength: 0,
@@ -63,11 +82,72 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     failedJobs: 0
   });
 
-  // Load failed images on component mount
+  // Load all image statuses on component mount
   useEffect(() => {
     console.log('🔍 FailedImagesReviewPanel: useEffect running...');
-    loadFailedImages();
+    loadAllImageStatuses();
     loadRetryQueueStatus();
+    
+    // Set up real-time retry event listeners
+    const handleRetryProgress = (event: any, data: any) => {
+      console.log('🔧 Retry progress event received:', data);
+      // Refresh data when progress updates
+      loadAllImageStatuses();
+      loadRetryQueueStatus();
+    };
+
+    const handleRetryCompleted = (event: any, data: any) => {
+      console.log('🔧 Retry completed event received:', data);
+      // Refresh data when job completes
+      loadAllImageStatuses();
+      loadRetryQueueStatus();
+    };
+
+    const handleRetryError = (event: any, data: any) => {
+      console.log('🔧 Retry error event received:', data);
+      setError(`Retry error: ${data.error}`);
+      // Refresh data when error occurs
+      loadAllImageStatuses();
+      loadRetryQueueStatus();
+    };
+
+    const handleRetryQueueUpdated = (event: any, data: any) => {
+      console.log('🔧 Retry queue updated event received:', data);
+      // Refresh queue status
+      loadRetryQueueStatus();
+    };
+
+    const handleRetryStatusUpdated = (event: any, data: any) => {
+      console.log('🔧 Retry status updated event received:', data);
+      // Refresh data when status changes
+      loadAllImageStatuses();
+      loadRetryQueueStatus();
+    };
+
+    // Register event listeners
+    window.electronAPI.onRetryProgress(handleRetryProgress);
+    window.electronAPI.onRetryCompleted(handleRetryCompleted);
+    window.electronAPI.onRetryError(handleRetryError);
+    window.electronAPI.onRetryQueueUpdated(handleRetryQueueUpdated);
+    window.electronAPI.onRetryStatusUpdated(handleRetryStatusUpdated);
+    
+    // Set up polling as fallback
+    const interval = setInterval(() => {
+      loadRetryQueueStatus();
+      if (retryQueueStatus.isProcessing) {
+        loadAllImageStatuses();
+      }
+    }, 5000); // Increased interval since we have real-time events
+    
+    return () => {
+      clearInterval(interval);
+      // Remove event listeners
+      window.electronAPI.removeRetryProgress(handleRetryProgress);
+      window.electronAPI.removeRetryCompleted(handleRetryCompleted);
+      window.electronAPI.removeRetryError(handleRetryError);
+      window.electronAPI.removeRetryQueueUpdated(handleRetryQueueUpdated);
+      window.electronAPI.removeRetryStatusUpdated(handleRetryStatusUpdated);
+    };
   }, []);
 
   // Load retry queue status
@@ -82,37 +162,58 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     }
   };
 
-  const loadFailedImages = async () => {
-    console.log('🔍 loadFailedImages: Starting...');
+  // Load all image statuses
+  const loadAllImageStatuses = async () => {
+    console.log('🔍 loadAllImageStatuses: Starting...');
     try {
       setIsLoading(true);
       setError(null);
-      console.log('🔍 loadFailedImages: Calling electronAPI.generatedImages.getImagesByQCStatus("qc_failed")...');
-      const images = await window.electronAPI.generatedImages.getImagesByQCStatus('qc_failed');
-      console.log('🔍 loadFailedImages: Response received:', images);
       
-      // Handle both response formats: direct array or {success, images} object
-      let imageArray = images;
-      if (images && typeof images === 'object' && images.success !== undefined) {
-        // Response is wrapped in {success, images} format
-        imageArray = images.images;
-        console.log('🔍 loadFailedImages: Extracted images array:', imageArray);
-      }
+      // Load images by each status
+      const [failed, pending, processing, retryFailed] = await Promise.all([
+        window.electronAPI.generatedImages.getImagesByQCStatus('qc_failed'),
+        window.electronAPI.generatedImages.getImagesByQCStatus('retry_pending'),
+        window.electronAPI.generatedImages.getImagesByQCStatus('processing'),
+        window.electronAPI.generatedImages.getImagesByQCStatus('retry_failed')
+      ]);
       
-      if (imageArray && Array.isArray(imageArray)) {
-        console.log('🔍 loadFailedImages: Setting failed images:', imageArray.length);
-        setFailedImages(imageArray);
-      } else {
-        console.log('🔍 loadFailedImages: No images or invalid format, setting empty array');
-        setFailedImages([]);
-      }
+      // Extract arrays from responses
+      const extractImages = (response: any) => {
+        if (response && typeof response === 'object' && response.success !== undefined) {
+          return response.images || [];
+        }
+        return Array.isArray(response) ? response : [];
+      };
+      
+      setFailedImages(extractImages(failed));
+      setRetryPendingImages(extractImages(pending));
+      setProcessingImages(extractImages(processing));
+      setRetryFailedImages(extractImages(retryFailed));
+      
     } catch (error) {
-      console.error('🔍 loadFailedImages: Error occurred:', error);
-      setError('Failed to load failed images');
-      setFailedImages([]);
+      console.error('🔍 loadAllImageStatuses: Error occurred:', error);
+      setError('Failed to load images');
     } finally {
       setIsLoading(false);
-      console.log('🔍 loadFailedImages: Loading complete');
+      console.log('🔍 loadAllImageStatuses: Loading complete');
+    }
+  };
+
+  // Get current tab images
+  const getCurrentTabImages = () => {
+    switch (activeTab) {
+      case 'qc_failed':
+        return failedImages;
+      case 'retry_pending':
+        return retryPendingImages;
+      case 'processing':
+        return processingImages;
+      case 'retry_failed':
+        return retryFailedImages;
+      case 'approved':
+        return [...failedImages, ...retryPendingImages, ...processingImages, ...retryFailedImages];
+      default:
+        return failedImages;
     }
   };
 
@@ -127,10 +228,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   };
 
   const handleSelectAll = () => {
-    if (selectedImages.size === filteredAndSortedImages.length) {
+    const currentImages = getCurrentTabImages();
+    if (selectedImages.size === currentImages.length) {
       setSelectedImages(new Set());
     } else {
-      setSelectedImages(new Set(filteredAndSortedImages.map(img => img.id)));
+      setSelectedImages(new Set(currentImages.map(img => img.id)));
     }
   };
 
@@ -142,7 +244,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         case 'approve':
           // Move image to main dashboard success view
           await window.electronAPI.generatedImages.updateQCStatus(imageId, 'approved');
-          await loadFailedImages();
+          await loadAllImageStatuses();
           break;
         case 'retry':
           // Add image to retry selection bucket
@@ -153,10 +255,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
           break;
         case 'delete':
           await window.electronAPI.generatedImages.deleteGeneratedImage(imageId);
-          await loadFailedImages();
+          await loadAllImageStatuses();
           break;
         case 'view':
-          const image = failedImages.find(img => img.id === imageId);
+          const allImages = [...failedImages, ...retryPendingImages, ...processingImages, ...retryFailedImages];
+          const image = allImages.find(img => img.id === imageId);
           if (image) {
             setSelectedImageForReview(image);
           }
@@ -193,7 +296,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
           break;
       }
       
-      await loadFailedImages();
+      await loadAllImageStatuses();
       setSelectedImages(new Set());
     } catch (error) {
       setError(`Failed to bulk ${action} images`);
@@ -202,6 +305,9 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   };
 
   const handleRetryWithSettings = async (useOriginalSettings: boolean, modifiedSettings?: ProcessingSettings, includeMetadata?: boolean) => {
+    console.log('🔍 handleRetryWithSettings: Starting with settings:', { useOriginalSettings, modifiedSettings, includeMetadata });
+    console.log('🔍 handleRetryWithSettings: Selected images count:', selectedImages.size);
+    
     if (selectedImages.size === 0) return;
     
     try {
@@ -209,6 +315,8 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       
       // Process retry as a single batch with chosen settings
       const imageIds = Array.from(selectedImages);
+      console.log('🔍 handleRetryWithSettings: Calling retryFailedImagesBatch with imageIds:', imageIds);
+      
       const result = await window.electronAPI.retryFailedImagesBatch(
         imageIds, 
         useOriginalSettings, 
@@ -216,22 +324,30 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         includeMetadata
       );
       
+      console.log('🔍 handleRetryWithSettings: retryFailedImagesBatch result:', result);
+      
       if (result.success) {
-        await loadFailedImages();
+        console.log('🔍 handleRetryWithSettings: Retry successful, refreshing data...');
+        await loadAllImageStatuses();
         await loadRetryQueueStatus(); // Refresh queue status
         setSelectedImages(new Set());
         setShowProcessingSettingsModal(false);
+        console.log('🔍 handleRetryWithSettings: Retry processing complete');
       } else {
+        console.error('🔍 handleRetryWithSettings: Retry failed:', result.error);
         setError(result.error || 'Failed to process retry operations');
       }
     } catch (error) {
+      console.error('🔍 handleRetryWithSettings: Exception occurred:', error);
       setError('Failed to process retry operations');
       console.error('Failed to process retry operations:', error);
     }
   };
 
   const filteredAndSortedImages = React.useMemo(() => {
-    let filtered = failedImages.filter(image => {
+    const currentImages = getCurrentTabImages();
+    
+    let filtered = currentImages.filter(image => {
       // Job filter
       if (filterJob !== 'all' && image.executionId !== filterJob) {
         return false;
@@ -265,16 +381,55 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     });
 
     return sorted;
-  }, [failedImages, filterJob, searchQuery, sortBy]);
+  }, [activeTab, failedImages, retryPendingImages, processingImages, retryFailedImages, filterJob, searchQuery, sortBy]);
 
-  const uniqueJobIds = Array.from(new Set(failedImages.map(img => img.executionId)));
+  const uniqueJobIds = Array.from(new Set([
+    ...failedImages.map(img => img.executionId),
+    ...retryPendingImages.map(img => img.executionId),
+    ...processingImages.map(img => img.executionId),
+    ...retryFailedImages.map(img => img.executionId)
+  ]));
+
+  const getTabCount = (status: QCStatus) => {
+    switch (status) {
+      case 'qc_failed':
+        return failedImages.length;
+      case 'retry_pending':
+        return retryPendingImages.length;
+      case 'processing':
+        return processingImages.length;
+      case 'retry_failed':
+        return retryFailedImages.length;
+      case 'approved':
+        return failedImages.length + retryPendingImages.length + processingImages.length + retryFailedImages.length;
+      default:
+        return 0;
+    }
+  };
+
+  const getStatusColor = (status: QCStatus) => {
+    switch (status) {
+      case 'qc_failed':
+        return 'text-red-600 bg-red-50 border-red-200';
+      case 'retry_pending':
+        return 'text-amber-600 bg-amber-50 border-amber-200';
+      case 'processing':
+        return 'text-blue-600 bg-blue-50 border-blue-200';
+      case 'retry_failed':
+        return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'approved':
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+      default:
+        return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading failed images...</p>
+          <p className="text-gray-600">Loading images...</p>
         </div>
       </div>
     );
@@ -305,10 +460,92 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
           
           <div className="flex items-center space-x-4">
             <div className="text-right">
-              <div className="text-2xl font-bold text-red-600">{failedImages.length}</div>
+              <div className="text-2xl font-bold text-red-600">{getTabCount('qc_failed')}</div>
               <div className="text-sm text-gray-500">Failed Images</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Retry Queue Status Bar */}
+      {(retryQueueStatus.isProcessing || retryQueueStatus.queueLength > 0) && (
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-blue-900">🔄 Retry Queue Status</h3>
+              <div className="text-sm text-blue-700">
+                {retryQueueStatus.isProcessing ? 'Currently Processing' : 'Queued Jobs'}
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{retryQueueStatus.processingJobs}</div>
+                <div className="text-sm text-blue-700">Processing</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-amber-600">{retryQueueStatus.pendingJobs}</div>
+                <div className="text-sm text-amber-700">Queued</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{retryQueueStatus.completedJobs}</div>
+                <div className="text-sm text-green-700">Completed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">{retryQueueStatus.failedJobs}</div>
+                <div className="text-sm text-red-700">Failed</div>
+              </div>
+            </div>
+
+            {retryQueueStatus.currentJob && (
+              <div className="bg-white border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-blue-900">
+                    Current Job: #{retryQueueStatus.currentJob.id}
+                  </span>
+                  <span className="text-xs text-blue-600">
+                    {retryQueueStatus.currentJob.settings} settings + {retryQueueStatus.currentJob.metadata ? 'metadata' : 'no metadata'}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {processingImages.map((image, index) => (
+                    <div key={image.id} className="flex items-center justify-between text-sm">
+                      <span className="text-blue-800">🖼️ Image {image.id}: Processing...</span>
+                      <div className="w-24 bg-blue-200 rounded-full h-2">
+                        <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '75%' }}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Status Tabs */}
+      <div className="bg-white border-b border-gray-200 px-6 py-2">
+        <div className="flex space-x-1">
+          {(['qc_failed', 'retry_pending', 'processing', 'retry_failed', 'approved'] as QCStatus[]).map((status) => (
+            <button
+              key={status}
+              onClick={() => setActiveTab(status)}
+              className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                activeTab === status
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {status === 'qc_failed' && 'Failed'}
+              {status === 'retry_pending' && 'Retry Pending'}
+              {status === 'processing' && 'Processing'}
+              {status === 'retry_failed' && 'Retry Failed'}
+              {status === 'approved' && 'All'}
+              <span className={`ml-2 px-2 py-0.5 text-xs rounded-full border ${getStatusColor(status)}`}>
+                {getTabCount(status)}
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -393,29 +630,16 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
               </span>
             </div>
 
-            {/* Queue Status Indicator */}
-            {(retryQueueStatus.isProcessing || retryQueueStatus.queueLength > 0) && (
-              <div className="mr-4 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-medium text-blue-800">
-                    {retryQueueStatus.isProcessing ? 'Processing...' : 'Queued'}
-                  </span>
-                  {retryQueueStatus.queueLength > 0 && (
-                    <span className="text-xs text-blue-600">
-                      ({retryQueueStatus.queueLength} job{retryQueueStatus.queueLength !== 1 ? 's' : ''})
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* Bulk Actions (visible always, disabled when none selected) */}
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handleBulkAction('approve')}
                 disabled={selectedImages.size === 0}
-                className={`px-3 py-1 text-sm rounded-md transition-colors ${selectedImages.size === 0 ? 'bg-green-200 text-white cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  selectedImages.size === 0 
+                    ? 'bg-green-200 text-green-400 cursor-not-allowed' 
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
                 title={selectedImages.size === 0 ? 'Select images to enable' : 'Approve selected images'}
               >
                 Approve Selected
@@ -425,7 +649,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                 disabled={selectedImages.size === 0 || retryQueueStatus.isProcessing}
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
                   selectedImages.size === 0 || retryQueueStatus.isProcessing 
-                    ? 'bg-blue-200 text-white cursor-not-allowed' 
+                    ? 'bg-blue-200 text-blue-400 cursor-not-allowed' 
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
                 title={
@@ -444,7 +668,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
               <button
                 onClick={() => handleBulkAction('delete')}
                 disabled={selectedImages.size === 0}
-                className={`px-3 py-1 text-sm rounded-md transition-colors ${selectedImages.size === 0 ? 'bg-red-200 text-white cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  selectedImages.size === 0 
+                    ? 'bg-red-200 text-red-400 cursor-not-allowed' 
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                }`}
                 title={selectedImages.size === 0 ? 'Select images to enable' : 'Delete selected images'}
               >
                 Delete Selected
@@ -454,7 +682,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         </div>
       </div>
 
-      {/* Failed Images Grid */}
+      {/* Images Grid */}
       <div className="flex-1 p-6">
         {filteredAndSortedImages.length === 0 ? (
           <div className="text-center py-12">
@@ -463,8 +691,19 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Failed Images</h3>
-            <p className="text-gray-500">All images have passed quality checks or are pending review.</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              No {activeTab === 'qc_failed' ? 'Failed' : 
+                   activeTab === 'retry_pending' ? 'Retry Pending' :
+                   activeTab === 'processing' ? 'Processing' :
+                   activeTab === 'retry_failed' ? 'Retry Failed' : 'Images'}
+            </h3>
+            <p className="text-gray-500">
+              {activeTab === 'qc_failed' ? 'All images have passed quality checks or are pending review.' :
+               activeTab === 'retry_pending' ? 'No images are currently queued for retry.' :
+               activeTab === 'processing' ? 'No images are currently being processed.' :
+               activeTab === 'retry_failed' ? 'No images have failed retry attempts.' :
+               'No images match the current criteria.'}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
@@ -480,6 +719,29 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
           </div>
         )}
       </div>
+
+      {/* Retry History */}
+      {(retryQueueStatus.completedJobs > 0 || retryQueueStatus.failedJobs > 0) && (
+        <div className="bg-white border-t border-gray-200 px-6 py-4">
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">📊 Retry History</h3>
+            <div className="space-y-2 text-sm text-gray-700">
+              {retryQueueStatus.completedJobs > 0 && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-green-600">✅</span>
+                  <span>Completed: {retryQueueStatus.completedJobs} retry jobs</span>
+                </div>
+              )}
+              {retryQueueStatus.failedJobs > 0 && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-red-600">❌</span>
+                  <span>Failed: {retryQueueStatus.failedJobs} retry jobs</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (
