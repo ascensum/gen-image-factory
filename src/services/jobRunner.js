@@ -13,7 +13,7 @@ const aiVision = require('../aiVision');
 const BASE_PROGRESS_STEPS = [
   { name: 'initialization', weight: 10, description: 'Initializing job configuration and setup', required: true },
   { name: 'image_generation', weight: 45, description: 'Generating images and metadata', required: true },
-  { name: 'ai_operations', weight: 45, description: 'Quality checks and image processing', required: false }
+  { name: 'quality_and_processing', weight: 45, description: 'Quality checks and image processing', required: false }
 ];
 
 // Dynamic progress steps based on job configuration
@@ -60,8 +60,8 @@ class JobRunner extends EventEmitter {
         return true;
       }
       
-      // Special handling for ai_operations step
-      if (step.name === 'ai_operations') {
+      // Special handling for quality_and_processing step
+      if (step.name === 'quality_and_processing') {
         // Include if any AI features are enabled
         const hasQualityCheck = config?.ai?.runQualityCheck === true;
         const hasMetadataGen = config?.ai?.runMetadataGen === true;

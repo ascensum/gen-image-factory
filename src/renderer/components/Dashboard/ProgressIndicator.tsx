@@ -45,9 +45,9 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
       },
       { 
         id: 3, 
-        name: 'AI Operations', 
+        name: 'Quality & Processing', 
         description: 'Quality checks and image processing', 
-        icon: '🤖', 
+        icon: '🔍', 
         required: false,
         subSteps: ['Quality Check', 'Processing'],
         hasQualityCheck: jobConfiguration?.ai?.runQualityCheck,
@@ -246,10 +246,12 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
                         {step.name}
                       </div>
                       
-                      {/* Sub-steps - show relevant ones based on configuration */}
+                      {/* Sub-steps - always show relevant information */}
                       {step.subSteps && (
                         <div className="text-center text-xs text-gray-500 leading-tight mb-1">
-                          {step.id === 2 && step.hasMetadata ? (
+                          {step.id === 1 ? (
+                            <div>Setup & Parameters</div>
+                          ) : step.id === 2 && step.hasMetadata ? (
                             <div>AI Generation + Metadata</div>
                           ) : step.id === 2 ? (
                             <div>AI Generation only</div>
@@ -260,7 +262,7 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
                           ) : step.id === 3 && step.hasProcessing ? (
                             <div>Processing only</div>
                           ) : step.id === 3 ? (
-                            <div>Skipped (no AI features)</div>
+                            <div>No QC/Processing</div>
                           ) : (
                             <div>{step.subSteps.join(' + ')}</div>
                           )}
