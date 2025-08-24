@@ -11,12 +11,9 @@ const aiVision = require('../aiVision');
 
 // Base progress steps - will be filtered based on job configuration
 const BASE_PROGRESS_STEPS = [
-  { name: 'initialization', weight: 5, description: 'Initializing job configuration', required: true },
-  { name: 'parameter_generation', weight: 10, description: 'Generating parameters from keywords', required: true },
-  { name: 'image_generation', weight: 25, description: 'Generating images with AI', required: true },
-  { name: 'image_processing', weight: 20, description: 'Processing individual images', required: true },
-  { name: 'quality_check', weight: 25, description: 'Running quality checks', required: false, settingKey: 'ai.runQualityCheck' },
-  { name: 'metadata_generation', weight: 15, description: 'Generating metadata', required: false, settingKey: 'ai.runMetadataGen' }
+  { name: 'initialization', weight: 10, description: 'Initializing job configuration and setup', required: true },
+  { name: 'image_generation', weight: 45, description: 'Generating images and metadata', required: true },
+  { name: 'ai_operations', weight: 45, description: 'Quality checks and image processing', required: false, settingKey: 'ai.enabled' }
 ];
 
 // Dynamic progress steps based on job configuration
@@ -57,6 +54,21 @@ class JobRunner extends EventEmitter {
       // Always include required steps
       if (step.required) {
         return true;
+      }
+      
+      // Special handling for ai_operations step
+      if (step.name === 'ai_operations') {
+        // Include if any AI features are enabled
+        const hasQualityCheck = config?.ai?.runQualityCheck === true;
+        const hasMetadataGen = config?.ai?.runMetadataGen === true;
+        const hasProcessing = config?.processing && (
+          config.processing.imageEnhancement ||
+          config.processing.imageConvert ||
+          config.processing.removeBg ||
+          config.processing.trimTransparentBackground
+        );
+        
+        return hasQualityCheck || hasMetadataGen || hasProcessing;
       }
       
       // Check if optional step is enabled in configuration
@@ -539,7 +551,8 @@ class JobRunner extends EventEmitter {
       // Call the real paramsGeneratorModule
       const parameters = await this.generateParameters(config);
       
-      this.completedSteps.push('parameter_generation');
+      // Parameter generation is now part of initialization step
+      // this.completedSteps.push('parameter_generation');
 
       // Step 2: Image Generation
       if (this.isStopping) return;
@@ -627,7 +640,7 @@ class JobRunner extends EventEmitter {
           console.warn('⚠️ No saved images found for quality checks');
         }
         
-        this.completedSteps.push('quality_check');
+        this.completedSteps.push('ai_operations');
       } else {
         console.log('❌ Quality check condition is FALSE - skipping quality checks');
         console.log('❌ Reason: config.ai =', config.ai, ', runQualityCheck =', config.ai?.runQualityCheck, ', isStopping =', this.isStopping);
@@ -662,7 +675,7 @@ class JobRunner extends EventEmitter {
           console.error('❌ Error during auto-approval:', error);
         }
         
-        this.completedSteps.push('auto_approval');
+        this.completedSteps.push('ai_operations');
       }
 
       // Step 4: Image Processing (only for approved images)
@@ -716,7 +729,8 @@ class JobRunner extends EventEmitter {
                 }
               }
               
-              this.completedSteps.push('image_processing');
+              // Image processing is now part of ai_operations step
+        // this.completedSteps.push('image_processing');
               console.log('✅ Image processing completed successfully');
             } else {
               console.log('ℹ️ No approved images to process');
@@ -734,8 +748,8 @@ class JobRunner extends EventEmitter {
       
       this._logStructured({
         level: 'debug',
-        stepName: 'metadata_generation',
-        subStep: 'check_enabled',
+        stepName: 'image_generation',
+        subStep: 'metadata_check_enabled',
         message: 'Checking metadata generation configuration',
         metadata: { 
           isMetadataGenerationEnabled,
@@ -751,15 +765,16 @@ class JobRunner extends EventEmitter {
           // Use the images from producePictureModule which have mappingId
           // These are the same images that were processed and saved to database
           await this.generateMetadata(images, config);
-          this.completedSteps.push('metadata_generation');
+          // Metadata generation is now part of image_generation step
+        // this.completedSteps.push('metadata_generation');
           
           // Ensure all metadata updates are committed to database before marking job complete
           if (this.backendAdapter) {
             try {
               this._logStructured({
                 level: 'info',
-                stepName: 'metadata_generation',
-                subStep: 'final_commit',
+                stepName: 'image_generation',
+                subStep: 'metadata_final_commit',
                 message: 'Ensuring all metadata updates are committed to database',
                 metadata: { imageCount: images.length }
               });
@@ -770,8 +785,8 @@ class JobRunner extends EventEmitter {
             } catch (error) {
               this._logStructured({
                 level: 'warn',
-                stepName: 'metadata_generation',
-                subStep: 'commit_warning',
+                stepName: 'image_generation',
+                subStep: 'metadata_commit_warning',
                 message: 'Warning: Could not ensure metadata commit completion',
                 metadata: { error: error.message }
               });
@@ -780,13 +795,14 @@ class JobRunner extends EventEmitter {
         } catch (error) {
           this._logStructured({
             level: 'error',
-            stepName: 'metadata_generation',
-            subStep: 'error_handled',
+            stepName: 'image_generation',
+            subStep: 'metadata_error_handled',
             message: `Metadata generation failed but continuing job completion: ${error.message}`,
             metadata: { error: error.message, stack: error.stack }
           });
           // Don't let metadata generation failure stop the job from completing
-          this.completedSteps.push('metadata_generation_failed');
+          // Metadata generation failure is now part of image_generation step
+        // this.completedSteps.push('metadata_generation_failed');
         }
       }
 
@@ -912,8 +928,8 @@ class JobRunner extends EventEmitter {
     try {
       this._logStructured({
         level: 'info',
-        stepName: 'parameter_generation',
-        subStep: 'start',
+        stepName: 'initialization',
+        subStep: 'parameter_generation',
         message: 'Starting parameter generation',
         updateProgress: true, // Update progress state for major step transition
         metadata: { 
@@ -953,7 +969,7 @@ class JobRunner extends EventEmitter {
               keywords = csvRow; // Pass as object for CSV mode
               this._logStructured({
                 level: 'debug',
-                stepName: 'parameter_generation',
+                stepName: 'initialization',
                 subStep: 'csv_parsed',
                 message: `Parsed CSV keywords: ${JSON.stringify(csvRow)}`,
                 metadata: { keywordsFile: config.filePaths.keywordsFile, csvRow, headers }
@@ -968,7 +984,7 @@ class JobRunner extends EventEmitter {
               keywords = keywordsList[0].trim();
               this._logStructured({
                 level: 'debug',
-                stepName: 'parameter_generation',
+                stepName: 'initialization',
                 subStep: 'txt_parsed',
                 message: `Read TXT keywords: ${keywords}`,
                 metadata: { keywordsFile: config.filePaths.keywordsFile, selectedKeyword: keywords }
@@ -983,7 +999,7 @@ class JobRunner extends EventEmitter {
           systemPrompt = await fs.readFile(config.filePaths.systemPromptFile, 'utf8');
           this._logStructured({
             level: 'debug',
-            stepName: 'parameter_generation',
+            stepName: 'initialization',
             subStep: 'system_prompt_read',
             message: `Read system prompt template from file`,
             metadata: { systemPromptFile: config.filePaths.systemPromptFile, systemPromptLength: systemPrompt.length }
@@ -992,7 +1008,7 @@ class JobRunner extends EventEmitter {
       } catch (fileError) {
         this._logStructured({
           level: 'warn',
-          stepName: 'parameter_generation',
+          stepName: 'initialization',
           subStep: 'file_read_warning',
           message: `Warning: Could not read keywords or system prompt files, using defaults`,
           metadata: { error: fileError.message, keywordsFile: config.filePaths?.keywordsFile, systemPromptFile: config.filePaths?.systemPromptFile }
@@ -1049,8 +1065,8 @@ class JobRunner extends EventEmitter {
       const duration = Date.now() - startTime;
       this._logStructured({
         level: 'info',
-        stepName: 'parameter_generation',
-        subStep: 'complete',
+        stepName: 'initialization',
+        subStep: 'parameter_generation_complete',
         message: 'Parameter generation completed successfully',
         durationMs: duration,
         updateProgress: true, // Update progress for step completion
@@ -1067,8 +1083,8 @@ class JobRunner extends EventEmitter {
       const duration = Date.now() - startTime;
       this._logStructured({
         level: 'error',
-        stepName: 'parameter_generation',
-        subStep: 'error',
+        stepName: 'initialization',
+        subStep: 'parameter_generation_error',
         message: `Parameter generation failed: ${error.message}`,
         durationMs: duration,
         errorCode: 'PARAM_GEN_ERROR',
@@ -1216,7 +1232,7 @@ class JobRunner extends EventEmitter {
           // Update to image_processing step for individual image handling
           this._logStructured({
             level: 'info',
-            stepName: 'image_processing',
+            stepName: 'ai_operations',
             subStep: 'process_image',
             imageIndex: index,
             message: `Processing image ${index + 1}/${result.length}`,
@@ -1415,8 +1431,8 @@ class JobRunner extends EventEmitter {
     try {
       this._logStructured({
         level: 'info',
-        stepName: 'quality_check',
-        subStep: 'start',
+        stepName: 'ai_operations',
+        subStep: 'quality_check_start',
         message: `Starting quality checks for ${images.length} images`,
         updateProgress: true, // Update progress state for major step transition
         metadata: { 
@@ -1434,8 +1450,8 @@ class JobRunner extends EventEmitter {
         
         this._logStructured({
           level: 'info',
-          stepName: 'quality_check',
-          subStep: 'check_image',
+          stepName: 'ai_operations',
+          subStep: 'quality_check_image',
           imageIndex: images.indexOf(image),
           message: `Running quality check on image ${images.indexOf(image) + 1}/${images.length}`,
           metadata: { 
@@ -1461,8 +1477,8 @@ class JobRunner extends EventEmitter {
         if (result) {
           this._logStructured({
             level: 'info',
-            stepName: 'quality_check',
-            subStep: 'result',
+            stepName: 'ai_operations',
+            subStep: 'quality_check_result',
             imageIndex: images.indexOf(image),
             message: `Quality check completed: ${result.passed ? 'PASSED' : 'FAILED'}`,
             metadata: { 
@@ -1482,8 +1498,8 @@ class JobRunner extends EventEmitter {
               
               this._logStructured({
                 level: 'info',
-                stepName: 'quality_check',
-                subStep: 'db_update',
+                stepName: 'ai_operations',
+                subStep: 'quality_check_db_update',
                 imageIndex: images.indexOf(image),
                 message: `Updating QC status in database: ${qcStatus}`,
                 metadata: { 
@@ -1501,8 +1517,8 @@ class JobRunner extends EventEmitter {
             } catch (dbError) {
               this._logStructured({
                 level: 'error',
-                stepName: 'quality_check',
-                subStep: 'db_error',
+                stepName: 'ai_operations',
+                subStep: 'quality_check_db_error',
                 imageIndex: images.indexOf(image),
                 message: `Failed to update QC status in database: ${dbError.message}`,
                 errorCode: 'QC_DB_UPDATE_ERROR',
@@ -1532,8 +1548,8 @@ class JobRunner extends EventEmitter {
         } else {
           this._logStructured({
             level: 'warn',
-            stepName: 'quality_check',
-            subStep: 'no_result',
+            stepName: 'ai_operations',
+            subStep: 'quality_check_no_result',
             imageIndex: images.indexOf(image),
             message: 'Quality check returned no result',
             metadata: { imagePath: image.finalImagePath }
@@ -1546,8 +1562,8 @@ class JobRunner extends EventEmitter {
             try {
               this._logStructured({
                 level: 'info',
-                stepName: 'quality_check',
-                subStep: 'db_update_failed',
+                stepName: 'ai_operations',
+                subStep: 'quality_check_db_update_failed',
                 imageIndex: images.indexOf(image),
                 message: 'Updating QC status to failed in database',
                 metadata: { imageMappingId: image.imageMappingId }
@@ -1561,8 +1577,8 @@ class JobRunner extends EventEmitter {
             } catch (dbError) {
               this._logStructured({
                 level: 'error',
-                stepName: 'quality_check',
-                subStep: 'db_error_failed',
+                stepName: 'ai_operations',
+                subStep: 'quality_check_db_error_failed',
                 imageIndex: images.indexOf(image),
                 message: `Failed to update QC status to failed in database: ${dbError.message}`,
                 errorCode: 'QC_DB_UPDATE_FAILED_ERROR',
@@ -1581,8 +1597,8 @@ class JobRunner extends EventEmitter {
       const duration = Date.now() - startTime;
       this._logStructured({
         level: 'info',
-        stepName: 'quality_check',
-        subStep: 'complete',
+        stepName: 'ai_operations',
+        subStep: 'quality_check_complete',
         message: `Quality checks completed for all ${images.length} images`,
         durationMs: duration,
         updateProgress: true, // Update progress for step completion
@@ -1598,8 +1614,8 @@ class JobRunner extends EventEmitter {
       const duration = Date.now() - startTime;
       this._logStructured({
         level: 'error',
-        stepName: 'quality_check',
-        subStep: 'error',
+        stepName: 'ai_operations',
+        subStep: 'quality_check_error',
         message: `Quality checks failed: ${error.message}`,
         durationMs: duration,
         errorCode: 'QC_SYSTEM_ERROR',
@@ -1625,8 +1641,8 @@ class JobRunner extends EventEmitter {
     try {
       this._logStructured({
         level: 'info',
-        stepName: 'metadata_generation',
-        subStep: 'start',
+        stepName: 'image_generation',
+        subStep: 'metadata_start',
         message: `Starting metadata generation for ${images.length} images`,
         updateProgress: true, // Update progress state for major step transition
         metadata: { 
@@ -1650,8 +1666,8 @@ class JobRunner extends EventEmitter {
         if (result) {
           this._logStructured({
             level: 'debug',
-            stepName: 'metadata_generation',
-            subStep: 'ai_result',
+            stepName: 'image_generation',
+            subStep: 'metadata_ai_result',
             message: `AI metadata generation result for image ${image.id}`,
             metadata: { 
               imageId: image.id,
@@ -1672,8 +1688,8 @@ class JobRunner extends EventEmitter {
           
           this._logStructured({
             level: 'debug',
-            stepName: 'metadata_generation',
-            subStep: 'tags_processing',
+            stepName: 'image_generation',
+            subStep: 'metadata_tags_processing',
             message: `Processing tags for image ${image.id}`,
             metadata: { 
               imageId: image.id,
@@ -1694,8 +1710,8 @@ class JobRunner extends EventEmitter {
           
           this._logStructured({
             level: 'debug',
-            stepName: 'metadata_generation',
-            subStep: 'image_metadata_updated',
+            stepName: 'image_generation',
+            subStep: 'metadata_image_updated',
             message: `Image metadata object updated for image ${image.id}`,
             metadata: { 
               imageId: image.id,
@@ -1711,8 +1727,8 @@ class JobRunner extends EventEmitter {
               const updateResult = await this.backendAdapter.updateGeneratedImageByMappingId(image.mappingId, image);
               this._logStructured({
                 level: 'debug',
-                stepName: 'metadata_generation',
-                subStep: 'db_update',
+                stepName: 'image_generation',
+                subStep: 'metadata_db_update',
                 message: `Updated metadata in database for image with mappingId ${image.mappingId}`,
                 metadata: { 
                   mappingId: image.mappingId, 
@@ -1726,8 +1742,8 @@ class JobRunner extends EventEmitter {
             } catch (dbError) {
               this._logStructured({
                 level: 'warn',
-                stepName: 'metadata_generation',
-                subStep: 'db_update_warning',
+                stepName: 'image_generation',
+                subStep: 'metadata_db_update_warning',
                 message: `Warning: Could not update metadata in database for image with mappingId ${image.mappingId}`,
                 metadata: { mappingId: image.mappingId, error: dbError.message }
               });
@@ -1735,8 +1751,8 @@ class JobRunner extends EventEmitter {
           } else {
             this._logStructured({
               level: 'warn',
-              stepName: 'metadata_generation',
-              subStep: 'missing_mapping_id',
+              stepName: 'image_generation',
+              subStep: 'metadata_missing_mapping_id',
               message: `Cannot update metadata - missing mappingId for image`,
               metadata: { image: { mappingId: image.mappingId, id: image.id } }
             });
@@ -1744,8 +1760,8 @@ class JobRunner extends EventEmitter {
         } else {
           this._logStructured({
             level: 'warn',
-            stepName: 'metadata_generation',
-            subStep: 'no_result',
+            stepName: 'image_generation',
+            subStep: 'metadata_no_result',
             message: `No metadata result returned for image ${image.id}`,
             metadata: { imageId: image.id }
           });
@@ -1760,8 +1776,8 @@ class JobRunner extends EventEmitter {
       const duration = Date.now() - startTime;
       this._logStructured({
         level: 'info',
-        stepName: 'metadata_generation',
-        subStep: 'complete',
+        stepName: 'image_generation',
+        subStep: 'metadata_complete',
         message: `Metadata generation completed for all ${images.length} images`,
         durationMs: duration,
         updateProgress: true, // Update progress for step completion
@@ -1777,8 +1793,8 @@ class JobRunner extends EventEmitter {
       const duration = Date.now() - startTime;
       this._logStructured({
         level: 'error',
-        stepName: 'metadata_generation',
-        subStep: 'error',
+        stepName: 'image_generation',
+        subStep: 'metadata_error',
         message: `Metadata generation failed: ${error.message}`,
         durationMs: duration,
         errorCode: 'METADATA_GEN_ERROR',
