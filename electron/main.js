@@ -113,7 +113,7 @@ app.whenReady().then(() => {
   
   try {
     console.log('🚨 MAIN PROCESS: Calling BackendAdapter constructor...');
-    backendAdapter = new BackendAdapter({ ipc: ipcMain, skipIpcSetup: true });
+    backendAdapter = new BackendAdapter({ ipc: ipcMain, mainWindow: null, skipIpcSetup: true });
     console.log('✅ BackendAdapter created successfully');
     console.log('🔧 backendAdapter object:', backendAdapter);
   } catch (error) {
@@ -139,6 +139,11 @@ app.whenReady().then(() => {
   }
   
   createWindow();
+  
+  // Update BackendAdapter with mainWindow reference for event sending
+  if (backendAdapter && mainWindow) {
+    backendAdapter.setMainWindow(mainWindow);
+  }
 });
 
 // Quit when all windows are closed

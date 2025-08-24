@@ -38,6 +38,7 @@ class BackendAdapter {
     
     this.errorTranslation = new ErrorTranslationService();
     this.ipc = options.ipc || (typeof ipcMain !== 'undefined' ? ipcMain : undefined);
+    this.mainWindow = options.mainWindow || null;
     
     // Only setup IPC handlers if not explicitly skipped
     if (!options.skipIpcSetup) {
@@ -47,6 +48,15 @@ class BackendAdapter {
     
     // Store the options for later use
     this._constructorOptions = options;
+  }
+
+  /**
+   * Set the main window reference for sending events to renderer
+   * @param {BrowserWindow} mainWindow - Electron main window instance
+   */
+  setMainWindow(mainWindow) {
+    this.mainWindow = mainWindow;
+    console.log('🔧 BackendAdapter: MainWindow reference set for event sending');
   }
 
   async ensureInitialized() {
@@ -1527,9 +1537,9 @@ class BackendAdapter {
         // Set up event listeners for progress tracking
         if (this.retryExecutor && typeof this.retryExecutor.on === 'function') {
           this.retryExecutor.on('progress', (data) => {
-            // Send progress event to frontend via IPC
-            if (this.ipc && typeof this.ipc.send === 'function') {
-              this.ipc.send('retry-progress', {
+            // Send progress event to frontend via mainWindow
+            if (this.mainWindow && this.mainWindow.webContents) {
+              this.mainWindow.webContents.send('retry-progress', {
                 ...data,
                 context: 'retry'
               });
@@ -1538,9 +1548,9 @@ class BackendAdapter {
           });
 
           this.retryExecutor.on('job-completed', (data) => {
-            // Send completion event to frontend via IPC
-            if (this.ipc && typeof this.ipc.send === 'function') {
-              this.ipc.send('retry-completed', {
+            // Send completion event to frontend via mainWindow
+            if (this.mainWindow && this.mainWindow.webContents) {
+              this.mainWindow.webContents.send('retry-completed', {
                 ...data,
                 context: 'retry'
               });
@@ -1549,9 +1559,9 @@ class BackendAdapter {
           });
 
           this.retryExecutor.on('job-error', (data) => {
-            // Send error event to frontend via IPC
-            if (this.ipc && typeof this.ipc.send === 'function') {
-              this.ipc.send('retry-error', {
+            // Send error event to frontend via mainWindow
+            if (this.mainWindow && this.mainWindow.webContents) {
+              this.mainWindow.webContents.send('retry-error', {
                 ...data,
                 context: 'retry'
               });
@@ -1560,9 +1570,9 @@ class BackendAdapter {
           });
 
           this.retryExecutor.on('queue-updated', (data) => {
-            // Send queue update event to frontend via IPC
-            if (this.ipc && typeof this.ipc.send === 'function') {
-              this.ipc.send('retry-queue-updated', {
+            // Send queue update event to frontend via mainWindow
+            if (this.mainWindow && this.mainWindow.webContents) {
+              this.mainWindow.webContents.send('retry-queue-updated', {
                 ...data,
                 context: 'retry'
               });
@@ -1571,9 +1581,9 @@ class BackendAdapter {
           });
 
           this.retryExecutor.on('job-status-updated', (data) => {
-            // Send status update event to frontend via IPC
-            if (this.ipc && typeof this.ipc.send === 'function') {
-              this.ipc.send('retry-status-updated', {
+            // Send status update event to frontend via mainWindow
+            if (this.mainWindow && this.mainWindow.webContents) {
+              this.mainWindow.webContents.send('retry-status-updated', {
                 ...data,
                 context: 'retry'
               });
