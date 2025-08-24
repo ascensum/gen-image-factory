@@ -1526,7 +1526,8 @@ class BackendAdapter {
         
         try {
           this.retryExecutor = new RetryExecutor({
-            tempDirectory: tempDir
+            tempDirectory: tempDir,
+            generatedImage: this.generatedImage
           });
           console.log('🔧 RetryExecutor created successfully');
         } catch (error) {

@@ -13,6 +13,11 @@ class RetryExecutor extends EventEmitter {
     this.retryQueue = [];
     this.settings = options.settings || {};
     this.tempDirectory = options.tempDirectory || './picture/generated';
+    this.generatedImage = options.generatedImage;
+    
+    if (!this.generatedImage) {
+      console.warn('🔧 RetryExecutor: No generatedImage model provided, database operations may fail');
+    }
   }
 
   /**
@@ -336,14 +341,25 @@ class RetryExecutor extends EventEmitter {
    * @returns {Promise<string>} Source file path
    */
   async resolveSourceFilePath(imageId) {
-    // This would typically query the database to get the image's finalImagePath
-    // For now, we'll construct a path based on the tempDirectory setting
-    
-    // In a real implementation, you'd get this from the database:
-    // const image = await this.generatedImage.getGeneratedImage(imageId);
-    // return image.finalImagePath || path.join(this.tempDirectory, `image_${imageId}.png`);
-    
-    return path.join(this.tempDirectory, `image_${imageId}.png`);
+    try {
+      // Get the actual image data from the database
+      const image = await this.generatedImage.getGeneratedImage(imageId);
+      
+      if (!image) {
+        throw new Error(`Image ${imageId} not found in database`);
+      }
+      
+      if (!image.finalImagePath) {
+        throw new Error(`Image ${imageId} has no finalImagePath`);
+      }
+      
+      console.log(`🔧 RetryExecutor: Resolved source path for image ${imageId}: ${image.finalImagePath}`);
+      return image.finalImagePath;
+      
+    } catch (error) {
+      console.error(`🔧 RetryExecutor: Error resolving source path for image ${imageId}:`, error);
+      throw error;
+    }
   }
 
   /**
