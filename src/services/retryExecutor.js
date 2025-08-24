@@ -49,6 +49,8 @@ class RetryExecutor extends EventEmitter {
 
     this.retryQueue.push(queuedJob);
     
+    console.log(`🔧 RetryExecutor: Added job ${queuedJob.id} to queue. Queue length: ${this.retryQueue.length}`);
+    
     // Emit queue update event
     this.emit('queue-updated', {
       queueLength: this.retryQueue.length,
@@ -57,10 +59,14 @@ class RetryExecutor extends EventEmitter {
 
     // If not currently processing, start processing asynchronously
     if (!this.isProcessing) {
-      // Use setImmediate to avoid blocking the current execution
-      setImmediate(() => {
+      console.log(`🔧 RetryExecutor: Starting processing in 1 second...`);
+      // Add a delay before starting to process to make queuing visible
+      setTimeout(() => {
+        console.log(`🔧 RetryExecutor: Starting to process queue...`);
         this.processQueue();
-      });
+      }, 1000); // 1 second delay to show queuing
+    } else {
+      console.log(`🔧 RetryExecutor: Already processing, job ${queuedJob.id} added to queue`);
     }
 
     return queuedJob;
@@ -70,11 +76,15 @@ class RetryExecutor extends EventEmitter {
    * Process the retry queue
    */
   async processQueue() {
+    console.log(`🔧 RetryExecutor: processQueue called. isProcessing: ${this.isProcessing}, queueLength: ${this.retryQueue.length}`);
+    
     if (this.isProcessing || this.retryQueue.length === 0) {
+      console.log(`🔧 RetryExecutor: Skipping processQueue. isProcessing: ${this.isProcessing}, queueLength: ${this.retryQueue.length}`);
       return;
     }
 
     this.isProcessing = true;
+    console.log(`🔧 RetryExecutor: Set isProcessing to true`);
 
     try {
       // Process one job at a time to maintain proper queue status
@@ -133,6 +143,9 @@ class RetryExecutor extends EventEmitter {
         context: 'retry'
       });
 
+      // Add delay at start to make queuing visible
+      await this.delay(1000); // 1 second delay to show queuing
+
       // Process each image in the batch
       const totalImages = job.imageIds.length;
       let processedCount = 0;
@@ -177,6 +190,11 @@ class RetryExecutor extends EventEmitter {
             imageId,
             result
           });
+
+          // Add delay between processing images to make progress visible
+          if (processedCount < totalImages) {
+            await this.delay(500); // 500ms delay between images
+          }
 
         } catch (error) {
           console.error(`Error processing image ${imageId}:`, error);
