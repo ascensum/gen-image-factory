@@ -79,12 +79,30 @@ const ImageModal: React.FC<ImageModalProps> = ({
   };
 
   const processingSettings = image.processingSettings || {};
-  const metadata = image.metadata || {};
   
-        // Debug logging for metadata (only in development)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('ImageModal - Metadata loaded:', metadata);
-      }
+  // Handle metadata - it might be a JSON string that needs parsing
+  let metadata = {};
+  if (typeof image.metadata === 'string') {
+    try {
+      metadata = JSON.parse(image.metadata);
+      console.log('🔍 Parsed metadata from string:', metadata);
+    } catch (error) {
+      console.error('❌ Failed to parse metadata string:', error);
+      metadata = {};
+    }
+  } else if (image.metadata) {
+    metadata = image.metadata;
+    console.log('🔍 Metadata is already an object:', metadata);
+  }
+  
+  // Debug logging for metadata (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('ImageModal - Final metadata object:', metadata);
+    console.log('ImageModal - metadata.title:', metadata.title);
+    console.log('ImageModal - metadata.title?.en:', metadata.title?.en);
+    console.log('ImageModal - metadata.description:', metadata.description);
+    console.log('ImageModal - metadata.uploadTags:', metadata.uploadTags);
+  }
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -280,48 +298,51 @@ const ImageModal: React.FC<ImageModalProps> = ({
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">AI-Generated Title</label>
                       <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md border">
-                        {metadata.title || 'No title generated'}
+                        {metadata.title?.en || metadata.title || 'No title generated'}
                       </p>
                     </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">AI-Generated Description</label>
                       <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md border">
-                        {metadata.description || 'No description generated'}
+                        {metadata.description?.en || metadata.description || 'No description generated'}
                       </p>
                     </div>
                     
-                                          <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">AI-Generated Tags</label>
-                        <div className="bg-gray-50 p-3 rounded-md border">
-                          {(() => {
-                            // Handle both array and comma-separated string formats
-                            let tagsArray = [];
-                            if (Array.isArray(metadata.tags)) {
-                              tagsArray = metadata.tags;
-                            } else if (typeof metadata.tags === 'string' && metadata.tags.trim()) {
-                              tagsArray = metadata.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
-                            }
-                            
-                            if (tagsArray.length > 0) {
-                              return (
-                                <div className="flex flex-wrap gap-2">
-                                  {tagsArray.map((tag: string, index: number) => (
-                                    <span 
-                                      key={index}
-                                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                                    >
-                                      {tag}
-                                    </span>
-                                  ))}
-                                </div>
-                              );
-                            } else {
-                              return <p className="text-sm text-gray-500">No tags generated</p>;
-                            }
-                          })()}
-                        </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">AI-Generated Tags</label>
+                      <div className="bg-gray-50 p-3 rounded-md border">
+                        {(() => {
+                          // Handle both array and comma-separated string formats
+                          let tagsArray = [];
+                          // Check for uploadTags first (the actual field name from metadata)
+                          if (metadata.uploadTags?.en) {
+                            tagsArray = metadata.uploadTags.en.split(',').map(tag => tag.trim()).filter(tag => tag);
+                          } else if (Array.isArray(metadata.tags)) {
+                            tagsArray = metadata.tags;
+                          } else if (typeof metadata.tags === 'string' && metadata.tags.trim()) {
+                            tagsArray = metadata.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+                          }
+                          
+                          if (tagsArray.length > 0) {
+                            return (
+                              <div className="flex flex-wrap gap-2">
+                                {tagsArray.map((tag: string, index: number) => (
+                                  <span 
+                                    key={index}
+                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          } else {
+                            return <p className="text-sm text-gray-500">No tags generated</p>;
+                          }
+                        })()}
                       </div>
+                    </div>
                     
                     {/* Metadata Prompt hidden - internal reference only */}
                   </div>

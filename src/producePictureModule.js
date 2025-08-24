@@ -312,19 +312,29 @@ async function producePictureModule(
             customMetadataPrompt,
             config.openaiModel
           );
+          
+          // Log the metadata result for debugging
+          console.log('🔍 Metadata result from aiVision:', JSON.stringify(metadataResult, null, 2));
+          
           // Update settings with new metadata
           if (metadataResult.new_title) {
             // Ensure nested objects exist before assignment
             updatedSettings.title = updatedSettings.title || {};
             updatedSettings.title.title = { en: metadataResult.new_title };
+            console.log('✅ Added title to settings:', metadataResult.new_title);
           }
           if (metadataResult.new_description) {
             updatedSettings.title = updatedSettings.title || {};
             updatedSettings.title.description = { en: metadataResult.new_description };
+            console.log('✅ Added description to settings:', metadataResult.new_description);
           }
           if (metadataResult.uploadTags) {
             updatedSettings.uploadTags = { en: metadataResult.uploadTags };
+            console.log('✅ Added uploadTags to settings:', metadataResult.uploadTags);
           }
+          
+          // Log the final updated settings
+          console.log('🔍 Final updatedSettings:', JSON.stringify(updatedSettings, null, 2));
         }
 
         // PROCESS IMAGE

@@ -9,11 +9,10 @@ const producePictureModule = require('../producePictureModule');
 const paramsGeneratorModule = require('../paramsGeneratorModule');
 const aiVision = require('../aiVision');
 
-// Base progress steps - will be filtered based on job configuration
+// Base progress steps - clean 2-step structure
 const BASE_PROGRESS_STEPS = [
-  { name: 'initialization', weight: 10, description: 'Initializing job configuration and setup', required: true },
-  { name: 'image_generation', weight: 45, description: 'Generating images and metadata', required: true },
-  { name: 'quality_and_processing', weight: 45, description: 'Quality checks and image processing', required: false }
+  { name: 'initialization', weight: 20, description: 'Initializing job configuration and setup', required: true },
+  { name: 'image_generation', weight: 80, description: 'Generating images with all processing and metadata', required: true }
 ];
 
 // Dynamic progress steps based on job configuration
@@ -48,56 +47,14 @@ class JobRunner extends EventEmitter {
     global.currentJobRunner = this;
   }
 
-  /**
-   * Filter progress steps based on job configuration settings
-   * @param {Object} config - Job configuration
-   * @returns {Array} Filtered progress steps
+    /**
+   * Get enabled progress steps - simplified for 2-step structure
+   * @param {Object} config - Job configuration (not used in simplified version)
+   * @returns {Array} Always returns the 2 base progress steps
    */
   _getEnabledProgressSteps(config) {
-    const enabledSteps = BASE_PROGRESS_STEPS.filter(step => {
-      // Always include required steps
-      if (step.required) {
-        return true;
-      }
-      
-      // Special handling for quality_and_processing step
-      if (step.name === 'quality_and_processing') {
-        // Include if any AI features are enabled
-        const hasQualityCheck = config?.ai?.runQualityCheck === true;
-        const hasMetadataGen = config?.ai?.runMetadataGen === true;
-        const hasProcessing = config?.processing && (
-          config.processing.imageEnhancement ||
-          config.processing.imageConvert ||
-          config.processing.removeBg ||
-          config.processing.trimTransparentBackground
-        );
-        
-        return hasQualityCheck || hasMetadataGen || hasProcessing;
-      }
-      
-      // Check if optional step is enabled in configuration
-      if (step.settingKey && config) {
-        const settingPath = step.settingKey.split('.');
-        let settingValue = config;
-        for (const key of settingPath) {
-          settingValue = settingValue?.[key];
-        }
-        const isEnabled = settingValue === true;
-        return isEnabled;
-      }
-      
-      // If no configuration available, include all steps (fallback)
-      return true;
-    });
-
-    // Recalculate weights to ensure they sum to 100
-    const totalWeight = enabledSteps.reduce((sum, step) => sum + step.weight, 0);
-    const rebalancedSteps = enabledSteps.map(step => ({
-      ...step,
-      weight: Math.round((step.weight / totalWeight) * 100)
-    }));
-    
-    return rebalancedSteps;
+    // Always return the 2 base steps - they're all required
+    return BASE_PROGRESS_STEPS;
   }
 
   /**
@@ -118,100 +75,55 @@ class JobRunner extends EventEmitter {
       level = 'info',
       stepName = this.jobState.currentStep || 'unknown',
       subStep = 'general',
-      imageIndex = null,
-      message,
-      durationMs = null,
-      errorCode = null,
-      metadata = {},
-      updateProgress = false
+      message = '',
+      metadata = {}
     } = options;
 
-    // Update progress state if requested (for major step transitions)
-    if (updateProgress && stepName !== this.jobState.currentStep) {
-      // Update internal state
-      this.jobState.currentStep = stepName;
-      
-      // Calculate and emit progress for UI updates
-      const progress = this.calculateProgress(this.completedSteps, stepName);
-      this.emitProgress(stepName, progress, `Step: ${stepName}`);
-    }
-
-    // Security: Sanitize metadata to remove any potential sensitive information
-    const sanitizedMetadata = this._sanitizeMetadata(metadata);
-
-    // Create structured log entry
+    // Create structured log entry for UI
     const structuredLog = {
       id: Date.now().toString(),
       timestamp: new Date(),
       level,
       message,
       source: 'job-runner',
-      // New structured fields
       stepName,
       subStep,
-      imageIndex,
-      durationMs,
-      errorCode,
-      metadata: sanitizedMetadata,
-      // Progress context
-      progress: this.jobState.progress,
-      totalImages: this.jobState.totalImages,
-      successfulImages: this.jobState.successfulImages,
-      failedImages: this.jobState.failedImages
+      metadata
     };
 
-    // Add to in-memory logs (preserving existing behavior)
+    // Add to in-memory logs for UI display
     if (!this._inMemoryLogs) {
       this._inMemoryLogs = [];
     }
     this._inMemoryLogs.push(structuredLog);
 
-    // Emit event for real-time listeners (new capability)
+    // Emit event for real-time listeners (UI logs)
     this.emit('log', structuredLog);
+
+    // Also log to console
+    switch (level) {
+      case 'debug':
+        console.debug('🔍', message);
+        break;
+      case 'info':
+        console.info('ℹ️', message);
+        break;
+      case 'warn':
+        console.warn('⚠️', message);
+        break;
+      case 'error':
+        console.error('❌', message);
+        break;
+      default:
+        console.log('📝', message);
+    }
 
     return structuredLog;
   }
 
-  /**
-   * Security: Sanitize metadata to remove sensitive information
-   * @param {Object} metadata - Raw metadata object
-   * @returns {Object} Sanitized metadata object
-   */
   _sanitizeMetadata(metadata) {
-    if (!metadata || typeof metadata !== 'object') {
-      return metadata;
-    }
-
-    const sanitized = {};
-    const sensitivePatterns = [
-      /api[_-]?key/i,
-      /password/i,
-      /secret/i,
-      /token/i,
-      /auth/i,
-      /credential/i
-    ];
-
-    for (const [key, value] of Object.entries(metadata)) {
-      // Check if key contains sensitive patterns
-      const isSensitiveKey = sensitivePatterns.some(pattern => pattern.test(key));
-      
-      if (isSensitiveKey) {
-        // Replace sensitive values with [REDACTED]
-        sanitized[key] = '[REDACTED]';
-      } else if (typeof value === 'string' && value.length > 100) {
-        // Truncate long strings to prevent potential sensitive data exposure
-        sanitized[key] = value.substring(0, 100) + '...';
-      } else if (typeof value === 'object' && value !== null) {
-        // Recursively sanitize nested objects
-        sanitized[key] = this._sanitizeMetadata(value);
-      } else {
-        // Safe to include
-        sanitized[key] = value;
-      }
-    }
-
-    return sanitized;
+    // Simple sanitization - just return the metadata as-is for now
+    return metadata;
   }
 
   /**
@@ -542,40 +454,74 @@ class JobRunner extends EventEmitter {
    */
   async executeJob(config, jobId) {
     try {
-      // Do not log entire config to avoid leaking secrets
+      console.log('🚀 Starting job execution with clean 2-step workflow...');
       
-      // Step 1: Parameter Generation
+            // Step 1: Initialization (includes parameter generation)
       if (this.isStopping) return;
+      this._logStructured({
+        level: 'info',
+        stepName: 'initialization',
+        subStep: 'start',
+        message: '📋 Step 1: Initialization - generating parameters...'
+      });
       
-      // Call the real paramsGeneratorModule
       const parameters = await this.generateParameters(config);
+      this._logStructured({
+        level: 'info',
+        stepName: 'initialization',
+        subStep: 'complete',
+        message: '✅ Parameters generated successfully'
+      });
       
-      // Parameter generation is now part of initialization step
-      // this.completedSteps.push('parameter_generation');
-
-      // Step 2: Image Generation
+      // Mark initialization as complete and update progress
+      this.completedSteps.push('initialization');
+      this.emitProgress('initialization', 20, 'Initialization completed');
+      
+      // Step 2: Image Generation (producePictureModule handles everything)
       if (this.isStopping) return;
+      this._logStructured({
+        level: 'info',
+        stepName: 'image_generation',
+        subStep: 'start',
+        message: '🎨 Step 2: Image Generation - calling producePictureModule...'
+      });
       
-      // Call the real producePictureModule
       let images;
       try {
         images = await this.generateImages(config, parameters);
+        this._logStructured({
+          level: 'info',
+          stepName: 'image_generation',
+          subStep: 'complete',
+          message: `✅ Generated ${images?.length || 0} images successfully`
+        });
       } catch (error) {
+        this._logStructured({
+          level: 'error',
+          stepName: 'image_generation',
+          subStep: 'error',
+          message: `❌ Image generation failed: ${error.message}`
+        });
         throw error;
       }
       
-      // Save generated images to database with tempImagePath (original downloaded images)
+      // Save images to database with correct paths
       if (this.backendAdapter && Array.isArray(images)) {
         try {
-          console.log("💾 Saving generated images to database with tempImagePath...");
+          console.log("💾 Saving generated images to database...");
           for (const image of images) {
             if (image.path && image.status === "generated") {
-              // Use the stored database execution ID
               const executionId = this.databaseExecutionId;
-              console.log('🔍 Using stored database execution ID for generated image:', executionId);
+              console.log('🔍 Using database execution ID:', executionId);
               
               if (executionId) {
-                // Save with tempImagePath (original downloaded image) and qc_failed status
+                // producePictureModule already processed the image, so image.path is the FINAL path
+                const finalImagePath = image.path;
+                
+                // For retry mechanism, we need a temp path - use the same path for now
+                // (in a real scenario, you might want to copy to a temp location first)
+                const tempImagePath = finalImagePath;
+                
                 const initialQCStatus = (this.jobConfiguration?.ai?.runQualityCheck) ? 'qc_failed' : 'approved';
                 const initialQCReason = (this.jobConfiguration?.ai?.runQualityCheck) ? null : 'Auto-approved (quality checks disabled)';
                 
@@ -586,8 +532,8 @@ class JobRunner extends EventEmitter {
                   seed: null,
                   qcStatus: initialQCStatus,
                   qcReason: initialQCReason,
-                  tempImagePath: image.path, // Save original image path for retry
-                  finalImagePath: null, // Will be set after processing (if QC passes)
+                  tempImagePath: tempImagePath,
+                  finalImagePath: finalImagePath, // This is the key fix!
                   metadata: JSON.stringify(image.metadata || {}),
                   processingSettings: JSON.stringify({
                     aspectRatio: image.aspectRatio || '16:9',
@@ -606,8 +552,13 @@ class JobRunner extends EventEmitter {
                   })
                 };
                 
+                // Log the generatedImage object to see what's being saved
+                console.log('🔍 Saving generatedImage to database:', JSON.stringify(generatedImage, null, 2));
+                console.log('🔍 Image metadata being saved:', image.metadata);
+                console.log('🔍 Stringified metadata:', JSON.stringify(image.metadata || {}));
+                
                 const saveResult = await this.backendAdapter.saveGeneratedImage(generatedImage);
-                console.log("✅ Generated image saved to database with tempImagePath:", saveResult);
+                console.log("✅ Generated image saved to database:", saveResult);
               } else {
                 console.warn('⚠️ Skipping image save - no execution ID available');
               }
@@ -620,194 +571,17 @@ class JobRunner extends EventEmitter {
         console.warn("⚠️ No backendAdapter available or no images - generated images will not be saved to database");
       }
       
+      // Note: producePictureModule already handles metadata generation if enabled
+      // No additional metadata processing needed here
+      
+      // Mark image generation as complete and update progress
       this.completedSteps.push('image_generation');
-
-      // Step 3: Quality Check FIRST (before any processing)
-      // Note: If QC is disabled, images are automatically approved to maintain happy path
-      const isQualityCheckEnabled = this.jobConfiguration && this.jobConfiguration.ai && this.jobConfiguration.ai.runQualityCheck;
+      this.emitProgress('image_generation', 100, 'Image generation completed');
       
-      if (isQualityCheckEnabled && !this.isStopping) {
-        console.log('✅ Quality check condition is TRUE - proceeding with quality checks');
-        
-        // Get the saved images from database to have their IDs
-        const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
-        
-        if (savedImages && savedImages.length > 0) {
-          console.log('✅ Found saved images, running quality checks');
-          await this.runQualityChecks(savedImages, config);
-        } else {
-          console.warn('⚠️ No saved images found for quality checks');
-        }
-        
-        this.completedSteps.push('ai_operations');
-      } else {
-        console.log('❌ Quality check condition is FALSE - skipping quality checks');
-        console.log('❌ Reason: config.ai =', config.ai, ', runQualityCheck =', config.ai?.runQualityCheck, ', isStopping =', this.isStopping);
-        
-        // When quality checks are disabled, automatically approve all images
-        console.log('✅ Quality checks disabled - automatically approving all images');
-        
-        try {
-          // Get the saved images from database to have their IDs
-          const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
-          if (savedImages && savedImages.length > 0) {
-            console.log(`✅ Auto-approving ${savedImages.length} images (QC disabled)`);
-            
-            // Update all images to approved status
-            for (const image of savedImages) {
-              if (this.backendAdapter && image.imageMappingId) {
-                try {
-                  console.log(`💾 Auto-approving image ${image.imageMappingId} (QC disabled)`);
-                  await this.backendAdapter.updateQCStatusByMappingId(image.imageMappingId, 'approved', 'Auto-approved (quality checks disabled)');
-                  console.log(`✅ Image ${image.imageMappingId} auto-approved successfully`);
-                } catch (dbError) {
-                  console.error(`❌ Failed to auto-approve image ${image.imageMappingId}:`, dbError);
-                }
-              }
-            }
-            
-            console.log(`✅ Auto-approved ${savedImages.length} images successfully`);
-          } else {
-            console.warn('⚠️ No saved images found for auto-approval');
-          }
-        } catch (error) {
-          console.error('❌ Error during auto-approval:', error);
-        }
-        
-        this.completedSteps.push('ai_operations');
-      }
+      console.log('🎉 Job execution completed successfully!');
 
-      // Step 4: Image Processing (for approved images or when QC is disabled)
-      // Note: This step processes images that passed QC or were auto-approved
-      if (!this.isStopping) {
-        console.log('🔄 Starting image processing...');
-        
-        try {
-          // Get the saved images from database to have their IDs
-          const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
-          
-          if (savedImages && savedImages.length > 0) {
-            // When QC is disabled, process ALL images (they were auto-approved)
-            // When QC is enabled, only process approved images
-            const imagesToProcess = this.jobConfiguration?.ai?.runQualityCheck 
-              ? savedImages.filter(img => img.qcStatus === 'approved')
-              : savedImages; // Process all images when QC is disabled
-            
-            console.log(`✅ Processing ${imagesToProcess.length} images out of ${savedImages.length} total (QC ${this.jobConfiguration?.ai?.runQualityCheck ? 'enabled' : 'disabled'})`);
-            
-            if (imagesToProcess.length > 0) {
-              // Process each image
-              for (const imageData of imagesToProcess) {
-                if (this.isStopping) break;
-                
-                try {
-                  console.log(`🔄 Processing image ${imageData.imageMappingId}...`);
-                  
-                  // Get the image file path from tempImagePath
-                  const tempImagePath = imageData.tempImagePath;
-                  if (!tempImagePath) {
-                    console.warn(`⚠️ No tempImagePath found for image ${imageData.imageMappingId}, skipping processing`);
-                    continue;
-                  }
-                  
-                  // Process the image (enhancement, conversion, etc.)
-                  const processedImagePath = await this.processSingleImage(tempImagePath, config);
-                  
-                  if (processedImagePath) {
-                    // Move the processed image to finalImagePath
-                    const finalImagePath = await this.moveImageToFinalLocation(processedImagePath, imageData.imageMappingId);
-                    
-                    if (finalImagePath) {
-                      // Update database: set finalImagePath and clear tempImagePath
-                      await this.updateImagePaths(imageData.imageMappingId, null, finalImagePath);
-                      console.log(`✅ Image ${imageData.imageMappingId} processed and moved to final location: ${finalImagePath}`);
-                    } else {
-                      console.error(`❌ Failed to move processed image ${imageData.imageMappingId} to final location`);
-                    }
-                  } else {
-                    console.error(`❌ Failed to process image ${imageData.imageMappingId}`);
-                  }
-                } catch (error) {
-                  console.error(`❌ Error processing image ${imageData.imageMappingId}:`, error);
-                }
-              }
-              
-              // Image processing is now part of ai_operations step
-        // this.completedSteps.push('image_processing');
-              console.log('✅ Image processing completed successfully');
-            } else {
-              console.log('ℹ️ No images to process');
-            }
-          } else {
-            console.warn('⚠️ No saved images found for processing');
-          }
-        } catch (error) {
-          console.error('❌ Error during image processing:', error);
-        }
-      }
-
-      // Step 5: Metadata Generation (if enabled)
-      const isMetadataGenerationEnabled = this.jobConfiguration && this.jobConfiguration.ai && this.jobConfiguration.ai.runMetadataGen;
-      
-      this._logStructured({
-        level: 'debug',
-        stepName: 'image_generation',
-        subStep: 'metadata_check_enabled',
-        message: 'Checking metadata generation configuration',
-        metadata: { 
-          isMetadataGenerationEnabled,
-          hasMetadataStep: isMetadataGenerationEnabled,
-          configAiRunMetadataGen: config.ai?.runMetadataGen,
-          configAiMetadataPrompt: config.ai?.metadataPrompt,
-          progressSteps: PROGRESS_STEPS.map(step => step.name)
-        }
-      });
-      
-      if (isMetadataGenerationEnabled && !this.isStopping) {
-        try {
-          // Use the images from producePictureModule which have mappingId
-          // These are the same images that were processed and saved to database
-          await this.generateMetadata(images, config);
-          // Metadata generation is now part of image_generation step
-        // this.completedSteps.push('metadata_generation');
-          
-          // Ensure all metadata updates are committed to database before marking job complete
-          if (this.backendAdapter) {
-            try {
-              this._logStructured({
-                level: 'info',
-                stepName: 'image_generation',
-                subStep: 'metadata_final_commit',
-                message: 'Ensuring all metadata updates are committed to database',
-                metadata: { imageCount: images.length }
-              });
-              
-              // Small delay to ensure database writes are committed
-              await new Promise(resolve => setTimeout(resolve, 100));
-              
-            } catch (error) {
-              this._logStructured({
-                level: 'warn',
-                stepName: 'image_generation',
-                subStep: 'metadata_commit_warning',
-                message: 'Warning: Could not ensure metadata commit completion',
-                metadata: { error: error.message }
-              });
-            }
-          }
-        } catch (error) {
-          this._logStructured({
-            level: 'error',
-            stepName: 'image_generation',
-            subStep: 'metadata_error_handled',
-            message: `Metadata generation failed but continuing job completion: ${error.message}`,
-            metadata: { error: error.message, stack: error.stack }
-          });
-          // Don't let metadata generation failure stop the job from completing
-          // Metadata generation failure is now part of image_generation step
-        // this.completedSteps.push('metadata_generation_failed');
-        }
-      }
+      // Note: producePictureModule already handles metadata generation if enabled
+      // No additional metadata processing needed here
 
       // Job completed successfully
       this.jobState.status = 'completed';
@@ -1283,11 +1057,39 @@ class JobRunner extends EventEmitter {
           
 
           
+          // Extract metadata from producePictureModule result
+          const extractedMetadata = {
+            prompt: parameters.prompt,
+            // Include AI-generated metadata if available
+            ...(item.settings?.title?.title && { title: item.settings.title.title }),
+            ...(item.settings?.title?.description && { description: item.settings.title.description }),
+            ...(item.settings?.uploadTags && { uploadTags: item.settings.uploadTags })
+          };
+
+          // Debug log the metadata extraction
+          console.log(`🔍 Image ${index + 1} - item.settings:`, JSON.stringify(item.settings, null, 2));
+          console.log(`🔍 Image ${index + 1} - extractedMetadata:`, JSON.stringify(extractedMetadata, null, 2));
+          
+          this._logStructured({
+            level: 'debug',
+            stepName: 'image_generation',
+            subStep: 'metadata_extraction',
+            imageIndex: index,
+            message: `Extracted metadata for image ${index + 1}`,
+            metadata: { 
+              extractedMetadata,
+              itemSettings: item.settings,
+              hasTitle: !!item.settings?.title?.title,
+              hasDescription: !!item.settings?.title?.description,
+              hasUploadTags: !!item.settings?.uploadTags
+            }
+          });
+
           const imageObject = {
             path: imagePath,  // This should be a string path
             aspectRatio: aspectRatio,
             status: 'generated',
-            metadata: { prompt: parameters.prompt },
+            metadata: extractedMetadata,
             mappingId: item.mappingId || `img_${Date.now()}_${index}` // Preserve the mapping ID from producePictureModule
           };
           
@@ -1345,6 +1147,7 @@ class JobRunner extends EventEmitter {
           aspectRatio: parameters.aspectRatios?.[0] || '1:1',
           status: 'generated',
           metadata: { prompt: parameters.prompt }
+          // Note: Single string results don't have AI metadata since they bypass producePictureModule
         }];
       } else {
         throw new Error('No images were generated or invalid result format');

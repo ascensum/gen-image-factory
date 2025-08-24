@@ -102,7 +102,11 @@ async function generateMetadata(imagePath, promptContext, customMetadataPrompt =
     analysis = analysis.replace(/```json/g, '').replace(/```/g, '').trim();
 
     const parsedAnalysis = JSON.parse(analysis);
-    logDebug('Metadata Generation Result:', parsedAnalysis);
+    
+    // Log the metadata result properly
+    console.log('🔍 Metadata Generation Result (raw):', JSON.stringify(parsedAnalysis, null, 2));
+    logDebug('Metadata Generation Result:', JSON.stringify(parsedAnalysis, null, 2));
+    
     return parsedAnalysis;
   } catch (error) {
     console.error('Error in generateMetadata:', error);
