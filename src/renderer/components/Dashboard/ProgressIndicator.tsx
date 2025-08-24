@@ -22,15 +22,41 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   const timeElapsedFormatted = formatTime(timeElapsed);
   const timeRemainingFormatted = estimatedTimeRemaining ? formatTime(estimatedTimeRemaining) : '--:--';
 
-  // Dynamic job steps based on user settings - only show enabled steps
+  // Dynamic job steps based on new 3-step design - matches backend architecture
   const jobSteps = React.useMemo(() => {
     const allPossibleSteps = [
-      { id: 1, name: 'Initialize', description: 'Setting up job configuration', icon: '⚙️', required: true },
-      { id: 2, name: 'Parameters', description: 'Generating parameters from keywords', icon: '📝', required: true },
-      { id: 3, name: 'AI Generation', description: 'Creating images with AI models', icon: '🎨', required: true },
-      { id: 4, name: 'Processing', description: 'Processing individual images', icon: '🔄', required: true },
-      { id: 5, name: 'Quality Check', description: 'Running quality assessment', icon: '🔍', required: false, settingKey: 'ai.runQualityCheck' },
-      { id: 6, name: 'Metadata', description: 'Generating metadata', icon: '📊', required: false, settingKey: 'ai.runMetadataGen' }
+      { 
+        id: 1, 
+        name: 'Initialization', 
+        description: 'Setting up job configuration and parameters', 
+        icon: '⚙️', 
+        required: true,
+        subSteps: ['Configuration', 'Parameters']
+      },
+      { 
+        id: 2, 
+        name: 'Image Generation', 
+        description: 'Generating images and metadata', 
+        icon: '🎨', 
+        required: true,
+        subSteps: ['AI Generation', 'Metadata'],
+        hasMetadata: jobConfiguration?.ai?.runMetadataGen
+      },
+      { 
+        id: 3, 
+        name: 'AI Operations', 
+        description: 'Quality checks and image processing', 
+        icon: '🤖', 
+        required: false,
+        subSteps: ['Quality Check', 'Processing'],
+        hasQualityCheck: jobConfiguration?.ai?.runQualityCheck,
+        hasProcessing: jobConfiguration?.processing && (
+          jobConfiguration.processing.imageEnhancement ||
+          jobConfiguration.processing.imageConvert ||
+          jobConfiguration.processing.removeBg ||
+          jobConfiguration.processing.trimTransparentBackground
+        )
+      }
     ];
 
     // Filter steps based on job configuration settings
@@ -38,14 +64,9 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
       // Always include required steps
       if (step.required) return true;
       
-      // Check if optional step is enabled in configuration
-      if (step.settingKey && jobConfiguration) {
-        const settingPath = step.settingKey.split('.');
-        let settingValue = jobConfiguration;
-        for (const key of settingPath) {
-          settingValue = settingValue?.[key];
-        }
-        return settingValue === true;
+      // For AI Operations step, check if any AI features are enabled
+      if (step.id === 3) {
+        return step.hasQualityCheck || step.hasProcessing;
       }
       
       // If no configuration available, include all steps (fallback)
@@ -57,7 +78,7 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
       ...step,
       id: index + 1
     }));
-  }, [totalSteps, jobConfiguration]);
+  }, [jobConfiguration]);
 
   const getStepStatus = (stepId: number) => {
     if (!isJobActive) return 'pending';
@@ -180,7 +201,7 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
                     status === 'current' ? 'opacity-100 scale-100' :
                     'opacity-40 scale-95'
                   }`}>
-                    <div className={`bg-white border-2 rounded-lg p-3 min-w-[120px] ${
+                    <div className={`bg-white border-2 rounded-lg p-3 min-w-[140px] ${
                       status === 'completed' ? 'border-green-200 bg-green-50' :
                       status === 'current' ? 'border-blue-300 bg-blue-50 shadow-md' :
                       'border-gray-200 bg-gray-50'
@@ -210,6 +231,27 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
                       }`}>
                         {step.name}
                       </div>
+                      
+                      {/* Sub-steps - show relevant ones based on configuration */}
+                      {step.subSteps && (
+                        <div className="text-center text-xs text-gray-500 leading-tight mb-1">
+                          {step.id === 2 && step.hasMetadata ? (
+                            <div>AI Generation + Metadata</div>
+                          ) : step.id === 2 ? (
+                            <div>AI Generation only</div>
+                          ) : step.id === 3 && step.hasQualityCheck && step.hasProcessing ? (
+                            <div>QC + Processing</div>
+                          ) : step.id === 3 && step.hasQualityCheck ? (
+                            <div>Quality Check only</div>
+                          ) : step.id === 3 && step.hasProcessing ? (
+                            <div>Processing only</div>
+                          ) : step.id === 3 ? (
+                            <div>Skipped (no AI features)</div>
+                          ) : (
+                            <div>{step.subSteps.join(' + ')}</div>
+                          )}
+                        </div>
+                      )}
                       
                       {/* Step description - only show for current step */}
                       {status === 'current' && (
