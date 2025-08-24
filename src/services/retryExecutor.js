@@ -359,14 +359,18 @@ class RetryExecutor extends EventEmitter {
         throw new Error(`Image ${imageId} not found in database`);
       }
       
-      // For retry, we need the TEMP directory path where unprocessed images are stored
-      // QC failed images stay in tempDirectory until they are successfully processed
-      const tempImagePath = path.join(this.tempDirectory, `image_${imageId}.png`);
+      // Priority 1: Use tempImagePath from database if available
+      if (image.tempImagePath) {
+        console.log(`🔧 RetryExecutor: Using database tempImagePath for image ${imageId}: ${image.tempImagePath}`);
+        return image.tempImagePath;
+      }
       
-      console.log(`🔧 RetryExecutor: Using temp directory path for retry - Image ${imageId}: ${tempImagePath}`);
+      // Priority 2: Fallback to constructed temp directory path
+      const fallbackTempPath = path.join(this.tempDirectory, `image_${imageId}.png`);
+      console.log(`🔧 RetryExecutor: Using fallback temp directory path for image ${imageId}: ${fallbackTempPath}`);
       console.log(`🔧 RetryExecutor: tempDirectory: ${this.tempDirectory}`);
       
-      return tempImagePath;
+      return fallbackTempPath;
       
     } catch (error) {
       console.error(`🔧 RetryExecutor: Error resolving source path for image ${imageId}:`, error);

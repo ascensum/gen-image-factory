@@ -24,6 +24,7 @@ export interface GeneratedImage {
   qcStatus?: 'pending' | 'passed' | 'failed';
   qcReason?: string;
   finalImagePath?: string;
+  tempImagePath?: string;
   metadata?: {
     title?: string;
     description?: string;

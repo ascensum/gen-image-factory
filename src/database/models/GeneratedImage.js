@@ -295,8 +295,8 @@ class GeneratedImage {
     return new Promise((resolve, reject) => {
       const sql = `
         INSERT INTO generated_images 
-        (image_mapping_id, execution_id, generation_prompt, seed, qc_status, qc_reason, final_image_path, metadata, processing_settings)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (image_mapping_id, execution_id, generation_prompt, seed, qc_status, qc_reason, final_image_path, temp_image_path, metadata, processing_settings)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const params = [
@@ -307,6 +307,7 @@ class GeneratedImage {
         image.qcStatus || 'qc_failed',
         image.qcReason || null,
         image.finalImagePath || null,
+        image.tempImagePath || null,
         image.metadata ? JSON.stringify(image.metadata) : null,
         image.processingSettings ? JSON.stringify(image.processingSettings) : null
       ];
@@ -342,6 +343,7 @@ class GeneratedImage {
             qcStatus: row.qc_status,
             qcReason: row.qc_reason,
             finalImagePath: row.final_image_path,
+            tempImagePath: row.temp_image_path,
             metadata: row.metadata ? JSON.parse(row.metadata) : null,
             processingSettings: row.processing_settings ? JSON.parse(row.processing_settings) : null,
             createdAt: row.created_at ? new Date(row.created_at) : null
