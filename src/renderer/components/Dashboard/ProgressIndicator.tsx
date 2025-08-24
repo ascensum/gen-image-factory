@@ -23,6 +23,7 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   const timeRemainingFormatted = estimatedTimeRemaining ? formatTime(estimatedTimeRemaining) : '--:--';
 
   // Dynamic job steps based on new 3-step design - matches backend architecture
+  // Use totalSteps from backend to determine how many steps to show
   const jobSteps = React.useMemo(() => {
     const allPossibleSteps = [
       { 
@@ -59,26 +60,39 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
       }
     ];
 
-    // Filter steps based on job configuration settings
-    const enabledSteps = allPossibleSteps.filter(step => {
-      // Always include required steps
-      if (step.required) return true;
-      
-      // For AI Operations step, check if any AI features are enabled
-      if (step.id === 3) {
-        return step.hasQualityCheck || step.hasProcessing;
-      }
-      
-      // If no configuration available, include all steps (fallback)
-      return true;
-    });
+    // Use totalSteps from backend to determine how many steps to show
+    // This ensures frontend and backend are in sync
+    if (totalSteps === 3) {
+      // Show all 3 steps (default case)
+      return allPossibleSteps;
+    } else if (totalSteps === 2) {
+      // Show only initialization and image generation (no AI features)
+      return allPossibleSteps.slice(0, 2);
+    } else if (totalSteps === 1) {
+      // Show only initialization (fallback)
+      return allPossibleSteps.slice(0, 1);
+    } else {
+      // Fallback to configuration-based filtering if totalSteps is unexpected
+      const enabledSteps = allPossibleSteps.filter(step => {
+        // Always include required steps
+        if (step.required) return true;
+        
+        // For AI Operations step, check if any AI features are enabled
+        if (step.id === 3) {
+          return step.hasQualityCheck || step.hasProcessing;
+        }
+        
+        // If no configuration available, include all steps (fallback)
+        return true;
+      });
 
-    // Reassign sequential IDs to enabled steps
-    return enabledSteps.map((step, index) => ({
-      ...step,
-      id: index + 1
-    }));
-  }, [jobConfiguration]);
+      // Reassign sequential IDs to enabled steps
+      return enabledSteps.map((step, index) => ({
+        ...step,
+        id: index + 1
+      }));
+    }
+  }, [jobConfiguration, totalSteps]);
 
   const getStepStatus = (stepId: number) => {
     if (!isJobActive) return 'pending';
