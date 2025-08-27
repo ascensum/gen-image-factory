@@ -1543,7 +1543,9 @@ class BackendAdapter {
           console.log('🔧 RetryExecutor created successfully');
         } catch (error) {
           console.error('🔧 Failed to create RetryExecutor:', error);
-          throw error;
+          // Don't throw error, just log it and continue without retry functionality
+          console.warn('🔧 Retry functionality will be disabled due to initialization failure');
+          this.retryExecutor = null;
         }
 
         // Set up event listeners for progress tracking
@@ -1627,14 +1629,25 @@ class BackendAdapter {
 
       // Add the batch retry job to the executor
       let queuedJob;
-      if (this.retryExecutor && typeof this.retryExecutor.addBatchRetryJob === 'function') {
-        queuedJob = await this.retryExecutor.addBatchRetryJob(batchRetryJob);
-      } else {
-        // Fallback for test environment or when RetryExecutor is not available
+      try {
+        if (this.retryExecutor && typeof this.retryExecutor.addBatchRetryJob === 'function') {
+          queuedJob = await this.retryExecutor.addBatchRetryJob(batchRetryJob);
+        } else {
+          // Fallback for test environment or when RetryExecutor is not available
+          queuedJob = {
+            ...batchRetryJob,
+            id: `retry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            status: 'pending'
+          };
+        }
+      } catch (error) {
+        console.error('🔧 Error adding batch retry job to executor:', error);
+        // Create a fallback job if the executor fails
         queuedJob = {
           ...batchRetryJob,
           id: `retry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          status: 'pending'
+          status: 'failed',
+          error: error.message
         };
       }
       
