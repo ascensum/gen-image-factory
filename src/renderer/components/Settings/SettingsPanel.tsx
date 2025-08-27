@@ -24,6 +24,7 @@ interface SettingsObject {
     mjVersion: string;
     openaiModel: string;
     pollingTimeout: number;
+    pollingInterval: number;
     enablePollingTimeout: boolean;
     keywordRandom: boolean;
     count: number;
@@ -88,6 +89,7 @@ const defaultSettings: SettingsObject = {
     mjVersion: '6.1',
     openaiModel: 'gpt-4o',
     pollingTimeout: 15,
+    pollingInterval: 1,
     enablePollingTimeout: true,
     keywordRandom: false,
     count: 1,

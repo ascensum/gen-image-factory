@@ -18,15 +18,45 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
     return new Date(date).toLocaleDateString();
   };
 
-  const getFailureIndicator = () => {
-    if (image.qcReason) {
-      return (
-        <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-          ⚠️ Failed
-        </div>
-      );
-    }
-    return null;
+  const getStatusBadge = () => {
+    if (!image.qcStatus) return null;
+    
+    const badgeConfig = {
+      'qc_failed': {
+        text: 'QC Failed',
+        className: 'bg-red-500 text-white',
+        icon: '⚠️'
+      },
+      'retry_pending': {
+        text: 'Pending Retry',
+        className: 'bg-amber-500 text-white',
+        icon: '⏳'
+      },
+      'processing': {
+        text: 'Processing Retry',
+        className: 'bg-blue-500 text-white',
+        icon: '🔄'
+      },
+      'approved': {
+        text: 'Approved',
+        className: 'bg-green-500 text-white',
+        icon: '✅'
+      },
+      'failed_retry': {
+        text: 'Failed Retry',
+        className: 'bg-orange-500 text-white',
+        icon: '❌'
+      }
+    };
+    
+    const config = badgeConfig[image.qcStatus as keyof typeof badgeConfig];
+    if (!config) return null;
+    
+    return (
+      <div className={`absolute top-2 left-2 ${config.className} text-xs px-2 py-1 rounded-full font-medium`}>
+        {config.icon} {config.text}
+      </div>
+    );
   };
 
   return (
@@ -65,8 +95,8 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
           </div>
         )}
 
-        {/* Failure Indicator */}
-        {getFailureIndicator()}
+        {/* Status Badge */}
+        {getStatusBadge()}
       </div>
 
       {/* Image Info */}

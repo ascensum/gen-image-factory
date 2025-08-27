@@ -906,7 +906,8 @@ class JobRunner extends EventEmitter {
         aspectRatios: Array.isArray(parameters.aspectRatios) ? parameters.aspectRatios : 
                      (Array.isArray(config.parameters?.aspectRatios) ? config.parameters.aspectRatios : 
                      (typeof config.parameters?.aspectRatios === 'string' ? [config.parameters.aspectRatios] : ['1:1'])),
-        pollingTimeout: config.processing?.pollingTimeout || 30000,
+        pollingTimeout: config.parameters?.enablePollingTimeout ? (config.parameters?.pollingTimeout || 15) : null, // 15 minutes if enabled, null if disabled
+        pollingInterval: config.parameters?.pollingInterval || 1, // 1 minute (from parameters settings)
         processMode: config.parameters?.processMode || 'single',
         removeBgSize: config.processing?.removeBgSize || 'preview',
         runQualityCheck: config.ai?.runQualityCheck || false,

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Toggle } from '../Settings/Toggle';
 
 interface ProcessingSettings {
   imageEnhancement: boolean;
@@ -31,8 +32,8 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
   const [includeMetadata, setIncludeMetadata] = useState(false);
   const [batchSettings, setBatchSettings] = useState<ProcessingSettings>({
     imageEnhancement: false,
-    sharpening: 50,
-    saturation: 100,
+    sharpening: 5,
+    saturation: 1.4,
     imageConvert: false,
     convertToJpg: true,
     jpgQuality: 90,

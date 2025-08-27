@@ -184,11 +184,20 @@ async function producePictureModule(
 
     // Polling mechanism for image generation status
     let imageUrls = [];
-    const pollingInterval = 10 * 1000; // Poll every 10 seconds
-    const maxPollingTime = (pollingTimeout || 10) * 60 * 1000; // Use configured timeout, default to 10 mins
+    
+    // Check if polling is disabled
+    if (!pollingTimeout) {
+      logDebug(`Polling disabled for task ${taskId} - expecting immediate result`);
+      // For vendors that return results immediately, we don't need polling
+      // This will be handled by the calling code
+      return [];
+    }
+    
+    const pollingInterval = (config.pollingInterval || 1) * 60 * 1000; // Use configured interval, default to 1 minute
+    const maxPollingTime = pollingTimeout * 60 * 1000; // Use configured timeout in minutes
     const startTime = Date.now();
 
-    logDebug(`Polling for task ${taskId} (timeout: ${maxPollingTime / 60000} minutes)...`);
+    logDebug(`Polling for task ${taskId} (timeout: ${maxPollingTime / 60000} minutes, interval: ${pollingInterval / 60000} minutes)...`);
 
     let lastStatus = null; // Track the last reported status
     let consecutiveErrors = 0; // Track consecutive errors
@@ -197,6 +206,10 @@ async function producePictureModule(
     let totalRetries = 0;
 
     while (Date.now() - startTime < maxPollingTime && totalRetries < maxTotalRetries) {
+      // Check if we've exceeded the timeout
+      if (Date.now() - startTime >= maxPollingTime) {
+        throw new Error(`Image generation timed out after ${maxPollingTime / 60000} minutes`);
+      }
       try {
         const statusResponse = await axios.get(
           `https://api.piapi.ai/api/v1/task/${taskId}`, // Corrected polling endpoint based on common PiAPI pattern
@@ -255,8 +268,8 @@ async function producePictureModule(
         }
         
         // Wait a bit longer on errors to avoid overwhelming the API (exponential backoff)
-        const backoffDelay = Math.min(pollingInterval * Math.pow(2, consecutiveErrors - 1), 30000); // Max 30 seconds
-        console.log(`Waiting ${backoffDelay}ms before retry ${totalRetries + 1}...`);
+        const backoffDelay = Math.min(pollingInterval * Math.pow(2, consecutiveErrors - 1), 5 * 60 * 1000); // Max 5 minutes
+        console.log(`Waiting ${backoffDelay / 60000} minutes before retry ${totalRetries + 1}...`);
         await pause(false, backoffDelay / 1000);
         continue;
       }
@@ -481,4 +494,4 @@ async function processImage(inputImagePath, imgName, config = {}) {
   return outputPath;
 }
 
-module.exports = { producePictureModule };
+module.exports = { producePictureModule, processImage };

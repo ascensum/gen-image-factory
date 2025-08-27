@@ -483,6 +483,23 @@ export const ParametersSection: React.FC<ParametersSectionProps> = ({
         <p className="text-xs text-gray-500">Polling timeout in minutes</p>
       </div>
 
+      {/* Polling Interval */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">
+          Polling Interval (minutes)
+        </label>
+        <input
+          type="number"
+          min="0.5"
+          max="10"
+          step="0.5"
+          value={pollingInterval}
+          onChange={(e) => onPollingIntervalChange?.(Number(e.target.value))}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <p className="text-xs text-gray-500">How often to check API status (0.5 = 30 seconds)</p>
+      </div>
+
       {/* Keyword Random */}
       <div className="flex items-center justify-between">
         <div>
