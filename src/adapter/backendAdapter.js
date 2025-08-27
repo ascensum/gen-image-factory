@@ -1547,58 +1547,78 @@ class BackendAdapter {
         }
 
         // Set up event listeners for progress tracking
-        if (this.retryExecutor && typeof this.retryExecutor.on === 'function') {
+        if (this.retryExecutor && typeof this.retryExecutor.on === 'function' && this.mainWindow) {
           this.retryExecutor.on('progress', (data) => {
             // Send progress event to frontend via mainWindow
-            if (this.mainWindow && this.mainWindow.webContents) {
-              this.mainWindow.webContents.send('retry-progress', {
-                ...data,
-                context: 'retry'
-              });
+            try {
+              if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
+                this.mainWindow.webContents.send('retry-progress', {
+                  ...data,
+                  context: 'retry'
+                });
+              }
+            } catch (error) {
+              console.warn('🔧 Failed to send retry-progress event to frontend:', error.message);
             }
             console.log('🔧 RetryExecutor progress event:', data);
           });
 
           this.retryExecutor.on('job-completed', (data) => {
             // Send completion event to frontend via mainWindow
-            if (this.mainWindow && this.mainWindow.webContents) {
-              this.mainWindow.webContents.send('retry-completed', {
-                ...data,
-                context: 'retry'
-              });
+            try {
+              if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
+                this.mainWindow.webContents.send('retry-completed', {
+                  ...data,
+                  context: 'retry'
+                });
+              }
+            } catch (error) {
+              console.warn('🔧 Failed to send retry-completed event to frontend:', error.message);
             }
             console.log('🔧 RetryExecutor job completed:', data);
           });
 
           this.retryExecutor.on('job-error', (data) => {
             // Send error event to frontend via mainWindow
-            if (this.mainWindow && this.mainWindow.webContents) {
-              this.mainWindow.webContents.send('retry-error', {
-                ...data,
-                context: 'retry'
-              });
+            try {
+              if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
+                this.mainWindow.webContents.send('retry-error', {
+                  ...data,
+                  context: 'retry'
+                });
+              }
+            } catch (error) {
+              console.warn('🔧 Failed to send retry-error event to frontend:', error.message);
             }
             console.log('🔧 RetryExecutor job error:', data);
           });
 
           this.retryExecutor.on('queue-updated', (data) => {
             // Send queue update event to frontend via mainWindow
-            if (this.mainWindow && this.mainWindow.webContents) {
-              this.mainWindow.webContents.send('retry-queue-updated', {
-                ...data,
-                context: 'retry'
-              });
+            try {
+              if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
+                this.mainWindow.webContents.send('retry-queue-updated', {
+                  ...data,
+                  context: 'retry'
+                });
+              }
+            } catch (error) {
+              console.warn('🔧 Failed to send retry-queue-updated event to frontend:', error.message);
             }
             console.log('🔧 RetryExecutor queue updated:', data);
           });
 
           this.retryExecutor.on('job-status-updated', (data) => {
             // Send status update event to frontend via mainWindow
-            if (this.mainWindow && this.mainWindow.webContents) {
-              this.mainWindow.webContents.send('retry-status-updated', {
-                ...data,
-                context: 'retry'
-              });
+            try {
+              if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
+                this.mainWindow.webContents.send('retry-status-updated', {
+                  ...data,
+                  context: 'retry'
+                });
+              }
+            } catch (error) {
+              console.warn('🔧 Failed to send retry-status-updated event to frontend:', error.message);
             }
             console.log('🔧 RetryExecutor status updated:', data);
           });
