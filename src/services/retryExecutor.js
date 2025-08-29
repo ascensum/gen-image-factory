@@ -534,10 +534,19 @@ class RetryExecutor extends EventEmitter {
       console.log(`🔧 RetryExecutor: Processing original file in place: ${sourcePath}`);
       
       // Prepare config object for processImage function
-      // Use the source directory as both temp and output for processing
+      // Use a temporary directory for processing, then move to final destination
+      const tempProcessingDir = path.join(os.homedir(), 'Desktop', 'Gen_Image_Factory_Generated', 'temp_processing');
+      
+      // Ensure temp directory exists
+      try {
+        await fs.mkdir(tempProcessingDir, { recursive: true });
+      } catch (error) {
+        console.warn(`🔧 RetryExecutor: Temp directory creation failed:`, error.message);
+      }
+      
       const processingConfig = {
-        tempDirectory: sourceDir,
-        outputDirectory: sourceDir, // Process in the same directory as source
+        tempDirectory: tempProcessingDir,
+        outputDirectory: tempProcessingDir, // Process in temporary directory
         ...settings
       };
       
@@ -564,6 +573,14 @@ class RetryExecutor extends EventEmitter {
         const finalDirectory = path.join(os.homedir(), 'Desktop', 'Gen_Image_Factory_ToUpload');
         finalOutputPath = path.join(finalDirectory, `${sourceFileName}${finalExtension}`);
         console.log(`🔧 RetryExecutor: Keeping format, final path: ${finalOutputPath}`);
+      }
+      
+      // Ensure the temporary processing directory exists
+      try {
+        await fs.mkdir(tempProcessingDir, { recursive: true });
+        console.log(`🔧 RetryExecutor: Created temporary processing directory: ${tempProcessingDir}`);
+      } catch (error) {
+        console.warn(`🔧 RetryExecutor: Temporary processing directory creation failed:`, error.message);
       }
       
       // Ensure the final output directory exists

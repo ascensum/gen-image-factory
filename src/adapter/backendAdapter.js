@@ -57,6 +57,143 @@ class BackendAdapter {
   setMainWindow(mainWindow) {
     this.mainWindow = mainWindow;
     console.log('🔧 BackendAdapter: MainWindow reference set for event sending');
+    
+    // Initialize RetryExecutor when mainWindow is available
+    this.initializeRetryExecutor();
+  }
+
+  /**
+   * Initialize RetryExecutor for handling retry operations
+   */
+  async initializeRetryExecutor() {
+    try {
+      console.log('🔧 BackendAdapter: Initializing RetryExecutor...');
+      
+      // Ensure settings are loaded before creating RetryExecutor
+      if (!this.settings) {
+        try {
+          console.log('🔧 BackendAdapter: Loading settings for RetryExecutor...');
+          const settingsResult = await this.getSettings();
+          this.settings = settingsResult.settings || {};
+          console.log('🔧 BackendAdapter: Settings loaded with keys:', Object.keys(this.settings));
+        } catch (error) {
+          console.warn('🔧 BackendAdapter: Failed to load settings for RetryExecutor, using defaults:', error.message);
+          this.settings = {};
+        }
+      }
+      
+      const tempDir = this.settings?.filePaths?.tempDirectory || './pictures/generated';
+      console.log('🔧 BackendAdapter: Creating RetryExecutor with tempDirectory:', tempDir);
+      
+      try {
+        this.retryExecutor = new RetryExecutor({
+          tempDirectory: tempDir,
+          generatedImage: this.generatedImage
+        });
+        console.log('🔧 BackendAdapter: RetryExecutor created successfully');
+        
+        // Set up event listeners for progress tracking
+        if (this.retryExecutor && typeof this.retryExecutor.on === 'function' && this.mainWindow) {
+          this.setupRetryExecutorEventListeners();
+        }
+      } catch (error) {
+        console.error('🔧 BackendAdapter: Failed to create RetryExecutor:', error);
+        // Don't throw error, just log it and continue without retry functionality
+        console.warn('🔧 BackendAdapter: Retry functionality will be disabled due to initialization failure');
+        this.retryExecutor = null;
+      }
+    } catch (error) {
+      console.error('🔧 BackendAdapter: Error during RetryExecutor initialization:', error);
+      this.retryExecutor = null;
+    }
+  }
+
+  /**
+   * Set up event listeners for RetryExecutor progress tracking
+   */
+  setupRetryExecutorEventListeners() {
+    if (!this.retryExecutor || !this.mainWindow) return;
+    
+    try {
+      this.retryExecutor.on('progress', (data) => {
+        // Send progress event to frontend via mainWindow
+        try {
+          if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send('retry-progress', {
+              ...data,
+              context: 'retry'
+            });
+          }
+        } catch (error) {
+          console.warn('🔧 BackendAdapter: Failed to send retry-progress event to frontend:', error.message);
+        }
+        console.log('🔧 BackendAdapter: RetryExecutor progress event:', data);
+      });
+
+      this.retryExecutor.on('job-completed', (data) => {
+        // Send completion event to frontend via mainWindow
+        try {
+          if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send('retry-completed', {
+              ...data,
+              context: 'retry'
+            });
+          }
+        } catch (error) {
+          console.warn('🔧 BackendAdapter: Failed to send retry-completed event to frontend:', error.message);
+        }
+        console.log('🔧 BackendAdapter: RetryExecutor job completed:', data);
+      });
+
+      this.retryExecutor.on('job-error', (data) => {
+        // Send error event to frontend via mainWindow
+        try {
+          if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send('retry-error', {
+              ...data,
+              context: 'retry'
+            });
+          }
+        } catch (error) {
+          console.warn('🔧 BackendAdapter: Failed to send retry-error event to frontend:', error.message);
+        }
+        console.log('🔧 BackendAdapter: RetryExecutor job error:', data);
+      });
+
+      this.retryExecutor.on('queue-updated', (data) => {
+        // Send queue update event to frontend via mainWindow
+        try {
+          if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send('retry-queue-updated', {
+              ...data,
+              context: 'retry'
+            });
+          }
+        } catch (error) {
+          console.warn('🔧 BackendAdapter: Failed to send retry-queue-updated event to frontend:', error.message);
+        }
+        console.log('🔧 BackendAdapter: RetryExecutor queue updated:', data);
+      });
+
+      this.retryExecutor.on('job-status-updated', (data) => {
+        // Send status update event to frontend via mainWindow
+        try {
+          if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
+            this.mainWindow.webContents.send('retry-status-updated', {
+              ...data,
+              context: 'retry'
+            });
+          }
+        } catch (error) {
+          console.warn('🔧 BackendAdapter: Failed to send retry-status-updated event to frontend:', error.message);
+        }
+        console.log('🔧 BackendAdapter: RetryExecutor status updated:', data);
+      });
+      
+      console.log('🔧 BackendAdapter: RetryExecutor event listeners set up successfully');
+    } catch (error) {
+      console.error('🔧 BackendAdapter: Error setting up RetryExecutor event listeners:', error);
+    }
   }
 
   async ensureInitialized() {
@@ -168,7 +305,7 @@ class BackendAdapter {
 
       // Job Control
       _ipc.handle('job:start', async (event, config) => {
-        console.log('🚨 IPC HANDLER: job:start called with config:', config);
+        console.log('🚨 IPC HANDLER: job:start called with config keys:', Object.keys(config));
         console.log('🚨 IPC HANDLER: About to call this.startJob...');
         console.log('🚨 IPC HANDLER: Stack trace:', new Error().stack);
         const result = await this.startJob(config);
@@ -787,7 +924,7 @@ class BackendAdapter {
   async startJob(config) {
     try {
       console.log('🚨 METHOD ENTRY: backendAdapter.startJob method entered!');
-      console.log('🔧 backendAdapter.startJob called with config:', config);
+      console.log('🔧 backendAdapter.startJob called with config keys:', Object.keys(config));
       
       // Save the job configuration first so it can be retrieved later
       console.log('💾 Saving job configuration for future retrieval...');
@@ -812,7 +949,7 @@ class BackendAdapter {
         throw new Error('JobRunner not properly initialized');
       }
       
-      console.log('🔧 About to call jobRunner.startJob with config:', config);
+      console.log('🔧 About to call jobRunner.startJob with config keys:', Object.keys(config));
       const result = await jobRunner.startJob(config);
       console.log('✅ backendAdapter.startJob result:', result);
       
@@ -1413,7 +1550,17 @@ class BackendAdapter {
   // Failed Images Review Methods - Batch Processing
   async retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings = null, includeMetadata = false) {
     try {
+      console.log('🔧 BackendAdapter: retryFailedImagesBatch called');
+      console.log('🔧 BackendAdapter: imageIds:', imageIds);
+      console.log('🔧 BackendAdapter: useOriginalSettings:', useOriginalSettings);
+      console.log('🔧 BackendAdapter: modifiedSettings keys:', modifiedSettings ? Object.keys(modifiedSettings) : 'null');
+      console.log('🔧 BackendAdapter: includeMetadata:', includeMetadata);
+      
       await this.ensureInitialized();
+      
+      // Ensure RetryExecutor is initialized for retry operations
+      await this.ensureRetryExecutorInitialized();
+      
       // Validate and normalize inputs
       if (!Array.isArray(imageIds) || imageIds.length === 0) {
         throw new Error('No images selected for retry');
@@ -1472,6 +1619,8 @@ class BackendAdapter {
       const sanitizedSettings = !useOriginalSettings && modifiedSettings
         ? this.sanitizeProcessingSettings(modifiedSettings)
         : null;
+      
+      console.log('🔧 BackendAdapter: sanitizedSettings keys:', sanitizedSettings ? Object.keys(sanitizedSettings) : 'null');
 
       // Update all images to retry_pending status
       const updatePromises = images.map(image => {
@@ -1488,11 +1637,13 @@ class BackendAdapter {
 
       // If using modified settings, update processing settings for all images
       if (!useOriginalSettings && sanitizedSettings) {
+        console.log('🔧 BackendAdapter: Updating processing settings for images with sanitized settings');
         const settingsUpdatePromises = images.map(image => {
           // Preserve the retry_pending status set above and attach modified processing settings
           image.qcStatus = 'retry_pending';
           image.qcReason = 'Retry with modified settings';
           image.processingSettings = { ...sanitizedSettings };
+          console.log(`🔧 BackendAdapter: Updating image ${image.id} with settings keys:`, Object.keys(image.processingSettings));
           return this.generatedImage.updateGeneratedImage(image.id, image);
         });
 
@@ -1508,132 +1659,25 @@ class BackendAdapter {
       const batchRetryJob = {
         type: 'batch_retry',
         imageIds: limitedIds,
-        useOriginalSettings: useOriginalSettings,
+        useOriginalSettings,
         modifiedSettings: sanitizedSettings,
-        includeMetadata: includeMetadata,
+        includeMetadata,
         createdAt: new Date(),
         status: 'pending'
       };
-
-      // Initialize RetryExecutor if not already done
-      if (!this.retryExecutor) {
-        console.log('🔧 Initializing RetryExecutor...');
-        
-        // Ensure settings are loaded before creating RetryExecutor
-        if (!this.settings) {
-          try {
-            console.log('🔧 Loading settings for RetryExecutor...');
-            const settingsResult = await this.getSettings();
-            this.settings = settingsResult.settings || {};
-            console.log('🔧 Settings loaded:', Object.keys(this.settings));
-          } catch (error) {
-            console.warn('Failed to load settings for RetryExecutor, using defaults:', error.message);
-            this.settings = {};
-          }
-        }
-        
-        const tempDir = this.settings?.filePaths?.tempDirectory || './picture/generated';
-        console.log('🔧 Creating RetryExecutor with tempDirectory:', tempDir);
-        
-        try {
-          this.retryExecutor = new RetryExecutor({
-            tempDirectory: tempDir,
-            generatedImage: this.generatedImage
-          });
-          console.log('🔧 RetryExecutor created successfully');
-        } catch (error) {
-          console.error('🔧 Failed to create RetryExecutor:', error);
-          // Don't throw error, just log it and continue without retry functionality
-          console.warn('🔧 Retry functionality will be disabled due to initialization failure');
-          this.retryExecutor = null;
-        }
-
-        // Set up event listeners for progress tracking
-        if (this.retryExecutor && typeof this.retryExecutor.on === 'function' && this.mainWindow) {
-          this.retryExecutor.on('progress', (data) => {
-            // Send progress event to frontend via mainWindow
-            try {
-              if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
-                this.mainWindow.webContents.send('retry-progress', {
-                  ...data,
-                  context: 'retry'
-                });
-              }
-            } catch (error) {
-              console.warn('🔧 Failed to send retry-progress event to frontend:', error.message);
-            }
-            console.log('🔧 RetryExecutor progress event:', data);
-          });
-
-          this.retryExecutor.on('job-completed', (data) => {
-            // Send completion event to frontend via mainWindow
-            try {
-              if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
-                this.mainWindow.webContents.send('retry-completed', {
-                  ...data,
-                  context: 'retry'
-                });
-              }
-            } catch (error) {
-              console.warn('🔧 Failed to send retry-completed event to frontend:', error.message);
-            }
-            console.log('🔧 RetryExecutor job completed:', data);
-          });
-
-          this.retryExecutor.on('job-error', (data) => {
-            // Send error event to frontend via mainWindow
-            try {
-              if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
-                this.mainWindow.webContents.send('retry-error', {
-                  ...data,
-                  context: 'retry'
-                });
-              }
-            } catch (error) {
-              console.warn('🔧 Failed to send retry-error event to frontend:', error.message);
-            }
-            console.log('🔧 RetryExecutor job error:', data);
-          });
-
-          this.retryExecutor.on('queue-updated', (data) => {
-            // Send queue update event to frontend via mainWindow
-            try {
-              if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
-                this.mainWindow.webContents.send('retry-queue-updated', {
-                  ...data,
-                  context: 'retry'
-                });
-              }
-            } catch (error) {
-              console.warn('🔧 Failed to send retry-queue-updated event to frontend:', error.message);
-            }
-            console.log('🔧 RetryExecutor queue updated:', data);
-          });
-
-          this.retryExecutor.on('job-status-updated', (data) => {
-            // Send status update event to frontend via mainWindow
-            try {
-              if (this.mainWindow && this.mainWindow.webContents && !this.mainWindow.isDestroyed()) {
-                this.mainWindow.webContents.send('retry-status-updated', {
-                  ...data,
-                  context: 'retry'
-                });
-              }
-            } catch (error) {
-              console.warn('🔧 Failed to send retry-status-updated event to frontend:', error.message);
-            }
-            console.log('🔧 RetryExecutor status updated:', data);
-          });
-        }
-      }
+      
+      console.log('🔧 BackendAdapter: Created batch retry job with keys:', Object.keys(batchRetryJob));
 
       // Add the batch retry job to the executor
       let queuedJob;
       try {
         if (this.retryExecutor && typeof this.retryExecutor.addBatchRetryJob === 'function') {
+          console.log('🔧 BackendAdapter: Adding batch retry job to RetryExecutor');
           queuedJob = await this.retryExecutor.addBatchRetryJob(batchRetryJob);
+          console.log('🔧 BackendAdapter: Job queued successfully with keys:', Object.keys(queuedJob));
         } else {
           // Fallback for test environment or when RetryExecutor is not available
+          console.log('🔧 BackendAdapter: RetryExecutor not available, using fallback');
           queuedJob = {
             ...batchRetryJob,
             id: `retry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -1641,7 +1685,7 @@ class BackendAdapter {
           };
         }
       } catch (error) {
-        console.error('🔧 Error adding batch retry job to executor:', error);
+        console.error('🔧 BackendAdapter: Error adding batch retry job to executor:', error);
         // Create a fallback job if the executor fails
         queuedJob = {
           ...batchRetryJob,
@@ -1669,12 +1713,23 @@ class BackendAdapter {
   }
 
   /**
+   * Ensure RetryExecutor is initialized for retry operations
+   */
+  async ensureRetryExecutorInitialized() {
+    if (!this.retryExecutor) {
+      console.log('🔧 BackendAdapter: RetryExecutor not initialized, attempting to initialize...');
+      await this.initializeRetryExecutor();
+    }
+    return this.retryExecutor !== null;
+  }
+
+  /**
    * Get retry queue status
    * @returns {Object} Queue status information
    */
   async getRetryQueueStatus() {
     try {
-      await this.ensureInitialized();
+      await this.ensureRetryExecutorInitialized();
       
       if (!this.retryExecutor) {
         return {
