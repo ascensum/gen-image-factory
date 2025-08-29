@@ -1,6 +1,15 @@
 #!/bin/sh
 
-# Husky pre-commit hook: job management regression tests only
+# Husky pre-commit hook: critical regression tests including retry functionality
 
-echo "🧪 Running job management tests..."
+echo "🧪 Running critical regression tests..."
+
+# Test retry functionality (most critical)
+echo "🔄 Testing Retry Functionality..."
+npm run test:retry || exit 1
+
+# Test job management (existing critical tests)
+echo "📋 Testing Job Management..."
 npm run test:job-management || exit 1
+
+echo "✅ All critical tests passed!"

@@ -30,7 +30,11 @@
     "test:regression:integration": "./scripts/run-regression-tests.sh --integration",
     "prepare": "husky install",
     "test:job-management": "vitest run tests/unit/logic/jobManagement.logic.test.ts tests/integration/backend/ExportExcel.integration.test.ts",
-    "test:job-management:watch": "vitest tests/unit/logic/jobManagement.logic.test.ts tests/integration/backend/ExportExcel.integration.test.ts"
+    "test:job-management:watch": "vitest tests/unit/logic/jobManagement.logic.test.ts tests/integration/backend/ExportExcel.integration.test.ts",
+    "test:retry": "vitest run tests/unit/services/RetryExecutor.test.ts tests/integration/backend/RetryFunctionality.integration.test.ts",
+    "test:retry:watch": "vitest tests/unit/services/RetryExecutor.test.ts tests/integration/backend/RetryFunctionality.integration.test.ts",
+    "test:security": "vitest run tests/unit/services/RetryExecutor.test.ts --reporter=verbose",
+    "test:regression:retry": "npm run test:retry && npm run test:job-management"
   },
   "author": "Gen Image Factory Team",
   "license": "MIT",
