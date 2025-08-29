@@ -553,9 +553,9 @@ class JobRunner extends EventEmitter {
                 };
                 
                 // Log the generatedImage object to see what's being saved
-                console.log('🔍 Saving generatedImage to database:', JSON.stringify(generatedImage, null, 2));
-                console.log('🔍 Image metadata being saved:', image.metadata);
-                console.log('🔍 Stringified metadata:', JSON.stringify(image.metadata || {}));
+                console.log('🔍 Saving generatedImage to database with keys:', Object.keys(generatedImage));
+                console.log('🔍 Image metadata being saved with keys:', image.metadata ? Object.keys(image.metadata) : 'none');
+                console.log('🔍 Stringified metadata length:', JSON.stringify(image.metadata || {}).length, 'characters');
                 
                 const saveResult = await this.backendAdapter.saveGeneratedImage(generatedImage);
                 console.log("✅ Generated image saved to database:", saveResult);
@@ -614,7 +614,7 @@ class JobRunner extends EventEmitter {
             label: null
           };
           
-          console.log("🔍 About to update job execution with data:", JSON.stringify(updatedJobExecution, null, 2));
+          // console.log("🔍 About to update job execution with data:", JSON.stringify(updatedJobExecution, null, 2));
           const updateResult = await this.backendAdapter.updateJobExecution(this.databaseExecutionId, updatedJobExecution);
           console.log("✅ Job execution updated in database:", updateResult);
           
@@ -622,7 +622,9 @@ class JobRunner extends EventEmitter {
           if (updateResult.success) {
             try {
               const verifyResult = await this.backendAdapter.getJobExecution(this.databaseExecutionId);
-              console.log("🔍 Verification - job execution after update:", JSON.stringify(verifyResult, null, 2));
+              // console.log("🔍 Verification - job execution after update:", JSON.stringify(verifyResult, null, 2));
+              console.log("🔍 About to update job execution with keys:", Object.keys(updatedJobExecution));
+              console.log("🔍 Job execution update successful, changes:", verifyResult.changes);
             } catch (verifyError) {
               console.error("❌ Failed to verify job execution update:", verifyError);
             }
@@ -987,7 +989,9 @@ class JobRunner extends EventEmitter {
       console.log('🔍 Result type:', typeof result);
       console.log('🔍 Result is array:', Array.isArray(result));
       console.log('🔍 Result length:', Array.isArray(result) ? result.length : 'N/A');
-      console.log('🔍 Result structure:', JSON.stringify(result, null, 2));
+      // console.log('🔍 Result structure:', JSON.stringify(result, null, 2));
+      console.log('🔍 Result structure keys:', Object.keys(result));
+      console.log('🔍 Result success status:', result.success);
       
       // The module returns an array of image objects, each with outputPath
       if (result && Array.isArray(result)) {
@@ -1068,8 +1072,10 @@ class JobRunner extends EventEmitter {
           };
 
           // Debug log the metadata extraction
-          console.log(`🔍 Image ${index + 1} - item.settings:`, JSON.stringify(item.settings, null, 2));
-          console.log(`🔍 Image ${index + 1} - extractedMetadata:`, JSON.stringify(extractedMetadata, null, 2));
+          // console.log(`🔍 Image ${index + 1} - item.settings:`, JSON.stringify(item.settings, null, 2));
+          // console.log(`🔍 Image ${index + 1} - extractedMetadata:`, JSON.stringify(extractedMetadata, null, 2));
+          console.log(`🔍 Image ${index + 1} - item.settings keys:`, Object.keys(item.settings));
+          console.log(`🔍 Image ${index + 1} - extractedMetadata keys:`, Object.keys(extractedMetadata));
           
           this._logStructured({
             level: 'debug',

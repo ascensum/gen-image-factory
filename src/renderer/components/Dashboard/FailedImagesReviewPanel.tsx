@@ -305,8 +305,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   };
 
   const handleRetryWithSettings = async (useOriginalSettings: boolean, modifiedSettings?: ProcessingSettings, includeMetadata?: boolean) => {
-    console.log('🔍 handleRetryWithSettings: Starting with settings:', { useOriginalSettings, modifiedSettings, includeMetadata });
-    console.log('🔍 handleRetryWithSettings: Selected images count:', selectedImages.size);
+    console.log('🔍 FailedImagesReviewPanel: handleRetryWithSettings called');
+    console.log('🔍 FailedImagesReviewPanel: useOriginalSettings:', useOriginalSettings);
+    console.log('🔍 FailedImagesReviewPanel: modifiedSettings keys:', modifiedSettings ? Object.keys(modifiedSettings) : 'undefined');
+    console.log('🔍 FailedImagesReviewPanel: includeMetadata:', includeMetadata);
+    console.log('🔍 FailedImagesReviewPanel: selectedImages count:', selectedImages.size);
     
     if (selectedImages.size === 0) return;
     
@@ -315,7 +318,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       
       // Process retry as a single batch with chosen settings
       const imageIds = Array.from(selectedImages);
-      console.log('🔍 handleRetryWithSettings: Calling retryFailedImagesBatch with imageIds:', imageIds);
+      console.log('🔍 FailedImagesReviewPanel: Calling retryFailedImagesBatch with imageIds:', imageIds);
       
       const result = await window.electronAPI.retryFailedImagesBatch(
         imageIds, 
@@ -324,21 +327,21 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         includeMetadata
       );
       
-      console.log('🔍 handleRetryWithSettings: retryFailedImagesBatch result:', result);
+      console.log('🔍 FailedImagesReviewPanel: retryFailedImagesBatch result:', result);
       
       if (result.success) {
-        console.log('🔍 handleRetryWithSettings: Retry successful, refreshing data...');
+        console.log('🔍 FailedImagesReviewPanel: Retry successful, refreshing data...');
         await loadAllImageStatuses();
         await loadRetryQueueStatus(); // Refresh queue status
         setSelectedImages(new Set());
         setShowProcessingSettingsModal(false);
-        console.log('🔍 handleRetryWithSettings: Retry processing complete');
+        console.log('🔍 FailedImagesReviewPanel: Retry processing complete');
       } else {
-        console.error('🔍 handleRetryWithSettings: Retry failed:', result.error);
+        console.error('🔍 FailedImagesReviewPanel: Retry failed:', result.error);
         setError(result.error || 'Failed to process retry operations');
       }
     } catch (error) {
-      console.error('🔍 handleRetryWithSettings: Exception occurred:', error);
+      console.error('🔍 FailedImagesReviewPanel: Exception occurred:', error);
       setError('Failed to process retry operations');
       console.error('Failed to process retry operations:', error);
     }

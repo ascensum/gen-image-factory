@@ -33,10 +33,10 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
   const [batchSettings, setBatchSettings] = useState<ProcessingSettings>({
     imageEnhancement: false,
     sharpening: 5,
-    saturation: 1.4,
-    imageConvert: false,
-    convertToJpg: true,
-    jpgQuality: 90,
+    saturation: 1.0,
+    imageConvert: true, // Enable by default for testing
+    convertToJpg: true, // Convert to JPG by default
+    jpgQuality: 85, // Set to 85% quality as requested
     pngQuality: 9,
     removeBg: false,
     removeBgSize: 'auto',
@@ -47,9 +47,16 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
   if (!isOpen) return null;
 
   const handleRetry = () => {
+    console.log('🔍 ProcessingSettingsModal: handleRetry called');
+    console.log('🔍 ProcessingSettingsModal: useOriginalSettings:', useOriginalSettings);
+    console.log('🔍 ProcessingSettingsModal: includeMetadata:', includeMetadata);
+    console.log('🔍 ProcessingSettingsModal: batchSettings keys:', Object.keys(batchSettings));
+    
     if (useOriginalSettings) {
+      console.log('🔍 ProcessingSettingsModal: Retrying with original settings');
       onRetry(true, undefined, includeMetadata);
     } else {
+      console.log('🔍 ProcessingSettingsModal: Retrying with modified settings keys:', Object.keys(batchSettings));
       onRetry(false, batchSettings, includeMetadata);
     }
   };
@@ -67,9 +74,19 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
     }));
   };
 
+  // Computed values for conditional rendering
+  const showSharpening = batchSettings.imageEnhancement;
+  const showSaturation = batchSettings.imageEnhancement;
+  const showConvertFormat = batchSettings.imageConvert;
+  const showQualitySettings = batchSettings.imageConvert;
+  const showJpgQuality = batchSettings.imageConvert && batchSettings.convertToJpg;
+  const showPngQuality = batchSettings.imageConvert && !batchSettings.convertToJpg;
+  const showTrimTransparent = batchSettings.removeBg;
+  const showJpgBackground = batchSettings.removeBg && batchSettings.imageConvert && batchSettings.convertToJpg;
+
   return (
     <div data-testid="processing-settings-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div data-testid="modal-header" className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
@@ -109,7 +126,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
           </div>
 
           {/* Settings Choice */}
-          <div className="mb-6">
+          <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Batch Processing Method</h3>
             <div className="space-y-4">
               <label className="flex items-center space-x-3 cursor-pointer">
@@ -151,7 +168,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
           </div>
 
           {/* Metadata Regeneration Option */}
-          <div className="mb-6">
+          <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Metadata Options</h3>
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-start">
@@ -187,7 +204,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
 
           {/* Modified Settings Configuration */}
           {!useOriginalSettings && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-start">
                   <svg className="w-5 h-5 text-yellow-400 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,183 +216,228 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                       These settings will be applied to all {selectedCount} images in the batch. 
                       Images will NOT be regenerated - only QC, metadata, and processing will be updated.
                     </p>
+                    <p className="text-sm text-yellow-600 mt-2">
+                      <strong>Current defaults:</strong> Image conversion enabled, converting to JPG at 85% quality
+                    </p>
                   </div>
                 </div>
               </div>
 
               <h3 className="text-lg font-semibold text-gray-900">Batch Processing Configuration</h3>
               
-              {/* Image Enhancement */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Image Enhancement</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      aria-label="Enable image enhancement"
-                      checked={batchSettings.imageEnhancement}
-                      onChange={(e) => updateSetting('imageEnhancement', e.target.checked)}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Enable Image Enhancement</span>
-                  </label>
-                  
+              {/* Image Enhancement Section */}
+              <div className="space-y-4">
+                <h4 className="text-md font-medium text-gray-800">Image Enhancement</h4>
+                
+                <div className="flex items-center justify-between">
                   <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Sharpening Level: {batchSettings.sharpening}
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Image Enhancement
                     </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                         value={batchSettings.sharpening}
-                         onChange={(e) => updateSetting('sharpening', parseInt(e.target.value))}
-                      className="w-full"
-                    />
+                    <p className="text-xs text-gray-500">Enable image enhancement effects (sharpening, saturation)</p>
                   </div>
-                  
+                  <Toggle
+                    checked={batchSettings.imageEnhancement}
+                    onChange={(checked) => updateSetting('imageEnhancement', checked)}
+                  />
+                </div>
+
+                {/* Sharpening - only show when Image Enhancement is enabled */}
+                {showSharpening && (
                   <div>
-                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                       Saturation: {batchSettings.saturation}
+                    <label htmlFor="sharpening" className="block text-sm font-medium text-gray-700 mb-2">
+                      Sharpening Level (0-10)
                     </label>
                     <input
-                      type="range"
+                      id="sharpening"
+                      type="number"
+                      value={batchSettings.sharpening}
+                      onChange={(e) => updateSetting('sharpening', parseInt(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       min="0"
-                      max="2"
+                      max="10"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Sharpening intensity for image enhancement</p>
+                  </div>
+                )}
+
+                {/* Saturation - only show when Image Enhancement is enabled */}
+                {showSaturation && (
+                  <div>
+                    <label htmlFor="saturation" className="block text-sm font-medium text-gray-700 mb-2">
+                      Saturation Level (0.0-2.0)
+                    </label>
+                    <input
+                      id="saturation"
+                      type="number"
+                      value={batchSettings.saturation}
+                      onChange={(e) => updateSetting('saturation', parseFloat(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      min="0.0"
+                      max="2.0"
                       step="0.1"
-                         value={batchSettings.saturation}
-                         onChange={(e) => updateSetting('saturation', parseFloat(e.target.value))}
-                      className="w-full"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Saturation adjustment for image enhancement</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Image Conversion Section */}
+              <div className="space-y-4">
+                <h4 className="text-md font-medium text-gray-800">Image Conversion</h4>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Image Convert
+                    </label>
+                    <p className="text-xs text-gray-500">Enable image conversion and processing</p>
+                  </div>
+                  <Toggle
+                    checked={batchSettings.imageConvert}
+                    onChange={(checked) => updateSetting('imageConvert', checked)}
+                  />
+                </div>
+
+                {/* Convert Format - only show when Image Convert is enabled */}
+                {showConvertFormat && (
+                  <div>
+                    <label htmlFor="convert-format" className="block text-sm font-medium text-gray-700 mb-2">
+                      Convert Format
+                    </label>
+                    <select
+                      id="convert-format"
+                      value={batchSettings.convertToJpg ? 'jpg' : 'png'}
+                      onChange={(e) => {
+                        const isJpg = e.target.value === 'jpg';
+                        updateSetting('convertToJpg', isJpg);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="png">PNG</option>
+                      <option value="jpg">JPG</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Convert images to this format</p>
+                  </div>
+                )}
+
+                {/* Quality Settings - only show when Image Convert is enabled */}
+                {showQualitySettings && (
+                  <div className="space-y-4">
+                    {/* JPG Quality - only show when converting to JPG */}
+                    {showJpgQuality && (
+                      <div>
+                        <label htmlFor="jpg-quality" className="block text-sm font-medium text-gray-700 mb-2">
+                          JPG Quality (1-100)
+                        </label>
+                        <input
+                          id="jpg-quality"
+                          type="number"
+                          value={batchSettings.jpgQuality}
+                          onChange={(e) => updateSetting('jpgQuality', parseInt(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          min="1"
+                          max="100"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Quality setting for JPG conversion</p>
+                      </div>
+                    )}
+
+                    {/* PNG Quality - only show when converting to PNG */}
+                    {showPngQuality && (
+                      <div>
+                        <label htmlFor="png-quality" className="block text-sm font-medium text-gray-700 mb-2">
+                          PNG Quality (0-9)
+                        </label>
+                        <input
+                          id="png-quality"
+                          type="number"
+                          value={batchSettings.pngQuality}
+                          onChange={(e) => updateSetting('pngQuality', parseInt(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          min="0"
+                          max="9"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Compression level for PNG conversion (0=uncompressed, 9=maximum compression)</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Background Removal Section */}
+              <div className="space-y-4">
+                <h4 className="text-md font-medium text-gray-800">Background Processing</h4>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Remove Background
+                    </label>
+                    <p className="text-xs text-gray-500">Remove background using Remove.bg API</p>
+                  </div>
+                  <Toggle
+                    checked={batchSettings.removeBg}
+                    onChange={(checked) => updateSetting('removeBg', checked)}
+                  />
+                </div>
+
+                {/* Remove BG Size - only show when Remove Background is enabled */}
+                {batchSettings.removeBg && (
+                  <div>
+                    <label htmlFor="remove-bg-size" className="block text-sm font-medium text-gray-700 mb-2">
+                      Remove BG Size
+                    </label>
+                    <select
+                      id="remove-bg-size"
+                      value={batchSettings.removeBgSize}
+                      onChange={(e) => updateSetting('removeBgSize', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="auto">Auto</option>
+                      <option value="preview">Preview</option>
+                      <option value="full">Full</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Size setting for background removal</p>
+                  </div>
+                )}
+
+                {/* Trim Transparent Background - only show when Remove Background is enabled */}
+                {showTrimTransparent && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Trim Transparent Background
+                      </label>
+                      <p className="text-xs text-gray-500">Remove transparent areas from images (PNG only)</p>
+                    </div>
+                    <Toggle
+                      checked={batchSettings.trimTransparentBackground}
+                      onChange={(checked) => updateSetting('trimTransparentBackground', checked)}
                     />
                   </div>
-                </div>
-              </div>
+                )}
 
-              {/* Image Conversion */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Image Conversion</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      aria-label="Enable image conversion"
-                      checked={batchSettings.imageConvert}
-                      onChange={(e) => updateSetting('imageConvert', e.target.checked)}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Convert Image Format</span>
-                  </label>
-                  
-                   {batchSettings.imageConvert && (
-                    <>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                           checked={batchSettings.convertToJpg}
-                          onChange={(e) => updateSetting('convertToJpg', e.target.checked)}
-                          className="text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">Convert to JPG</span>
-                      </label>
-                      
-                       {batchSettings.convertToJpg && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                             JPG Quality: {batchSettings.jpgQuality}%
-                          </label>
-                          <input
-                            type="range"
-                            min="1"
-                            max="100"
-                             value={batchSettings.jpgQuality}
-                            onChange={(e) => updateSetting('jpgQuality', parseInt(e.target.value))}
-                            className="w-full"
-                          />
-                        </div>
-                      )}
-                      
-                       {!batchSettings.convertToJpg && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                             PNG Quality: {batchSettings.pngQuality}
-                          </label>
-                          <input
-                            type="range"
-                            min="0"
-                            max="9"
-                             value={batchSettings.pngQuality}
-                            onChange={(e) => updateSetting('pngQuality', parseInt(e.target.value))}
-                            className="w-full"
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Background Removal */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-3">Background Processing</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      aria-label="Remove background"
-                      checked={batchSettings.removeBg}
-                      onChange={(e) => updateSetting('removeBg', e.target.checked)}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Remove Background</span>
-                  </label>
-                  
-                   {batchSettings.removeBg && (
-                    <>
-                        <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Remove BG Size
-                        </label>
-                        <select
-                          aria-label="Remove BG Size"
-                          value={batchSettings.removeBgSize}
-                          onChange={(e) => updateSetting('removeBgSize', e.target.value)}
-                          className="w-full text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="auto">Auto</option>
-                          <option value="preview">Preview</option>
-                          <option value="full">Full</option>
-                        </select>
-                      </div>
-                      
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          aria-label="Trim transparent background"
-                          checked={batchSettings.trimTransparentBackground}
-                          onChange={(e) => updateSetting('trimTransparentBackground', e.target.checked)}
-                          className="text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-700">Trim Transparent Background</span>
-                      </label>
-                      
-                       {batchSettings.convertToJpg && (
-                        <div>
-                          <label htmlFor="jpgBackgroundColor" className="block text-sm font-medium text-gray-700 mb-1">
-                            JPG Background Color
-                          </label>
-                          <input
-                            id="jpgBackgroundColor"
-                            aria-label="JPG Background Color"
-                            type="color"
-                            value={batchSettings.jpgBackground}
-                            onChange={(e) => updateSetting('jpgBackground', e.target.value)}
-                            className="w-full h-10 border border-gray-300 rounded-md"
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
+                {/* JPG Background Color - only show when Remove.Bg is on, Image Convert is on, and set to JPG */}
+                {showJpgBackground && (
+                  <div>
+                    <label htmlFor="jpg-background" className="block text-sm font-medium text-gray-700 mb-2">
+                      JPG Background Color
+                    </label>
+                    <select
+                      id="jpg-background"
+                      value={batchSettings.jpgBackground}
+                      onChange={(e) => updateSetting('jpgBackground', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="#FFFFFF">White</option>
+                      <option value="#000000">Black</option>
+                      <option value="#F0F0F0">Light Gray</option>
+                      <option value="#808080">Gray</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Background color for JPG images (required when removing background)</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
