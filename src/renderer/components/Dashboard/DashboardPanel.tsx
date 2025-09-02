@@ -148,37 +148,8 @@ export interface LogEntry {
   failedImages?: number;
 }
 
-export interface GeneratedImage {
-  id: string;
-  executionId: string;
-  generationPrompt: string;
-  seed?: number | null;
-  qcStatus: 'pending' | 'approved' | 'rejected' | 'failed' | 'retry_pending';
-  qcReason?: string | null;
-  finalImagePath?: string | null;
-  metadata?: {
-    title?: string;
-    description?: string;
-    tags?: string[];
-    prompt?: string;
-    [key: string]: any;
-  };
-  processingSettings?: {
-    imageEnhancement?: boolean;
-    sharpening?: number;
-    saturation?: number;
-    imageConvert?: boolean;
-    convertToJpg?: boolean;
-    jpgQuality?: number;
-    pngQuality?: number;
-    removeBg?: boolean;
-    removeBgSize?: string;
-    trimTransparentBackground?: boolean;
-    jpgBackground?: string;
-    [key: string]: any;
-  };
-  createdAt: Date;
-}
+// Re-export the authoritative interface for backward compatibility
+export { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 
 interface DashboardPanelProps {
   onBack?: () => void;
