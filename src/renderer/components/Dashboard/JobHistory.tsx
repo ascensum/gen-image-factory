@@ -264,47 +264,8 @@ const JobHistory: React.FC<JobHistoryProps> = ({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4 flex-shrink-0">Job History</h2>
-      
-      {/* Filter Controls */}
-      <div className="flex items-center space-x-4 mb-4 flex-shrink-0">
-        <div className="flex items-center space-x-2">
-          <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
-            Status:
-          </label>
-          <select
-            id="status-filter"
-            className="border border-gray-300 rounded-md px-3 py-1 text-sm"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="all">All Statuses</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-            <option value="running">Running</option>
-            <option value="pending">Pending</option>
-          </select>
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <label htmlFor="sort-select" className="text-sm font-medium text-gray-700">
-            Sort:
-          </label>
-          <select
-            id="sort-select"
-            className="border border-gray-300 rounded-md px-3 py-1 text-sm"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="name">By Name</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Job List with Full Height Scrolling */}
-      <div className="flex-1 overflow-y-auto space-y-3 min-h-0 job-history-scroll border border-gray-200 rounded-lg p-2" role="list" ref={jobListRef}>
+      {/* Job List with Full Height Scrolling - no internal header to avoid duplication */}
+      <div className="flex-1 overflow-y-auto space-y-3 min-h-0" role="list" ref={jobListRef}>
         {/* Scroll indicator - shows when content overflows */}
         {filteredAndSortedJobs.length > 5 && (
           <div className="text-xs text-gray-500 text-center py-2 border-b border-gray-200">
@@ -347,6 +308,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
                 {getStatusIcon(job.status)}
                 <div>
                   <h3 className="font-medium text-gray-900">{job.configurationName || 'Unknown'}</h3>
+                  <div className="text-xs text-gray-500 mb-1">Job ID: {job.id}</div>
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
                                           <span>{formatDate(job.startedAt)}</span>
                       <span>{formatDuration(job.startedAt, job.completedAt)}</span>

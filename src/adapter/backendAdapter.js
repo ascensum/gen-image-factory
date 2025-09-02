@@ -289,6 +289,10 @@ class BackendAdapter {
         return await this.updateJobConfiguration(id, settingsObject);
       });
 
+      _ipc.handle('job-configuration:update-name', async (event, id, newName) => {
+        return await this.updateJobConfigurationName(id, newName);
+      });
+
       _ipc.handle('open-exports-folder', async () => {
         return await this.openExportsFolder();
       });
@@ -788,6 +792,17 @@ class BackendAdapter {
       return result;
     } catch (error) {
       console.error('Error updating job configuration:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateJobConfigurationName(id, newName) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.jobConfig.updateConfigurationName(id, newName);
+      return result;
+    } catch (error) {
+      console.error('Error updating job configuration name:', error);
       return { success: false, error: error.message };
     }
   }

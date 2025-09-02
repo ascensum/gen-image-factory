@@ -229,6 +229,26 @@ class JobConfiguration {
     });
   }
 
+  async updateConfigurationName(id, newName) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        UPDATE job_configurations 
+        SET name = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `;
+
+      this.db.run(sql, [newName, id], function(err) {
+        if (err) {
+          console.error('Error updating configuration name:', err);
+          reject(err);
+        } else {
+          console.log('Configuration name updated successfully');
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
+  }
+
   async getAllConfigurations() {
     return new Promise((resolve, reject) => {
       const sql = 'SELECT name, created_at, updated_at FROM job_configurations ORDER BY updated_at DESC';

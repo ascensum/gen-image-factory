@@ -11,6 +11,7 @@ function App() {
   const [appVersion, setAppVersion] = useState('Loading...');
   const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'dashboard', 'failed-review', 'job-management', 'single-job'
   const [selectedJobId, setSelectedJobId] = useState(null);
+  const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
 
   useEffect(() => {
     // Test IPC communication
@@ -45,6 +46,7 @@ function App() {
         <SettingsPanel onBack={() => setCurrentView('main')} />
       ) : currentView === 'dashboard' ? (
         <DashboardPanel
+          key={dashboardRefreshKey}
           onBack={() => setCurrentView('main')}
           onOpenFailedImagesReview={() => setCurrentView('failed-review')}
           onOpenSettings={() => setCurrentView('settings')}
@@ -55,14 +57,20 @@ function App() {
           }}
         />
       ) : currentView === 'failed-review' ? (
-        <FailedImagesReviewPanel onBack={() => setCurrentView('dashboard')} />
+        <FailedImagesReviewPanel onBack={() => {
+          setCurrentView('dashboard');
+          setDashboardRefreshKey(prev => prev + 1);
+        }} />
       ) : currentView === 'job-management' ? (
         <JobManagementPanel
           onOpenSingleJob={(jobId) => {
             setSelectedJobId(jobId.toString());
             setCurrentView('single-job');
           }}
-          onBack={() => setCurrentView('dashboard')}
+          onBack={() => {
+            setCurrentView('dashboard');
+            setDashboardRefreshKey(prev => prev + 1);
+          }}
         />
       ) : currentView === 'single-job' ? (
         <SingleJobView

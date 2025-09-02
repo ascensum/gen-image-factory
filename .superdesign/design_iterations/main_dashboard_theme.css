@@ -1,0 +1,298 @@
+:root {
+  /* Main Dashboard Theme - Gen Image Factory Style (Matching Existing System) */
+  
+  /* Base Colors - Matching Existing Components */
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.2 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0 0);
+  
+  /* Brand Colors - Gen Image Factory Primary */
+  --primary: oklch(0.55 0.2 250);
+  --primary-foreground: oklch(0.98 0 0);
+  
+  /* UI Colors - Matching Existing System */
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.3 0 0);
+  --accent: oklch(0.95 0.03 250);
+  --accent-foreground: oklch(0.2 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  
+  /* Status Colors - Matching Existing System */
+  --status-completed: oklch(0.65 0.15 150);    /* Success green */
+  --status-in-progress: oklch(0.55 0.2 250);   /* Processing blue */
+  --status-failed: oklch(0.65 0.25 25);        /* Error red */
+  --status-pending: oklch(0.75 0.15 80);       /* Waiting orange */
+  
+  /* Status Foreground Colors */
+  --status-completed-foreground: oklch(1 0 0);
+  --status-in-progress-foreground: oklch(1 0 0);
+  --status-failed-foreground: oklch(1 0 0);
+  --status-pending-foreground: oklch(0.1 0 0);
+  
+  /* UI Elements - Matching Existing System */
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.55 0.2 250);
+  
+  /* Quick Actions - Matching Existing System */
+  --action-view: oklch(0.55 0.1 250);
+  --action-rerun: oklch(0.55 0.2 150);
+  --action-export: oklch(0.55 0.1 200);
+  --action-delete: oklch(0.65 0.25 25);
+  
+  /* Tab Interface Colors - New for Dashboard */
+  --tab-background: oklch(0.96 0 0);
+  --tab-foreground: oklch(0.45 0 0);
+  --tab-active-background: oklch(1 0 0);
+  --tab-active-foreground: oklch(0.2 0 0);
+  --tab-border: oklch(0.9 0 0);
+  --tab-hover-background: oklch(0.94 0 0);
+  
+  /* Progress Bar Colors - Matching Status Colors */
+  --progress-background: oklch(0.9 0 0);
+  --progress-fill: oklch(0.55 0.2 250);
+  --progress-success: oklch(0.65 0.15 150);
+  --progress-warning: oklch(0.75 0.15 80);
+  --progress-error: oklch(0.65 0.25 25);
+  
+  /* Section Panel Colors - Matching Existing Cards */
+  --section-background: oklch(1 0 0);
+  --section-border: oklch(0.9 0 0);
+  --section-header-background: oklch(0.96 0 0);
+  --section-header-foreground: oklch(0.3 0 0);
+  
+  /* Scrollbar Colors - Matching Existing System */
+  --scrollbar-track: oklch(0.96 0 0);
+  --scrollbar-thumb: oklch(0.9 0 0);
+  --scrollbar-thumb-hover: oklch(0.85 0 0);
+  
+  /* Typography - Matching Existing System */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  /* Spacing & Layout - Matching Existing System */
+  --radius: 0.5rem;
+  --radius-sm: 0.3rem;
+  --radius-lg: 0.7rem;
+  --spacing: 0.25rem;
+  
+  /* Shadows - Matching Existing System */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  
+  /* Custom Properties - Matching Existing System */
+  --header-height: 4rem;
+  --stats-card-width: 12rem;
+  --row-height: 4.5rem;
+  
+  /* Transitions - Matching Existing System */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 250ms ease-in-out;
+  --transition-slow: 350ms ease-in-out;
+}
+
+/* Dark Mode Support - Matching Existing System */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.1 0 0);
+    --foreground: oklch(0.9 0 0);
+    --card: oklch(0.15 0 0);
+    --card-foreground: oklch(0.9 0 0);
+    --popover: oklch(0.15 0 0);
+    --popover-foreground: oklch(0.9 0 0);
+    
+    --secondary: oklch(0.2 0 0);
+    --secondary-foreground: oklch(0.8 0 0);
+    --accent: oklch(0.2 0 0);
+    --accent-foreground: oklch(0.8 0 0);
+    --muted: oklch(0.2 0 0);
+    --muted-foreground: oklch(0.6 0 0);
+    
+    --border: oklch(0.2 0 0);
+    --input: oklch(0.15 0 0);
+    
+    --tab-background: oklch(0.2 0 0);
+    --tab-foreground: oklch(0.6 0 0);
+    --tab-active-background: oklch(0.15 0 0);
+    --tab-active-foreground: oklch(0.9 0 0);
+    --tab-border: oklch(0.2 0 0);
+    --tab-hover-background: oklch(0.25 0 0);
+    
+    --section-background: oklch(0.15 0 0);
+    --section-border: oklch(0.2 0 0);
+    --section-header-background: oklch(0.2 0 0);
+    --section-header-foreground: oklch(0.8 0 0);
+    
+    --scrollbar-track: oklch(0.2 0 0);
+    --scrollbar-thumb: oklch(0.3 0 0);
+    --scrollbar-thumb-hover: oklch(0.4 0 0);
+  }
+}
+
+/* Custom Scrollbar Styling - Matching Existing System */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: var(--radius-sm);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-sm);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* Tab Interface Styling - New for Dashboard */
+.tab-container {
+  background: var(--tab-background);
+  border-bottom: 1px solid var(--tab-border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.tab-button {
+  background: transparent;
+  color: var(--tab-foreground);
+  border: none;
+  padding: var(--spacing) calc(var(--spacing) * 2);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: var(--transition-normal);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.tab-button:hover {
+  background: var(--tab-hover-background);
+  color: var(--tab-foreground);
+}
+
+.tab-button.active {
+  background: var(--tab-active-background);
+  color: var(--tab-active-foreground);
+  border-bottom: 2px solid var(--primary);
+  font-weight: 600;
+}
+
+/* Section Panel Styling - Matching Existing Cards */
+.section-panel {
+  background: var(--section-background);
+  border: 1px solid var(--section-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.section-header {
+  background: var(--section-header-background);
+  color: var(--section-header-foreground);
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  border-bottom: 1px solid var(--section-border);
+  font-weight: 600;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+}
+
+.section-content {
+  padding: calc(var(--spacing) * 3);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Progress Bar Styling - Matching Existing System */
+.progress-container {
+  background: var(--progress-background);
+  border-radius: var(--radius);
+  overflow: hidden;
+  height: 8px;
+}
+
+.progress-fill {
+  background: var(--progress-fill);
+  height: 100%;
+  transition: width var(--transition-normal);
+}
+
+.progress-fill.success {
+  background: var(--progress-success);
+}
+
+.progress-fill.warning {
+  background: var(--progress-warning);
+}
+
+.progress-fill.error {
+  background: var(--progress-error);
+}
+
+/* Progress Icons Styling - New for Dashboard */
+.progress-icons {
+  display: flex;
+  gap: calc(var(--spacing) * 2);
+  align-items: center;
+  padding: calc(var(--spacing) * 2) 0;
+  overflow-x: auto;
+}
+
+.progress-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  transition: var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.progress-icon.active {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.progress-icon.completed {
+  background: var(--status-completed);
+  color: var(--status-completed-foreground);
+}
+
+.progress-icon.error {
+  background: var(--status-failed);
+  color: var(--status-failed-foreground);
+}
+
+/* Responsive Design - Matching Existing System */
+@media (max-width: 768px) {
+  .tab-button {
+    padding: var(--spacing) calc(var(--spacing) * 1.5);
+    font-size: 0.75rem;
+  }
+  
+  .section-content {
+    max-height: 250px;
+    padding: calc(var(--spacing) * 2);
+  }
+  
+  .progress-icons {
+    gap: var(--spacing);
+  }
+  
+  .progress-icon {
+    width: 28px;
+    height: 28px;
+  }
+}

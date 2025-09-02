@@ -6,6 +6,7 @@ import JobHistory from './JobHistory';
 import ImageGallery from './ImageGallery';
 import ForceStopButton from './ForceStopButton';
 import ExportDialog from '../Common/ExportDialog';
+import './DashboardPanel.css';
 // Failed images review is a separate top-level view now
 
 const HeaderMenu: React.FC<{
@@ -191,8 +192,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   const [jobStatus, setJobStatus] = useState<JobStatus>({
     state: 'idle',
     progress: 0,
-    currentStep: 0,
-    totalSteps: 0
+    currentStep: 1,
+    totalSteps: 2
   });
   const [jobHistory, setJobHistory] = useState<JobExecution[]>([]);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
@@ -210,6 +211,20 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportJobId, setExportJobId] = useState<string | null>(null);
   const [jobConfiguration, setJobConfiguration] = useState<any>(null);
+  
+  // NEW: Tab state management
+  const [activeTab, setActiveTab] = useState<'overview' | 'image-gallery'>('overview');
+  
+  // Image Gallery view mode
+  const [imageViewMode, setImageViewMode] = useState<'grid' | 'list'>('grid');
+  
+  // Image Gallery filters and controls
+  const [imageJobFilter, setImageJobFilter] = useState<string>('all');
+  const [imageSearchQuery, setImageSearchQuery] = useState<string>('');
+  const [imageSortBy, setImageSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
+  
+
+  
   // Removed local failed images review state; navigation handled at App level
 
   // Poll for job status updates
@@ -250,6 +265,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     loadJobConfiguration();
   }, []);
 
+
+
   // Track last completion time for brief post-run visibility
   const lastCompletionRef = React.useRef<number | null>(null);
 
@@ -261,7 +278,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       lastCompletionRef.current = null;
     }
     // Attempt an immediate refresh when state changes
-    loadLogs();
+      loadLogs();
   }, [jobStatus.state]);
 
   // Poll logs periodically only while running or briefly after completion
@@ -290,7 +307,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       // Delay refresh for generated images to ensure metadata generation is complete
       setTimeout(() => {
         console.log('🔄 Delayed refresh of generated images to ensure metadata is complete...');
-        loadGeneratedImages();
+      loadGeneratedImages();
       }, 500); // 500ms delay to ensure backend metadata generation completes
     }
   }, [jobStatus.state]);
@@ -366,13 +383,13 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         }
       } catch {}
       const jobLogs = await window.electronAPI.jobManagement.getJobLogs(mode);
-      console.log('Logs loaded:', jobLogs);
-      if (jobLogs && Array.isArray(jobLogs)) {
+        console.log('Logs loaded:', jobLogs);
+        if (jobLogs && Array.isArray(jobLogs)) {
         // Replace logs instead of appending to prevent duplication
         // Backend already maintains the log buffer, so we just use what it gives us
-        setLogs(jobLogs);
-      } else {
-        console.warn('getJobLogs returned non-array:', jobLogs);
+          setLogs(jobLogs);
+        } else {
+          console.warn('getJobLogs returned non-array:', jobLogs);
         // Do not clear existing logs on malformed response
       }
     } catch (error) {
@@ -560,6 +577,131 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
   // Note: QC status changes are handled in the separate Failed Images Review page
 
+  // NEW: Function to get dynamic progress steps based on job configuration
+  const getDynamicProgressSteps = (config) => {
+    if (!config) return [];
+    
+    const steps = [
+      {
+        name: 'Initialization',
+        icon: '⚙️',
+        description: 'Setup & Parameters',
+        required: true,
+        completed: true,
+        weight: 20
+      }
+    ];
+    
+    // Step 2: Dynamic subtasks based on enabled features
+    const subtasks = [];
+    
+    // AI Generation is always shown (as it's now optional in producePictureModule)
+    subtasks.push('AI Generation');
+    
+    // Metadata only if enabled
+    if (config.ai?.runMetadataGen) {
+      subtasks.push('Metadata');
+    }
+    
+    // QC only if enabled
+    if (config.ai?.runQualityCheck) {
+      subtasks.push('QC');
+    }
+    
+    // Background Removal only if enabled
+    if (config.processing?.removeBg) {
+      subtasks.push('Background Removal');
+    }
+    
+    // Processing if any Sharp library functions are enabled
+    const hasProcessing = config.processing && (
+      config.processing.imageEnhancement ||
+      config.processing.imageConvert ||
+      config.processing.sharpening > 0 ||
+      config.processing.saturation !== 1 ||
+      config.processing.convertToJpg ||
+      config.processing.trimTransparentBackground
+    );
+    
+    if (hasProcessing) {
+      subtasks.push('Processing');
+    }
+    
+    if (subtasks.length > 0) {
+      steps.push({
+        name: 'Image Generation',
+        icon: '🎨',
+        description: subtasks.join(' + '),
+        required: true,
+        completed: false,
+        current: true,
+        weight: 80
+      });
+    }
+    
+    return steps;
+  };
+
+  // NEW: Function to determine if overall progress should be shown
+  const shouldShowOverallProgress = (config) => {
+    return config?.parameters?.count > 1;
+  };
+
+  // NEW: Smart progress calculation based on backend weights (20% + 80%) and generation counts
+  const getSmartProgressValues = (config, jobStatus) => {
+    if (!config) return { overallGenerationProgress: 0, current: 0, currentGeneration: 1, totalGenerations: 1, generatedImages: 0, totalImages: 4 };
+    
+    const count = config.parameters?.count || 1; // Total generations (e.g., 100, 1000, 10000)
+    
+    // Get current progress from job status if available
+    const currentProgress = jobStatus?.progress || 0; // 0.0 to 1.0 from backend
+    const currentStep = jobStatus?.currentStep || 1; // 1 or 2
+    
+    // Calculate current generation progress (0-100%)
+    let currentGenerationProgress = 0;
+    if (currentStep === 1) {
+      // Initialization step (20% weight) - only show progress if actually progressing
+      currentGenerationProgress = currentProgress > 0 ? Math.min(currentProgress * 100, 20) : 0;
+    } else if (currentStep === 2) {
+      // Image Generation step (80% weight)
+      currentGenerationProgress = 20 + Math.min((currentProgress - 0.2) * 100, 80);
+    }
+    
+    // For multiple generations, calculate overall progress correctly
+    let overallGenerationProgress = 0;
+    let currentGeneration = 1;
+    
+    if (count > 1) {
+      // Simple logic: 1 iteration = 1 generation
+      // Overall progress = current generation progress / total generations * 100
+      
+      // For now, we'll assume we're always on the first generation
+      // In a real implementation, the backend should tell us which generation we're on
+      
+      // Overall progress = (current generation progress) / total generations * 100
+      overallGenerationProgress = Math.round((currentGenerationProgress / count));
+      
+      // Current generation number = 1 (for now, until backend provides this)
+      currentGeneration = 1;
+    } else {
+      // Single generation - no overall progress needed
+      overallGenerationProgress = 0;
+      currentGeneration = 1;
+    }
+    
+    // Calculate generated images based on current generation progress
+    const generatedImagesCount = Math.floor(currentGenerationProgress / 100 * 4);
+    
+    return {
+      overallGenerationProgress: Math.round(overallGenerationProgress),
+      current: Math.round(currentGenerationProgress),
+      currentGeneration: currentGeneration,
+      totalGenerations: count,
+      generatedImages: generatedImagesCount,
+      totalImages: 4
+    };
+  };
+
   return (
     <div className="dashboard-panel min-h-screen bg-gray-50">
       {/* Dashboard Header - compact with ordered elements */}
@@ -606,11 +748,174 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         </div>
       </div>
 
-      {/* Main Content - Two Panel Layout */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left Panel - Job History (40% width) - Takes full vertical space down to Image Gallery */}
-        <div className="w-2/5 bg-white border-r border-gray-200 p-6 flex flex-col">
-          <div className="flex-1 overflow-y-auto">
+      {/* NEW: Tab Navigation */}
+      <div className="tab-navigation">
+        <button 
+          className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+          onClick={() => setActiveTab('overview')}
+        >
+          Overview
+        </button>
+        <button 
+          className={`tab-button ${activeTab === 'image-gallery' ? 'active' : ''}`}
+          onClick={() => setActiveTab('image-gallery')}
+        >
+          Image Gallery
+        </button>
+      </div>
+
+      {/* NEW: Tab Content Container */}
+      <div className="tab-content-container">
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="unified-panel-container">
+            {/* Job Progress Section */}
+            <div className="dashboard-panel job-progress">
+              <div className="panel-header">
+                <div className="section-header-with-icon">
+                  <svg className="section-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  Job Progress
+                </div>
+              </div>
+              <div className="panel-content">
+                {/* Multi-Generation Overall Progress - Only show when count > 1 */}
+                {shouldShowOverallProgress(jobConfiguration) && (
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium mb-3 text-gray-700">
+                      Overall Progress ({jobConfiguration.parameters.count} generations)
+                    </h4>
+                    <div className="progress-container">
+                      <div 
+                        className="progress-fill" 
+                        style={{ width: `${getSmartProgressValues(jobConfiguration, jobStatus).overallGenerationProgress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Generation {getSmartProgressValues(jobConfiguration, jobStatus).currentGeneration} of {jobConfiguration.parameters.count} ({getSmartProgressValues(jobConfiguration, jobStatus).overallGenerationProgress}% complete)
+                    </p>
+                  </div>
+                )}
+
+                {/* Current Generation Progress */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-3 text-gray-700">
+                    {shouldShowOverallProgress(jobConfiguration) ? 'Current Generation Progress' : 'Single Generation Progress'}
+                  </h4>
+                                      <div className="progress-container">
+                      <div 
+                        className="progress-fill" 
+                        style={{ width: `${getSmartProgressValues(jobConfiguration, jobStatus).current}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Images {getSmartProgressValues(jobConfiguration, jobStatus).generatedImages} of 4 ({getSmartProgressValues(jobConfiguration, jobStatus).current}% complete)
+                    </p>
+                </div>
+
+                {/* Progress Steps - Dynamic based on job configuration */}
+                <div>
+                  <h4 className="text-sm font-medium mb-3 text-gray-700">Progress Steps</h4>
+                  <div className="progress-steps">
+                    {getDynamicProgressSteps(jobConfiguration).map((step, index) => {
+                      // Determine step state based on current progress
+                      const currentProgress = getSmartProgressValues(jobConfiguration, jobStatus).current;
+                      let stepState = 'pending'; // pending, active, completed
+                      
+                      if (step.name === 'Initialization') {
+                        if (currentProgress <= 20) {
+                          stepState = 'active';
+                        } else {
+                          stepState = 'completed';
+                        }
+                      } else if (step.name === 'Image Generation') {
+                        if (currentProgress > 20) {
+                          stepState = 'active';
+                        } else {
+                          stepState = 'pending';
+                        }
+                      }
+                      
+                      return (
+                        <React.Fragment key={step.name}>
+                          <div className="progress-step">
+                            <div className={`step-icon ${stepState}`}>
+                              {stepState === 'completed' ? (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                              ) : step.name === 'Initialization' ? (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                              ) : step.name === 'Image Generation' ? (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                              ) : (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                              )}
+                            </div>
+                            <div className="step-info">
+                              <div className="step-name">{step.name}</div>
+                              <div className="step-subtitle">{step.description}</div>
+                            </div>
+                          </div>
+                          
+                          {/* Add connector between steps, but not after the last step */}
+                          {index < getDynamicProgressSteps(jobConfiguration).length - 1 && (
+                            <div className="progress-connector"></div>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Job History Section */}
+            <div className="dashboard-panel">
+              <div className="panel-header">
+                <div className="section-header-with-icon">
+                  <svg className="section-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  Job History
+                </div>
+              </div>
+              <div className="panel-content" style={{ padding: 0 }}>
+                {/* Filter Controls - Static Header */}
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', background: 'white' }}>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <label className="text-sm font-medium text-gray-700">Status:</label>
+                      <select className="control-select">
+                        <option>All Statuses</option>
+                        <option>Completed</option>
+                        <option>Failed</option>
+                        <option>Running</option>
+                        <option>Pending</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <label className="text-sm font-medium text-gray-700">Sort:</label>
+                      <select className="control-select">
+                        <option>Newest First</option>
+                        <option>Oldest First</option>
+                        <option>By Name</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Job History Items - Scrollable Content */}
+                <div className="job-history-content">
             <JobHistory
               jobs={jobHistory}
               onJobAction={handleJobAction}
@@ -619,22 +924,20 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
             />
           </div>
         </div>
-
-        {/* Right Panel - Current Job Status (60% width) - Reduced height to give space to Image Gallery */}
-        <div className="w-3/5 bg-white p-6 flex flex-col">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Current Job</h2>
-          
-          {/* Progress Indicator */}
-          <div className="mb-4 flex-shrink-0">
-            <ProgressIndicator
-              jobStatus={jobStatus}
-              isLoading={isLoading}
-              jobConfiguration={jobConfiguration}
-            />
           </div>
           
-          {/* Real-time Logs - Allow component to control scrolling; fill available space */}
-          <div className="flex-1 min-h-0">
+            {/* Logs Panel Section */}
+            <div className="dashboard-panel">
+              <div className="panel-header">
+                <div className="section-header-with-icon">
+                  <svg className="section-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  Logs Panel
+                </div>
+              </div>
+              <div className="panel-content">
+                {/* Log Entries - Direct content, no duplicate header */}
             <LogViewer
               logs={logs}
               jobStatus={jobStatus.state}
@@ -643,25 +946,157 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
           </div>
         </div>
       </div>
+        )}
 
-      {/* Bottom Panel - Generated Images Gallery (Full width) - Now with more vertical space and proper scrolling */}
-      <div className="bg-white border-t border-gray-200 p-6 flex-1 flex flex-col min-h-0">
-        {/* Image Gallery with proper scrolling - Takes more vertical space */}
-        <div className="h-96 overflow-y-auto min-h-0">
-          {/* Scroll indicator - shows when content overflows */}
-          {generatedImages.length > 20 && (
-            <div className="text-xs text-gray-500 text-center py-2 border-b border-gray-200 mb-2">
-              📜 Image Gallery area - scroll when content overflows ({generatedImages.length} total images)
+        {/* Image Gallery Tab */}
+        {activeTab === 'image-gallery' && (
+          <div className="flex flex-col h-full min-h-0">
+            {/* Header - STATIC (non-scrollable) */}
+            <div className="px-6 pt-4 pb-0 flex-shrink-0">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Generated Images</h2>
             </div>
-          )}
+
+              {/* Image Count Indicators - STATIC (non-scrollable) */}
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-4">
+                <div className="text-sm font-medium text-gray-700">
+                  {generatedImages.length} Total Images
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-700">
+                      {generatedImages.filter(img => img.qcStatus === 'approved').length} Success Images
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filters and Controls - STATIC (non-scrollable) */}
+              <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-lg mb-4 flex-shrink-0">
+                <div className="flex items-center space-x-4">
+                  {/* View Toggle */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-700">View:</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setImageViewMode('grid')}
+                        className={`p-2 rounded-md transition-all duration-200 ${
+                          imageViewMode === 'grid'
+                            ? 'bg-gray-200 text-gray-900 border border-gray-300'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent'
+                        }`}
+                        title="Grid View"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setImageViewMode('list')}
+                        className={`p-2 rounded-md transition-all duration-200 ${
+                          imageViewMode === 'list'
+                            ? 'bg-gray-200 text-gray-900 border border-gray-300'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent'
+                        }`}
+                        title="List View"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  {/* Job Filter */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-700">Job:</span>
+                    <select 
+                      value={imageJobFilter}
+                      onChange={(e) => setImageJobFilter(e.target.value)}
+                      className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All Jobs</option>
+                      {Array.from(new Set(generatedImages.map(img => img.executionId))).map(executionId => {
+                        const job = jobHistory.find(j => j.id === executionId);
+                        return (
+                          <option key={executionId} value={executionId}>
+                            {job?.label || job?.configurationName || `Job ${String(executionId).slice(0, 8)}`}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  {/* Search Field */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-700">Search:</span>
+                    <input 
+                      type="text" 
+                      placeholder="Search images..." 
+                      value={imageSearchQuery}
+                      onChange={(e) => setImageSearchQuery(e.target.value)}
+                      className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                    />
+                  </div>
+
+                  {/* Sort Control */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-700">Sort:</span>
+                    <select 
+                      value={imageSortBy}
+                      onChange={(e) => setImageSortBy(e.target.value as 'newest' | 'oldest' | 'name')}
+                      className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="name">By Name</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Action Buttons - STATIC (non-scrollable) */}
+                <div className="flex items-center space-x-2">
+                  {/* Select All Checkbox */}
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <span className="text-sm text-gray-700">
+                      Select All (0/{generatedImages.length})
+                    </span>
+                  </div>
+
+                  {/* Clear Button */}
+                  <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors">
+                    Clear
+                  </button>
+
+                  {/* Excel Export Button */}
+                  <button className="px-3 py-1 text-sm rounded-md transition-colors flex items-center space-x-1 bg-green-600 text-white hover:bg-green-700">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <span>Export Excel</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Image Grid/List - SCROLLABLE AREA */}
+            <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-6" style={{ maxHeight: '400px', overflowY: 'scroll' }}>
                         <ImageGallery
                 images={generatedImages}
                 onImageAction={handleImageAction}
                 onBulkAction={handleBulkAction}
+                viewMode={imageViewMode}
+                onViewModeChange={setImageViewMode}
                 isLoading={isLoading}
                 jobStatus={jobStatus.state}
+                jobFilter={imageJobFilter}
+                searchQuery={imageSearchQuery}
+                sortBy={imageSortBy}
               />
         </div>
+          </div>
+        )}
       </div>
 
       {/* Error Display */}

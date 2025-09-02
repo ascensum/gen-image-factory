@@ -37,6 +37,11 @@ interface ImageGalleryProps {
   onBulkAction?: (action: string, imageIds: string[]) => void;
   isLoading: boolean;
   jobStatus?: 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'stopped';
+  viewMode?: 'grid' | 'list';
+  onViewModeChange?: (mode: 'grid' | 'list') => void;
+  jobFilter?: string;
+  searchQuery?: string;
+  sortBy?: 'newest' | 'oldest' | 'name';
 }
 
 const ImageGallery: React.FC<ImageGalleryProps> = ({
@@ -44,7 +49,12 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   onImageAction,
   onBulkAction,
   isLoading,
-  jobStatus = 'idle'
+  jobStatus = 'idle',
+  viewMode = 'grid',
+  onViewModeChange,
+  jobFilter = 'all',
+  searchQuery = '',
+  sortBy = 'newest'
 }) => {
   // Safety check for images prop
   if (!images || !Array.isArray(images)) {
@@ -57,10 +67,6 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     );
   }
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
-  const [filterJob, setFilterJob] = useState<string | number>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
   const [showImageModal, setShowImageModal] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -68,7 +74,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   // Clear selection when job filter changes
   React.useEffect(() => {
     setSelectedImages(new Set());
-  }, [filterJob]);
+  }, [jobFilter]);
 
   // Get unique job IDs for filtering
   const uniqueJobIds = Array.from(new Set((images || []).map(img => img.executionId)));
@@ -78,9 +84,11 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       return [];
     }
     
+
+    
     let filtered = images.filter(image => {
       // Job filter
-      if (filterJob !== 'all' && image.executionId !== filterJob) {
+      if (jobFilter !== 'all' && image.executionId != jobFilter) {
         return false;
       }
       
@@ -112,7 +120,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     });
 
     return sorted;
-  }, [images, filterJob, searchQuery, sortBy]);
+  }, [images, jobFilter, searchQuery, sortBy]);
 
   // Note: QC status functions removed since we only show success images in main dashboard
 
@@ -271,200 +279,6 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Header - STATIC (non-scrollable) */}
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <h2 className="text-lg font-semibold text-gray-900">Generated Images</h2>
-      </div>
-
-      {/* Image Count Indicators - STATIC (non-scrollable) */}
-      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-4 flex-shrink-0">
-        <div className="text-sm font-medium text-gray-700">
-          {images.length} Total Images
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span className="text-sm text-gray-700">
-              {images.length} Success Images
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters and Controls - STATIC (non-scrollable) */}
-      <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-lg mb-4 flex-shrink-0">
-        <div className="flex items-center space-x-4">
-          {/* Note: QC Status Filter removed since we only show success images */}
-
-          {/* Job Filter */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">Job:</span>
-            <select
-              aria-label="Job"
-              value={filterJob}
-              onChange={(e) => setFilterJob(e.target.value)}
-              className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All Jobs</option>
-              {uniqueJobIds.length > 0 ? uniqueJobIds.map(jobId => (
-                <option key={jobId} value={jobId}>
-                  Job {String(jobId).slice(0, 8)}...
-                </option>
-              )) : (
-                <option value="all" disabled>No jobs available</option>
-              )}
-            </select>
-          </div>
-
-          {/* Search Field */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">Search:</span>
-            <input
-              type="text"
-              placeholder="Search images..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Sort Control */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">Sort:</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="name">By Name</option>
-            </select>
-          </div>
-
-          {/* View Mode */}
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-1 rounded ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-              title="Grid view"
-              aria-label="Grid view"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-1 rounded ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
-              title="List view"
-              aria-label="List view"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Action Buttons - STATIC (non-scrollable) */}
-        <div className="flex items-center space-x-2">
-          {/* Select All Checkbox */}
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              aria-label="Select all images"
-              checked={selectedImages.size === filteredAndSortedImages.length && filteredAndSortedImages.length > 0}
-              onChange={handleSelectAll}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-700">
-              Select All ({selectedImages.size}/{filteredAndSortedImages.length})
-            </span>
-          </div>
-
-          {/* Bulk Actions */}
-          {selectedImages.size > 0 && (
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handleBulkAction('delete')}
-                className="px-3 py-1 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-              >
-                Delete Selected
-              </button>
-            </div>
-          )}
-
-          {/* Clear Button */}
-          <button
-            onClick={() => {
-              setFilterJob('all');
-              setSearchQuery('');
-              setSortBy('newest');
-              setSelectedImages(new Set());
-            }}
-            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-          >
-            Clear
-          </button>
-
-          {/* Excel Export Button */}
-          <button
-            onClick={handleExcelExport}
-            disabled={isExporting || filteredAndSortedImages.length === 0}
-            className={`px-3 py-1 text-sm rounded-md transition-colors flex items-center space-x-1 ${
-              isExporting || filteredAndSortedImages.length === 0
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-green-600 text-white hover:bg-green-700'
-            }`}
-            title={selectedImages.size > 0 
-              ? `Export ${selectedImages.size} selected images to Excel` 
-              : `Export ${filteredAndSortedImages.length} images to Excel`}
-            aria-label={selectedImages.size > 0 
-              ? `Export ${selectedImages.size} selected images to Excel` 
-              : `Export ${filteredAndSortedImages.length} images to Excel`}
-          >
-            {isExporting ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-1 h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>Exporting...</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span>Export Excel</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Export Error Display */}
-      {exportError && (
-        <div className="mx-6 mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-          <div className="flex items-center">
-            <svg className="w-4 h-4 text-red-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm text-red-800">{exportError}</span>
-            <button
-              onClick={() => setExportError(null)}
-              className="ml-auto text-red-600 hover:text-red-800"
-              aria-label="Dismiss error"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Image Grid/List - SCROLLABLE AREA */}
       <div className="flex-1 overflow-y-auto min-h-0">
         {filteredAndSortedImages.length === 0 ? (
@@ -473,17 +287,18 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           </div>
         ) : (
           <>
-            {/* Show real images first */}
-            <div className={viewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4' : 'space-y-2'}>
-              {filteredAndSortedImages.map((image) => (
-                <div
-                  key={image.id}
-                  className={`relative bg-white border rounded-lg overflow-hidden transition-colors ${
-                    selectedImages.has(image.id)
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
+            {viewMode === 'grid' ? (
+              /* Grid View */
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 p-4">
+                {filteredAndSortedImages.map((image) => (
+                  <div
+                    key={image.id}
+                    className={`relative bg-white border rounded-lg overflow-hidden transition-colors ${
+                      selectedImages.has(image.id)
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
                   {/* Selection Checkbox */}
                   <div className="absolute top-2 left-2 z-10">
                     <input
@@ -537,35 +352,9 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleQCStatusChange(image.id, 'approved');
-                          }}
-                          className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700"
-                          title="Approve"
-                          aria-label="Approve"
-                        >
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleQCStatusChange(image.id, 'rejected');
-                          }}
-                          className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700"
-                          title="Reject"
-                          aria-label="Reject"
-                        >
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
                             onImageAction('delete', image.id);
                           }}
-                          className="p-2 bg-gray-600 text-white rounded-full hover:bg-gray-700"
+                          className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700"
                           title="Delete"
                           aria-label="Delete"
                         >
@@ -580,10 +369,10 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                   {/* Enhanced Image Info */}
                   <div className="p-3 space-y-2">
                     {/* AI-Generated Title (Primary) */}
-                    {image.metadata?.title ? (
+                    {(image.metadata?.title?.en || image.metadata?.title) ? (
                       <div>
-                        <h4 className="text-sm font-medium text-gray-900 truncate" title={image.metadata.title}>
-                          {image.metadata.title}
+                        <h4 className="text-sm font-medium text-gray-900 truncate" title={image.metadata?.title?.en || image.metadata?.title}>
+                          {image.metadata?.title?.en || image.metadata?.title}
                         </h4>
                         <div className="text-xs text-gray-500 truncate mt-1" title={image.generationPrompt}>
                           {image.generationPrompt}
@@ -595,31 +384,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                       </div>
                     )}
 
-                    {/* Processing Settings Indicators */}
-                    {image.processingSettings && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {image.processingSettings.imageEnhancement && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800" title="Image Enhancement Applied">
-                            ✨ Enhanced
-                          </span>
-                        )}
-                        {image.processingSettings.removeBg && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800" title="Background Removed">
-                            🖼️ No BG
-                          </span>
-                        )}
-                        {image.processingSettings.convertToJpg && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800" title="Converted to JPG">
-                            📄 JPG
-                          </span>
-                        )}
-                        {image.processingSettings.sharpening && image.processingSettings.sharpening > 0 && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800" title={`Sharpening: ${image.processingSettings.sharpening}`}>
-                            🔍 Sharp
-                          </span>
-                        )}
-                      </div>
-                    )}
+
 
                     {/* AI Tags (if available) */}
                     {image.metadata?.tags && Array.isArray(image.metadata.tags) && image.metadata.tags.length > 0 && (
@@ -646,7 +411,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                       <div className="flex items-center space-x-2">
                         {image.seed && (
                           <span className="font-mono" title={`Seed: ${image.seed}`}>
-                            🎲 {image.seed}
+                            Seed: {image.seed}
                           </span>
                         )}
                       </div>
@@ -662,6 +427,137 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 
               {/* Note: Sample images removed since they're not needed for production */}
             </div>
+            ) : (
+              /* List View */
+              <div className="p-4">
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  {/* Table Header */}
+                  <div className="bg-gray-50 border-b border-gray-200">
+                    <div className="grid grid-cols-12 gap-4 px-4 py-3 text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <div className="col-span-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedImages.size === filteredAndSortedImages.length && filteredAndSortedImages.length > 0}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedImages(new Set(filteredAndSortedImages.map(img => img.id)));
+                            } else {
+                              setSelectedImages(new Set());
+                            }
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                      </div>
+                      <div className="col-span-2">Image</div>
+                      <div className="col-span-2">Title</div>
+                      <div className="col-span-3">Prompt</div>
+                      <div className="col-span-1">Seed</div>
+                      <div className="col-span-1">Date</div>
+                      <div className="col-span-2">Actions</div>
+                    </div>
+                  </div>
+                  
+                  {/* Table Body */}
+                  <div className="divide-y divide-gray-200">
+                    {filteredAndSortedImages.map((image) => (
+                      <div
+                        key={image.id}
+                        className={`grid grid-cols-12 gap-4 px-4 py-3 hover:bg-gray-50 transition-colors ${
+                          selectedImages.has(image.id) ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        {/* Checkbox */}
+                        <div className="col-span-1 flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedImages.has(image.id)}
+                            onChange={(e) => {
+                              const newSelected = new Set(selectedImages);
+                              if (e.target.checked) {
+                                newSelected.add(image.id);
+                              } else {
+                                newSelected.delete(image.id);
+                              }
+                              setSelectedImages(newSelected);
+                            }}
+                            className="rounded border-gray-300"
+                          />
+                        </div>
+                        
+                        {/* Image Thumbnail */}
+                        <div className="col-span-2">
+                          <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
+                            <img
+                              src={image.finalImagePath ? `local-file://${image.finalImagePath}` : ''}
+                              alt={image.metadata?.title?.en || image.metadata?.title || 'Generated Image'}
+                              className="w-full h-full object-cover cursor-pointer"
+                              onClick={() => setShowImageModal(image.id)}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNCAyNEg0MFY0MEgyNFYyNFoiIGZpbGw9IiNEMUQ1REIiLz4KPC9zdmc+';
+                              }}
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Title */}
+                        <div className="col-span-2 flex items-center">
+                          <div className="truncate">
+                            <div className="text-sm font-medium text-gray-900 truncate" title={image.metadata?.title?.en || image.metadata?.title || 'Untitled'}>
+                              {image.metadata?.title?.en || image.metadata?.title || 'Untitled'}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Prompt */}
+                        <div className="col-span-3 flex items-center">
+                          <div className="text-sm text-gray-600 truncate" title={image.generationPrompt}>
+                            {image.generationPrompt}
+                          </div>
+                        </div>
+                        
+                        {/* Seed */}
+                        <div className="col-span-1 flex items-center">
+                          <div className="text-sm font-mono text-gray-500" title={`Seed: ${image.seed}`}>
+                            {image.seed}
+                          </div>
+                        </div>
+                        
+                        {/* Date */}
+                        <div className="col-span-1 flex items-center">
+                          <div className="text-sm text-gray-500" title={formatDate(image.createdAt)}>
+                            {new Date(image.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        
+                        {/* Actions */}
+                        <div className="col-span-2 flex items-center space-x-2">
+                          <button
+                            onClick={() => setShowImageModal(image.id)}
+                            className="p-1 text-blue-600 hover:text-blue-800"
+                            title="View full size"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => onImageAction('delete', image.id)}
+                            className="p-1 text-red-600 hover:text-red-800"
+                            title="Delete"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

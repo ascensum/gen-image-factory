@@ -69,6 +69,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     jobStop: () => ipcRenderer.invoke('job:stop'),
     jobForceStop: () => ipcRenderer.invoke('job:force-stop'),
     getConfiguration: () => ipcRenderer.invoke('settings:get-configuration'),
+    updateJobConfigurationName: (id, newName) => ipcRenderer.invoke('job-configuration:update-name', id, newName),
     deleteGeneratedImage: (imageId) => ipcRenderer.invoke('generated-image:delete', { imageId }),
     bulkDeleteImages: (imageIds) => ipcRenderer.invoke('generated-image:bulk-delete', { imageIds }),
     getAllGeneratedImages: (options) => ipcRenderer.invoke('generated-image:get-all', options),
@@ -78,6 +79,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getConfiguration: () => ipcRenderer.invoke('settings:get-configuration'),
   getJobConfigurationById: (id) => ipcRenderer.invoke('job-configuration:get-by-id', id),
   updateJobConfiguration: (id, settingsObject) => ipcRenderer.invoke('job-configuration:update', id, settingsObject),
+  updateJobConfigurationName: (id, newName) => ipcRenderer.invoke('job-configuration:update-name', id, newName),
   openExportsFolder: () => ipcRenderer.invoke('open-exports-folder'),
   exportJobToExcel: (jobId) => ipcRenderer.invoke('job-execution:export-to-excel', { jobId }),
   
@@ -161,6 +163,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'settings:get-configuration',
       'job-configuration:get-by-id',
       'job-configuration:update',
+      'job-configuration:update-name',
       'open-exports-folder',
       // Generated Image Management
       'generated-image:save',

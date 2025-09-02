@@ -1,0 +1,284 @@
+/* Dashboard Panel - New Tab-based Layout Styles */
+
+/* Tab Navigation */
+.tab-navigation {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 1rem 0;
+  background-color: #ffffff;
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+.tab-button {
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  border-radius: 8px 8px 0 0;
+  transition: all 0.2s ease-out;
+  background-color: #f8f9fa;
+  border: 1px solid #e5e7eb;
+  border-bottom: none;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.tab-button:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.tab-button.active {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+/* Tab Content Container */
+.tab-content-container {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Unified Panel Container */
+.unified-panel-container {
+  background: transparent;
+  overflow: hidden;
+}
+
+/* Dashboard Panels */
+.dashboard-panel {
+  background: white;
+  border-radius: 0;
+  box-shadow: none;
+  margin-bottom: 0;
+  min-height: 320px;
+  padding: 8px;
+  width: 100%;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dashboard-panel:first-child {
+  border-radius: 12px 12px 0 0;
+}
+
+.dashboard-panel:last-child {
+  border-radius: 0 0 12px 12px;
+  border-bottom: none;
+}
+
+.dashboard-panel.job-progress {
+  min-height: 360px;
+}
+
+/* Panel Header */
+.panel-header {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+  padding: 20px 24px;
+  font-weight: 600;
+  font-size: 16px;
+  position: relative;
+  z-index: 10;
+}
+
+/* Panel Content */
+.panel-content {
+  padding: 24px;
+  overflow: visible;
+}
+
+/* Section Header with Icon */
+.section-header-with-icon {
+  display: flex;
+  align-items: center;
+}
+
+.section-icon {
+  width: 24px;
+  height: 24px;
+  color: #6b7280;
+  margin-right: 12px;
+}
+
+/* Control Select */
+.control-select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #ffffff;
+}
+
+/* Job History Content */
+.job-history-content {
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 20px 32px;
+}
+
+/* Logs Content */
+.logs-content {
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 20px 32px;
+}
+
+/* Scrollable content areas with fixed heights */
+.job-history-content,
+.logs-content {
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 20px 32px;
+}
+
+/* Progress Steps - Modern Design */
+.progress-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-top: 24px;
+  position: relative;
+  width: 100%;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 2;
+}
+
+.progress-connector {
+  width: 120px;
+  height: 3px;
+  background: #e5e7eb;
+  margin: 0 0px 60px 0px;
+  position: relative;
+  z-index: 1;
+}
+
+.step-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  transition: all 0.3s ease;
+  background: white;
+  border: 3px solid #e5e7eb;
+  color: #9ca3af;
+  position: relative;
+  z-index: 3;
+}
+
+.step-icon.completed {
+  color: #10b981;
+  border-color: #10b981;
+  background: #f0fdf4;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.step-icon.active {
+  color: #3b82f6;
+  border-color: #3b82f6;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: scale(1.05);
+}
+
+.step-icon.pending {
+  color: #9ca3af;
+  border-color: #e5e7eb;
+  background: #f9fafb;
+  opacity: 0.6;
+}
+
+/* Legacy support for 'current' class */
+.step-icon.current {
+  color: #3b82f6;
+  border-color: #3b82f6;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.progress-step:nth-child(3) {
+  margin-top: 11px;
+}
+
+.step-info {
+  text-align: center;
+  min-width: 160px;
+}
+
+.step-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #374151;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+.step-subtitle {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.4;
+  max-width: 160px;
+}
+
+/* Progress Container and Fill */
+.progress-container {
+  background: #e5e7eb;
+  border-radius: 6px;
+  overflow: hidden;
+  height: 8px;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  background: #3b82f6;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .tab-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .panel-content {
+    padding: 16px;
+  }
+  
+  .job-history-content,
+  .logs-content {
+    padding: 16px 20px;
+  }
+  
+  .progress-steps {
+    gap: 0;
+  }
+  
+  .step-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .step-info {
+    min-width: 140px;
+  }
+}

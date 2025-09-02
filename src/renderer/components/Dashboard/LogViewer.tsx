@@ -14,7 +14,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
   isLoading = false,
   onRefresh
 }) => {
-  const [logMode, setLogMode] = useState<'standard' | 'debug'>('debug');
+  const [logMode, setLogMode] = useState<'standard' | 'debug'>('standard');
   const [autoScroll, setAutoScroll] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState<'all' | 'info' | 'warn' | 'error' | 'debug'>('all');
@@ -281,9 +281,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
           style={{ minHeight: '144px', maxHeight: '320px', overflowY: 'auto' }}
         >
           {/* Scroll indicator */}
-          <div className="text-xs text-gray-500 text-center py-2 border-b border-gray-200 mb-2">
-            📜 Logs area - scroll when content overflows
-          </div>
+          {/* Scroll indicator removed for cleaner production UI */}
           
           {isLoading ? (
             <div className="text-center text-gray-500 py-8">
@@ -411,7 +409,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
         {/* Log Summary */}
         <div className="mt-3 flex items-center justify-between text-xs text-gray-500 flex-shrink-0">
           <div>
-            {logs.length === 0 ? '15 sample logs' : `${logs.length} logs`}
+            {`${logs.length} logs`}
             {searchTerm && ` matching "${searchTerm}"`}
           </div>
           <div>
