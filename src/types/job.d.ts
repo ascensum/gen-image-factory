@@ -64,16 +64,8 @@ export interface LogEntry {
   context?: string;
 }
 
-export interface GeneratedImage {
-  id: string;
-  jobId: string;
-  originalPath: string;
-  finalPath: string;
-  qcStatus: 'pending' | 'approved' | 'rejected' | 'processing' | 'failed';
-  metadata?: any;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// GeneratedImage interface moved to src/types/generatedImage.d.ts
+// Import from there instead: import { GeneratedImage } from './generatedImage';
 
 export interface JobResult {
   success: boolean;

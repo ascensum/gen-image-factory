@@ -16,35 +16,8 @@ export interface JobExecution {
   errorMessage?: string;
 }
 
-export interface GeneratedImage {
-  id?: number;
-  executionId: number;
-  generationPrompt: string;
-  seed?: number;
-  qcStatus?: 'pending' | 'passed' | 'failed';
-  qcReason?: string;
-  finalImagePath?: string;
-  tempImagePath?: string;
-  metadata?: {
-    title?: string;
-    description?: string;
-    tags?: string[];
-  };
-  processingSettings?: {
-    imageEnhancement?: boolean;
-    sharpening?: number;
-    saturation?: number;
-    imageConvert?: boolean;
-    convertToJpg?: boolean;
-    jpgQuality?: number;
-    pngQuality?: number;
-    removeBg?: boolean;
-    removeBgSize?: string;
-    trimTransparentBackground?: boolean;
-    jpgBackground?: string;
-  };
-  createdAt?: Date;
-}
+// GeneratedImage interface moved to src/types/generatedImage.d.ts
+// Import from there instead: import { GeneratedImage } from './generatedImage';
 
 export interface JobStatistics {
   totalJobs: number;
