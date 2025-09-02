@@ -389,7 +389,11 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     return (
       <div className="single-job-view" role="main" aria-label="Job error">
         <div className="error-container">
-          <div className="error-icon">⚠️</div>
+          <div className="error-icon">
+            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
           <h3>Error Loading Job</h3>
           <p>{error}</p>
           <button onClick={handleBack} className="btn-primary">
@@ -469,7 +473,11 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
           )}
           {labelSaveError && (
             <div className="label-error">
-              <span className="error-icon">⚠️</span>
+              <span className="error-icon">
+                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </span>
               {labelSaveError}
             </div>
           )}
@@ -521,9 +529,35 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 <div className="info-label">Status</div>
                 <div className="info-value">
                   <span className={`status-badge ${getStatusColor(job.status)}`}>
-                    {job.status === 'completed' ? '✓ Completed' : 
-                     job.status === 'processing' ? '⟳ Processing' :
-                     job.status === 'failed' ? '⚠ Failed' : '⏳ Pending'}
+                    {job.status === 'completed' ? (
+                      <>
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Completed
+                      </>
+                    ) : job.status === 'processing' ? (
+                      <>
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Processing
+                      </>
+                    ) : job.status === 'failed' ? (
+                      <>
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Failed
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Pending
+                      </>
+                    )}
                   </span>
                 </div>
               </div>
@@ -578,7 +612,14 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 title="Refresh job data"
                 disabled={isLoading}
               >
-                {isLoading ? 'Refreshing...' : '🔄 Refresh'}
+                {isLoading ? 'Refreshing...' : (
+                  <>
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Refresh
+                  </>
+                )}
               </button>
               <button 
                 className="edit-button"
@@ -711,7 +752,28 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <div className="image-info">
                         <span className="image-id">Image {image.id}</span>
                         <span className={`image-status ${getStatusColor(image.qcStatus)}`}>
-                          {image.qcStatus === 'approved' ? '✓ Approved' : image.qcStatus === 'failed' ? '⚠️ Failed' : '⏳ Pending'}
+                          {image.qcStatus === 'approved' ? (
+                            <>
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Approved
+                            </>
+                          ) : image.qcStatus === 'failed' ? (
+                            <>
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              Failed
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Pending
+                            </>
+                          )}
                         </span>
                       </div>
                     </div>
@@ -757,7 +819,28 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <td>Image {image.id}</td>
                       <td>
                         <span className={`image-status ${getStatusColor(image.qcStatus)}`}>
-                          {image.qcStatus === 'approved' ? '✓ Complete' : image.qcStatus === 'failed' ? '⚠️ Failed' : '⏳ Pending'}
+                          {image.qcStatus === 'approved' ? (
+                            <>
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              Complete
+                            </>
+                          ) : image.qcStatus === 'failed' ? (
+                            <>
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              Failed
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              Pending
+                            </>
+                          )}
                         </span>
                       </td>
                       <td>{formatDate(job.startedAt || '')}</td>
@@ -1212,7 +1295,11 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
             {settingsSaveError && (
               <div className="settings-error">
-                <span className="error-icon">⚠️</span>
+                <span className="error-icon">
+                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </span>
                 {settingsSaveError}
               </div>
             )}

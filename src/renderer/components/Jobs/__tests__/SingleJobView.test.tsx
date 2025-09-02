@@ -5,8 +5,17 @@ import SingleJobView from '../SingleJobView';
 
 // Mock the electron API
 const mockElectronAPI = {
-  getJobExecution: vi.fn(),
-  getGeneratedImagesForJob: vi.fn()
+  jobManagement: {
+    getJobExecution: vi.fn(),
+    getJobLogs: vi.fn(),
+    renameJobExecution: vi.fn()
+  },
+  generatedImages: {
+    getGeneratedImagesByExecution: vi.fn()
+  },
+  getJobConfigurationById: vi.fn(),
+  updateJobConfiguration: vi.fn(),
+  exportJobToExcel: vi.fn()
 };
 
 // Mock the window.electronAPI
@@ -28,20 +37,28 @@ const mockJob = {
 
 const mockImages = [
   {
-    id: 1,
-    executionId: 1,
-    filePath: '/path/to/image1.jpg',
-    status: 'completed',
+    id: '1',
+    executionId: '1',
+    generationPrompt: 'A beautiful landscape',
+    finalImagePath: '/path/to/image1.jpg',
     qcStatus: 'passed',
-    createdAt: '2024-01-01T10:01:00Z'
+    createdAt: new Date('2024-01-01T10:01:00Z'),
+    metadata: {
+      title: 'Beautiful Landscape',
+      description: 'A stunning natural scene'
+    }
   },
   {
-    id: 2,
-    executionId: 1,
-    filePath: '/path/to/image2.jpg',
-    status: 'completed',
+    id: '2',
+    executionId: '1',
+    generationPrompt: 'A majestic mountain',
+    finalImagePath: '/path/to/image2.jpg',
     qcStatus: 'passed',
-    createdAt: '2024-01-01T10:02:00Z'
+    createdAt: new Date('2024-01-01T10:02:00Z'),
+    metadata: {
+      title: 'Majestic Mountain',
+      description: 'A towering peak'
+    }
   }
 ];
 
@@ -58,15 +75,18 @@ describe('SingleJobView', () => {
     vi.clearAllMocks();
     
     // Setup default mock responses
-    mockElectronAPI.getJobExecution.mockResolvedValue({
+    mockElectronAPI.jobManagement.getJobExecution.mockResolvedValue({
       success: true,
       execution: mockJob
     });
     
-    mockElectronAPI.getGeneratedImagesForJob.mockResolvedValue({
+    mockElectronAPI.generatedImages.getGeneratedImagesByExecution.mockResolvedValue({
       success: true,
       images: mockImages
     });
+    
+    mockElectronAPI.jobManagement.getJobLogs.mockResolvedValue([]);
+    mockElectronAPI.getJobConfigurationById.mockResolvedValue({ success: true, configuration: {} });
   });
 
   describe('Rendering', () => {
@@ -467,7 +487,7 @@ describe('SingleJobView', () => {
   describe('Edge Cases', () => {
     it('handles job without label', async () => {
       const jobWithoutLabel = { ...mockJob, label: undefined };
-      mockElectronAPI.getJobExecution.mockResolvedValue({
+      mockElectronAPI.jobManagement.getJobExecution.mockResolvedValue({
         success: true,
         execution: jobWithoutLabel
       });
@@ -482,7 +502,7 @@ describe('SingleJobView', () => {
 
     it('handles job without completedAt', async () => {
       const jobWithoutCompletedAt = { ...mockJob, completedAt: undefined };
-      mockElectronAPI.getJobExecution.mockResolvedValue({
+      mockElectronAPI.jobManagement.getJobExecution.mockResolvedValue({
         success: true,
         execution: jobWithoutCompletedAt
       });
@@ -500,7 +520,7 @@ describe('SingleJobView', () => {
 
     it('handles job without startedAt', async () => {
       const jobWithoutStartedAt = { ...mockJob, startedAt: undefined };
-      mockElectronAPI.getJobExecution.mockResolvedValue({
+      mockElectronAPI.jobManagement.getJobExecution.mockResolvedValue({
         success: true,
         execution: jobWithoutStartedAt
       });
@@ -516,7 +536,7 @@ describe('SingleJobView', () => {
     });
 
     it('handles empty images array', async () => {
-      mockElectronAPI.getGeneratedImagesForJob.mockResolvedValue({
+      mockElectronAPI.generatedImages.getGeneratedImagesByExecution.mockResolvedValue({
         success: true,
         images: []
       });
@@ -538,7 +558,7 @@ describe('SingleJobView', () => {
 
   describe('Error Handling', () => {
     it('handles API error for job loading', async () => {
-      mockElectronAPI.getJobExecution.mockResolvedValue({
+      mockElectronAPI.jobManagement.getJobExecution.mockResolvedValue({
         success: false,
         error: 'Job not found'
       });
@@ -553,7 +573,7 @@ describe('SingleJobView', () => {
     });
 
     it('handles API error for images loading', async () => {
-      mockElectronAPI.getGeneratedImagesForJob.mockResolvedValue({
+      mockElectronAPI.generatedImages.getGeneratedImagesByExecution.mockResolvedValue({
         success: false,
         error: 'Failed to load images'
       });
@@ -573,7 +593,7 @@ describe('SingleJobView', () => {
     });
 
     it('handles API exception', async () => {
-      mockElectronAPI.getJobExecution.mockRejectedValue(new Error('Network error'));
+      mockElectronAPI.jobManagement.getJobExecution.mockRejectedValue(new Error('Network error'));
       
       render(<SingleJobView {...defaultProps} />);
       
@@ -609,7 +629,7 @@ describe('SingleJobView', () => {
 
     it('handles different job statuses correctly', async () => {
       const failedJob = { ...mockJob, status: 'failed' };
-      mockElectronAPI.getJobExecution.mockResolvedValue({
+      mockElectronAPI.jobManagement.getJobExecution.mockResolvedValue({
         success: true,
         execution: failedJob
       });
@@ -617,38 +637,39 @@ describe('SingleJobView', () => {
       render(<SingleJobView {...defaultProps} />);
       
       await waitFor(() => {
-        const statusBadge = screen.getByText('failed');
-        expect(statusBadge).toHaveClass('text-red-600', 'bg-red-100');
+        const statusBadge = screen.getByText('Failed');
+        expect(statusBadge).toHaveClass('status-failed');
       });
     });
 
     it('handles processing job status', async () => {
       const processingJob = { ...mockJob, status: 'processing' };
-      mockElectronAPI.getJobExecution.mockResolvedValue({
+      mockElectronAPI.jobManagement.getJobExecution.mockResolvedValue({
         success: true,
-        execution: processingJob
+        job: processingJob
       });
       
       render(<SingleJobView {...defaultProps} />);
       
       await waitFor(() => {
-        const statusBadge = screen.getByText('processing');
-        expect(statusBadge).toHaveClass('text-blue-600', 'bg-blue-100');
+        const statusBadge = screen.getByText('Processing');
+        expect(statusBadge).toHaveClass('status-processing');
       });
     });
 
     it('handles pending job status', async () => {
       const pendingJob = { ...mockJob, status: 'pending' };
-      mockElectronAPI.getJobExecution.mockResolvedValue({
+      mockElectronAPI.jobManagement.getJobExecution.mockResolvedValue({
         success: true,
-        execution: pendingJob
+        job: pendingJob
       });
       
       render(<SingleJobView {...defaultProps} />);
       
       await waitFor(() => {
-        const statusBadge = screen.getByText('pending');
-        expect(statusBadge).toHaveClass('text-yellow-600', 'bg-yellow-100');
+        const statusBadge = screen.getByRole('main').querySelector('.status-badge');
+        expect(statusBadge).toHaveTextContent('Pending');
+        expect(statusBadge).toHaveClass('status-pending');
       });
     });
   });
