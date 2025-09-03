@@ -1,11 +1,3 @@
-/**
- * Authoritative GeneratedImage interface
- * 
- * This interface represents the actual structure returned by the database
- * and used throughout the application. It consolidates all previous
- * duplicate definitions.
- */
-
 export interface GeneratedImage {
   // Database fields (as returned by SQLite)
   id: number;
@@ -20,8 +12,8 @@ export interface GeneratedImage {
   
   // JSON fields (parsed from database)
   metadata?: {
-    title?: string | { en?: string; [key: string]: string };
-    description?: string | { en?: string; [key: string]: string };
+    title?: string | { en?: string; [key: string]: string | undefined };
+    description?: string | { en?: string; [key: string]: string | undefined };
     tags?: string[];
     prompt?: string;
     [key: string]: any;
@@ -47,19 +39,7 @@ export interface GeneratedImage {
   updatedAt?: Date;
 }
 
-/**
- * Helper type for frontend components that need string IDs
- * (for React keys, etc.)
- */
 export interface GeneratedImageWithStringId extends Omit<GeneratedImage, 'id' | 'executionId'> {
   id: string;
   executionId: string;
-}
-
-/**
- * Helper type for database operations
- */
-export interface GeneratedImageForDatabase extends Omit<GeneratedImage, 'metadata' | 'processingSettings'> {
-  metadata?: string; // JSON string in database
-  processingSettings?: string; // JSON string in database
 }

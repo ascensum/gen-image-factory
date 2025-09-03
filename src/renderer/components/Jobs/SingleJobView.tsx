@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { JobExecution } from '../../../types/job';
-import { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
+import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import ExportDialog from '../Common/ExportDialog';
 import './SingleJobView.css';
 

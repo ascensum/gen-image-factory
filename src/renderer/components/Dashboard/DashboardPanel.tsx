@@ -148,9 +148,8 @@ export interface LogEntry {
   failedImages?: number;
 }
 
-// Import and re-export the authoritative interface for backward compatibility
-import { GeneratedImageWithStringId } from '../../../types/generatedImage';
-export { GeneratedImageWithStringId as GeneratedImage };
+// Import types only to avoid runtime loading of .d.ts
+import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 
 interface DashboardPanelProps {
   onBack?: () => void;
@@ -187,7 +186,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   // NEW: Tab state management
   const [activeTab, setActiveTab] = useState<'overview' | 'image-gallery'>('overview');
   
-that  // Image Gallery view mode
+  // Image Gallery view mode
   const [imageViewMode, setImageViewMode] = useState<'grid' | 'list'>('grid');
   
   // Image Gallery filters and controls
