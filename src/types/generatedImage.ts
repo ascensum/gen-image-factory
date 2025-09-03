@@ -51,10 +51,10 @@ export interface GeneratedImage {
  * Helper type for frontend components that need string IDs
  * (for React keys, etc.)
  */
-export interface GeneratedImageWithStringId extends Omit<GeneratedImage, 'id' | 'executionId'> {
+export type GeneratedImageWithStringId = Omit<GeneratedImage, 'id' | 'executionId'> & {
   id: string;
   executionId: string;
-}
+};
 
 /**
  * Helper type for database operations
