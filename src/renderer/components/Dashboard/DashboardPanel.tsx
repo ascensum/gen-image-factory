@@ -149,7 +149,7 @@ export interface LogEntry {
 }
 
 // Import and re-export the authoritative interface for backward compatibility
-import { GeneratedImageWithStringId } from '../../../types/generatedImage.js';
+import { GeneratedImageWithStringId } from '../../../types/generatedImage';
 export { GeneratedImageWithStringId as GeneratedImage };
 
 interface DashboardPanelProps {
