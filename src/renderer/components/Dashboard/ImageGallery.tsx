@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { GeneratedImage } from './DashboardPanel';
+import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import ImageModal from './ImageModal';
 
 // Excel export configuration
@@ -42,6 +42,7 @@ interface ImageGalleryProps {
   jobFilter?: string;
   searchQuery?: string;
   sortBy?: 'newest' | 'oldest' | 'name';
+  jobIdToLabel?: Record<string, string>;
 }
 
 const ImageGallery: React.FC<ImageGalleryProps> = ({
@@ -54,7 +55,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   onViewModeChange,
   jobFilter = 'all',
   searchQuery = '',
-  sortBy = 'newest'
+  sortBy = 'newest',
+  jobIdToLabel = {}
 }) => {
   // Safety check for images prop
   if (!images || !Array.isArray(images)) {
@@ -70,6 +72,19 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   const [showImageModal, setShowImageModal] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  // Safely parse metadata which may be stored as a JSON string
+  const parseMetadata = (raw: any): any => {
+    if (!raw) return {};
+    if (typeof raw === 'string') {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return {};
+      }
+    }
+    return raw;
+  };
 
   // Clear selection when job filter changes
   React.useEffect(() => {
@@ -92,11 +107,13 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         return false;
       }
       
-      // Search filter - search in generation prompt and metadata prompt
+      // Search filter - search in generation prompt and metadata prompt (supports stringified metadata)
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const matchesPrompt = image.generationPrompt.toLowerCase().includes(query);
-        const matchesMetadataPrompt = image.metadata?.prompt?.toLowerCase().includes(query);
+        const meta = parseMetadata(image.metadata);
+        const metaPrompt = typeof meta?.prompt === 'string' ? meta.prompt.toLowerCase() : '';
+        const matchesMetadataPrompt = metaPrompt.includes(query);
         if (!matchesPrompt && !matchesMetadataPrompt) {
           return false;
         }
@@ -109,9 +126,9 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     const sorted = [...filtered].sort((a, b) => {
       switch (sortBy) {
         case 'newest':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return (b.createdAt ? new Date(b.createdAt as any).getTime() : 0) - (a.createdAt ? new Date(a.createdAt as any).getTime() : 0);
         case 'oldest':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          return (a.createdAt ? new Date(a.createdAt as any).getTime() : 0) - (b.createdAt ? new Date(b.createdAt as any).getTime() : 0);
         case 'name':
           return a.generationPrompt.localeCompare(b.generationPrompt);
         default:
@@ -368,21 +385,25 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 
                   {/* Enhanced Image Info */}
                   <div className="p-3 space-y-2">
-                    {/* AI-Generated Title (Primary) */}
-                    {(image.metadata?.title?.en || image.metadata?.title) ? (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-900 truncate" title={image.metadata?.title?.en || image.metadata?.title}>
-                          {image.metadata?.title?.en || image.metadata?.title}
-                        </h4>
-                        <div className="text-xs text-gray-500 truncate mt-1" title={image.generationPrompt}>
-                          {image.generationPrompt}
+                    {(() => {
+                      const meta = parseMetadata(image.metadata);
+                      const titleVal = (meta?.title && typeof meta.title === 'object' ? meta.title.en : meta?.title) || '';
+                      const displayTitle = (typeof titleVal === 'string' && titleVal.trim()) ? titleVal : (image.generationPrompt || 'Untitled');
+                      const jobLabel = (jobIdToLabel && jobIdToLabel[String(image.executionId)]) || `Job ${String(image.executionId)}`;
+                      return (
+                        <div>
+                          <div className="text-sm font-medium text-gray-900 line-clamp-2" title={displayTitle}>
+                            {displayTitle}
+                          </div>
+                          <div className="text-xs text-gray-500 truncate mt-1" title={jobLabel}>
+                            {jobLabel}
+                          </div>
+                          <div className="text-[11px] text-gray-400 mt-1" title={image.createdAt ? formatDate(image.createdAt as any) : ''}>
+                            {image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : ''}
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-gray-600 truncate" title={image.generationPrompt}>
-                        {image.generationPrompt}
-                      </div>
-                    )}
+                      );
+                    })()}
 
 
 
@@ -489,7 +510,11 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                           <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
                             <img
                               src={image.finalImagePath ? `local-file://${image.finalImagePath}` : ''}
-                              alt={image.metadata?.title?.en || image.metadata?.title || 'Generated Image'}
+                              alt={() => {
+                                const meta = parseMetadata(image.metadata);
+                                const t = (meta?.title && typeof meta.title === 'object' ? meta.title.en : meta?.title) || 'Generated Image';
+                                return typeof t === 'string' ? t : 'Generated Image';
+                              }}
                               className="w-full h-full object-cover cursor-pointer"
                               onClick={() => setShowImageModal(image.id)}
                               onError={(e) => {
@@ -500,20 +525,33 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                           </div>
                         </div>
                         
-                        {/* Title */}
+                        {/* Title (prefer metadata.title (object or string), fallback to prompt) */}
                         <div className="col-span-2 flex items-center">
                           <div className="truncate">
-                            <div className="text-sm font-medium text-gray-900 truncate" title={image.metadata?.title?.en || image.metadata?.title || 'Untitled'}>
-                              {image.metadata?.title?.en || image.metadata?.title || 'Untitled'}
-                            </div>
+                            {(() => {
+                              const meta = parseMetadata(image.metadata);
+                              const title = (meta?.title && typeof meta.title === 'object' ? meta.title.en : meta?.title) || '';
+                              const safeTitle = typeof title === 'string' && title.trim() ? title : '';
+                              const displayTitle = safeTitle || image.generationPrompt || 'Untitled';
+                              return (
+                                <div className="text-sm font-medium text-gray-900 truncate" title={displayTitle}>
+                                  {displayTitle}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                         
-                        {/* Prompt */}
+                        {/* Job */}
                         <div className="col-span-3 flex items-center">
-                          <div className="text-sm text-gray-600 truncate" title={image.generationPrompt}>
-                            {image.generationPrompt}
-                          </div>
+                          {(() => {
+                            const jobLabel = (jobIdToLabel && jobIdToLabel[String(image.executionId)]) || `Job ${String(image.executionId)}`;
+                            return (
+                              <div className="text-sm text-gray-700 truncate" title={jobLabel}>
+                                {jobLabel}
+                              </div>
+                            );
+                          })()}
                         </div>
                         
                         {/* Seed */}
@@ -525,8 +563,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                         
                         {/* Date */}
                         <div className="col-span-1 flex items-center">
-                          <div className="text-sm text-gray-500" title={formatDate(image.createdAt)}>
-                            {new Date(image.createdAt).toLocaleDateString()}
+                          <div className="text-sm text-gray-500" title={image.createdAt ? formatDate(image.createdAt as any) : ''}>
+                            {image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : ''}
                           </div>
                         </div>
                         

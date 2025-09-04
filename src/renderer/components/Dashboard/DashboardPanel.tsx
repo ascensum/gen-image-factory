@@ -1052,8 +1052,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
             </div>
 
             {/* Image Grid/List - SCROLLABLE AREA */}
-            <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-6" style={{ maxHeight: '400px', overflowY: 'scroll' }}>
-                        <ImageGallery
+            <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-6" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              <ImageGallery
                 images={generatedImages}
                 onImageAction={handleImageAction}
                 onBulkAction={handleBulkAction}
@@ -1064,8 +1064,9 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                 jobFilter={imageJobFilter}
                 searchQuery={imageSearchQuery}
                 sortBy={imageSortBy}
+                jobIdToLabel={Object.fromEntries(jobHistory.map(j => [j.id, (j as any).label || j.configurationName || `Job ${j.id}`]))}
               />
-        </div>
+            </div>
           </div>
         )}
       </div>
