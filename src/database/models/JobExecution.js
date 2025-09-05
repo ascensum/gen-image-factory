@@ -509,27 +509,47 @@ class JobExecution {
 
   async calculateJobExecutionStatistics(executionId) {
     return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT 
-          COUNT(*) as totalImages,
-          SUM(CASE WHEN final_image_path IS NOT NULL AND final_image_path != '' THEN 1 ELSE 0 END) as successfulImages,
-          SUM(CASE WHEN final_image_path IS NULL OR final_image_path = '' THEN 1 ELSE 0 END) as failedImages
-        FROM generated_images 
-        WHERE execution_id = ?
-      `;
+      // First get the job execution to see expected total images
+      const jobSql = 'SELECT total_images FROM job_executions WHERE id = ?';
       
-      this.db.get(sql, [executionId], (err, row) => {
+      this.db.get(jobSql, [executionId], (err, jobRow) => {
         if (err) {
-          console.error('Error calculating job execution statistics:', err);
+          console.error('Error getting job execution:', err);
           reject(err);
-        } else {
-          const stats = {
-            totalImages: row.totalImages || 0,
-            successfulImages: row.successfulImages || 0,
-            failedImages: row.failedImages || 0
-          };
-          resolve({ success: true, statistics: stats });
+          return;
         }
+        
+        const expectedTotal = jobRow?.total_images || 0;
+        
+        // Then count actual images in database
+        const imagesSql = `
+          SELECT 
+            COUNT(*) as actualImages,
+            SUM(CASE WHEN final_image_path IS NOT NULL AND final_image_path != '' THEN 1 ELSE 0 END) as successfulImages
+          FROM generated_images 
+          WHERE execution_id = ?
+        `;
+        
+        this.db.get(imagesSql, [executionId], (err, imageRow) => {
+          if (err) {
+            console.error('Error calculating job execution statistics:', err);
+            reject(err);
+            return;
+          }
+          
+          const actualImages = imageRow?.actualImages || 0;
+          const successfulImages = imageRow?.successfulImages || 0;
+          const failedImages = expectedTotal - actualImages; // Images that failed generation (not in DB)
+          
+          const stats = {
+            totalImages: expectedTotal,
+            successfulImages: successfulImages,
+            failedImages: Math.max(0, failedImages) // Ensure non-negative
+          };
+          
+          console.log(`Job ${executionId} stats: expected=${expectedTotal}, actual=${actualImages}, successful=${successfulImages}, failed=${failedImages}`);
+          resolve({ success: true, statistics: stats });
+        });
       });
     });
   }
