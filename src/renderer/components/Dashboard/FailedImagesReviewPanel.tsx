@@ -356,12 +356,31 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         return false;
       }
       
-      // Search filter
+      // Search filter - search in generation prompt, metadata prompt, title, description, and tags
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
+        const meta = image.metadata || {};
+        
+        // Search in generation prompt
         const matchesPrompt = image.generationPrompt.toLowerCase().includes(query);
-        const matchesMetadataPrompt = image.metadata?.prompt?.toLowerCase().includes(query);
-        if (!matchesPrompt && !matchesMetadataPrompt) {
+        
+        // Search in metadata prompt
+        const metaPrompt = typeof meta?.prompt === 'string' ? meta.prompt.toLowerCase() : '';
+        const matchesMetadataPrompt = metaPrompt.includes(query);
+        
+        // Search in metadata title (supports both string and object with 'en' property)
+        const title = typeof meta?.title === 'string' ? meta.title : meta?.title?.en || '';
+        const matchesTitle = title.toLowerCase().includes(query);
+        
+        // Search in metadata description (supports both string and object with 'en' property)
+        const description = typeof meta?.description === 'string' ? meta.description : meta?.description?.en || '';
+        const matchesDescription = description.toLowerCase().includes(query);
+        
+        // Search in metadata tags (array of strings)
+        const tags = Array.isArray(meta?.tags) ? meta.tags.join(' ').toLowerCase() : '';
+        const matchesTags = tags.includes(query);
+        
+        if (!matchesPrompt && !matchesMetadataPrompt && !matchesTitle && !matchesDescription && !matchesTags) {
           return false;
         }
       }
