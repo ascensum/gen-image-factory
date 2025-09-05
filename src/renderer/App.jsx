@@ -84,9 +84,22 @@ function App() {
             console.log(`🚨 APP: Rerun job ${jobId} - calling backend rerun function`);
             window.electronAPI.jobManagement.rerunJobExecution(jobId);
           }}
-          onDelete={(jobId) => {
-            console.log(`Delete job ${jobId}`);
-            // TODO: Implement delete functionality
+          onDelete={async (jobId) => {
+            try {
+              console.log(`Deleting job ${jobId}`);
+              const result = await window.electronAPI.jobManagement.deleteJobExecution(jobId);
+              if (result.success) {
+                console.log(`Job ${jobId} deleted successfully`);
+                // Redirect back to Job Management after successful deletion
+                setCurrentView('job-management');
+              } else {
+                console.error(`Failed to delete job ${jobId}:`, result.error);
+                // TODO: Show error message to user
+              }
+            } catch (error) {
+              console.error(`Error deleting job ${jobId}:`, error);
+              // TODO: Show error message to user
+            }
           }}
         />
       ) : (

@@ -757,7 +757,21 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                         </svg>
                       </button>
                       <button 
-                        onClick={() => window.electronAPI.jobManagement.deleteJobExecution(job.id)}
+                        onClick={async () => {
+                          try {
+                            const result = await window.electronAPI.jobManagement.deleteJobExecution(job.id);
+                            if (result.success) {
+                              // Refresh the job list immediately after successful deletion
+                              await loadJobs();
+                            } else {
+                              console.error('Failed to delete job:', result.error);
+                              // TODO: Show error message to user
+                            }
+                          } catch (error) {
+                            console.error('Error deleting job:', error);
+                            // TODO: Show error message to user
+                          }
+                        }}
                         className="p-1 hover:bg-[--secondary] rounded transition-colors"
                         title="Delete Job"
                       >
