@@ -70,6 +70,26 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
         } else {
           setEditedLabel(jobLabel);
         }
+
+        // Calculate and update statistics from actual images
+        if (jobResult.execution.id) {
+          console.log('🔄 SingleJobView: Calculating statistics for execution ID:', jobResult.execution.id);
+          try {
+            const statsResult = await window.electronAPI.calculateJobExecutionStatistics(jobResult.execution.id);
+            if (statsResult.success) {
+              console.log('🔄 SingleJobView: Calculated statistics:', statsResult.statistics);
+              // Update the job with calculated statistics
+              setJob(prevJob => ({
+                ...prevJob,
+                totalImages: statsResult.statistics.totalImages,
+                successfulImages: statsResult.statistics.successfulImages,
+                failedImages: statsResult.statistics.failedImages
+              }));
+            }
+          } catch (statsError) {
+            console.warn('Failed to calculate statistics:', statsError);
+          }
+        }
       } else {
         setError(jobResult.error || 'Failed to load job details');
       }

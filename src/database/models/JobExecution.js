@@ -507,6 +507,72 @@ class JobExecution {
     });
   }
 
+  async calculateJobExecutionStatistics(executionId) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT 
+          COUNT(*) as totalImages,
+          SUM(CASE WHEN qc_status = 'approved' THEN 1 ELSE 0 END) as successfulImages,
+          SUM(CASE WHEN qc_status = 'rejected' OR qc_status = 'qc_failed' THEN 1 ELSE 0 END) as failedImages
+        FROM generated_images 
+        WHERE execution_id = ?
+      `;
+      
+      this.db.get(sql, [executionId], (err, row) => {
+        if (err) {
+          console.error('Error calculating job execution statistics:', err);
+          reject(err);
+        } else {
+          const stats = {
+            totalImages: row.totalImages || 0,
+            successfulImages: row.successfulImages || 0,
+            failedImages: row.failedImages || 0
+          };
+          resolve({ success: true, statistics: stats });
+        }
+      });
+    });
+  }
+
+  async updateJobExecutionStatistics(executionId) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        // Calculate statistics from actual images
+        const statsResult = await this.calculateJobExecutionStatistics(executionId);
+        if (!statsResult.success) {
+          reject(new Error('Failed to calculate statistics'));
+          return;
+        }
+
+        const { totalImages, successfulImages, failedImages } = statsResult.statistics;
+
+        // Update the job execution with calculated statistics
+        const updateSql = `
+          UPDATE job_executions 
+          SET total_images = ?, successful_images = ?, failed_images = ?
+          WHERE id = ?
+        `;
+
+        this.db.run(updateSql, [totalImages, successfulImages, failedImages, executionId], function(err) {
+          if (err) {
+            console.error('Error updating job execution statistics:', err);
+            reject(err);
+          } else {
+            console.log(`Job execution statistics updated for ID ${executionId}: ${successfulImages} successful, ${failedImages} failed out of ${totalImages} total`);
+            resolve({ 
+              success: true, 
+              changes: this.changes,
+              statistics: { totalImages, successfulImages, failedImages }
+            });
+          }
+        });
+      } catch (error) {
+        console.error('Error in updateJobExecutionStatistics:', error);
+        reject(error);
+      }
+    });
+  }
+
   async getJobExecutionsWithFilters(filters = {}, page = 1, pageSize = 25) {
     return new Promise((resolve, reject) => {
       let sql = `

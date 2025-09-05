@@ -44,6 +44,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getJobHistory: (limit) => ipcRenderer.invoke('job-execution:history', limit),
   getJobStatistics: () => ipcRenderer.invoke('job-execution:statistics'),
   exportJobToExcel: (jobId) => ipcRenderer.invoke('job-execution:export-to-excel', { jobId }),
+  calculateJobExecutionStatistics: (executionId) => ipcRenderer.invoke('job-execution:calculate-statistics', executionId),
+  updateJobExecutionStatistics: (executionId) => ipcRenderer.invoke('job-execution:update-statistics', executionId),
   
   // Job Management
   jobManagement: {
@@ -154,6 +156,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'job-execution:bulk-export',
       'job-execution:bulk-rerun',
       'job-execution:process-next-bulk-rerun',
+      'job-execution:history',
+      'job-execution:calculate-statistics',
+      'job-execution:update-statistics',
       'job-execution:rerun',
       'job-execution:export',
       'job-execution:delete',

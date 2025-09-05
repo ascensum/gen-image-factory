@@ -249,6 +249,7 @@ class BackendAdapter {
         'failed-image:retry-original', 'failed-image:retry-modified', 'failed-image:retry-batch',
         'get-job-history', 'get-job-results', 'delete-job-execution', 'export-job-to-excel',
         'job-execution:rename', 'job-execution:bulk-delete', 'job-execution:bulk-export', 'job-execution:bulk-rerun',
+        'job-execution:calculate-statistics', 'job-execution:update-statistics',
         'get-job-executions-with-filters', 'get-job-executions-count'
       ];
       
@@ -384,6 +385,14 @@ class BackendAdapter {
 
       _ipc.handle('job-execution:history', async (event, limit) => {
         return await this.getJobHistory(limit);
+      });
+
+      _ipc.handle('job-execution:calculate-statistics', async (event, executionId) => {
+        return await this.calculateJobExecutionStatistics(executionId);
+      });
+
+      _ipc.handle('job-execution:update-statistics', async (event, executionId) => {
+        return await this.updateJobExecutionStatistics(executionId);
       });
 
       // Generated Image Management
@@ -1196,6 +1205,28 @@ class BackendAdapter {
         totalImagesGenerated: 0,
         successRate: 0
       };
+    }
+  }
+
+  async calculateJobExecutionStatistics(executionId) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.jobExecution.calculateJobExecutionStatistics(executionId);
+      return result;
+    } catch (error) {
+      console.error('Error calculating job execution statistics:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateJobExecutionStatistics(executionId) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.jobExecution.updateJobExecutionStatistics(executionId);
+      return result;
+    } catch (error) {
+      console.error('Error updating job execution statistics:', error);
+      return { success: false, error: error.message };
     }
   }
 
