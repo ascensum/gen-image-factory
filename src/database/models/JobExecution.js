@@ -512,8 +512,8 @@ class JobExecution {
       const sql = `
         SELECT 
           COUNT(*) as totalImages,
-          SUM(CASE WHEN qc_status = 'approved' THEN 1 ELSE 0 END) as successfulImages,
-          SUM(CASE WHEN qc_status = 'rejected' OR qc_status = 'qc_failed' THEN 1 ELSE 0 END) as failedImages
+          SUM(CASE WHEN final_image_path IS NOT NULL AND final_image_path != '' THEN 1 ELSE 0 END) as successfulImages,
+          SUM(CASE WHEN final_image_path IS NULL OR final_image_path = '' THEN 1 ELSE 0 END) as failedImages
         FROM generated_images 
         WHERE execution_id = ?
       `;
