@@ -370,6 +370,48 @@
   color: var(--status-failed);
 }
 
+/* Stats Breakdown */
+.stats-breakdown {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  padding: 0.25rem 0;
+}
+
+.breakdown-label {
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+.breakdown-value {
+  font-weight: 600;
+}
+
+.breakdown-item.approved .breakdown-value {
+  color: var(--status-completed);
+}
+
+.breakdown-item.qc-failed .breakdown-value {
+  color: var(--status-pending);
+}
+
+.stats-note {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
 /* Settings Section */
 .settings-section {
   margin-top: 2rem;

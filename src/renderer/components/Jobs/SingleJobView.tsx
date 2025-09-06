@@ -614,10 +614,23 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
               <div className="stats-card">
                 <div className="stats-label">Successful</div>
                 <div className="stats-value success">{job.successfulImages || 0}</div>
+                {(job.successfulImages || 0) > 0 && (
+                  <div className="stats-breakdown">
+                    <div className="breakdown-item approved">
+                      <span className="breakdown-label">Approved:</span>
+                      <span className="breakdown-value">{(job as any).approvedImages || 0}</span>
+                    </div>
+                    <div className="breakdown-item qc-failed">
+                      <span className="breakdown-label">QC Failed:</span>
+                      <span className="breakdown-value">{(job as any).qcFailedImages || 0}</span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="stats-card">
                 <div className="stats-label">Failed</div>
                 <div className="stats-value failed">{job.failedImages || 0}</div>
+                <div className="stats-note">Generation failed</div>
               </div>
             </div>
 

@@ -521,11 +521,12 @@ class JobExecution {
         
         const expectedTotal = jobRow?.total_images || 0;
         
-        // Then count actual images in database
+        // Then count actual images in database and their QC status
         const imagesSql = `
           SELECT 
             COUNT(*) as actualImages,
-            SUM(CASE WHEN final_image_path IS NOT NULL AND final_image_path != '' THEN 1 ELSE 0 END) as successfulImages
+            SUM(CASE WHEN qc_status = 'approved' THEN 1 ELSE 0 END) as approvedImages,
+            SUM(CASE WHEN qc_status = 'qc_failed' THEN 1 ELSE 0 END) as qcFailedImages
           FROM generated_images 
           WHERE execution_id = ?
         `;
@@ -538,16 +539,19 @@ class JobExecution {
           }
           
           const actualImages = imageRow?.actualImages || 0;
-          const successfulImages = imageRow?.successfulImages || 0;
+          const approvedImages = imageRow?.approvedImages || 0;
+          const qcFailedImages = imageRow?.qcFailedImages || 0;
           const failedImages = expectedTotal - actualImages; // Images that failed generation (not in DB)
           
           const stats = {
             totalImages: expectedTotal,
-            successfulImages: successfulImages,
-            failedImages: Math.max(0, failedImages) // Ensure non-negative
+            successfulImages: actualImages, // All images in DB are successfully generated
+            failedImages: Math.max(0, failedImages), // Images that failed generation
+            approvedImages: approvedImages,
+            qcFailedImages: qcFailedImages
           };
           
-          console.log(`Job ${executionId} stats: expected=${expectedTotal}, actual=${actualImages}, successful=${successfulImages}, failed=${failedImages}`);
+          console.log(`Job ${executionId} stats: expected=${expectedTotal}, actual=${actualImages}, approved=${approvedImages}, qcFailed=${qcFailedImages}, failed=${failedImages}`);
           resolve({ success: true, statistics: stats });
         });
       });
