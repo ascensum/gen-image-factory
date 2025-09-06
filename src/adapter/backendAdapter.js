@@ -244,7 +244,7 @@ class BackendAdapter {
         'job-execution:delete', 'job-execution:statistics', 'job-execution:export-to-excel',
         'job-execution:history', 'generated-image:save', 'generated-image:get',
         'generated-image:get-by-execution', 'generated-image:get-all', 'generated-image:update',
-        'generated-image:delete', 'generated-image:get-by-qc-status', 'generated-image:update-qc-status', 'generated-image:approve-directly', 'generated-image:update-qc-status-by-mapping',
+        'generated-image:delete', 'generated-image:get-by-qc-status', 'generated-image:update-qc-status', 'generated-image:update-qc-status-by-mapping',
         'generated-image:metadata', 'generated-image:statistics', 'generated-image:manual-approve',
         'failed-image:retry-original', 'failed-image:retry-modified', 'failed-image:retry-batch',
         'get-job-history', 'get-job-results', 'delete-job-execution', 'export-job-to-excel',
@@ -437,10 +437,6 @@ class BackendAdapter {
 
       _ipc.handle('generated-image:update-qc-status', async (event, { imageId, status }) => {
         return await this.updateQCStatus(imageId, status);
-      });
-
-      _ipc.handle('generated-image:approve-directly', async (event, { imageId, reason }) => {
-        return await this.approveImageDirectly(imageId, reason);
       });
 
       _ipc.handle('generated-image:update-qc-status-by-mapping', async (event, { mappingId, status, reason }) => {
@@ -1538,17 +1534,6 @@ class BackendAdapter {
       return result;
     } catch (error) {
       console.error('Error updating QC status:', error);
-      return { success: false, error: error.message };
-    }
-  }
-
-  async approveImageDirectly(id, qcReason = 'Manually approved by user') {
-    try {
-      await this.ensureInitialized();
-      const result = await this.generatedImage.approveImageDirectly(id, qcReason);
-      return result;
-    } catch (error) {
-      console.error('Error approving image directly:', error);
       return { success: false, error: error.message };
     }
   }

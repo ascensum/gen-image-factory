@@ -556,51 +556,6 @@ class GeneratedImage {
     });
   }
 
-  async approveImageDirectly(id, qcReason = 'Manually approved by user') {
-    return new Promise((resolve, reject) => {
-      // First, get the current image data to check the path
-      const selectSql = 'SELECT final_image_path, temp_image_path FROM generated_images WHERE id = ?';
-      
-      this.db.get(selectSql, [id], (err, row) => {
-        if (err) {
-          console.error('Error getting image data:', err);
-          reject(err);
-          return;
-        }
-        
-        if (!row) {
-          reject(new Error('Image not found'));
-          return;
-        }
-        
-        // Use temp_image_path if available, otherwise use final_image_path
-        const imagePath = row.temp_image_path || row.final_image_path;
-        
-        if (!imagePath) {
-          reject(new Error('No image path found for this image'));
-          return;
-        }
-        
-        // Update QC status and ensure final_image_path is set correctly
-        const updateSql = `
-          UPDATE generated_images 
-          SET qc_status = 'approved', qc_reason = ?, final_image_path = ?
-          WHERE id = ?
-        `;
-        
-        this.db.run(updateSql, [qcReason, imagePath, id], function(err) {
-          if (err) {
-            console.error('Error approving image:', err);
-            reject(err);
-          } else {
-            console.log('Image approved successfully with path:', imagePath);
-            resolve({ success: true, changes: this.changes, imagePath });
-          }
-        });
-      });
-    });
-  }
-
   async updateQCStatusByMappingId(mappingId, qcStatus, qcReason = null) {
     return new Promise((resolve, reject) => {
       const sql = 'UPDATE generated_images SET qc_status = ?, qc_reason = ? WHERE image_mapping_id = ?';
