@@ -65,7 +65,7 @@ class RetryExecutor extends EventEmitter {
       console.log(`  - includeMetadata: ${includeMetadata}`);
       
       // Validate inputs
-      if (!Array.isArray(imageIds) || imageIds.length === 0) {
+    if (!Array.isArray(imageIds) || imageIds.length === 0) {
         throw new Error('No image IDs provided for batch retry');
       }
 
@@ -73,9 +73,9 @@ class RetryExecutor extends EventEmitter {
       const retryJobs = imageIds.map(imageId => ({
         id: `retry_${imageId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         imageId,
-        useOriginalSettings,
-        modifiedSettings,
-        includeMetadata,
+      useOriginalSettings,
+      modifiedSettings,
+      includeMetadata,
         status: 'pending',
         createdAt: new Date()
       }));
@@ -84,9 +84,9 @@ class RetryExecutor extends EventEmitter {
 
       // Add all jobs to the queue
       this.queue.push(...retryJobs);
-      
-      // Emit queue update event
-      this.emit('queue-updated', {
+    
+    // Emit queue update event
+    this.emit('queue-updated', {
         queueLength: this.queue.length,
         addedJobs: retryJobs.length,
         timestamp: new Date(),
@@ -96,10 +96,10 @@ class RetryExecutor extends EventEmitter {
       console.log(`🔧 RetryExecutor: Added ${retryJobs.length} jobs to queue. Queue length: ${this.queue.length}`);
 
       // Start processing if not already running
-      if (!this.isProcessing) {
+    if (!this.isProcessing) {
         console.log(`🔧 RetryExecutor: Starting processing queue`);
-        this.processQueue();
-      }
+      this.processQueue();
+    }
 
       return {
         success: true,
@@ -383,15 +383,21 @@ class RetryExecutor extends EventEmitter {
       } catch (error) {
         throw new Error(`Source file not accessible: ${sourcePath}`);
       }
-      
+
       // Get processing settings and job configuration
       let processingSettings;
       let jobConfiguration = null;
       
-      // ALWAYS get the original job configuration for path resolution
-      // Both original and modified settings should use the same file paths
-      jobConfiguration = await this.getOriginalJobConfiguration(image);
-      console.log(`🔧 RetryExecutor: Retrieved original job configuration for image ${imageId}`);
+      try {
+        // ALWAYS get the original job configuration for path resolution
+        // Both original and modified settings should use the same file paths
+        jobConfiguration = await this.getOriginalJobConfiguration(image);
+        console.log(`🔧 RetryExecutor: Retrieved job configuration for image ${imageId}`);
+      } catch (error) {
+        console.error(`🔧 RetryExecutor: Error getting job configuration for image ${imageId}:`, error);
+        // Use fallback configuration
+        jobConfiguration = this.getFallbackConfiguration();
+      }
       
       if (useOriginalSettings) {
         // Parse original processing settings from database
@@ -402,10 +408,10 @@ class RetryExecutor extends EventEmitter {
         processingSettings = modifiedSettings;
         console.log(`🔧 RetryExecutor: Using modified settings keys:`, Object.keys(processingSettings));
       }
-      
+
       // Update image status to processing
       await this.updateImageStatus(imageId, 'processing');
-      
+
       // Run post-processing with correct paths
       const processingResult = await this.runPostProcessing(sourcePath, processingSettings, includeMetadata, jobConfiguration);
       
@@ -443,31 +449,36 @@ class RetryExecutor extends EventEmitter {
    */
   async getOriginalJobConfiguration(image) {
     try {
+      console.log(`🔧 RetryExecutor: Getting original job configuration for image ${image.id}, executionId: ${image.executionId}`);
+      
       // Get the job execution to find the configuration ID
       const JobExecution = require('../database/models/JobExecution');
       const jobExecution = new JobExecution();
       
       const executionResult = await jobExecution.getJobExecution(image.executionId);
       if (!executionResult.success) {
-        throw new Error(`Failed to get job execution for image ${image.id}`);
+        console.warn(`🔧 RetryExecutor: Failed to get job execution for image ${image.id}, using fallback`);
+        return this.getFallbackConfiguration();
       }
       
       const execution = executionResult.execution;
       if (!execution.configurationId) {
-        throw new Error(`No configuration ID found for execution ${image.executionId}`);
+        console.warn(`🔧 RetryExecutor: No configuration ID found for execution ${image.executionId}, using fallback`);
+        return this.getFallbackConfiguration();
       }
       
       // Get the original job configuration
       const configResult = await this.jobConfig.getConfigurationById(execution.configurationId);
       if (!configResult.success) {
-        throw new Error(`Failed to get job configuration ${execution.configurationId}`);
+        console.warn(`🔧 RetryExecutor: Failed to get job configuration ${execution.configurationId}, using fallback`);
+        return this.getFallbackConfiguration();
       }
       
       const originalConfig = configResult.configuration;
       console.log(`🔧 RetryExecutor: Retrieved original job configuration for image ${image.id}`);
       
       // Apply cross-platform path logic if original job didn't have custom paths
-      const settings = originalConfig.settings;
+      const settings = originalConfig.settings || {};
       const filePaths = settings.filePaths || {};
       
       // Check if original job had custom paths set (not empty strings)
@@ -502,17 +513,21 @@ class RetryExecutor extends EventEmitter {
       };
       
     } catch (error) {
-      console.error(`🔧 RetryExecutor: Error getting original job configuration for image:`, error);
-      // Return current cross-platform defaults as fallback
-      const defaultSettings = this.jobConfig.getDefaultSettings();
-      return {
-        id: 'fallback',
-        name: 'Fallback Configuration',
-        settings: defaultSettings,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+      console.error(`🔧 RetryExecutor: Error getting original job configuration for image ${image.id}:`, error);
+      return this.getFallbackConfiguration();
     }
+  }
+
+  getFallbackConfiguration() {
+    console.log(`🔧 RetryExecutor: Using fallback configuration with cross-platform paths`);
+    const defaultSettings = this.jobConfig.getDefaultSettings();
+    return {
+      id: 'fallback',
+      name: 'Fallback Configuration',
+      settings: defaultSettings,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
   }
 
   /**
@@ -557,19 +572,19 @@ class RetryExecutor extends EventEmitter {
     } catch (error) {
       console.error(`🔧 RetryExecutor: Error getting original processing settings for image:`, error);
       // Return safe defaults if we can't get original settings
-      return {
-        imageEnhancement: false,
+    return {
+      imageEnhancement: false,
         sharpening: 0,
         saturation: 1.0,
-        imageConvert: false,
+      imageConvert: false,
         convertToJpg: false,
         jpgQuality: 100,
         pngQuality: 100,
-        removeBg: false,
-        removeBgSize: 'auto',
-        trimTransparentBackground: false,
+      removeBg: false,
+      removeBgSize: 'auto',
+      trimTransparentBackground: false,
         jpgBackground: 'white'
-      };
+    };
     }
   }
 
