@@ -280,25 +280,27 @@ class JobConfiguration {
   }
 
   getDefaultSettings() {
-    // Get user-accessible paths for Electron app
+    // Get default paths for when user hasn't set custom paths
     let outputDir, tempDir;
     
     try {
       // In Electron context, use user-accessible directories
       const { app } = require('electron');
       
-      // Use Desktop folder for user-accessible paths (like the original working setup)
+      // Use Desktop folder for default paths
       const desktopPath = app.getPath('desktop');
-      outputDir = path.join(desktopPath, 'Gen_Image_Factory_ToUpload');
-      tempDir = path.join(desktopPath, 'Gen_Image_Factory_Generated');
+      outputDir = path.join(desktopPath, 'pictures', 'toupload');
+      tempDir = path.join(desktopPath, 'pictures', 'generated');
       
       console.log(`📁 Using Electron Desktop path: ${desktopPath}`);
     } catch (error) {
       // Fallback for non-Electron context (e.g., testing)
       const os = require('os');
       const homeDir = os.homedir();
-      outputDir = path.join(homeDir, 'Desktop', 'Gen_Image_Factory_ToUpload');
-      tempDir = path.join(homeDir, 'Desktop', 'Gen_Image_Factory_Generated');
+      
+      // Use Documents folder as fallback
+      outputDir = path.join(homeDir, 'Documents', 'pictures', 'to_upload');
+      tempDir = path.join(homeDir, 'Documents', 'pictures', 'generated');
       
       console.log(`📁 Using OS home directory fallback: ${homeDir}`);
     }
