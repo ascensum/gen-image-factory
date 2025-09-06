@@ -23,17 +23,18 @@ class RetryExecutor extends EventEmitter {
     this.queue = [];
     this.settings = options.settings || {};
     // Use cross-platform path logic (same as JobConfiguration.getDefaultSettings())
+    // These are DEFAULT paths - will be overridden by user settings if available
     let tempDir, outputDir;
     try {
       const { app } = require('electron');
-      const userDataPath = app.getPath('userData');
-      tempDir = path.join(userDataPath, 'pictures', 'generated');
-      outputDir = path.join(userDataPath, 'pictures', 'toupload');
+      const desktopPath = app.getPath('desktop');
+      tempDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'generated');
+      outputDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
     } catch (error) {
       const os = require('os');
       const homeDir = os.homedir();
-      tempDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'generated');
-      outputDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'toupload');
+      tempDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'generated');
+      outputDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
     }
     
     this.tempDirectory = options.tempDirectory || tempDir;
@@ -449,12 +450,6 @@ class RetryExecutor extends EventEmitter {
    */
   async getOriginalJobConfiguration(image) {
     try {
-      // Handle null or invalid image
-      if (!image || !image.id) {
-        console.warn(`🔧 RetryExecutor: Invalid image provided to getOriginalJobConfiguration`);
-        return this.getFallbackConfiguration();
-      }
-      
       console.log(`🔧 RetryExecutor: Getting original job configuration for image ${image.id}, executionId: ${image.executionId}`);
       
       // Get the job execution to find the configuration ID
@@ -487,9 +482,14 @@ class RetryExecutor extends EventEmitter {
       const settings = originalConfig.settings || {};
       const filePaths = settings.filePaths || {};
       
+      console.log(`🔧 RetryExecutor: DEBUG - Original config settings:`, JSON.stringify(settings, null, 2));
+      console.log(`🔧 RetryExecutor: DEBUG - Original filePaths:`, JSON.stringify(filePaths, null, 2));
+      
       // Check if original job had custom paths set (not empty strings)
       const hasCustomOutputDir = filePaths.outputDirectory && filePaths.outputDirectory.trim() !== '';
       const hasCustomTempDir = filePaths.tempDirectory && filePaths.tempDirectory.trim() !== '';
+      
+      console.log(`🔧 RetryExecutor: DEBUG - hasCustomOutputDir: ${hasCustomOutputDir}, hasCustomTempDir: ${hasCustomTempDir}`);
       
       // Get current cross-platform defaults
       const defaultSettings = this.jobConfig.getDefaultSettings();
@@ -519,7 +519,7 @@ class RetryExecutor extends EventEmitter {
       };
       
     } catch (error) {
-      console.error(`🔧 RetryExecutor: Error getting original job configuration for image ${image?.id || 'unknown'}:`, error);
+      console.error(`🔧 RetryExecutor: Error getting original job configuration for image ${image.id}:`, error);
       return this.getFallbackConfiguration();
     }
   }
@@ -664,12 +664,12 @@ class RetryExecutor extends EventEmitter {
       let tempProcessingDir;
       try {
         const { app } = require('electron');
-        const userDataPath = app.getPath('userData');
-        tempProcessingDir = path.join(userDataPath, 'pictures', 'temp_processing');
+        const desktopPath = app.getPath('desktop');
+        tempProcessingDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'temp_processing');
       } catch (error) {
         const os = require('os');
         const homeDir = os.homedir();
-        tempProcessingDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'temp_processing');
+        tempProcessingDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'temp_processing');
       }
       
       // Ensure temp directory exists
