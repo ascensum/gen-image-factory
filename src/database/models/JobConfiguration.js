@@ -289,8 +289,8 @@ class JobConfiguration {
       
       // Use Desktop folder for default paths
       const desktopPath = app.getPath('desktop');
-      outputDir = path.join(desktopPath, 'pictures', 'toupload');
-      tempDir = path.join(desktopPath, 'pictures', 'generated');
+      outputDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
+      tempDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'generated');
       
       console.log(`📁 Using Electron Desktop path: ${desktopPath}`);
     } catch (error) {
@@ -299,8 +299,8 @@ class JobConfiguration {
       const homeDir = os.homedir();
       
       // Use Documents folder as fallback
-      outputDir = path.join(homeDir, 'Documents', 'pictures', 'to_upload');
-      tempDir = path.join(homeDir, 'Documents', 'pictures', 'generated');
+      outputDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
+      tempDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'generated');
       
       console.log(`📁 Using OS home directory fallback: ${homeDir}`);
     }
