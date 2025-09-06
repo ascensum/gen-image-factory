@@ -542,62 +542,17 @@ class GeneratedImage {
 
   async updateQCStatus(id, qcStatus, qcReason = null) {
     return new Promise((resolve, reject) => {
-      // If approving an image, ensure the final_image_path is correct
-      if (qcStatus === 'approved') {
-        // First, get the current image data to check the path
-        const selectSql = 'SELECT final_image_path, temp_image_path FROM generated_images WHERE id = ?';
-        
-        this.db.get(selectSql, [id], (err, row) => {
-          if (err) {
-            console.error('Error getting image data:', err);
-            reject(err);
-            return;
-          }
-          
-          if (!row) {
-            reject(new Error('Image not found'));
-            return;
-          }
-          
-          // Use temp_image_path if available, otherwise use final_image_path
-          const imagePath = row.temp_image_path || row.final_image_path;
-          
-          if (!imagePath) {
-            reject(new Error('No image path found for this image'));
-            return;
-          }
-          
-          // Update QC status and ensure final_image_path is set correctly
-          const updateSql = `
-            UPDATE generated_images 
-            SET qc_status = ?, qc_reason = ?, final_image_path = ?
-            WHERE id = ?
-          `;
-          
-          this.db.run(updateSql, [qcStatus, qcReason, imagePath, id], function(err) {
-            if (err) {
-              console.error('Error updating QC status:', err);
-              reject(err);
-            } else {
-              console.log('QC status updated successfully with corrected path');
-              resolve({ success: true, changes: this.changes });
-            }
-          });
-        });
-      } else {
-        // For non-approval status updates, use the original logic
-        const sql = 'UPDATE generated_images SET qc_status = ?, qc_reason = ? WHERE id = ?';
-        
-        this.db.run(sql, [qcStatus, qcReason, id], function(err) {
-          if (err) {
-            console.error('Error updating QC status:', err);
-            reject(err);
-          } else {
-            console.log('QC status updated successfully');
-            resolve({ success: true, changes: this.changes });
-          }
-        });
-      }
+      const sql = 'UPDATE generated_images SET qc_status = ?, qc_reason = ? WHERE id = ?';
+      
+      this.db.run(sql, [qcStatus, qcReason, id], function(err) {
+        if (err) {
+          console.error('Error updating QC status:', err);
+          reject(err);
+        } else {
+          console.log('QC status updated successfully');
+          resolve({ success: true, changes: this.changes });
+        }
+      });
     });
   }
 
