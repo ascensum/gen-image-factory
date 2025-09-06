@@ -482,7 +482,6 @@ class RetryExecutor extends EventEmitter {
       const settings = originalConfig.settings || {};
       const filePaths = settings.filePaths || {};
       
-      console.log(`🔧 RetryExecutor: DEBUG - Original config settings:`, JSON.stringify(settings, null, 2));
       console.log(`🔧 RetryExecutor: DEBUG - Original filePaths:`, JSON.stringify(filePaths, null, 2));
       
       // Check if original job had custom paths set (not empty strings)
@@ -679,10 +678,12 @@ class RetryExecutor extends EventEmitter {
         console.warn(`🔧 RetryExecutor: Temp directory creation failed:`, error.message);
       }
       
+      // Create sanitized config without API keys
+      const { apiKeys, ...sanitizedSettings } = settings;
       const processingConfig = {
         tempDirectory: tempProcessingDir,
         outputDirectory: tempProcessingDir, // Process in temporary directory
-        ...settings
+        ...sanitizedSettings
       };
       
       // Process the image using the real processing pipeline
