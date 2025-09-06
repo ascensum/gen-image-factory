@@ -4,6 +4,7 @@ const fs = require('fs').promises;
 const os = require('os');
 const { processImage } = require('../producePictureModule');
 const aiVision = require('../aiVision');
+const JobConfiguration = require('../database/models/JobConfiguration');
 
 /**
  * RetryExecutor - Handles post-processing retry for failed images
@@ -38,6 +39,7 @@ class RetryExecutor extends EventEmitter {
     this.tempDirectory = options.tempDirectory || tempDir;
     this.outputDirectory = options.outputDirectory || outputDir;
     this.generatedImage = options.generatedImage;
+    this.jobConfig = new JobConfiguration(); // Add JobConfiguration access
     this.currentImageId = null; // Track current image being processed
     
     if (!this.generatedImage) {
@@ -382,9 +384,15 @@ class RetryExecutor extends EventEmitter {
         throw new Error(`Source file not accessible: ${sourcePath}`);
       }
       
-      // Get processing settings
+      // Get processing settings and job configuration
       let processingSettings;
+      let jobConfiguration = null;
+      
       if (useOriginalSettings) {
+        // Get original job configuration with corrected paths
+        jobConfiguration = await this.getOriginalJobConfiguration(image);
+        console.log(`🔧 RetryExecutor: Retrieved original job configuration for image ${imageId}`);
+        
         // Parse original processing settings from database
         processingSettings = this.getOriginalProcessingSettings(image);
         console.log(`🔧 RetryExecutor: Using original settings keys:`, Object.keys(processingSettings));
@@ -397,8 +405,8 @@ class RetryExecutor extends EventEmitter {
       // Update image status to processing
       await this.updateImageStatus(imageId, 'processing');
       
-      // Run post-processing
-      const processingResult = await this.runPostProcessing(sourcePath, processingSettings, includeMetadata);
+      // Run post-processing with correct paths
+      const processingResult = await this.runPostProcessing(sourcePath, processingSettings, includeMetadata, jobConfiguration);
       
       if (processingResult.success) {
         // Processing successful
@@ -424,6 +432,85 @@ class RetryExecutor extends EventEmitter {
       };
     } finally {
       this.currentImageId = null; // Clear current image tracking
+    }
+  }
+
+  /**
+   * Get original job configuration including file paths
+   * @param {Object} image - Image object from database
+   * @returns {Promise<Object>} Original job configuration with corrected paths
+   */
+  async getOriginalJobConfiguration(image) {
+    try {
+      // Get the job execution to find the configuration ID
+      const JobExecution = require('../database/models/JobExecution');
+      const jobExecution = new JobExecution();
+      
+      const executionResult = await jobExecution.getJobExecution(image.executionId);
+      if (!executionResult.success) {
+        throw new Error(`Failed to get job execution for image ${image.id}`);
+      }
+      
+      const execution = executionResult.execution;
+      if (!execution.configurationId) {
+        throw new Error(`No configuration ID found for execution ${image.executionId}`);
+      }
+      
+      // Get the original job configuration
+      const configResult = await this.jobConfig.getConfigurationById(execution.configurationId);
+      if (!configResult.success) {
+        throw new Error(`Failed to get job configuration ${execution.configurationId}`);
+      }
+      
+      const originalConfig = configResult.configuration;
+      console.log(`🔧 RetryExecutor: Retrieved original job configuration for image ${image.id}`);
+      
+      // Apply cross-platform path logic if original job didn't have custom paths
+      const settings = originalConfig.settings;
+      const filePaths = settings.filePaths || {};
+      
+      // Check if original job had custom paths set (not empty strings)
+      const hasCustomOutputDir = filePaths.outputDirectory && filePaths.outputDirectory.trim() !== '';
+      const hasCustomTempDir = filePaths.tempDirectory && filePaths.tempDirectory.trim() !== '';
+      
+      // Get current cross-platform defaults
+      const defaultSettings = this.jobConfig.getDefaultSettings();
+      const defaultFilePaths = defaultSettings.filePaths;
+      
+      // Use original custom paths if they exist, otherwise use current cross-platform defaults
+      const correctedFilePaths = {
+        outputDirectory: hasCustomOutputDir ? filePaths.outputDirectory : defaultFilePaths.outputDirectory,
+        tempDirectory: hasCustomTempDir ? filePaths.tempDirectory : defaultFilePaths.tempDirectory,
+        systemPromptFile: filePaths.systemPromptFile || '',
+        keywordsFile: filePaths.keywordsFile || '',
+        qualityCheckPromptFile: filePaths.qualityCheckPromptFile || '',
+        metadataPromptFile: filePaths.metadataPromptFile || ''
+      };
+      
+      console.log(`🔧 RetryExecutor: Original outputDirectory: ${filePaths.outputDirectory || 'not set'}`);
+      console.log(`🔧 RetryExecutor: Original tempDirectory: ${filePaths.tempDirectory || 'not set'}`);
+      console.log(`🔧 RetryExecutor: Corrected outputDirectory: ${correctedFilePaths.outputDirectory}`);
+      console.log(`🔧 RetryExecutor: Corrected tempDirectory: ${correctedFilePaths.tempDirectory}`);
+      
+      return {
+        ...originalConfig,
+        settings: {
+          ...settings,
+          filePaths: correctedFilePaths
+        }
+      };
+      
+    } catch (error) {
+      console.error(`🔧 RetryExecutor: Error getting original job configuration for image:`, error);
+      // Return current cross-platform defaults as fallback
+      const defaultSettings = this.jobConfig.getDefaultSettings();
+      return {
+        id: 'fallback',
+        name: 'Fallback Configuration',
+        settings: defaultSettings,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
     }
   }
 
@@ -519,9 +606,10 @@ class RetryExecutor extends EventEmitter {
    * @param {string} sourcePath - Source image path
    * @param {Object} settings - Processing settings
    * @param {boolean} includeMetadata - Whether to regenerate metadata
+   * @param {Object} jobConfiguration - Original job configuration (optional)
    * @returns {Promise<Object>} Processing result
    */
-  async runPostProcessing(sourcePath, settings, includeMetadata) {
+  async runPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration = null) {
     try {
       console.log(`🔧 RetryExecutor: Starting real image processing for: ${sourcePath}`);
       console.log(`🔧 RetryExecutor: Processing settings keys:`, Object.keys(settings)); // Sanitized
@@ -581,6 +669,16 @@ class RetryExecutor extends EventEmitter {
       console.log(`🔧 RetryExecutor: Image processing completed: ${processedImagePath}`);
       
       // Determine the final destination path (Toupload folder)
+      // Use job configuration paths if available, otherwise use constructor defaults
+      let outputDirectory;
+      if (jobConfiguration && jobConfiguration.settings && jobConfiguration.settings.filePaths) {
+        outputDirectory = jobConfiguration.settings.filePaths.outputDirectory;
+        console.log(`🔧 RetryExecutor: Using original job outputDirectory: ${outputDirectory}`);
+      } else {
+        outputDirectory = this.outputDirectory;
+        console.log(`🔧 RetryExecutor: Using default outputDirectory: ${outputDirectory}`);
+      }
+      
       let finalOutputPath;
       let finalExtension;
       
@@ -588,13 +686,13 @@ class RetryExecutor extends EventEmitter {
         // Converting to JPG
         finalExtension = '.jpg';
         // Final path should be in the configured output directory
-        finalOutputPath = path.join(this.outputDirectory, `${sourceFileName}.jpg`);
+        finalOutputPath = path.join(outputDirectory, `${sourceFileName}.jpg`);
         console.log(`🔧 RetryExecutor: Converting to JPG, final path: ${finalOutputPath}`);
       } else {
         // Keeping original format
         finalExtension = path.extname(processedImagePath);
         // Final path should be in the configured output directory
-        finalOutputPath = path.join(this.outputDirectory, `${sourceFileName}${finalExtension}`);
+        finalOutputPath = path.join(outputDirectory, `${sourceFileName}${finalExtension}`);
         console.log(`🔧 RetryExecutor: Keeping format, final path: ${finalOutputPath}`);
       }
       
