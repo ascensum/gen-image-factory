@@ -280,9 +280,9 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       
       switch (action) {
         case 'approve':
-          // Bulk approve images
+          // Bulk approve images directly (ensures correct image path)
           for (const imageId of selectedImages) {
-            await window.electronAPI.generatedImages.updateQCStatus(imageId, 'approved');
+            await window.electronAPI.generatedImages.approveImageDirectly(imageId, 'Manually approved by user');
           }
           break;
         case 'retry':
