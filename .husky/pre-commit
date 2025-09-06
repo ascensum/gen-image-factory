@@ -12,4 +12,8 @@ npm run test:retry || exit 1
 echo "📋 Testing Job Management..."
 npm run test:job-management || exit 1
 
+# Test cross-platform path handling (critical for preventing hardcoded paths)
+echo "🛣️ Testing Cross-Platform Path Handling..."
+npm test -- tests/unit/backend/pathResolution.test.js --run || exit 1
+
 echo "✅ All critical tests passed!"
