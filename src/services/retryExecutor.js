@@ -394,6 +394,11 @@ class RetryExecutor extends EventEmitter {
         // Both original and modified settings should use the same file paths
         jobConfiguration = await this.getOriginalJobConfiguration(image);
         console.log(`🔧 RetryExecutor: Retrieved job configuration for image ${imageId}`);
+        console.log(`🔧 RetryExecutor: DEBUG - jobConfiguration structure:`, {
+          hasSettings: !!jobConfiguration.settings,
+          hasFilePaths: !!(jobConfiguration.settings && jobConfiguration.settings.filePaths),
+          outputDirectory: jobConfiguration.settings?.filePaths?.outputDirectory || 'not set'
+        });
       } catch (error) {
         console.error(`🔧 RetryExecutor: Error getting job configuration for image ${imageId}:`, error);
         // Use fallback configuration
@@ -693,6 +698,10 @@ class RetryExecutor extends EventEmitter {
       
       // Determine the final destination path (Toupload folder)
       // Use job configuration paths if available, otherwise use constructor defaults
+      console.log(`🔧 RetryExecutor: DEBUG - jobConfiguration exists: ${!!jobConfiguration}`);
+      console.log(`🔧 RetryExecutor: DEBUG - jobConfiguration.settings exists: ${!!(jobConfiguration && jobConfiguration.settings)}`);
+      console.log(`🔧 RetryExecutor: DEBUG - jobConfiguration.settings.filePaths exists: ${!!(jobConfiguration && jobConfiguration.settings && jobConfiguration.settings.filePaths)}`);
+      
       let outputDirectory;
       if (jobConfiguration && jobConfiguration.settings && jobConfiguration.settings.filePaths) {
         outputDirectory = jobConfiguration.settings.filePaths.outputDirectory;
