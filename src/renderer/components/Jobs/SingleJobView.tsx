@@ -78,12 +78,14 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
             const statsResult = await window.electronAPI.calculateJobExecutionStatistics(jobResult.execution.id);
             if (statsResult.success) {
               console.log('🔄 SingleJobView: Calculated statistics:', statsResult.statistics);
-              // Update the job with calculated statistics
+              // Update the job with calculated statistics including QC breakdown
               setJob(prevJob => ({
                 ...prevJob,
                 totalImages: statsResult.statistics.totalImages,
                 successfulImages: statsResult.statistics.successfulImages,
-                failedImages: statsResult.statistics.failedImages
+                failedImages: statsResult.statistics.failedImages,
+                approvedImages: statsResult.statistics.approvedImages,
+                qcFailedImages: statsResult.statistics.qcFailedImages
               }));
             }
           } catch (statsError) {
