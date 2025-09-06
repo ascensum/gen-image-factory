@@ -685,9 +685,20 @@ class RetryExecutor extends EventEmitter {
       
       // Create sanitized config without API keys
       const { apiKeys, ...sanitizedSettings } = settings;
+      
+      // Determine the correct output directory for processImage
+      let processOutputDir;
+      if (jobConfiguration && jobConfiguration.settings && jobConfiguration.settings.filePaths) {
+        processOutputDir = jobConfiguration.settings.filePaths.outputDirectory;
+        console.log(`🔧 RetryExecutor: Using custom outputDirectory for processImage: ${processOutputDir}`);
+      } else {
+        processOutputDir = tempProcessingDir; // Fallback to temp if no custom path
+        console.log(`🔧 RetryExecutor: No custom path, using temp directory for processImage: ${processOutputDir}`);
+      }
+      
       const processingConfig = {
         tempDirectory: tempProcessingDir,
-        outputDirectory: tempProcessingDir, // Process in temporary directory first
+        outputDirectory: processOutputDir, // Use correct output directory for processImage
         ...sanitizedSettings
       };
       
