@@ -523,7 +523,7 @@ class RetryExecutor extends EventEmitter {
       };
       
     } catch (error) {
-      console.error(`🔧 RetryExecutor: Error getting original job configuration for image ${image.id}:`, error);
+      console.error(`🔧 RetryExecutor: Error getting original job configuration for image ${image?.id || 'unknown'}:`, error);
       return this.getFallbackConfiguration();
     }
   }
