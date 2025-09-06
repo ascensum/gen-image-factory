@@ -966,7 +966,6 @@ class BackendAdapter {
     try {
       console.log('🚨 METHOD ENTRY: backendAdapter.startJob method entered!');
       console.log('🔧 backendAdapter.startJob called with config keys:', Object.keys(config));
-      console.log('🔧 DEBUG - Full config received:', JSON.stringify(config, null, 2));
       console.log('🔧 DEBUG - filePaths in config:', JSON.stringify(config.filePaths, null, 2));
       
       // Save the job configuration first so it can be retrieved later

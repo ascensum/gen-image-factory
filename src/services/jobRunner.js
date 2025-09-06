@@ -1832,7 +1832,6 @@ class JobRunner extends EventEmitter {
       // Use the same cross-platform logic as JobConfiguration.getDefaultSettings()
       let finalDirectory = this.jobConfiguration?.filePaths?.outputDirectory;
       
-      console.log(`🔧 JobRunner: DEBUG - jobConfiguration:`, JSON.stringify(this.jobConfiguration, null, 2));
       console.log(`🔧 JobRunner: DEBUG - filePaths:`, JSON.stringify(this.jobConfiguration?.filePaths, null, 2));
       console.log(`🔧 JobRunner: DEBUG - original outputDirectory: ${finalDirectory || 'not set'}`);
       
