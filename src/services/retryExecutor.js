@@ -4,7 +4,7 @@ const fs = require('fs').promises;
 const os = require('os');
 const { processImage } = require('../producePictureModule');
 const aiVision = require('../aiVision');
-const JobConfiguration = require('../database/models/JobConfiguration');
+const { JobConfiguration } = require('../database/models/JobConfiguration');
 
 /**
  * RetryExecutor - Handles post-processing retry for failed images
