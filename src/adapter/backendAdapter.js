@@ -968,9 +968,29 @@ class BackendAdapter {
       console.log('🔧 backendAdapter.startJob called with config keys:', Object.keys(config));
       console.log('🔧 DEBUG - filePaths in config:', JSON.stringify(config.filePaths, null, 2));
       
-      // Save the job configuration first so it can be retrieved later
-      console.log('💾 Saving job configuration for future retrieval...');
-      const configResult = await this.jobConfig.saveSettings(config, `job_${Date.now()}`);
+      // Normalize file paths before saving - use custom paths if set, otherwise use fallback paths
+      const normalizedConfig = { ...config };
+      if (normalizedConfig.filePaths) {
+        const defaultSettings = this.jobConfig.getDefaultSettings();
+        const defaultFilePaths = defaultSettings.filePaths;
+        
+        // Use custom paths if they exist and are not empty, otherwise use fallback paths
+        normalizedConfig.filePaths = {
+          ...normalizedConfig.filePaths,
+          outputDirectory: normalizedConfig.filePaths.outputDirectory && normalizedConfig.filePaths.outputDirectory.trim() !== '' 
+            ? normalizedConfig.filePaths.outputDirectory 
+            : defaultFilePaths.outputDirectory,
+          tempDirectory: normalizedConfig.filePaths.tempDirectory && normalizedConfig.filePaths.tempDirectory.trim() !== '' 
+            ? normalizedConfig.filePaths.tempDirectory 
+            : defaultFilePaths.tempDirectory
+        };
+        
+        console.log('🔧 DEBUG - Normalized filePaths:', JSON.stringify(normalizedConfig.filePaths, null, 2));
+      }
+      
+      // Save the normalized job configuration first so it can be retrieved later
+      console.log('💾 Saving normalized job configuration for future retrieval...');
+      const configResult = await this.jobConfig.saveSettings(normalizedConfig, `job_${Date.now()}`);
       console.log('💾 Configuration saved with ID:', configResult.id);
       
       // Create a NEW JobRunner instance for each job to prevent state conflicts
@@ -991,8 +1011,8 @@ class BackendAdapter {
         throw new Error('JobRunner not properly initialized');
       }
       
-      console.log('🔧 About to call jobRunner.startJob with config keys:', Object.keys(config));
-      const result = await jobRunner.startJob(config);
+      console.log('🔧 About to call jobRunner.startJob with normalized config keys:', Object.keys(normalizedConfig));
+      const result = await jobRunner.startJob(normalizedConfig);
       console.log('✅ backendAdapter.startJob result:', result);
       
       // Store the new jobRunner instance for status queries
