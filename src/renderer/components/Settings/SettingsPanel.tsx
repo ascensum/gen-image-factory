@@ -76,8 +76,8 @@ const defaultSettings: SettingsObject = {
     removeBg: '',
   },
   filePaths: {
-    outputDirectory: './pictures/toupload',
-    tempDirectory: './pictures/generated',
+    outputDirectory: '', // Will be set by backend with proper cross-platform paths
+    tempDirectory: '',   // Will be set by backend with proper cross-platform paths
     systemPromptFile: '',
     keywordsFile: '',
     qualityCheckPromptFile: '',

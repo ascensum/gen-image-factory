@@ -550,7 +550,17 @@ class RetryExecutor extends EventEmitter {
       
       // Prepare config object for processImage function
       // Use a temporary directory for processing, then move to final destination
-      const tempProcessingDir = path.join(os.homedir(), 'Desktop', 'Gen_Image_Factory_Generated', 'temp_processing');
+      // Use cross-platform temp directory
+      let tempProcessingDir;
+      try {
+        const { app } = require('electron');
+        const userDataPath = app.getPath('userData');
+        tempProcessingDir = path.join(userDataPath, 'pictures', 'temp_processing');
+      } catch (error) {
+        const os = require('os');
+        const homeDir = os.homedir();
+        tempProcessingDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'temp_processing');
+      }
       
       // Ensure temp directory exists
       try {

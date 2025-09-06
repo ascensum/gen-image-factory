@@ -1832,7 +1832,7 @@ class JobRunner extends EventEmitter {
       // Use the same cross-platform logic as JobConfiguration.getDefaultSettings()
       let finalDirectory = this.jobConfiguration?.filePaths?.outputDirectory;
       
-      if (!finalDirectory) {
+      if (!finalDirectory || finalDirectory.trim() === '') {
         try {
           const { app } = require('electron');
           const userDataPath = app.getPath('userData');
