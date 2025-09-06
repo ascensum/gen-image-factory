@@ -16,4 +16,12 @@ npm run test:job-management || exit 1
 echo "🛣️ Testing Cross-Platform Path Handling..."
 npm test -- tests/unit/backend/pathResolution.test.js --run || exit 1
 
+# Test import regression (prevents constructor errors)
+echo "📦 Testing Import Regression..."
+npm test -- tests/unit/backend/importRegression.test.js --run || exit 1
+
+# Test retry executor functionality (prevents retry_pending lock)
+echo "🔄 Testing Retry Executor Functionality..."
+npm test -- tests/unit/services/RetryExecutor.test.ts --run || exit 1
+
 echo "✅ All critical tests passed!"

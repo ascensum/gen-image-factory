@@ -449,6 +449,12 @@ class RetryExecutor extends EventEmitter {
    */
   async getOriginalJobConfiguration(image) {
     try {
+      // Handle null or invalid image
+      if (!image || !image.id) {
+        console.warn(`🔧 RetryExecutor: Invalid image provided to getOriginalJobConfiguration`);
+        return this.getFallbackConfiguration();
+      }
+      
       console.log(`🔧 RetryExecutor: Getting original job configuration for image ${image.id}, executionId: ${image.executionId}`);
       
       // Get the job execution to find the configuration ID
@@ -513,7 +519,7 @@ class RetryExecutor extends EventEmitter {
       };
       
     } catch (error) {
-      console.error(`🔧 RetryExecutor: Error getting original job configuration for image ${image.id}:`, error);
+      console.error(`🔧 RetryExecutor: Error getting original job configuration for image ${image?.id || 'unknown'}:`, error);
       return this.getFallbackConfiguration();
     }
   }
