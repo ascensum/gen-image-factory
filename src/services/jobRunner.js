@@ -1832,16 +1832,24 @@ class JobRunner extends EventEmitter {
       // Use the same cross-platform logic as JobConfiguration.getDefaultSettings()
       let finalDirectory = this.jobConfiguration?.filePaths?.outputDirectory;
       
+      console.log(`🔧 JobRunner: DEBUG - jobConfiguration:`, JSON.stringify(this.jobConfiguration, null, 2));
+      console.log(`🔧 JobRunner: DEBUG - filePaths:`, JSON.stringify(this.jobConfiguration?.filePaths, null, 2));
+      console.log(`🔧 JobRunner: DEBUG - original outputDirectory: ${finalDirectory || 'not set'}`);
+      
       if (!finalDirectory || finalDirectory.trim() === '') {
         try {
           const { app } = require('electron');
-          const userDataPath = app.getPath('userData');
-          finalDirectory = path.join(userDataPath, 'pictures', 'toupload');
+...          const desktopPath = app.getPath('desktop');
+          finalDirectory = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
+          console.log(`🔧 JobRunner: DEBUG - Using fallback Desktop path: ${finalDirectory}`);
         } catch (error) {
           const os = require('os');
           const homeDir = os.homedir();
-          finalDirectory = path.join(homeDir, 'gen-image-factory', 'pictures', 'toupload');
+          finalDirectory = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
+          console.log(`🔧 JobRunner: DEBUG - Using fallback Documents path: ${finalDirectory}`);
         }
+      } else {
+        console.log(`🔧 JobRunner: DEBUG - Using custom path: ${finalDirectory}`);
       }
       
       // Ensure final directory exists
