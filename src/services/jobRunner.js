@@ -1829,8 +1829,20 @@ class JobRunner extends EventEmitter {
       const path = require('path');
       
       // Determine final location based on user configuration or default
-      const finalDirectory = this.jobConfiguration?.output?.directory || 
-                            path.join(require('os').homedir(), 'Desktop', 'Gen_Image_Factory_ToUpload');
+      // Use the same cross-platform logic as JobConfiguration.getDefaultSettings()
+      let finalDirectory = this.jobConfiguration?.filePaths?.outputDirectory;
+      
+      if (!finalDirectory) {
+        try {
+          const { app } = require('electron');
+          const userDataPath = app.getPath('userData');
+          finalDirectory = path.join(userDataPath, 'pictures', 'toupload');
+        } catch (error) {
+          const os = require('os');
+          const homeDir = os.homedir();
+          finalDirectory = path.join(homeDir, 'gen-image-factory', 'pictures', 'toupload');
+        }
+      }
       
       // Ensure final directory exists
       await fs.mkdir(finalDirectory, { recursive: true });

@@ -21,7 +21,22 @@ class RetryExecutor extends EventEmitter {
     this.isProcessing = false;
     this.queue = [];
     this.settings = options.settings || {};
-    this.tempDirectory = options.tempDirectory || './picture/generated';
+    // Use cross-platform path logic (same as JobConfiguration.getDefaultSettings())
+    let tempDir, outputDir;
+    try {
+      const { app } = require('electron');
+      const userDataPath = app.getPath('userData');
+      tempDir = path.join(userDataPath, 'pictures', 'generated');
+      outputDir = path.join(userDataPath, 'pictures', 'toupload');
+    } catch (error) {
+      const os = require('os');
+      const homeDir = os.homedir();
+      tempDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'generated');
+      outputDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'toupload');
+    }
+    
+    this.tempDirectory = options.tempDirectory || tempDir;
+    this.outputDirectory = options.outputDirectory || outputDir;
     this.generatedImage = options.generatedImage;
     this.currentImageId = null; // Track current image being processed
     
@@ -562,16 +577,14 @@ class RetryExecutor extends EventEmitter {
       if (settings.convertToJpg && settings.imageConvert) {
         // Converting to JPG
         finalExtension = '.jpg';
-        // Final path should be in the actual ToUpload folder, using dynamic path construction
-        const finalDirectory = path.join(os.homedir(), 'Desktop', 'Gen_Image_Factory_ToUpload');
-        finalOutputPath = path.join(finalDirectory, `${sourceFileName}.jpg`);
+        // Final path should be in the configured output directory
+        finalOutputPath = path.join(this.outputDirectory, `${sourceFileName}.jpg`);
         console.log(`🔧 RetryExecutor: Converting to JPG, final path: ${finalOutputPath}`);
       } else {
         // Keeping original format
         finalExtension = path.extname(processedImagePath);
-        // Final path should be in the actual ToUpload folder, using dynamic path construction
-        const finalDirectory = path.join(os.homedir(), 'Desktop', 'Gen_Image_Factory_ToUpload');
-        finalOutputPath = path.join(finalDirectory, `${sourceFileName}${finalExtension}`);
+        // Final path should be in the configured output directory
+        finalOutputPath = path.join(this.outputDirectory, `${sourceFileName}${finalExtension}`);
         console.log(`🔧 RetryExecutor: Keeping format, final path: ${finalOutputPath}`);
       }
       

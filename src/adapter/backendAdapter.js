@@ -82,12 +82,29 @@ class BackendAdapter {
         }
       }
       
-      const tempDir = this.settings?.filePaths?.tempDirectory || './pictures/generated';
-      console.log('🔧 BackendAdapter: Creating RetryExecutor with tempDirectory:', tempDir);
+      // Use the same logic as JobConfiguration.getDefaultSettings()
+      let tempDir, outputDir;
+      try {
+        const { app } = require('electron');
+        const userDataPath = app.getPath('userData');
+        tempDir = path.join(userDataPath, 'pictures', 'generated');
+        outputDir = path.join(userDataPath, 'pictures', 'toupload');
+      } catch (error) {
+        const os = require('os');
+        const homeDir = os.homedir();
+        tempDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'generated');
+        outputDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'toupload');
+      }
+      
+      // Override with user settings if available
+      tempDir = this.settings?.filePaths?.tempDirectory || tempDir;
+      outputDir = this.settings?.filePaths?.outputDirectory || outputDir;
+      console.log('🔧 BackendAdapter: Creating RetryExecutor with tempDirectory:', tempDir, 'outputDirectory:', outputDir);
       
       try {
         this.retryExecutor = new RetryExecutor({
           tempDirectory: tempDir,
+          outputDirectory: outputDir,
           generatedImage: this.generatedImage
         });
         console.log('🔧 BackendAdapter: RetryExecutor created successfully');
