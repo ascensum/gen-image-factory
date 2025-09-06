@@ -388,11 +388,12 @@ class RetryExecutor extends EventEmitter {
       let processingSettings;
       let jobConfiguration = null;
       
+      // ALWAYS get the original job configuration for path resolution
+      // Both original and modified settings should use the same file paths
+      jobConfiguration = await this.getOriginalJobConfiguration(image);
+      console.log(`🔧 RetryExecutor: Retrieved original job configuration for image ${imageId}`);
+      
       if (useOriginalSettings) {
-        // Get original job configuration with corrected paths
-        jobConfiguration = await this.getOriginalJobConfiguration(image);
-        console.log(`🔧 RetryExecutor: Retrieved original job configuration for image ${imageId}`);
-        
         // Parse original processing settings from database
         processingSettings = this.getOriginalProcessingSettings(image);
         console.log(`🔧 RetryExecutor: Using original settings keys:`, Object.keys(processingSettings));
