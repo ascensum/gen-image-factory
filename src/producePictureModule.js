@@ -479,7 +479,12 @@ async function processImage(inputImagePath, imgName, config = {}) {
   console.log(`🔧 processImage: Final extension determined: ${finalExtension} (convertToJpg: ${convertToJpg})`);
   
   // Use settings path instead of hardcoded relative path
+  console.log(`🔧 processImage: DEBUG - config.outputDirectory:`, config.outputDirectory);
+  console.log(`🔧 processImage: DEBUG - config keys:`, Object.keys(config));
+  
   const outputDir = config.outputDirectory || './pictures/toupload';
+  console.log(`🔧 processImage: DEBUG - final outputDir:`, outputDir);
+  
   const outputPath = path.resolve(path.join(outputDir, `${imgName}${finalExtension}`));
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
