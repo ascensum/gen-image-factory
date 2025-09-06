@@ -1839,7 +1839,7 @@ class JobRunner extends EventEmitter {
       if (!finalDirectory || finalDirectory.trim() === '') {
         try {
           const { app } = require('electron');
-...          const desktopPath = app.getPath('desktop');
+          const desktopPath = app.getPath('desktop');
           finalDirectory = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
           console.log(`🔧 JobRunner: DEBUG - Using fallback Desktop path: ${finalDirectory}`);
         } catch (error) {
