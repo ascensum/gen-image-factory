@@ -86,14 +86,14 @@ class BackendAdapter {
       let tempDir, outputDir;
       try {
         const { app } = require('electron');
-        const userDataPath = app.getPath('userData');
-        tempDir = path.join(userDataPath, 'pictures', 'generated');
-        outputDir = path.join(userDataPath, 'pictures', 'toupload');
+        const desktopPath = app.getPath('desktop');
+        tempDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'generated');
+        outputDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
       } catch (error) {
         const os = require('os');
         const homeDir = os.homedir();
-        tempDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'generated');
-        outputDir = path.join(homeDir, 'gen-image-factory', 'pictures', 'toupload');
+        tempDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'generated');
+        outputDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
       }
       
       // Override with user settings if available
@@ -966,6 +966,8 @@ class BackendAdapter {
     try {
       console.log('🚨 METHOD ENTRY: backendAdapter.startJob method entered!');
       console.log('🔧 backendAdapter.startJob called with config keys:', Object.keys(config));
+      console.log('🔧 DEBUG - Full config received:', JSON.stringify(config, null, 2));
+      console.log('🔧 DEBUG - filePaths in config:', JSON.stringify(config.filePaths, null, 2));
       
       // Save the job configuration first so it can be retrieved later
       console.log('💾 Saving job configuration for future retrieval...');
