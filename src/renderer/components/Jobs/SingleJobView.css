@@ -402,7 +402,7 @@
 }
 
 .breakdown-item.qc-failed .breakdown-value {
-  color: var(--status-pending);
+  color: var(--status-failed);
 }
 
 .stats-note {

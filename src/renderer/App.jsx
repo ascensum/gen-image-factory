@@ -12,6 +12,7 @@ function App() {
   const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'dashboard', 'failed-review', 'job-management', 'single-job'
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
+  const [singleJobRefreshKey, setSingleJobRefreshKey] = useState(0);
 
   useEffect(() => {
     // Test IPC communication
@@ -57,10 +58,16 @@ function App() {
           }}
         />
       ) : currentView === 'failed-review' ? (
-        <FailedImagesReviewPanel onBack={() => {
-          setCurrentView('dashboard');
-          setDashboardRefreshKey(prev => prev + 1);
-        }} />
+        <FailedImagesReviewPanel 
+          onBack={() => {
+            setCurrentView('dashboard');
+            setDashboardRefreshKey(prev => prev + 1);
+          }}
+          onBackToSingleJob={() => {
+            setCurrentView('single-job');
+            setSingleJobRefreshKey(prev => prev + 1);
+          }}
+        />
       ) : currentView === 'job-management' ? (
         <JobManagementPanel
           onOpenSingleJob={(jobId) => {
@@ -74,6 +81,7 @@ function App() {
         />
       ) : currentView === 'single-job' ? (
         <SingleJobView
+          key={singleJobRefreshKey}
           jobId={selectedJobId || ''}
           onBack={() => setCurrentView('job-management')}
           onExport={(jobId) => {

@@ -6,6 +6,7 @@ import ProcessingSettingsModal from './ProcessingSettingsModal';
 
 interface FailedImagesReviewPanelProps {
   onBack: () => void;
+  onBackToSingleJob?: () => void;
 }
 
 interface ProcessingSettings {
@@ -36,7 +37,7 @@ interface RetryJob {
   failureCount?: number;
 }
 
-const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBack }) => {
+const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBack, onBackToSingleJob }) => {
   console.log('🔍 FailedImagesReviewPanel: Component mounting...');
   
   const [failedImages, setFailedImages] = useState<GeneratedImage[]>([]);
@@ -472,6 +473,17 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
             </button>
+            {onBackToSingleJob && (
+              <button
+                onClick={onBackToSingleJob}
+                className="text-blue-500 hover:text-blue-700 transition-colors"
+                aria-label="Back to single job view"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </button>
+            )}
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Failed Images Review</h1>
               <p className="text-gray-600">
