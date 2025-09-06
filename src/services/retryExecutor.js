@@ -687,7 +687,7 @@ class RetryExecutor extends EventEmitter {
       const { apiKeys, ...sanitizedSettings } = settings;
       const processingConfig = {
         tempDirectory: tempProcessingDir,
-        outputDirectory: tempProcessingDir, // Process in temporary directory
+        outputDirectory: tempProcessingDir, // Process in temporary directory first
         ...sanitizedSettings
       };
       
@@ -710,6 +710,8 @@ class RetryExecutor extends EventEmitter {
         outputDirectory = this.outputDirectory;
         console.log(`🔧 RetryExecutor: Using default outputDirectory: ${outputDirectory}`);
       }
+      
+      console.log(`🔧 RetryExecutor: DEBUG - Final outputDirectory for move: ${outputDirectory}`);
       
       let finalOutputPath;
       let finalExtension;
