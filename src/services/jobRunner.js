@@ -900,6 +900,10 @@ class JobRunner extends EventEmitter {
 
       
       // Prepare the configuration for producePictureModule
+      console.log(`🔧 JobRunner: DEBUG - config.filePaths:`, JSON.stringify(config.filePaths, null, 2));
+      console.log(`🔧 JobRunner: DEBUG - config.filePaths?.outputDirectory:`, config.filePaths?.outputDirectory);
+      console.log(`🔧 JobRunner: DEBUG - config.filePaths?.tempDirectory:`, config.filePaths?.tempDirectory);
+      
       const moduleConfig = {
         removeBg: config.processing?.removeBg || false,
         imageConvert: config.processing?.imageConvert || false,
@@ -925,6 +929,9 @@ class JobRunner extends EventEmitter {
         outputDirectory: config.filePaths?.outputDirectory || './pictures/toupload',
         tempDirectory: config.filePaths?.tempDirectory || './pictures/generated'
       };
+      
+      console.log(`🔧 JobRunner: DEBUG - moduleConfig.outputDirectory:`, moduleConfig.outputDirectory);
+      console.log(`🔧 JobRunner: DEBUG - moduleConfig.tempDirectory:`, moduleConfig.tempDirectory);
       
       this._logStructured({
         level: 'debug',
