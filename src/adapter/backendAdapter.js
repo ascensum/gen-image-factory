@@ -1440,9 +1440,96 @@ class BackendAdapter {
     }
   }
 
+  async getJobConfigurationForImage(imageId) {
+    try {
+      // Get the image data to find the execution ID
+      const imageData = await this.generatedImage.getGeneratedImage(imageId);
+      if (!imageData.success) {
+        return null;
+      }
+      
+      const image = imageData.image;
+      
+      // Get the job execution to find the configuration ID
+      const jobExecutionData = await this.jobExecution.getJobExecution(image.executionId);
+      if (!jobExecutionData.success) {
+        return null;
+      }
+      
+      const jobExecution = jobExecutionData.execution;
+      
+      // Get the job configuration
+      const jobConfigData = await this.jobConfig.getConfiguration(jobExecution.configurationId);
+      if (!jobConfigData.success) {
+        return null;
+      }
+      
+      return jobConfigData.configuration;
+    } catch (error) {
+      console.error('Error getting job configuration for image:', error);
+      return null;
+    }
+  }
+
   async manualApproveImage(imageId) {
     try {
       await this.ensureInitialized();
+      
+      // Get the image data first
+      const imageData = await this.generatedImage.getGeneratedImage(imageId);
+      if (!imageData.success) {
+        throw new Error(`Failed to get image data for ID ${imageId}`);
+      }
+      
+      const image = imageData.image;
+      
+      // Check if image has tempImagePath (should be moved to final location)
+      if (image.tempImagePath && !image.finalImagePath) {
+        console.log(`🔧 manualApproveImage: Moving image from temp to final location`);
+        
+        // Get the original job configuration to determine correct output directory
+        const jobConfig = await this.getJobConfigurationForImage(imageId);
+        let outputDirectory;
+        
+        if (jobConfig && jobConfig.settings && jobConfig.settings.filePaths) {
+          outputDirectory = jobConfig.settings.filePaths.outputDirectory;
+          console.log(`🔧 manualApproveImage: Using custom outputDirectory: ${outputDirectory}`);
+        } else {
+          // Use fallback path
+          try {
+            const { app } = require('electron');
+            const desktopPath = app.getPath('desktop');
+            outputDirectory = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
+            console.log(`🔧 manualApproveImage: Using fallback Desktop path: ${outputDirectory}`);
+          } catch (error) {
+            const os = require('os');
+            const homeDir = os.homedir();
+            outputDirectory = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
+            console.log(`🔧 manualApproveImage: Using fallback Documents path: ${outputDirectory}`);
+          }
+        }
+        
+        // Ensure output directory exists
+        await fs.mkdir(outputDirectory, { recursive: true });
+        
+        // Generate final filename
+        const sourceFileName = path.basename(image.tempImagePath);
+        const finalImagePath = path.join(outputDirectory, sourceFileName);
+        
+        // Move the file from temp to final location
+        await fs.rename(image.tempImagePath, finalImagePath);
+        console.log(`🔧 manualApproveImage: Successfully moved image to: ${finalImagePath}`);
+        
+        // Update database with final path and clear temp path
+        await this.generatedImage.updateGeneratedImage(imageId, {
+          finalImagePath: finalImagePath,
+          tempImagePath: null
+        });
+        
+        console.log(`🔧 manualApproveImage: Updated database with final path`);
+      }
+      
+      // Update QC status to approved
       const result = await this.updateQCStatus(imageId, 'approved', 'Manually approved by user');
       return result;
     } catch (error) {
