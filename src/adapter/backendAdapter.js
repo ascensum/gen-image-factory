@@ -968,6 +968,12 @@ class BackendAdapter {
       console.log('🔧 backendAdapter.startJob called with config keys:', Object.keys(config));
       console.log('🔧 DEBUG - filePaths in config:', JSON.stringify(config.filePaths, null, 2));
       
+      // Prevent multiple simultaneous job executions
+      if (this.jobRunner && this.jobRunner.isRunning) {
+        console.log('⚠️ Job is already running, ignoring duplicate start request');
+        return { success: false, error: 'Job is already running' };
+      }
+      
       // Normalize file paths before saving - use custom paths if set, otherwise use fallback paths
       const normalizedConfig = { ...config };
       if (normalizedConfig.filePaths) {
