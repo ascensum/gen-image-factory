@@ -1999,8 +1999,8 @@ class BackendAdapter {
         }
         case 'pngQuality': {
           let num = Number(v);
-          if (!Number.isFinite(num)) num = 9;
-          out[k] = Math.max(0, Math.min(9, Math.round(num)));
+          if (!Number.isFinite(num)) num = 100;
+          out[k] = Math.max(1, Math.min(100, Math.round(num)));
           break;
         }
         case 'removeBgSize': {

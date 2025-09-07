@@ -55,7 +55,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     imageConvert: false,
     convertToJpg: true,
     jpgQuality: 90,
-    pngQuality: 9,
+    pngQuality: 100,
     removeBg: false,
     removeBgSize: 'auto',
     trimTransparentBackground: false,

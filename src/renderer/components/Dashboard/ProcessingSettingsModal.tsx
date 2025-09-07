@@ -37,7 +37,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
     imageConvert: true, // Enable by default for testing
     convertToJpg: true, // Convert to JPG by default
     jpgQuality: 85, // Set to 85% quality as requested
-    pngQuality: 9,
+    pngQuality: 100,
     removeBg: false,
     removeBgSize: 'auto',
     trimTransparentBackground: false,
@@ -347,7 +347,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                     {showPngQuality && (
                       <div>
                         <label htmlFor="png-quality" className="block text-sm font-medium text-gray-700 mb-2">
-                          PNG Quality (0-9)
+                          PNG Quality (1-100)
                         </label>
                         <input
                           id="png-quality"
@@ -355,10 +355,10 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                           value={batchSettings.pngQuality}
                           onChange={(e) => updateSetting('pngQuality', parseInt(e.target.value))}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          min="0"
-                          max="9"
+                          min="1"
+                          max="100"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Compression level for PNG conversion (0=uncompressed, 9=maximum compression)</p>
+                        <p className="text-xs text-gray-500 mt-1">PNG quality setting used by sharp (1=lowest, 100=highest)</p>
                       </div>
                     )}
                   </div>

@@ -676,7 +676,7 @@ class JobRunner extends EventEmitter {
                     jpgBackground: proc.jpgBackground || 'white',
                     removeBgSize: proc.removeBgSize || 'preview',
                     jpgQuality: proc.jpgQuality ?? 90,
-                    pngQuality: proc.pngQuality ?? 9
+                    pngQuality: proc.pngQuality ?? 100
                   };
                   const sourceFileName = pathMod.basename(sourcePath);
                   const processedImagePath = await producePictureModule.processImage(sourcePath, sourceFileName, processingConfig);
@@ -1051,7 +1051,7 @@ class JobRunner extends EventEmitter {
         saturation: processingEnabled ? (config.processing?.saturation || 1) : 1,
         jpgBackground: processingEnabled ? (config.processing?.jpgBackground || 'white') : 'white',
         jpgQuality: processingEnabled ? (config.processing?.jpgQuality || 90) : 90,
-        pngQuality: processingEnabled ? (config.processing?.pngQuality || 9) : 9,
+        pngQuality: processingEnabled ? (config.processing?.pngQuality || 100) : 100,
         // Paths (QC-first): write to temp first, move to final later
         outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
         tempDirectory: config.filePaths?.tempDirectory || './pictures/generated'
