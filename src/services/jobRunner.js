@@ -515,12 +515,9 @@ class JobRunner extends EventEmitter {
               console.log('🔍 Using database execution ID:', executionId);
               
               if (executionId) {
-                // producePictureModule already processed the image, so image.path is the FINAL path
-                const finalImagePath = image.path;
-                
-                // For retry mechanism, we need a temp path - use the same path for now
-                // (in a real scenario, you might want to copy to a temp location first)
-                const tempImagePath = finalImagePath;
+                // QC-first flow: treat module output as temp image; final path set later after QC/move
+                const tempImagePath = image.path;
+                const finalImagePath = null;
                 
                 const initialQCStatus = (this.jobConfiguration?.ai?.runQualityCheck) ? 'qc_failed' : 'approved';
                 const initialQCReason = (this.jobConfiguration?.ai?.runQualityCheck) ? null : 'Auto-approved (quality checks disabled)';
@@ -533,7 +530,7 @@ class JobRunner extends EventEmitter {
                   qcStatus: initialQCStatus,
                   qcReason: initialQCReason,
                   tempImagePath: tempImagePath,
-                  finalImagePath: finalImagePath, // This is the key fix!
+                  finalImagePath: finalImagePath,
                   metadata: JSON.stringify(image.metadata || {}),
                   processingSettings: JSON.stringify({
                     aspectRatio: image.aspectRatio || '16:9',
@@ -564,6 +561,63 @@ class JobRunner extends EventEmitter {
               }
             }
           }
+          // After initial save, if QC is disabled, move images to final immediately and approve
+          if (!this.jobConfiguration?.ai?.runQualityCheck) {
+            try {
+              const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
+              for (const dbImg of savedImages) {
+                const fs = require('fs');
+                const sourcePath = dbImg.tempImagePath || dbImg.temp_image_path || dbImg.finalImagePath || dbImg.final_image_path || dbImg.path;
+                const mappingKey = dbImg.imageMappingId || dbImg.image_mapping_id || dbImg.mappingId || dbImg.id;
+                if (!sourcePath || !mappingKey) continue;
+                try { fs.accessSync(sourcePath); } catch { continue; }
+                try {
+                  this._logStructured({
+                    level: 'info',
+                    stepName: 'image_generation',
+                    subStep: 'immediate_move_start',
+                    message: 'QC disabled: moving image to final',
+                    metadata: { imageMappingId: mappingKey, sourcePath }
+                  });
+                } catch {}
+                const movedFinal = await this.moveImageToFinalLocation(sourcePath, mappingKey);
+                if (movedFinal) {
+                  await this.updateImagePaths(mappingKey, null, movedFinal);
+                  await this.backendAdapter.updateQCStatusByMappingId(mappingKey, 'approved', 'QC disabled, auto-approved');
+                  try {
+                    this._logStructured({
+                      level: 'info',
+                      stepName: 'image_generation',
+                      subStep: 'immediate_move_done',
+                      message: 'QC disabled: image moved and DB updated',
+                      metadata: { imageMappingId: mappingKey, finalImagePath: movedFinal }
+                    });
+                  } catch {}
+                } else {
+                  try {
+                    this._logStructured({
+                      level: 'warn',
+                      stepName: 'image_generation',
+                      subStep: 'immediate_move_failed',
+                      message: 'QC disabled: move failed',
+                      metadata: { imageMappingId: mappingKey, sourcePath }
+                    });
+                  } catch {}
+                }
+              }
+            } catch (immediateMoveErr) {
+              console.error('❌ Immediate move (QC disabled) failed:', immediateMoveErr);
+              try {
+                this._logStructured({
+                  level: 'error',
+                  stepName: 'image_generation',
+                  subStep: 'immediate_move_exception',
+                  message: 'QC disabled: exception during immediate move',
+                  metadata: { error: String(immediateMoveErr && immediateMoveErr.message || immediateMoveErr) }
+                });
+              } catch {}
+            }
+          }
         } catch (error) {
           console.error("❌ Failed to save generated images to database:", error);
         }
@@ -574,7 +628,33 @@ class JobRunner extends EventEmitter {
       // Note: producePictureModule already handles metadata generation if enabled
       // No additional metadata processing needed here
       
-      // Mark image generation as complete and update progress
+      // Run QC if enabled (QC-first flow) and then move passing images to final
+      try {
+        const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
+        if (Array.isArray(savedImages) && savedImages.length > 0) {
+          if (this.jobConfiguration?.ai?.runQualityCheck) {
+            await this.runQualityChecks(savedImages, this.jobConfiguration);
+          }
+          // After QC (or if disabled earlier), move any images still lacking final paths but approved
+          for (const dbImg of savedImages) {
+            const isApproved = dbImg.qcStatus === 'approved' || !this.jobConfiguration?.ai?.runQualityCheck;
+            if (isApproved && !dbImg.finalImagePath) {
+              const fs = require('fs');
+              const sourcePath = dbImg.tempImagePath || dbImg.finalImagePath;
+              if (!sourcePath) continue;
+              try { fs.accessSync(sourcePath); } catch { continue; }
+              const movedFinal = await this.moveImageToFinalLocation(sourcePath, dbImg.imageMappingId || dbImg.mappingId || dbImg.id);
+              if (movedFinal) {
+                await this.updateImagePaths(dbImg.imageMappingId || dbImg.mappingId || dbImg.id, null, movedFinal);
+              }
+            }
+          }
+        }
+      } catch (qcErr) {
+        console.error('❌ QC/move phase error:', qcErr);
+      }
+      
+      // Mark image generation/QC as complete and update progress
       this.completedSteps.push('image_generation');
       this.emitProgress('image_generation', 100, 'Image generation completed');
       
@@ -925,8 +1005,8 @@ class JobRunner extends EventEmitter {
         jpgBackground: config.processing?.jpgBackground || 'white',
         jpgQuality: config.processing?.jpgQuality || 90,
         pngQuality: config.processing?.pngQuality || 9,
-        // Paths
-        outputDirectory: config.filePaths?.outputDirectory || './pictures/toupload',
+        // Paths (QC-first): write to temp first, move to final later
+        outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
         tempDirectory: config.filePaths?.tempDirectory || './pictures/generated'
       };
       
@@ -1275,8 +1355,8 @@ class JobRunner extends EventEmitter {
           imageIndex: images.indexOf(image),
           message: `Running quality check on image ${images.indexOf(image) + 1}/${images.length}`,
           metadata: { 
-            imagePath: image.finalImagePath,
-            imageMappingId: image.imageMappingId,
+            imagePath: (image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path),
+            imageMappingId: (image.imageMappingId || image.image_mapping_id || image.mappingId || image.id),
             imageId: image.id
           }
         });
@@ -1285,8 +1365,12 @@ class JobRunner extends EventEmitter {
         
         let result;
         try {
+          const qcInputPath = image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path;
+          if (!qcInputPath) {
+            throw new Error('QC input path is missing');
+          }
           result = await aiVision.runQualityCheck(
-            image.finalImagePath, // Use finalImagePath for database images
+            qcInputPath, // Use finalImagePath when available, otherwise tempImagePath
             config.parameters?.openaiModel || "gpt-4o",
             config.ai?.qualityCheckPrompt || null
           );
@@ -1304,14 +1388,15 @@ class JobRunner extends EventEmitter {
             metadata: { 
               passed: result.passed,
               reason: result.reason,
-              imagePath: image.finalImagePath
+              imagePath: (image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path)
             }
           });
           
           image.qualityDetails = result;
           
           // Update QC status in database based on quality check result
-          if (this.backendAdapter && image.imageMappingId) {
+          const mappingKey = image.imageMappingId || image.image_mapping_id || image.mappingId || image.id;
+          if (this.backendAdapter && mappingKey) {
             try {
               const qcStatus = result.passed ? "approved" : "qc_failed";
               const qcReason = result.reason || (result.passed ? "Quality check passed" : "Quality check failed");
@@ -1325,11 +1410,11 @@ class JobRunner extends EventEmitter {
                 metadata: { 
                   qcStatus,
                   qcReason,
-                  imageMappingId: image.imageMappingId
+                  imageMappingId: mappingKey
                 }
               });
               
-              await this.backendAdapter.updateQCStatusByMappingId(image.imageMappingId, qcStatus, qcReason);
+              await this.backendAdapter.updateQCStatusByMappingId(mappingKey, qcStatus, qcReason);
               
               // Also update the local image object
               image.qcStatus = qcStatus;
@@ -1344,7 +1429,7 @@ class JobRunner extends EventEmitter {
                 errorCode: 'QC_DB_UPDATE_ERROR',
                 metadata: { 
                   error: dbError.message,
-                  imageMappingId: image.imageMappingId
+                  imageMappingId: mappingKey
                 }
               });
               
@@ -1359,7 +1444,7 @@ class JobRunner extends EventEmitter {
               message: 'Skipping database update - missing backendAdapter or imageMappingId',
               metadata: { 
                 hasBackendAdapter: !!this.backendAdapter,
-                imageMappingId: image.imageMappingId
+                imageMappingId: (image.imageMappingId || image.image_mapping_id || image.mappingId || image.id)
               }
             });
             
@@ -1372,13 +1457,14 @@ class JobRunner extends EventEmitter {
             subStep: 'quality_check_no_result',
             imageIndex: images.indexOf(image),
             message: 'Quality check returned no result',
-            metadata: { imagePath: image.finalImagePath }
+            metadata: { imagePath: (image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path) }
           });
           
           image.qualityDetails = { error: "Quality check failed" };
           
           // Update QC status to failed in database
-          if (this.backendAdapter && image.imageMappingId) {
+          const mappingKey2 = image.imageMappingId || image.image_mapping_id || image.mappingId || image.id;
+          if (this.backendAdapter && mappingKey2) {
             try {
               this._logStructured({
                 level: 'info',
@@ -1386,10 +1472,10 @@ class JobRunner extends EventEmitter {
                 subStep: 'quality_check_db_update_failed',
                 imageIndex: images.indexOf(image),
                 message: 'Updating QC status to failed in database',
-                metadata: { imageMappingId: image.imageMappingId }
+                metadata: { imageMappingId: mappingKey2 }
               });
               
-              await this.backendAdapter.updateQCStatusByMappingId(image.imageMappingId, "qc_failed", "Quality check failed");
+              await this.backendAdapter.updateQCStatusByMappingId(mappingKey2, "qc_failed", "Quality check failed");
               
               // Also update the local image object
               image.qcStatus = "qc_failed";
@@ -1404,7 +1490,7 @@ class JobRunner extends EventEmitter {
                 errorCode: 'QC_DB_UPDATE_FAILED_ERROR',
                 metadata: { 
                   error: dbError.message,
-                  imageMappingId: image.imageMappingId
+                  imageMappingId: mappingKey2
                 }
               });
               
@@ -1833,7 +1919,18 @@ class JobRunner extends EventEmitter {
   async moveImageToFinalLocation(processedImagePath, imageMappingId) {
     try {
       const fs = require('fs').promises;
+      const fsSync = require('fs');
       const path = require('path');
+      // Structured log: move start
+      try {
+        this._logStructured({
+          level: 'info',
+          stepName: 'image_generation',
+          subStep: 'move_start',
+          message: 'Starting move to final location',
+          metadata: { imageMappingId, sourcePath: processedImagePath }
+        });
+      } catch {}
       
       // Determine final location based on user configuration or default
       // Use the same cross-platform logic as JobConfiguration.getDefaultSettings()
@@ -1857,6 +1954,15 @@ class JobRunner extends EventEmitter {
       } else {
         console.log(`🔧 JobRunner: DEBUG - Using custom path: ${finalDirectory}`);
       }
+      try {
+        this._logStructured({
+          level: 'info',
+          stepName: 'image_generation',
+          subStep: 'move_target_resolved',
+          message: 'Resolved final output directory',
+          metadata: { imageMappingId, finalDirectory }
+        });
+      } catch {}
       
       // Ensure final directory exists
       await fs.mkdir(finalDirectory, { recursive: true });
@@ -1866,13 +1972,62 @@ class JobRunner extends EventEmitter {
       const finalFilename = `${imageMappingId}_${originalFilename}`;
       const finalImagePath = path.join(finalDirectory, finalFilename);
       
-      // Move the file (not copy) using fs.rename
-      await fs.rename(processedImagePath, finalImagePath);
-      
+      // Move the file (not copy) using fs.rename, with fallback to copy+unlink
+      let moved = false;
+      try {
+        await fs.rename(processedImagePath, finalImagePath);
+        moved = true;
+      } catch (err) {
+        console.warn(`⚠️ rename failed (${err?.code || 'unknown'}). Falling back to copy+unlink`);
+        try {
+          await fs.copyFile(processedImagePath, finalImagePath);
+          await fs.unlink(processedImagePath);
+          moved = true;
+        } catch (copyErr) {
+          console.error('❌ copy+unlink fallback failed:', copyErr?.message || copyErr);
+          moved = false;
+        }
+      }
+
+      // Verify final existence and original absence
+      const finalExists = (() => { try { fsSync.accessSync(finalImagePath); return true; } catch { return false; } })();
+      const originalExists = (() => { try { fsSync.accessSync(processedImagePath); return true; } catch { return false; } })();
+      console.log(`✅ Move verification for ${imageMappingId}: finalExists=${finalExists}, originalExists=${originalExists}, dest=${finalImagePath}`);
+      try {
+        this._logStructured({
+          level: moved && finalExists ? 'info' : 'warn',
+          stepName: 'image_generation',
+          subStep: 'move_verification',
+          message: 'Move verification completed',
+          metadata: { imageMappingId, finalExists, originalExists, finalImagePath }
+        });
+      } catch {}
+      if (!moved || !finalExists) {
+        throw new Error('Final image not present after move operation');
+      }
+
       console.log(`✅ Image moved from ${processedImagePath} to ${finalImagePath}`);
+      try {
+        this._logStructured({
+          level: 'info',
+          stepName: 'image_generation',
+          subStep: 'move_complete',
+          message: 'Image moved to final location',
+          metadata: { imageMappingId, finalImagePath }
+        });
+      } catch {}
       return finalImagePath;
     } catch (error) {
       console.error(`❌ Error moving image to final location:`, error);
+      try {
+        this._logStructured({
+          level: 'error',
+          stepName: 'image_generation',
+          subStep: 'move_failed',
+          message: 'Failed to move image to final location',
+          metadata: { error: String(error && error.message || error) }
+        });
+      } catch {}
       return null;
     }
   }

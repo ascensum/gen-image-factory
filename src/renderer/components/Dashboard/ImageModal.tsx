@@ -295,7 +295,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
               <div className="relative w-full h-full overflow-hidden rounded">
                 <img
                   ref={imgRef}
-                  src={`local-file://${image.finalImagePath}`}
+                  src={`local-file://${image.finalImagePath || image.tempImagePath || ''}`}
                   alt="Generated image"
                   className={`${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
                   style={{

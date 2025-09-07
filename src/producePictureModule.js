@@ -509,10 +509,15 @@ async function processImage(inputImagePath, imgName, config = {}) {
     throw error;
   }
 
-  // 6. Cleanup Original Downloaded Image
+  // 6. Cleanup Original Downloaded Image (only if different from output)
   try {
-    await fs.unlink(inputImagePath);
-    logDebug('Cleaned up original downloaded image.');
+    const samePath = path.resolve(inputImagePath) === path.resolve(outputPath);
+    if (!samePath) {
+      await fs.unlink(inputImagePath);
+      logDebug('Cleaned up original downloaded image.');
+    } else {
+      logDebug('Skipped cleanup: inputImagePath equals outputPath');
+    }
   } catch (error) {
     console.error(`Error deleting original downloaded image ${inputImagePath}:`, error);
   }

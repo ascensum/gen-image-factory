@@ -1695,6 +1695,16 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       const result = await this.generatedImage.updateImagePathsByMappingId(mappingId, tempImagePath, finalImagePath);
+      // Fallback: if no rows updated, try by numeric id (when callers passed id instead of mappingId)
+      if (result && result.success && result.changes === 0 && /^(\d+)$/.test(String(mappingId))) {
+        try {
+          const id = Number(mappingId);
+          const byId = await this.generatedImage.updateImagePathsById(id, tempImagePath, finalImagePath);
+          return byId;
+        } catch (e) {
+          // keep original result
+        }
+      }
       return result;
     } catch (error) {
       console.error('Error updating image paths by mapping ID:', error);

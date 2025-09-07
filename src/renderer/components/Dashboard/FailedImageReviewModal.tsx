@@ -87,9 +87,9 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
               data-testid="image-container"
               className="relative"
             >
-              {image.finalImagePath ? (
+              {(image.finalImagePath || image.tempImagePath) ? (
                 <img 
-                  src={`local-file://${image.finalImagePath}`} 
+                  src={`local-file://${image.finalImagePath || image.tempImagePath || ''}`} 
                   alt="Failed image"
                   className="w-full h-auto max-h-96 object-contain rounded"
                   onError={(e) => {

@@ -78,9 +78,9 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
 
       {/* Image */}
       <div className="relative aspect-square">
-        {image.finalImagePath ? (
+        {(image.finalImagePath || image.tempImagePath) ? (
           <img 
-            src={`local-file://${image.finalImagePath}`} 
+            src={`local-file://${image.finalImagePath || image.tempImagePath || ''}`} 
             alt={`Failed image ${image.id}`}
             className="w-full h-32 object-cover rounded"
             onError={(e) => {

@@ -766,9 +766,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   filteredImages.map((image) => (
                     <div key={image.id} className="image-card">
                       <div className="image-preview">
-                        {image.finalImagePath ? (
+                        {(image.finalImagePath || image.tempImagePath) ? (
                           <img 
-                            src={`local-file://${image.finalImagePath}`} 
+                            src={`local-file://${image.finalImagePath || image.tempImagePath}`} 
                             alt={`Generated image ${image.id}`}
                             className="w-full h-32 object-cover rounded"
                             onError={(e) => {
@@ -833,9 +833,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <tr key={image.id}>
                       <td>
                         <div className="thumbnail">
-                          {image.finalImagePath ? (
+                          {(image.finalImagePath || image.tempImagePath) ? (
                             <img 
-                              src={`local-file://${image.finalImagePath}`} 
+                              src={`local-file://${image.finalImagePath || image.tempImagePath}`} 
                               alt={`Generated image ${image.id}`}
                               className="w-12 h-12 object-cover rounded"
                               onError={(e) => {

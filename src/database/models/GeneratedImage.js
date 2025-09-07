@@ -377,6 +377,7 @@ class GeneratedImage {
             qcStatus: row.qc_status,
             qcReason: row.qc_reason,
             finalImagePath: row.final_image_path,
+            tempImagePath: row.temp_image_path,
             metadata: row.metadata ? JSON.parse(row.metadata) : null,
             processingSettings: row.processing_settings ? JSON.parse(row.processing_settings) : null,
             createdAt: row.created_at ? new Date(row.created_at) : null
@@ -406,6 +407,7 @@ class GeneratedImage {
             qcStatus: row.qc_status,
             qcReason: row.qc_reason,
             finalImagePath: row.final_image_path,
+            tempImagePath: row.temp_image_path,
             metadata: row.metadata ? JSON.parse(row.metadata) : null,
             processingSettings: row.processing_settings ? JSON.parse(row.processing_settings) : null,
             createdAt: row.created_at ? new Date(row.created_at) : null
@@ -530,6 +532,7 @@ class GeneratedImage {
             qcStatus: row.qc_status,
             qcReason: row.qc_reason,
             finalImagePath: row.final_image_path,
+            tempImagePath: row.temp_image_path,
             metadata: row.metadata ? JSON.parse(row.metadata) : null,
             processingSettings: row.processing_settings ? JSON.parse(row.processing_settings) : null,
             createdAt: row.created_at ? new Date(row.created_at) : null
@@ -825,7 +828,7 @@ class GeneratedImage {
     return new Promise((resolve, reject) => {
       const sql = `
         UPDATE generated_images 
-        SET temp_image_path = ?, final_image_path = ?, updated_at = datetime('now')
+        SET temp_image_path = ?, final_image_path = ?
         WHERE image_mapping_id = ?
       `;
 
@@ -837,6 +840,28 @@ class GeneratedImage {
           reject(err);
         } else {
           console.log(`Image paths updated successfully for mapping ID: ${mappingId}`);
+          resolve({ success: true, changes: this.changes });
+        }
+      });
+    });
+  }
+
+  async updateImagePathsById(id, tempImagePath, finalImagePath) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        UPDATE generated_images 
+        SET temp_image_path = ?, final_image_path = ?
+        WHERE id = ?
+      `;
+
+      const params = [tempImagePath, finalImagePath, id];
+
+      this.db.run(sql, params, function(err) {
+        if (err) {
+          console.error('Error updating image paths by id:', err);
+          reject(err);
+        } else {
+          console.log(`Image paths updated successfully for id: ${id}`);
           resolve({ success: true, changes: this.changes });
         }
       });

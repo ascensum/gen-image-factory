@@ -10,7 +10,12 @@ const isDev = process.env.NODE_ENV === 'development';
 // Initialize Backend Adapter
 const { BackendAdapter } = require('../src/adapter/backendAdapter');
 
+// JobConfiguration for dynamic, cross-platform default and saved paths
+const { JobConfiguration } = require('../src/database/models/JobConfiguration');
+const { GeneratedImage } = require('../src/database/models/GeneratedImage');
+
 let mainWindow;
+let allowedRoots = [];
 
 function createWindow() {
   // Create the browser window
@@ -69,39 +74,86 @@ let backendAdapter;
 
 // This method will be called when Electron has finished initialization
 console.log('🚨 MAIN PROCESS: About to call app.whenReady()...');
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   console.log('🚨 MAIN PROCESS: app.whenReady() resolved successfully!');
-  // Set up protocol handler for local files AFTER app is ready
-  protocol.registerFileProtocol('local-file', (request, callback) => {
-    console.log('🔗 Protocol handler called for:', request.url);
-    const filePath = request.url.replace('local-file://', '');
-    console.log('🔗 Extracted file path:', filePath);
-    
-    // Security check: only allow access to files in specific directories
-    const allowedPaths = [
+  // Precompute dynamic allowed roots from defaults and saved settings
+  try {
+    const jobConfig = new JobConfiguration();
+    const defaults = jobConfig.getDefaultSettings();
+    const defaultRoots = [
+      defaults?.filePaths?.outputDirectory,
+      defaults?.filePaths?.tempDirectory
+    ].filter(Boolean);
+
+    allowedRoots = [
+      // app userData child folders we may use
       path.join(app.getPath('userData'), 'exports'),
       path.join(app.getPath('userData'), 'generated'),
-      path.join(process.env.HOME || process.env.USERPROFILE || '', 'Desktop', 'Gen_Image_Factory_ToUpload'),
-      path.join(process.env.HOME || process.env.USERPROFILE || '', 'Desktop', 'Gen_Image_Factory_Generated')
+      ...defaultRoots
     ];
-    
-    console.log('🔗 Allowed paths:', allowedPaths);
-    
-    let isAllowed = false;
-    for (const allowedPath of allowedPaths) {
-      if (filePath.startsWith(allowedPath)) {
-        isAllowed = true;
-        console.log('🔗 Path allowed by:', allowedPath);
-        break;
-      }
+
+    // Try also pulling current saved settings (best-effort)
+    jobConfig.getSettings('default')
+      .then(({ settings }) => {
+        const saved = settings?.filePaths || {};
+        [saved.outputDirectory, saved.tempDirectory]
+          .filter(Boolean)
+          .forEach((p) => allowedRoots.push(p));
+        console.log('🔗 Allowed roots (with saved):', allowedRoots);
+      })
+      .catch(() => {
+        console.log('🔗 Using default allowed roots only');
+      });
+
+    console.log('🔗 Allowed roots (initial):', allowedRoots);
+
+    // Add dynamic roots from recent generated images (final and temp directories)
+    try {
+      const gi = new GeneratedImage();
+      const res = await gi.getAllGeneratedImages(500);
+      const images = res && res.success ? res.images : Array.isArray(res) ? res : [];
+      const dirs = new Set();
+      images.forEach((img) => {
+        try { if (img.finalImagePath) dirs.add(path.dirname(img.finalImagePath)); } catch {}
+        try { if (img.tempImagePath) dirs.add(path.dirname(img.tempImagePath)); } catch {}
+      });
+      dirs.forEach((d) => allowedRoots.push(d));
+      console.log('🔗 Allowed roots (with image dirs):', allowedRoots);
+    } catch (e2) {
+      console.warn('🔗 Could not load dynamic roots from images:', e2.message);
     }
-    
-    if (isAllowed && fs.existsSync(filePath)) {
-      console.log('🔗 File exists and allowed, serving:', filePath);
-      callback(filePath);
-    } else {
-      console.warn('🔗 Blocked access to file:', filePath, 'exists:', fs.existsSync(filePath), 'allowed:', isAllowed);
-      callback(404);
+  } catch (e) {
+    console.warn('🔗 Failed to initialize JobConfiguration for allowed roots:', e.message);
+  }
+
+  // Set up protocol handler for local files AFTER app is ready
+  protocol.registerFileProtocol('local-file', (request, callback) => {
+    try {
+      const rawUrl = request.url || '';
+      console.log('🔗 Protocol handler called for:', rawUrl);
+      const stripped = rawUrl.replace('local-file://', '');
+      const decodedPath = decodeURI(stripped);
+      const filePath = path.normalize(decodedPath);
+      console.log('🔗 Normalized file path:', filePath);
+
+      const isAllowed = allowedRoots.some((root) => {
+        try {
+          if (!root) return false;
+          const normRoot = path.normalize(root + path.sep);
+          return filePath.startsWith(normRoot);
+        } catch { return false; }
+      });
+
+      if (isAllowed && fs.existsSync(filePath)) {
+        console.log('🔗 File exists and allowed, serving:', filePath);
+        callback(filePath);
+      } else {
+        console.warn('🔗 Blocked access to file:', filePath, 'exists:', fs.existsSync(filePath), 'allowed:', isAllowed, 'roots:', allowedRoots);
+        callback(404);
+      }
+    } catch (err) {
+      console.error('🔗 Protocol handler error:', err);
+      callback(500);
     }
   });
   
