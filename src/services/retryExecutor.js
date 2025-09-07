@@ -407,7 +407,7 @@ class RetryExecutor extends EventEmitter {
       
       if (useOriginalSettings) {
         // Parse original processing settings from database
-        processingSettings = this.getOriginalProcessingSettings(image);
+        processingSettings = await this.getOriginalProcessingSettings(image);
         console.log(`🔧 RetryExecutor: Using original settings keys:`, Object.keys(processingSettings));
       } else {
         // Use modified settings passed from frontend

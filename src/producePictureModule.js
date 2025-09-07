@@ -19,26 +19,27 @@ async function pause(isLong = false, seconds) {
 
 async function removeBg(inputPath, removeBgSize) {
   try {
-    const fileBuffer = await fs.readFile(inputPath);
-    const formData = new FormData();
-    // Convert Buffer to Blob for FormData.append
-    const imageBlob = new Blob([fileBuffer], { type: 'image/png' }); // Assuming PNG, adjust if needed
-    formData.append('size', removeBgSize);
-    formData.append('image_file', imageBlob, 'image.png'); // Pass Blob directly with filename
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('size', removeBgSize || 'preview');
+    const fsModule = require('fs');
+    form.append('image_file', fsModule.createReadStream(inputPath));
 
-    const response = await axios.post('https://api.remove.bg/v1.0/removebg', formData, {
-      headers: {
-        "X-Api-Key": process.env.REMOVE_BG_API_KEY,
-        // ...formData.getHeaders(), // FormData from undici doesn't have getHeaders()
-      },
+    const headers = {
+      ...form.getHeaders(),
+      'X-Api-Key': process.env.REMOVE_BG_API_KEY || ''
+    };
+
+    const response = await axios.post('https://api.remove.bg/v1.0/removebg', form, {
+      headers,
       responseType: 'arraybuffer',
+      timeout: 60000
     });
 
-    if (response.status === 200) {
-      return response.data;
-    } else {
-      throw new Error(`Failed to remove background: ${response.status} ${response.statusText}`);
+    if (response.status === 200 && response.data) {
+      return Buffer.from(response.data);
     }
+    throw new Error(`Failed to remove background: ${response.status} ${response.statusText}`);
   } catch (error) {
     console.error('Error in removeBg:', error);
     throw error;
@@ -51,12 +52,14 @@ async function retryRemoveBg(inputPath, retries = 3, delay = 2000, removeBgSize)
     try {
       return await removeBg(inputPath, removeBgSize);
     } catch (error) {
-      console.warn(`Attempt ${i + 1} for removeBg failed: ${error.message}. Retrying in ${delay / 1000} seconds...`);
-      if (i < retries - 1) {
+      const isRetryable = !error.response || (error.response.status >= 500) || error.code === 'ECONNABORTED' || error.response?.status === 429;
+      console.warn(`Attempt ${i + 1} for removeBg failed: ${error.message}. ${isRetryable && i < retries - 1 ? `Retrying in ${delay / 1000} seconds...` : 'Not retryable or no attempts left.'}`);
+      if (isRetryable && i < retries - 1) {
         await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-        throw error; // Last attempt failed, re-throw the error
+        delay = Math.min(delay * 2, 15000);
+        continue;
       }
+      throw error;
     }
   }
 }
@@ -439,8 +442,10 @@ async function processImage(inputImagePath, imgName, config = {}) {
     } catch (error) {
       console.error('Background removal failed:', error);
       logDebug('Using original image as fallback for subsequent steps.');
-      // imageBuffer already contains the original image, so we can proceed
+      imageBuffer = await fs.readFile(inputImagePath);
     }
+  } else {
+    imageBuffer = await fs.readFile(inputImagePath);
   }
 
   let sharpInstance = sharp(imageBuffer);
@@ -485,7 +490,9 @@ async function processImage(inputImagePath, imgName, config = {}) {
   const outputDir = config.outputDirectory || './pictures/toupload';
   console.log(`🔧 processImage: DEBUG - final outputDir:`, outputDir);
   
-  const outputPath = path.resolve(path.join(outputDir, `${imgName}${finalExtension}`));
+  // Normalize imgName to avoid double extensions like .png.jpg
+  const baseName = imgName.replace(/\.(png|jpg|jpeg)$/i, '');
+  const outputPath = path.resolve(path.join(outputDir, `${baseName}${finalExtension}`));
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
   console.log(`🔧 processImage: Output path: ${outputPath}`);

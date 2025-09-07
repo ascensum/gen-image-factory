@@ -643,7 +643,52 @@ class JobRunner extends EventEmitter {
               const sourcePath = dbImg.tempImagePath || dbImg.finalImagePath;
               if (!sourcePath) continue;
               try { fs.accessSync(sourcePath); } catch { continue; }
-              const movedFinal = await this.moveImageToFinalLocation(sourcePath, dbImg.imageMappingId || dbImg.mappingId || dbImg.id);
+              let pathForFinal = sourcePath;
+              // If QC was enabled and image is approved, apply processing before moving to final
+              if (this.jobConfiguration?.ai?.runQualityCheck === true) {
+                try {
+                  const pathMod = require('path');
+                  const fsP = require('fs').promises;
+                  // Temporary processing directory
+                  let tempProcessingDir;
+                  try {
+                    const { app } = require('electron');
+                    const desktopPath = app.getPath('desktop');
+                    tempProcessingDir = pathMod.join(desktopPath, 'gen-image-factory', 'pictures', 'temp_processing');
+                  } catch (_e) {
+                    const os = require('os');
+                    const homeDir = os.homedir();
+                    tempProcessingDir = pathMod.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'temp_processing');
+                  }
+                  await fsP.mkdir(tempProcessingDir, { recursive: true });
+
+                  const proc = this.jobConfiguration?.processing || {};
+                  const processingConfig = {
+                    tempDirectory: tempProcessingDir,
+                    outputDirectory: tempProcessingDir,
+                    removeBg: !!proc.removeBg,
+                    imageConvert: !!proc.imageConvert,
+                    convertToJpg: !!proc.convertToJpg,
+                    trimTransparentBackground: !!proc.trimTransparentBackground,
+                    imageEnhancement: !!proc.imageEnhancement,
+                    sharpening: proc.sharpening ?? 0,
+                    saturation: proc.saturation ?? 1,
+                    jpgBackground: proc.jpgBackground || 'white',
+                    removeBgSize: proc.removeBgSize || 'preview',
+                    jpgQuality: proc.jpgQuality ?? 90,
+                    pngQuality: proc.pngQuality ?? 9
+                  };
+                  const sourceFileName = pathMod.basename(sourcePath);
+                  const processedImagePath = await producePictureModule.processImage(sourcePath, sourceFileName, processingConfig);
+                  if (processedImagePath) {
+                    pathForFinal = processedImagePath;
+                  }
+                } catch (procErr) {
+                  console.warn('QC-pass processing failed, using original temp image for move:', procErr?.message || procErr);
+                }
+              }
+
+              const movedFinal = await this.moveImageToFinalLocation(pathForFinal, dbImg.imageMappingId || dbImg.mappingId || dbImg.id);
               if (movedFinal) {
                 await this.updateImagePaths(dbImg.imageMappingId || dbImg.mappingId || dbImg.id, null, movedFinal);
               }
@@ -984,27 +1029,29 @@ class JobRunner extends EventEmitter {
       console.log(`🔧 JobRunner: DEBUG - config.filePaths?.outputDirectory:`, config.filePaths?.outputDirectory);
       console.log(`🔧 JobRunner: DEBUG - config.filePaths?.tempDirectory:`, config.filePaths?.tempDirectory);
       
+      // When QC is enabled, defer processing until retry flows (QC-first design)
+      const processingEnabled = !(config.ai?.runQualityCheck === true);
       const moduleConfig = {
-        removeBg: config.processing?.removeBg || false,
-        imageConvert: config.processing?.imageConvert || false,
-        convertToJpg: config.processing?.convertToJpg || false,
-        trimTransparentBackground: config.processing?.trimTransparentBackground || false,
+        removeBg: processingEnabled ? (config.processing?.removeBg || false) : false,
+        imageConvert: processingEnabled ? (config.processing?.imageConvert || false) : false,
+        convertToJpg: processingEnabled ? (config.processing?.convertToJpg || false) : false,
+        trimTransparentBackground: processingEnabled ? (config.processing?.trimTransparentBackground || false) : false,
         aspectRatios: Array.isArray(parameters.aspectRatios) ? parameters.aspectRatios : 
                      (Array.isArray(config.parameters?.aspectRatios) ? config.parameters.aspectRatios : 
                      (typeof config.parameters?.aspectRatios === 'string' ? [config.parameters.aspectRatios] : ['1:1'])),
         pollingTimeout: config.parameters?.enablePollingTimeout ? (config.parameters?.pollingTimeout || 15) : null, // 15 minutes if enabled, null if disabled
         pollingInterval: config.parameters?.pollingInterval || 1, // 1 minute (from parameters settings)
         processMode: config.parameters?.processMode || 'single',
-        removeBgSize: config.processing?.removeBgSize || 'preview',
+        removeBgSize: processingEnabled ? (config.processing?.removeBgSize || 'preview') : 'preview',
         runQualityCheck: config.ai?.runQualityCheck || false,
         runMetadataGen: config.ai?.runMetadataGen || false,
         // Image enhancement settings
-        imageEnhancement: config.processing?.imageEnhancement || false,
-        sharpening: config.processing?.sharpening || 0,
-        saturation: config.processing?.saturation || 1,
-        jpgBackground: config.processing?.jpgBackground || 'white',
-        jpgQuality: config.processing?.jpgQuality || 90,
-        pngQuality: config.processing?.pngQuality || 9,
+        imageEnhancement: processingEnabled ? (config.processing?.imageEnhancement || false) : false,
+        sharpening: processingEnabled ? (config.processing?.sharpening || 0) : 0,
+        saturation: processingEnabled ? (config.processing?.saturation || 1) : 1,
+        jpgBackground: processingEnabled ? (config.processing?.jpgBackground || 'white') : 'white',
+        jpgQuality: processingEnabled ? (config.processing?.jpgQuality || 90) : 90,
+        pngQuality: processingEnabled ? (config.processing?.pngQuality || 9) : 9,
         // Paths (QC-first): write to temp first, move to final later
         outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
         tempDirectory: config.filePaths?.tempDirectory || './pictures/generated'
@@ -1932,28 +1979,39 @@ class JobRunner extends EventEmitter {
         });
       } catch {}
       
-      // Determine final location based on user configuration or default
-      // Use the same cross-platform logic as JobConfiguration.getDefaultSettings()
-      let finalDirectory = this.jobConfiguration?.filePaths?.outputDirectory;
-      
-      console.log(`🔧 JobRunner: DEBUG - filePaths:`, JSON.stringify(this.jobConfiguration?.filePaths, null, 2));
-      console.log(`🔧 JobRunner: DEBUG - original outputDirectory: ${finalDirectory || 'not set'}`);
-      
-      if (!finalDirectory || finalDirectory.trim() === '') {
-        try {
-          const { app } = require('electron');
-          const desktopPath = app.getPath('desktop');
-          finalDirectory = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
-          console.log(`🔧 JobRunner: DEBUG - Using fallback Desktop path: ${finalDirectory}`);
-        } catch (error) {
-          const os = require('os');
-          const homeDir = os.homedir();
-          finalDirectory = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
-          console.log(`🔧 JobRunner: DEBUG - Using fallback Documents path: ${finalDirectory}`);
+      // Resolve and lock final output directory once per job
+      if (!this.finalOutputDirectory) {
+        let lockedDir = this.jobConfiguration?.filePaths?.outputDirectory;
+        console.log(`🔧 JobRunner: DEBUG - filePaths:`, JSON.stringify(this.jobConfiguration?.filePaths, null, 2));
+        console.log(`🔧 JobRunner: DEBUG - original outputDirectory: ${lockedDir || 'not set'}`);
+        if (!lockedDir || (typeof lockedDir === 'string' && lockedDir.trim() === '')) {
+          try {
+            const { app } = require('electron');
+            const desktopPath = app.getPath('desktop');
+            lockedDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
+            console.log(`🔧 JobRunner: DEBUG - Using fallback Desktop path: ${lockedDir}`);
+          } catch (error) {
+            const os = require('os');
+            const homeDir = os.homedir();
+            lockedDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
+            console.log(`🔧 JobRunner: DEBUG - Using fallback Documents path: ${lockedDir}`);
+          }
+        } else {
+          console.log(`🔧 JobRunner: DEBUG - Using custom path: ${lockedDir}`);
         }
-      } else {
-        console.log(`🔧 JobRunner: DEBUG - Using custom path: ${finalDirectory}`);
+        await fs.mkdir(lockedDir, { recursive: true });
+        this.finalOutputDirectory = lockedDir;
+        try {
+          this._logStructured({
+            level: 'info',
+            stepName: 'image_generation',
+            subStep: 'final_output_dir_locked',
+            message: 'Locked final output directory for this job',
+            metadata: { finalOutputDirectory: lockedDir }
+          });
+        } catch {}
       }
+      const finalDirectory = this.finalOutputDirectory;
       try {
         this._logStructured({
           level: 'info',
@@ -1963,9 +2021,6 @@ class JobRunner extends EventEmitter {
           metadata: { imageMappingId, finalDirectory }
         });
       } catch {}
-      
-      // Ensure final directory exists
-      await fs.mkdir(finalDirectory, { recursive: true });
       
       // Generate final filename
       const originalFilename = path.basename(processedImagePath);
