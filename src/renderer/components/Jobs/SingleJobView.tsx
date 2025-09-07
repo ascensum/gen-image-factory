@@ -674,6 +674,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                         <div>• Model: {jobConfiguration.settings?.parameters?.mjVersion ? `Midjourney v${jobConfiguration.settings.parameters.mjVersion}` : 'Not specified'}</div>
                         <div>• Process Mode: {jobConfiguration.settings?.parameters?.processMode || 'Not specified'}</div>
                         <div>• OpenAI Model: {jobConfiguration.settings?.parameters?.openaiModel || 'Not specified'}</div>
+                        <div>• Random Keywords: {jobConfiguration.settings?.parameters?.keywordRandom ? 'Yes' : 'No'}</div>
                       </div>
                     </div>
                     <div className="setting-group">
@@ -1038,6 +1039,42 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       placeholder="Temporary directory path"
                     />
                   </div>
+                  <div className="setting-row">
+                    <label>System Prompt File</label>
+                    <input
+                      type="text"
+                      value={editedSettings.filePaths?.systemPromptFile || ''}
+                      onChange={(e) => handleSettingChange('filePaths', 'systemPromptFile', e.target.value)}
+                      placeholder="Path to system prompt file"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Keywords File</label>
+                    <input
+                      type="text"
+                      value={editedSettings.filePaths?.keywordsFile || ''}
+                      onChange={(e) => handleSettingChange('filePaths', 'keywordsFile', e.target.value)}
+                      placeholder="Path to keywords file"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Quality Check Prompt File</label>
+                    <input
+                      type="text"
+                      value={editedSettings.filePaths?.qualityCheckPromptFile || ''}
+                      onChange={(e) => handleSettingChange('filePaths', 'qualityCheckPromptFile', e.target.value)}
+                      placeholder="Path to QC prompt file"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Metadata Prompt File</label>
+                    <input
+                      type="text"
+                      value={editedSettings.filePaths?.metadataPromptFile || ''}
+                      onChange={(e) => handleSettingChange('filePaths', 'metadataPromptFile', e.target.value)}
+                      placeholder="Path to metadata prompt file"
+                    />
+                  </div>
                 </div>
 
                 {/* Parameters Section */}
@@ -1073,6 +1110,59 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <option value="6.0">6.0</option>
                       <option value="5.2">5.2</option>
                     </select>
+                  </div>
+                  <div className="setting-row">
+                    <label>OpenAI Model</label>
+                    <input
+                      type="text"
+                      value={editedSettings.parameters?.openaiModel || ''}
+                      onChange={(e) => handleSettingChange('parameters', 'openaiModel', e.target.value)}
+                      placeholder="e.g., gpt-4o-mini"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Enable Polling Timeout</label>
+                    <input
+                      type="checkbox"
+                      checked={editedSettings.parameters?.enablePollingTimeout || false}
+                      onChange={(e) => handleSettingChange('parameters', 'enablePollingTimeout', e.target.checked)}
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Polling Timeout (seconds)</label>
+                    <input
+                      type="number"
+                      value={editedSettings.parameters?.pollingTimeout || 0}
+                      onChange={(e) => handleSettingChange('parameters', 'pollingTimeout', parseInt(e.target.value))}
+                      min="0"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Polling Interval (minutes)</label>
+                    <input
+                      type="number"
+                      value={editedSettings.parameters?.pollingInterval || 1}
+                      onChange={(e) => handleSettingChange('parameters', 'pollingInterval', parseInt(e.target.value))}
+                      min="1"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Random Keywords</label>
+                    <input
+                      type="checkbox"
+                      checked={editedSettings.parameters?.keywordRandom || false}
+                      onChange={(e) => handleSettingChange('parameters', 'keywordRandom', e.target.checked)}
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Image Count</label>
+                    <input
+                      type="number"
+                      value={editedSettings.parameters?.count || 1}
+                      onChange={(e) => handleSettingChange('parameters', 'count', parseInt(e.target.value))}
+                      min="1"
+                      max="20"
+                    />
                   </div>
                 </div>
 
