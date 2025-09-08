@@ -3,25 +3,14 @@ import { GeneratedImage } from './DashboardPanel';
 import FailedImageCard from './FailedImageCard';
 import FailedImageReviewModal from './FailedImageReviewModal';
 import ProcessingSettingsModal from './ProcessingSettingsModal';
+import type { ProcessingSettings } from '../../../types/processing';
 
 interface FailedImagesReviewPanelProps {
   onBack: () => void;
   onBackToSingleJob?: () => void;
 }
 
-interface ProcessingSettings {
-  imageEnhancement: boolean;
-  sharpening: number;
-  saturation: number;
-  imageConvert: boolean;
-  convertToJpg: boolean;
-  jpgQuality: number;
-  pngQuality: number;
-  removeBg: boolean;
-  removeBgSize: string;
-  trimTransparentBackground: boolean;
-  jpgBackground: string;
-}
+// Using shared ProcessingSettings type
 
 type QCStatus = 'qc_failed' | 'retry_pending' | 'processing' | 'retry_failed' | 'approved';
 

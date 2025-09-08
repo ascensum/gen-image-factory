@@ -1,19 +1,6 @@
 import React, { useState } from 'react';
 import { Toggle } from '../Settings/Toggle';
-
-interface ProcessingSettings {
-  imageEnhancement: boolean;
-  sharpening: number;
-  saturation: number;
-  imageConvert: boolean;
-  convertToJpg: boolean;
-  jpgQuality: number;
-  pngQuality: number;
-  removeBg: boolean;
-  removeBgSize: string;
-  trimTransparentBackground: boolean;
-  jpgBackground: string;
-}
+import type { ProcessingSettings } from '../../../types/processing';
 
 interface ProcessingSettingsModalProps {
   isOpen: boolean;
