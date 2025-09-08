@@ -994,6 +994,16 @@ class BackendAdapter {
         console.log('🔧 DEBUG - Normalized filePaths:', JSON.stringify(normalizedConfig.filePaths, null, 2));
       }
       
+      // Normalize processing settings if present
+      try {
+        if (normalizedConfig.processing) {
+          const { normalizeProcessingSettings } = require('../utils/processing');
+          normalizedConfig.processing = normalizeProcessingSettings(normalizedConfig.processing);
+        }
+      } catch (e) {
+        // proceed without fatal error
+      }
+
       // Save the normalized job configuration first so it can be retrieved later
       console.log('💾 Saving normalized job configuration for future retrieval...');
       const configResult = await this.jobConfig.saveSettings(normalizedConfig, `job_${Date.now()}`);
@@ -1955,67 +1965,8 @@ class BackendAdapter {
 
   // Helpers
   sanitizeProcessingSettings(input) {
-    const allowedKeys = new Set([
-      'imageEnhancement',
-      'sharpening',
-      'saturation',
-      'imageConvert',
-      'convertToJpg',
-      'jpgQuality',
-      'pngQuality',
-      'removeBg',
-      'removeBgSize',
-      'trimTransparentBackground',
-      'jpgBackground'
-    ]);
-    const out = {};
-    for (const [k, v] of Object.entries(input || {})) {
-      if (!allowedKeys.has(k)) continue;
-      switch (k) {
-        case 'imageEnhancement':
-        case 'imageConvert':
-        case 'convertToJpg':
-        case 'removeBg':
-        case 'trimTransparentBackground':
-          out[k] = Boolean(v);
-          break;
-        case 'sharpening': {
-          let num = Number(v);
-          if (!Number.isFinite(num)) num = 0;
-          out[k] = Math.max(0, Math.min(100, Math.round(num)));
-          break;
-        }
-        case 'saturation': {
-          let num = Number(v);
-          if (!Number.isFinite(num)) num = 1;
-          out[k] = Math.max(0, Math.min(3, num));
-          break;
-        }
-        case 'jpgQuality': {
-          let num = Number(v);
-          if (!Number.isFinite(num)) num = 90;
-          out[k] = Math.max(1, Math.min(100, Math.round(num)));
-          break;
-        }
-        case 'pngQuality': {
-          let num = Number(v);
-          if (!Number.isFinite(num)) num = 100;
-          out[k] = Math.max(1, Math.min(100, Math.round(num)));
-          break;
-        }
-        case 'removeBgSize': {
-          const allowed = new Set(['auto', 'full', '4k']);
-          const val = String(v || 'auto').toLowerCase();
-          out[k] = allowed.has(val) ? val : 'auto';
-          break;
-        }
-        case 'jpgBackground': {
-          out[k] = typeof v === 'string' ? v : '#FFFFFF';
-          break;
-        }
-      }
-    }
-    return out;
+    const { normalizeProcessingSettings } = require('../utils/processing');
+    return normalizeProcessingSettings(input);
   }
 
   // Job Management Methods

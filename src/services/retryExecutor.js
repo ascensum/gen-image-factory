@@ -696,6 +696,15 @@ class RetryExecutor extends EventEmitter {
         outputDirectory: processOutputDir,
         ...sanitizedSettings
       };
+
+      // Normalize/clamp processing fields to expected ranges
+      try {
+        const { normalizeProcessingSettings } = require('../utils/processing');
+        const normalized = normalizeProcessingSettings(processingConfig);
+        Object.assign(processingConfig, normalized);
+      } catch (e) {
+        // Non-fatal if normalizer not available
+      }
       
       // Process the image using the real processing pipeline
       console.log(`🔧 RetryExecutor: Calling processImage with config keys:`, Object.keys(processingConfig)); // Sanitized

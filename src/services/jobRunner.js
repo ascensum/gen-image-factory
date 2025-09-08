@@ -159,6 +159,16 @@ class JobRunner extends EventEmitter {
       }
       console.log('✅ Configuration validation passed');
 
+      // Normalize processing sub-object if present
+      try {
+        if (config && config.processing) {
+          const { normalizeProcessingSettings } = require('../utils/processing');
+          config.processing = normalizeProcessingSettings(config.processing);
+        }
+      } catch (e) {
+        // Continue without fatal error
+      }
+
       // Initialize job
       const jobId = uuidv4();
       console.log('🆔 Generated job ID:', jobId);
