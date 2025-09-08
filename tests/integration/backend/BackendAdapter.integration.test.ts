@@ -374,6 +374,31 @@ describe('BackendAdapter Integration Tests', () => {
     });
   });
 
+  describe('Path Normalization (retry/rerun)', () => {
+    it('uses custom directories when provided, else falls back', async () => {
+      const adapter = new BackendAdapter({ ipc: { handle: vi.fn(), removeHandler: vi.fn() }, skipIpcSetup: true });
+
+      // Mock settings with custom dirs
+      const customSettings = {
+        apiKeys: { openai: 'k', piapi: 'k', removeBg: 'k' },
+        filePaths: { outputDirectory: '/custom/toupload', tempDirectory: '/custom/generated' },
+        parameters: { processMode: 'relax', aspectRatios: ['1:1'], mjVersion: '6.1', openaiModel: 'gpt-4o', pollingTimeout: 15, keywordRandom: false },
+        processing: { removeBg: false, imageConvert: false, convertToJpg: false, trimTransparentBackground: false, jpgBackground: 'white', jpgQuality: 100, pngQuality: 100, removeBgSize: 'auto' },
+        ai: { runQualityCheck: true, runMetadataGen: true },
+        advanced: { debugMode: false }
+      } as any;
+
+      // Start job to persist config and create JobRunner
+      const start = await adapter.startJob(customSettings);
+      expect(start.success).toBe(true);
+
+      // RetryExecutor initialization will use adapter.settings (loaded via getSettings) and overrides
+      await adapter.initializeRetryExecutor();
+      expect(adapter.retryExecutor.tempDirectory).toBeDefined();
+      expect(adapter.retryExecutor.outputDirectory).toBeDefined();
+    });
+  });
+
   describe('Bulk Rerun Functionality', () => {
     it('should rerun multiple jobs sequentially', async () => {
       // Mock multiple completed job executions

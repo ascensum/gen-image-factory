@@ -672,6 +672,55 @@ describe('ProcessingSettingsModal', () => {
     });
   });
 
+  describe('Numeric Emission', () => {
+    it('emits numeric values for sharpening, saturation, and pngQuality', () => {
+      render(
+        <ProcessingSettingsModal
+          isOpen={true}
+          onClose={mockOnClose}
+          onRetry={mockOnRetry}
+          selectedCount={selectedCount}
+        />
+      );
+
+      // Switch to modified settings
+      const modifiedLabel = screen.getByText('Retry with Modified Settings').closest('label');
+      const modifiedRadio = modifiedLabel?.querySelector('input') as HTMLInputElement;
+      fireEvent.click(modifiedRadio);
+
+      // Enable enhancement and set numeric controls
+      const enhancementToggle = screen.getByLabelText('Enable image enhancement');
+      fireEvent.click(enhancementToggle);
+
+      // Sharpening numeric input
+      const sharpeningInput = screen.getByLabelText(/Sharpening Level/).closest('div')!.querySelector('input') as HTMLInputElement;
+      fireEvent.change(sharpeningInput, { target: { value: '7' } });
+
+      // Saturation numeric input
+      const saturationInput = screen.getByLabelText(/Saturation Level/).closest('div')!.querySelector('input') as HTMLInputElement;
+      fireEvent.change(saturationInput, { target: { value: '1.7' } });
+
+      // Enable conversion and switch to PNG then set pngQuality
+      const conversionToggle = screen.getByLabelText('Enable image conversion');
+      fireEvent.click(conversionToggle);
+      const convertToJpgToggle = screen.getByLabelText('Convert Format').closest('div')!.querySelector('select') as HTMLSelectElement;
+      fireEvent.change(convertToJpgToggle, { target: { value: 'png' } });
+
+      const pngQualityInput = screen.getByLabelText('PNG Quality (1-100)').closest('div')!.querySelector('input') as HTMLInputElement;
+      fireEvent.change(pngQualityInput, { target: { value: '77' } });
+
+      // Trigger retry with modified settings
+      const retryButton = screen.getByText('Retry with Modified Settings (3 images)');
+      fireEvent.click(retryButton);
+
+      expect(mockOnRetry).toHaveBeenCalledWith(
+        false,
+        expect.objectContaining({ imageEnhancement: true, sharpening: 7, saturation: 1.7, pngQuality: 77 }),
+        false
+      );
+    });
+  });
+
   describe('Form Validation', () => {
     it('validates background size format', () => {
       render(

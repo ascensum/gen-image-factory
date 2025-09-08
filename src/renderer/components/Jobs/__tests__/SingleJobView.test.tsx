@@ -675,3 +675,46 @@ describe('SingleJobView', () => {
     });
   });
 });
+
+describe('Settings Editing', () => {
+  it('saves new file path and parameter fields via IPC', async () => {
+    (window as any).electronAPI.getJobConfigurationById.mockResolvedValue({ success: true, configuration: { settings: {
+      apiKeys: { openai: '', piapi: '', removeBg: '' },
+      filePaths: { outputDirectory: '', tempDirectory: '', systemPromptFile: '', keywordsFile: '', qualityCheckPromptFile: '', metadataPromptFile: '' },
+      parameters: { processMode: 'relax', aspectRatios: ['1:1'], mjVersion: '6.1', openaiModel: '', pollingTimeout: 0, pollingInterval: 1, enablePollingTimeout: false, keywordRandom: false, count: 1 },
+      processing: { removeBg: false, imageConvert: false, imageEnhancement: false, sharpening: 0, saturation: 1, convertToJpg: false, trimTransparentBackground: false, jpgBackground: 'white', jpgQuality: 100, pngQuality: 100, removeBgSize: 'auto' },
+      ai: { runQualityCheck: true, runMetadataGen: true },
+      advanced: { debugMode: false }
+    } } });
+    (window as any).electronAPI.updateJobConfiguration.mockResolvedValue({ success: true });
+
+    render(<SingleJobView {...defaultProps} />);
+
+    // Wait for load
+    await waitFor(() => expect((window as any).electronAPI.jobManagement.getJobExecution).toHaveBeenCalled());
+
+    // Open edit modal
+    const editBtn = screen.getByTitle('Edit job settings');
+    fireEvent.click(editBtn);
+
+    // Fill new fields
+    fireEvent.change(screen.getByPlaceholderText('Path to system prompt file'), { target: { value: '/abs/sys.txt' } });
+    fireEvent.change(screen.getByPlaceholderText('Path to QC prompt file'), { target: { value: '/abs/qc.txt' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g., gpt-4o-mini'), { target: { value: 'gpt-4o-mini' } });
+    const enableTimeout = screen.getByLabelText('Enable Polling Timeout') as HTMLInputElement;
+    if (!enableTimeout.checked) fireEvent.click(enableTimeout);
+    const timeoutInput = screen.getAllByDisplayValue('0')[0] as HTMLInputElement;
+    fireEvent.change(timeoutInput, { target: { value: '45' } });
+
+    // Save
+    fireEvent.click(screen.getByText('Save Settings'));
+
+    await waitFor(() => expect((window as any).electronAPI.updateJobConfiguration).toHaveBeenCalled());
+    const payload = (window as any).electronAPI.updateJobConfiguration.mock.calls[0][1];
+    expect(payload.filePaths.systemPromptFile).toBe('/abs/sys.txt');
+    expect(payload.filePaths.qualityCheckPromptFile).toBe('/abs/qc.txt');
+    expect(payload.parameters.openaiModel).toBe('gpt-4o-mini');
+    expect(payload.parameters.enablePollingTimeout).toBe(true);
+    expect(payload.parameters.pollingTimeout).toBe(45);
+  });
+});
