@@ -21,6 +21,9 @@ export interface JobConfiguration {
   processing: {
     removeBg: boolean;
     imageConvert: boolean;
+    imageEnhancement?: boolean;
+    sharpening?: number;
+    saturation?: number;
     convertToJpg: boolean;
     trimTransparentBackground: boolean;
     jpgBackground: string;
