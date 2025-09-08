@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import type { SettingsObject as SharedSettingsObject } from '../../../types/settings';
 import { Eye, EyeOff, Save, RotateCcw, AlertCircle, CheckCircle, X, Key, FolderOpen, Sliders, Cog, Settings } from 'lucide-react';
 import { Toggle } from './Toggle';
 import { FileSelector } from './FileSelector';
 
 // Types and Interfaces
-interface SettingsObject {
+interface SettingsObject extends SharedSettingsObject {
   apiKeys: {
     openai: string;
     piapi: string;

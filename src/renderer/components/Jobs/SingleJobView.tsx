@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import type { SettingsObject } from '../../../types/settings';
 import { JobExecution } from '../../../types/job';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import ExportDialog from '../Common/ExportDialog';
@@ -37,8 +38,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const labelInputRef = useRef<HTMLDivElement>(null);
   
   // Settings editing state
+  type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };
   const [isEditingSettings, setIsEditingSettings] = useState(false);
-  const [editedSettings, setEditedSettings] = useState(null);
+  const [editedSettings, setEditedSettings] = useState<DeepPartial<SettingsObject> | null>(null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
