@@ -1,13 +1,21 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
+set -e
 
-# Non-interactive, fast safety net
-echo "[husky] Running focused regression guard..."
+echo "[husky] Running critical regression suite (non-interactive)"
 
-# Run unit normalizer tests and critical Single Job focused tests
-npm run -s test:run -- /src/renderer/components/Jobs/__tests__/SingleJobView.settings-save.test.tsx /src/renderer/components/Jobs/__tests__/SingleJobView.statistics.test.tsx /src/renderer/components/Jobs/__tests__/SingleJobView.delete-refresh.test.tsx /tests/unit/utils/processing.normalizer.test.ts || exit 1
+# 1) Core backend/job management suites (existing)
+npm run -s test:job-management
+npm run -s test:retry
 
-echo "[husky] OK"
+# 2) Focused UI and utils guards (fast)
+npx vitest run \
+  src/renderer/components/Jobs/__tests__/SingleJobView.settings-save.test.tsx \
+  src/renderer/components/Jobs/__tests__/SingleJobView.statistics.test.tsx \
+  src/renderer/components/Jobs/__tests__/SingleJobView.delete-refresh.test.tsx \
+  tests/unit/utils/processing.normalizer.test.ts --reporter=dot
+
+echo "[husky] All critical tests passed"
 
 #!/bin/sh
 
