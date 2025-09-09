@@ -773,10 +773,27 @@ class RetryExecutor extends EventEmitter {
             originalPrompt = imageData.image.generationPrompt;
           }
           
+          // Determine metadata prompt: prefer original job config file, else settings.filePaths.metadataPromptFile, else null
+          let metadataPrompt = null;
+          try {
+            // Try to read from jobConfiguration first
+            const filePaths = (jobConfiguration && jobConfiguration.settings && jobConfiguration.settings.filePaths) ? jobConfiguration.settings.filePaths : (settings && settings.filePaths ? settings.filePaths : {});
+            if (filePaths && filePaths.metadataPromptFile) {
+              try {
+                const fsProm = require('fs').promises;
+                metadataPrompt = await fsProm.readFile(filePaths.metadataPromptFile, 'utf8');
+              } catch (e) {
+                console.warn('RetryExecutor: Failed to read metadataPromptFile, using default prompt');
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
+
           metadataResult = await aiVision.generateMetadata(
             processedImagePath,
             originalPrompt,
-            null, // Use default metadata prompt
+            (metadataPrompt && metadataPrompt.trim() !== '') ? metadataPrompt : null,
             'gpt-4o-mini' // Default model
           );
           console.log(`🔧 RetryExecutor: Metadata generation completed:`, metadataResult);

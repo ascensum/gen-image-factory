@@ -169,6 +169,34 @@ class JobRunner extends EventEmitter {
         // Continue without fatal error
       }
 
+      // Load custom QC and Metadata prompt templates from files for regular jobs/reruns
+      try {
+        // Ensure ai object exists
+        config.ai = config.ai || {};
+        if (config.filePaths?.qualityCheckPromptFile) {
+          try {
+            const qcText = await fs.readFile(config.filePaths.qualityCheckPromptFile, 'utf8');
+            if (qcText && qcText.trim() !== '') {
+              config.ai.qualityCheckPrompt = qcText;
+            }
+          } catch (e) {
+            console.warn('JobRunner: Failed to load qualityCheckPromptFile:', e.message);
+          }
+        }
+        if (config.filePaths?.metadataPromptFile) {
+          try {
+            const mdText = await fs.readFile(config.filePaths.metadataPromptFile, 'utf8');
+            if (mdText && mdText.trim() !== '') {
+              config.ai.metadataPrompt = mdText;
+            }
+          } catch (e) {
+            console.warn('JobRunner: Failed to load metadataPromptFile:', e.message);
+          }
+        }
+      } catch (e) {
+        console.warn('JobRunner: prompt template load skipped:', e.message);
+      }
+
       // Initialize job
       const jobId = uuidv4();
       console.log('🆔 Generated job ID:', jobId);
