@@ -1,4 +1,15 @@
 #!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Non-interactive, fast safety net
+echo "[husky] Running focused regression guard..."
+
+# Run unit normalizer tests and critical Single Job focused tests
+npm run -s test:run -- /src/renderer/components/Jobs/__tests__/SingleJobView.settings-save.test.tsx /src/renderer/components/Jobs/__tests__/SingleJobView.statistics.test.tsx /src/renderer/components/Jobs/__tests__/SingleJobView.delete-refresh.test.tsx /tests/unit/utils/processing.normalizer.test.ts || exit 1
+
+echo "[husky] OK"
+
+#!/bin/sh
 
 # Husky pre-commit hook: critical regression tests including retry functionality
 
