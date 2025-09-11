@@ -1141,7 +1141,7 @@ class JobRunner extends EventEmitter {
       const result = await producePictureModule.producePictureModule(
         settings, // Pass settings with API keys as first parameter
         imgNameBase,
-        null, // customMetadataPrompt
+        (config.ai && config.ai.metadataPrompt) ? config.ai.metadataPrompt : null, // custom metadata prompt from file if provided
         moduleConfig
       );
       
