@@ -17,6 +17,8 @@ export interface SettingsObject {
     aspectRatios: string[] | string;
     mjVersion: string;
     openaiModel: string;
+    /** Optional job label to apply at creation time */
+    label?: string;
     pollingTimeout: number;
     pollingInterval: number;
     enablePollingTimeout: boolean;

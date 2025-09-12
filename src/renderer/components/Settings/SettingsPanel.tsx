@@ -24,6 +24,7 @@ interface SettingsObject extends SharedSettingsObject {
     aspectRatios: string[];
     mjVersion: string;
     openaiModel: string;
+    label?: string;
     pollingTimeout: number;
     pollingInterval: number;
     enablePollingTimeout: boolean;
@@ -89,6 +90,7 @@ const defaultSettings: SettingsObject = {
             aspectRatios: ['1:1', '16:9', '9:16'],
     mjVersion: '6.1',
     openaiModel: 'gpt-4o',
+    label: '',
     pollingTimeout: 15,
     pollingInterval: 1,
     enablePollingTimeout: true,
@@ -136,6 +138,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   success = null
 }) => {
   const [settings, setSettings] = useState<SettingsObject>(defaultSettings);
+  const [form, setForm] = useState<SettingsObject>(defaultSettings);
+  // Draft inputs to avoid focus loss while typing
+  const [labelDraft, setLabelDraft] = useState<string>('');
+  const [apiDraft, setApiDraft] = useState<{ openai: string; piapi: string; removeBg: string }>({ openai: '', piapi: '', removeBg: '' });
+  const [aspectRatiosDraft, setAspectRatiosDraft] = useState<string>('');
+  const [mjVersionDraft, setMjVersionDraft] = useState<string>('');
+  const [openaiModelDraft, setOpenaiModelDraft] = useState<string>('');
+  const [countDraft, setCountDraft] = useState<number | ''>(1);
   const [activeTab, setActiveTab] = useState<TabId>('api-keys');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({
@@ -157,6 +167,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           const result = await window.electronAPI.getSettings();
           if (result && result.success && result.settings) {
             setSettings(result.settings as SettingsObject);
+            setForm(result.settings as SettingsObject);
           }
         } else {
           console.log('Electron API not available, using default settings');
@@ -171,34 +182,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   // Handle input changes with focus preservation
   const handleInputChange = (section: string, key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.type === 'number' ? parseInt(e.target.value) : e.target.value;
-    const inputId = `${section}-${key}`;
-    
-    // Store the current cursor position
     const input = e.target as HTMLInputElement;
-    const cursorPosition = input.selectionStart;
-    
-    setSettings(prev => ({
+    const isNumber = input.type === 'number';
+    const parsed = isNumber ? (input.value === '' ? '' : parseInt(input.value, 10)) : input.value;
+    setForm(prev => ({
       ...prev,
-      [section]: { ...prev[section as keyof typeof prev], [key]: value }
+      [section]: { ...prev[section as keyof typeof prev], [key]: parsed as any }
     }));
     setHasUnsavedChanges(true);
-    
-    // Restore focus and cursor position after state update
-    requestAnimationFrame(() => {
-      const inputElement = inputRefs.current[inputId];
-      if (inputElement && document.activeElement !== inputElement) {
-        inputElement.focus();
-        if (inputElement.setSelectionRange) {
-          inputElement.setSelectionRange(cursorPosition, cursorPosition);
-        }
-      }
-    });
+    // Do not force focus/selection restoration; let the browser manage it to avoid focus jitter
   };
 
   // Handle toggle changes
   const handleToggleChange = (section: string, key: string) => (checked: boolean) => {
-    setSettings(prev => ({
+    setForm(prev => ({
       ...prev,
       [section]: { ...prev[section as keyof typeof prev], [key]: checked }
     }));
@@ -230,8 +227,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const handleSave = async () => {
     try {
       if (window.electronAPI && window.electronAPI.saveSettings) {
-        await window.electronAPI.saveSettings(settings);
+        await window.electronAPI.saveSettings(form);
       }
+      setSettings(form);
       setHasUnsavedChanges(false);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
@@ -293,8 +291,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   data-testid={`${key}-api-key-input`}
                   ref={(el) => { inputRefs.current[inputId] = el; }}
                   type={showPasswords[key] ? 'text' : 'password'}
-                  defaultValue={settings.apiKeys[key as keyof typeof settings.apiKeys]}
-                  onChange={handleInputChange('apiKeys', key)}
+                  defaultValue={form.apiKeys[key as keyof typeof form.apiKeys]}
+                  onBlur={(e) => {
+                    const val = e.currentTarget.value;
+                    setForm(prev => ({ ...prev, apiKeys: { ...prev.apiKeys, [key]: val } }));
+                    setHasUnsavedChanges(true);
+                  }}
                   className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder={`Enter ${key} API key...`}
                 />
@@ -327,7 +329,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       <div className="space-y-6">
         <FileSelector
           label="Output Directory"
-          value={settings.filePaths.outputDirectory}
+          value={form.filePaths.outputDirectory}
           onChange={(path: string) => handleInputChange('filePaths', 'outputDirectory')({ target: { value: path } } as any)}
           type="directory"
           placeholder="Select directory for processed images"
@@ -336,7 +338,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         <FileSelector
           label="Temp Directory"
-          value={settings.filePaths.tempDirectory}
+          value={form.filePaths.tempDirectory}
           onChange={(path: string) => handleInputChange('filePaths', 'tempDirectory')({ target: { value: path } } as any)}
           type="directory"
           placeholder="Select directory for temporary files"
@@ -345,7 +347,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         <FileSelector
           label="System Prompt File"
-          value={settings.filePaths.systemPromptFile}
+          value={form.filePaths.systemPromptFile}
           onChange={(path: string) => handleInputChange('filePaths', 'systemPromptFile')({ target: { value: path } } as any)}
           type="file"
           fileTypes={['.txt']}
@@ -355,7 +357,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         <FileSelector
           label="Keywords File"
-          value={settings.filePaths.keywordsFile}
+          value={form.filePaths.keywordsFile}
           onChange={(path: string) => handleInputChange('filePaths', 'keywordsFile')({ target: { value: path } } as any)}
           type="file"
           fileTypes={['.txt', '.csv']}
@@ -365,7 +367,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         <FileSelector
           label="Quality Check Prompt File"
-          value={settings.filePaths.qualityCheckPromptFile}
+          value={form.filePaths.qualityCheckPromptFile}
           onChange={(path: string) => handleInputChange('filePaths', 'qualityCheckPromptFile')({ target: { value: path } } as any)}
           type="file"
           fileTypes={['.txt']}
@@ -375,7 +377,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         <FileSelector
           label="Metadata Prompt File"
-          value={settings.filePaths.metadataPromptFile}
+          value={form.filePaths.metadataPromptFile}
           onChange={(path: string) => handleInputChange('filePaths', 'metadataPromptFile')({ target: { value: path } } as any)}
           type="file"
           fileTypes={['.txt']}
@@ -395,6 +397,26 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       </div>
 
       <div className="space-y-6">
+        {/* Job Label */}
+        <div>
+          <label htmlFor="job-label" className="block text-sm font-medium text-gray-700 mb-2">
+            Job Name / Label
+          </label>
+          <input
+            id="job-label"
+            type="text"
+            defaultValue={(form.parameters as any)?.label || ''}
+            onBlur={(e) => {
+              const val = e.currentTarget.value;
+              setForm(prev => ({ ...prev, parameters: { ...prev.parameters, label: val } }));
+              setHasUnsavedChanges(true);
+            }}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Optional label shown in Dashboard and Job views"
+          />
+          <p className="text-xs text-gray-500 mt-1">If empty, a default job_timestamp label will be used.</p>
+        </div>
+
         {/* Midjourney Settings */}
         <div className="space-y-4">
           <h4 className="text-md font-medium text-gray-800">Midjourney Settings</h4>
@@ -405,7 +427,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             </label>
             <select
               id="process-mode"
-              value={settings.parameters.processMode}
+              value={form.parameters.processMode}
               onChange={handleInputChange('parameters', 'processMode')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
@@ -423,8 +445,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <input
               id="aspect-ratios"
               type="text"
-              value={settings.parameters.aspectRatios}
-              onChange={handleInputChange('parameters', 'aspectRatios')}
+              defaultValue={Array.isArray(form.parameters.aspectRatios) ? form.parameters.aspectRatios.join(',') : (form.parameters.aspectRatios as any) || ''}
+              onBlur={(e) => {
+                const arr = e.currentTarget.value
+                  .split(',')
+                  .map(v => v.trim())
+                  .filter(Boolean);
+                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, aspectRatios: arr.length ? arr : ['1:1'] } }));
+                setHasUnsavedChanges(true);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="1:1,16:9,9:16"
             />
@@ -438,8 +467,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <input
               id="mj-version"
               type="text"
-              value={settings.parameters.mjVersion}
-              onChange={handleInputChange('parameters', 'mjVersion')}
+              defaultValue={form.parameters.mjVersion}
+              onBlur={(e) => {
+                const val = e.currentTarget.value;
+                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, mjVersion: val } }));
+                setHasUnsavedChanges(true);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="6.1"
             />
@@ -455,17 +488,19 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <label htmlFor="openai-model" className="block text-sm font-medium text-gray-700 mb-2">
               OpenAI Model
             </label>
-            <select
+            <input
               id="openai-model"
-              value={settings.parameters.openaiModel}
-              onChange={handleInputChange('parameters', 'openaiModel')}
+              type="text"
+              defaultValue={form.parameters.openaiModel}
+              onBlur={(e) => {
+                const val = e.currentTarget.value;
+                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, openaiModel: val } }));
+                setHasUnsavedChanges(true);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="gpt-4o">GPT-4o</option>
-              <option value="gpt-4o-mini">GPT-4o Mini</option>
-              <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-            </select>
-            <p className="text-xs text-gray-500 mt-1">OpenAI model for text generation</p>
+              placeholder="e.g., gpt-4o, gpt-4.1, gpt-4o-mini"
+            />
+            <p className="text-xs text-gray-500 mt-1">Type any supported model identifier.</p>
           </div>
 
           <div className="flex items-center justify-between">
@@ -476,13 +511,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <p className="text-xs text-gray-500">Use custom polling timeout instead of default</p>
             </div>
             <Toggle
-              checked={settings.parameters.enablePollingTimeout}
+              checked={form.parameters.enablePollingTimeout}
               onChange={handleToggleChange('parameters', 'enablePollingTimeout')}
             />
           </div>
 
           {/* Polling Timeout - only show when enabled */}
-          {settings.parameters.enablePollingTimeout && (
+          {form.parameters.enablePollingTimeout && (
             <div>
               <label htmlFor="polling-timeout" className="block text-sm font-medium text-gray-700 mb-2">
                 Polling Timeout (seconds)
@@ -491,8 +526,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 id="polling-timeout"
                 ref={(el) => { inputRefs.current['parameters-pollingTimeout'] = el; }}
                 type="number"
-                value={settings.parameters.pollingTimeout}
-                onChange={handleInputChange('parameters', 'pollingTimeout')}
+                defaultValue={String(form.parameters.pollingTimeout)}
+                onBlur={(e) => {
+                  const v = parseInt(e.currentTarget.value || '0', 10);
+                  const clamped = Math.min(300, Math.max(1, isNaN(v) ? 1 : v));
+                  setForm(prev => ({ ...prev, parameters: { ...prev.parameters, pollingTimeout: clamped } }));
+                  setHasUnsavedChanges(true);
+                }}
+                onWheel={(e) => { e.currentTarget.blur(); }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="1"
                 max="300"
@@ -508,18 +549,24 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           
           <div>
             <label htmlFor="count" className="block text-sm font-medium text-gray-700 mb-2">
-              Image Count
+              Generations count
             </label>
             <input
               id="count"
               type="number"
-              value={settings.parameters.count}
-              onChange={handleInputChange('parameters', 'count')}
+              defaultValue={String(form.parameters.count)}
+              onBlur={(e) => {
+                const v = parseInt(e.currentTarget.value || '1', 10);
+                const clamped = Math.min(250, Math.max(1, isNaN(v) ? 1 : v));
+                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, count: clamped } }));
+                setHasUnsavedChanges(true);
+              }}
+              onWheel={(e) => { e.currentTarget.blur(); }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               min="1"
-              max="10"
+              max="250"
             />
-            <p className="text-xs text-gray-500 mt-1">Number of images to generate</p>
+            <p className="text-xs text-gray-500 mt-1">Number of generations (250 generations or 1000 images max).</p>
           </div>
 
           <div className="flex items-center justify-between">
@@ -530,7 +577,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <p className="text-xs text-gray-500">Use random keywords from the keywords file</p>
             </div>
             <Toggle
-              checked={settings.parameters.keywordRandom}
+              checked={form.parameters.keywordRandom}
               onChange={handleToggleChange('parameters', 'keywordRandom')}
             />
           </div>

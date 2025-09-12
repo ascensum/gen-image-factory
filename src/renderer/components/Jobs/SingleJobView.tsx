@@ -683,7 +683,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <h3>Image Settings</h3>
                       <div className="setting-details">
                         <div>• Aspect Ratio: {Array.isArray(jobConfiguration.settings?.parameters?.aspectRatios) ? jobConfiguration.settings.parameters.aspectRatios.join(', ') : jobConfiguration.settings?.parameters?.aspectRatios || 'Not specified'}</div>
-                        <div>• Image Count: {jobConfiguration.settings?.parameters?.count || 'Not specified'}</div>
+                        <div>• Generations count: {jobConfiguration.settings?.parameters?.count || 'Not specified'}</div>
                         <div>• Convert to JPG: {jobConfiguration.settings?.processing?.convertToJpg ? 'Yes' : 'No'}</div>
                       </div>
                     </div>
@@ -1083,6 +1083,16 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 <div className="setting-group">
                   <h4 className="setting-group-title">Parameters</h4>
                   <div className="setting-row">
+                    <label>Job Name / Label</label>
+                    <input
+                      type="text"
+                      value={editedSettings.parameters?.label || ''}
+                      onChange={(e) => handleSettingChange('parameters', 'label', e.target.value)}
+                      placeholder="Optional label for this job"
+                    />
+                  </div>
+
+                  <div className="setting-row">
                     <label>Process Mode</label>
                     <select
                       value={editedSettings.parameters?.processMode || 'relax'}
@@ -1104,14 +1114,12 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   </div>
                   <div className="setting-row">
                     <label>MJ Version</label>
-                    <select
+                    <input
+                      type="text"
                       value={editedSettings.parameters?.mjVersion || '6.1'}
                       onChange={(e) => handleSettingChange('parameters', 'mjVersion', e.target.value)}
-                    >
-                      <option value="6.1">6.1</option>
-                      <option value="6.0">6.0</option>
-                      <option value="5.2">5.2</option>
-                    </select>
+                      placeholder="e.g., 6.1, niji, etc."
+                    />
                   </div>
                   <div className="setting-row">
                     <label>OpenAI Model</label>
@@ -1157,14 +1165,15 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     />
                   </div>
                   <div className="setting-row">
-                    <label>Image Count</label>
+                    <label>Generations count</label>
                     <input
                       type="number"
                       value={editedSettings.parameters?.count || 1}
                       onChange={(e) => handleSettingChange('parameters', 'count', parseInt(e.target.value))}
                       min="1"
-                      max="20"
+                      max="250"
                     />
+                    <p className="setting-description">Number of generations (250 generations or 1000 images max).</p>
                   </div>
                 </div>
 

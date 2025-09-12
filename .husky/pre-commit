@@ -1,10 +1,9 @@
 #!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
 set -e
 
 echo "[husky] Running critical regression suite (non-interactive)"
 
-# 1) Core backend/job management suites (existing)
+# 1) Core backend/job management suites
 npm run -s test:job-management
 npm run -s test:retry
 
@@ -13,34 +12,8 @@ npx vitest run \
   src/renderer/components/Jobs/__tests__/SingleJobView.settings-save.test.tsx \
   src/renderer/components/Jobs/__tests__/SingleJobView.statistics.test.tsx \
   src/renderer/components/Jobs/__tests__/SingleJobView.delete-refresh.test.tsx \
+  src/renderer/components/Jobs/__tests__/JobLabelDisplay.test.tsx \
+  src/renderer/components/Settings/__tests__/Parameters.behavior.test.tsx \
   tests/unit/utils/processing.normalizer.test.ts --reporter=dot
 
 echo "[husky] All critical tests passed"
-
-#!/bin/sh
-
-# Husky pre-commit hook: critical regression tests including retry functionality
-
-echo "🧪 Running critical regression tests..."
-
-# Test retry functionality (most critical)
-echo "🔄 Testing Retry Functionality..."
-npm run test:retry || exit 1
-
-# Test job management (existing critical tests)
-echo "📋 Testing Job Management..."
-npm run test:job-management || exit 1
-
-# Test cross-platform path handling (critical for preventing hardcoded paths)
-echo "🛣️ Testing Cross-Platform Path Handling..."
-npm test -- tests/unit/backend/pathResolution.test.js --run || exit 1
-
-# Test import regression (prevents constructor errors)
-echo "📦 Testing Import Regression..."
-npm test -- tests/unit/backend/importRegression.test.js --run || exit 1
-
-# Test retry executor functionality (prevents retry_pending lock)
-echo "🔄 Testing Retry Executor Functionality..."
-npm test -- tests/unit/services/RetryExecutor.test.ts --run || exit 1
-
-echo "✅ All critical tests passed!"

@@ -319,7 +319,7 @@ class JobRunner extends EventEmitter {
             successfulImages: 0,
             failedImages: 0,
             errorMessage: null,
-            label: null
+            label: (config && config.parameters && typeof config.parameters.label === 'string' && config.parameters.label.trim() !== '') ? config.parameters.label.trim() : null
           };
           
           const saveResult = await this.backendAdapter.saveJobExecution(jobExecution);
@@ -837,7 +837,7 @@ class JobRunner extends EventEmitter {
             generatedImages: this.jobState.generatedImages || 0,
             failedImages: this.jobState.failedImages || 0,
             errorMessage: error.message,
-            label: null
+            label: (config && config.parameters && typeof config.parameters.label === 'string' && config.parameters.label.trim() !== '') ? config.parameters.label.trim() : null
           };
           
           const updateResult = await this.backendAdapter.updateJobExecution(this.databaseExecutionId, errorJobExecution);
@@ -900,7 +900,14 @@ class JobRunner extends EventEmitter {
             const lines = keywordsContent.trim().split('\n').filter(line => line.trim());
             if (lines.length > 1) { // Need at least header + one data row
               const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-              const dataRow = lines[1].split(',').map(cell => cell.trim().replace(/"/g, ''));
+              // Choose data row based on keywordRandom toggle
+              const keywordRandom = !!(config.parameters && config.parameters.keywordRandom);
+              const dataStartIndex = 1;
+              const dataEndIndex = lines.length - 1;
+              const chosenIndex = keywordRandom
+                ? (dataStartIndex + Math.floor(Math.random() * (dataEndIndex - dataStartIndex + 1)))
+                : dataStartIndex;
+              const dataRow = lines[chosenIndex].split(',').map(cell => cell.trim().replace(/"/g, ''));
               
               // Create object mapping headers to values
               const csvRow = {};
@@ -922,14 +929,15 @@ class JobRunner extends EventEmitter {
             const keywordsList = keywordsContent.trim().split('\n').filter(line => line.trim());
             
             if (keywordsList.length > 0) {
-              // Select first keyword (or implement random selection later)
-              keywords = keywordsList[0].trim();
+              const keywordRandom = !!(config.parameters && config.parameters.keywordRandom);
+              const index = keywordRandom ? Math.floor(Math.random() * keywordsList.length) : 0;
+              keywords = keywordsList[index].trim();
               this._logStructured({
                 level: 'debug',
                 stepName: 'initialization',
                 subStep: 'txt_parsed',
                 message: `Read TXT keywords: ${keywords}`,
-                metadata: { keywordsFile: config.filePaths.keywordsFile, selectedKeyword: keywords }
+                metadata: { keywordsFile: config.filePaths.keywordsFile, selectedKeyword: keywords, keywordRandom }
               });
             }
           }
