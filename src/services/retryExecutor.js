@@ -829,7 +829,7 @@ class RetryExecutor extends EventEmitter {
         // Don't throw error here, as the main processing was successful
       }
       
-      // Update the database with the NEW image path
+      // Update the database with the NEW image path and persist metadata if present
       if (this.currentImageId) {
         try {
           console.log(`🔧 RetryExecutor: Updating database with new image path: ${finalOutputPath}`);
@@ -850,12 +850,36 @@ class RetryExecutor extends EventEmitter {
             qcStatus: 'approved', // Update status to approved since processing succeeded
             qcReason: 'Retry processing successful',
             finalImagePath: finalOutputPath, // Update with new path
-            metadata: existingImage.metadata,
+            metadata: (() => {
+              if (!metadataResult) return existingImage.metadata;
+              const tags = metadataResult.uploadTags || metadataResult.tags || metadataResult.upload_tags || null;
+              const merged = {
+                ...(existingImage.metadata || {}),
+                title: metadataResult.new_title || (existingImage.metadata ? existingImage.metadata.title : undefined),
+                description: metadataResult.new_description || (existingImage.metadata ? existingImage.metadata.description : undefined),
+                tags: tags || (existingImage.metadata ? existingImage.metadata.tags : undefined)
+              };
+              return merged;
+            })(),
             processingSettings: existingImage.processingSettings
           };
           
           console.log(`🔧 RetryExecutor: Updating image with all required fields preserved`);
           await this.generatedImage.updateGeneratedImage(this.currentImageId, updateData);
+          // Additionally ensure metadata-only update if paths didn’t change (safety)
+          if (metadataResult) {
+            try {
+              const tags = metadataResult.uploadTags || metadataResult.tags || metadataResult.upload_tags || null;
+              await this.generatedImage.updateMetadataById(this.currentImageId, {
+                title: metadataResult.new_title,
+                description: metadataResult.new_description,
+                tags
+              });
+              console.log('🔧 RetryExecutor: Persisted regenerated metadata');
+            } catch (e) {
+              console.warn('🔧 RetryExecutor: Metadata persistence (byId) failed:', e.message);
+            }
+          }
           console.log(`🔧 RetryExecutor: Database updated successfully`);
         } catch (dbError) {
           console.error(`🔧 RetryExecutor: Failed to update database with new path:`, dbError);
