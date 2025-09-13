@@ -14,6 +14,9 @@ npx vitest run \
   src/renderer/components/Jobs/__tests__/SingleJobView.delete-refresh.test.tsx \
   src/renderer/components/Jobs/__tests__/JobLabelDisplay.test.tsx \
   src/renderer/components/Settings/__tests__/Parameters.behavior.test.tsx \
-  tests/unit/utils/processing.normalizer.test.ts --reporter=dot
+  tests/unit/utils/processing.normalizer.test.ts \
+  tests/integration/backend/FallbackLabelUnification.integration.test.ts \
+  tests/integration/backend/LabelNoOverwriteOnCompletion.integration.test.ts \
+  tests/integration/backend/RenameUpdatesConfiguration.integration.test.ts --reporter=dot
 
 echo "[husky] All critical tests passed"

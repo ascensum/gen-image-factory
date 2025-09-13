@@ -38,6 +38,7 @@ class JobRunner extends EventEmitter {
     this.isStopping = false;
     this.isRerun = options.isRerun || false; // Flag to prevent duplicate database saves during reruns
     this.jobConfiguration = null; // Store the actual job configuration
+    this.persistedLabel = null; // Track the label we save on job start to avoid overwrites
     
     // Initialize PROGRESS_STEPS with default configuration to ensure proper step count
     // This prevents getJobStatus from returning incorrect totalSteps when idle
@@ -310,6 +311,13 @@ class JobRunner extends EventEmitter {
       if (this.backendAdapter && !this.isRerun) {
         try {
           console.log("💾 Saving job execution to database...");
+          // Compute a persisted fallback label if none provided
+          const providedLabel = (config && config.parameters && typeof config.parameters.label === 'string')
+            ? config.parameters.label.trim()
+            : '';
+          // BackendAdapter now injects a fallback label into config.parameters.label when missing.
+          const fallbackLabel = providedLabel !== '' ? providedLabel : `job_${Date.now()}`;
+
           const jobExecution = {
             configurationId: this.configurationId || null, // Use the configuration ID passed from backendAdapter
             startedAt: this.jobState.startTime,
@@ -319,8 +327,10 @@ class JobRunner extends EventEmitter {
             successfulImages: 0,
             failedImages: 0,
             errorMessage: null,
-            label: (config && config.parameters && typeof config.parameters.label === 'string' && config.parameters.label.trim() !== '') ? config.parameters.label.trim() : null
+            label: providedLabel !== '' ? providedLabel : fallbackLabel
           };
+          // Remember the label we persisted so later updates do not clear it
+          this.persistedLabel = jobExecution.label;
           
           const saveResult = await this.backendAdapter.saveJobExecution(jobExecution);
           console.log("✅ Job execution saved to database:", saveResult);
@@ -774,7 +784,7 @@ class JobRunner extends EventEmitter {
             generatedImages: this.jobState.generatedImages || 0,
             failedImages: this.jobState.failedImages || 0,
             errorMessage: null,
-            label: null
+            label: this.persistedLabel || null
           };
           
           // console.log("🔍 About to update job execution with data:", JSON.stringify(updatedJobExecution, null, 2));
@@ -837,7 +847,7 @@ class JobRunner extends EventEmitter {
             generatedImages: this.jobState.generatedImages || 0,
             failedImages: this.jobState.failedImages || 0,
             errorMessage: error.message,
-            label: (config && config.parameters && typeof config.parameters.label === 'string' && config.parameters.label.trim() !== '') ? config.parameters.label.trim() : null
+            label: this.persistedLabel || null
           };
           
           const updateResult = await this.backendAdapter.updateJobExecution(this.databaseExecutionId, errorJobExecution);

@@ -78,13 +78,15 @@ async function paramsGeneratorModule(
       }
     }
 
+    // Some models (e.g., gpt-5 family) only support default temperature (1). Fallback to 1.
+    const safeTemperature = (openaiModel && /^gpt-5/i.test(openaiModel)) ? 1 : 0.7;
     const completion = await openai.chat.completions.create({
       model: openaiModel,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
-      temperature: 0.7,
+      temperature: safeTemperature,
     });
 
     const response = completion.choices[0].message.content;

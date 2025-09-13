@@ -258,6 +258,18 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     }
   }, [paginatedJobs]);
 
+  // Compute a consistent display-only fallback label without persisting it
+  const getDisplayLabel = useCallback((job: JobExecution) => {
+    if (job.label && job.label.trim() !== '') return job.label;
+    const started = job.startedAt ? new Date(job.startedAt as any) : null;
+    if (started && !isNaN(started.getTime())) {
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const ts = `${started.getFullYear()}${pad(started.getMonth() + 1)}${pad(started.getDate())}_${pad(started.getHours())}${pad(started.getMinutes())}${pad(started.getSeconds())}`;
+      return `job_${ts}`;
+    }
+    return `Job ${job.id}`;
+  }, []);
+
   // Handle job actions following BMad-Method structured approach
   const handleJobRename = useCallback(async (jobId: string | number, newLabel: string) => {
     try {
@@ -658,17 +670,27 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                       className="job-label"
                       contentEditable
                       suppressContentEditableWarning
-                      onBlur={(e) => handleJobRename(job.id, e.currentTarget.textContent || '')}
+                      onBlur={(e) => {
+                        const text = (e.currentTarget.textContent || '').trim();
+                        const current = (job.label || '').trim();
+                        const fallback = getDisplayLabel(job).trim();
+                        // Do not persist fallback; only persist if user actually changed it
+                        if (text === current || (current === '' && text === fallback)) {
+                          e.currentTarget.textContent = getDisplayLabel(job);
+                          return;
+                        }
+                        handleJobRename(job.id, text);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.currentTarget.blur();
                         } else if (e.key === 'Escape') {
-                          e.currentTarget.textContent = job.label || `Job ${job.id}`;
+                          e.currentTarget.textContent = getDisplayLabel(job);
                           e.currentTarget.blur();
                         }
                       }}
                     >
-                      {job.label || `Job ${job.id}`}
+                      {getDisplayLabel(job)}
                     </span>
                   </td>
                   <td>

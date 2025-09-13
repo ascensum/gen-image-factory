@@ -37,6 +37,19 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const [labelSaveError, setLabelSaveError] = useState<string | null>(null);
   const labelInputRef = useRef<HTMLDivElement>(null);
   
+  // Compute display-only fallback label from startedAt timestamp
+  const getDisplayLabel = useCallback(() => {
+    const jobLabel = job?.label;
+    if (jobLabel && jobLabel.trim() !== '') return jobLabel;
+    const started = job?.startedAt ? new Date(job.startedAt as any) : null;
+    if (started && !isNaN(started.getTime())) {
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const ts = `${started.getFullYear()}${pad(started.getMonth() + 1)}${pad(started.getDate())}_${pad(started.getHours())}${pad(started.getMinutes())}${pad(started.getSeconds())}`;
+      return `job_${ts}`;
+    }
+    return `Job ${job?.id ?? ''}`.trim();
+  }, [job]);
+  
   // Settings editing state
   type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };
   const [isEditingSettings, setIsEditingSettings] = useState(false);
@@ -68,7 +81,15 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
         // Set label to "No label" if undefined, otherwise use job label or default
         const jobLabel = jobResult.execution.label;
         if (!jobLabel || jobLabel.trim() === '') {
-          setEditedLabel('No label');
+          // Initialize editor with the display fallback but save will convert it to empty string
+          const started = jobResult.execution.startedAt ? new Date(jobResult.execution.startedAt as any) : null;
+          if (started && !isNaN(started.getTime())) {
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const ts = `${started.getFullYear()}${pad(started.getMonth() + 1)}${pad(started.getDate())}_${pad(started.getHours())}${pad(started.getMinutes())}${pad(started.getSeconds())}`;
+            setEditedLabel(`job_${ts}`);
+          } else {
+            setEditedLabel(`Job ${jobResult.execution.id}`);
+          }
         } else {
           setEditedLabel(jobLabel);
         }
@@ -268,11 +289,11 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const handleLabelBlur = useCallback(() => {
     // Auto-save on blur if content changed
     const currentLabel = job?.label || '';
-    const currentDisplayLabel = currentLabel && currentLabel.trim() !== '' ? currentLabel : 'No label';
+    const currentDisplayLabel = currentLabel && currentLabel.trim() !== '' ? currentLabel : getDisplayLabel();
     if (editedLabel !== currentDisplayLabel) {
       handleLabelSave();
     }
-  }, [editedLabel, job, handleLabelSave]);
+  }, [editedLabel, job, handleLabelSave, getDisplayLabel]);
 
   // Settings editing handlers
   const handleSettingsEdit = useCallback(async () => {
@@ -476,7 +497,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
             ) : (
               <>
                 <span className="job-title-text">
-                  {job?.label && job.label.trim() !== '' ? job.label : 'No label'}
+                  {getDisplayLabel()}
                 </span>
                 <svg className="edit-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>

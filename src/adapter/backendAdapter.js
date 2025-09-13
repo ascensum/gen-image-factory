@@ -619,12 +619,21 @@ class BackendAdapter {
             };
           }
           
+          // Merge runtime API keys into configuration because keys are not persisted in DB settings
+          try {
+            const currentSettings = await this.getSettings();
+            const apiKeys = currentSettings?.settings?.apiKeys || {};
+            configResult.configuration.settings.apiKeys = { ...(configResult.configuration.settings.apiKeys || {}), ...apiKeys };
+          } catch (e) {
+            console.warn('Rerun: failed to merge runtime API keys into configuration:', e.message);
+          }
+
           // Start the job with the CURRENT configuration (respects user changes)
           // Use the main JobRunner for reruns to ensure proper UI integration and progress tracking
           this.jobRunner.configurationId = jobData.execution.configurationId;
           this.jobRunner.databaseExecutionId = newExecution.id; // Set the execution ID for database operations
           this.jobRunner.isRerun = true; // Set rerun flag to prevent duplicate database saves
-          
+
           const jobResult = await this.jobRunner.startJob(configResult.configuration.settings);
           
           if (jobResult.success) {
@@ -994,6 +1003,19 @@ class BackendAdapter {
         console.log('🔧 DEBUG - Normalized filePaths:', JSON.stringify(normalizedConfig.filePaths, null, 2));
       }
       
+      // Merge runtime API keys from current settings so jobs always have keys (keys are not stored in DB)
+      try {
+        const currentSettings = await this.getSettings();
+        const apiKeys = currentSettings?.settings?.apiKeys || {};
+        normalizedConfig.apiKeys = { ...(normalizedConfig.apiKeys || {}), ...apiKeys };
+        // Basic preflight: require OpenAI key for parameter generation
+        if (!normalizedConfig.apiKeys.openai || normalizedConfig.apiKeys.openai.trim() === '') {
+          return { success: false, error: 'OpenAI API key is required to start a job', code: 'JOB_CONFIGURATION_ERROR' };
+        }
+      } catch (e) {
+        console.warn('startJob: failed to merge runtime API keys into config:', e.message);
+      }
+
       // Normalize processing settings if present
       try {
         if (normalizedConfig.processing) {
@@ -1006,7 +1028,18 @@ class BackendAdapter {
 
       // Save the normalized job configuration first so it can be retrieved later
       console.log('💾 Saving normalized job configuration for future retrieval...');
-      const configResult = await this.jobConfig.saveSettings(normalizedConfig, `job_${Date.now()}`);
+      const providedLabel = (normalizedConfig && normalizedConfig.parameters && typeof normalizedConfig.parameters.label === 'string')
+        ? normalizedConfig.parameters.label.trim()
+        : '';
+      const now = new Date();
+      const pad = (n) => n.toString().padStart(2, '0');
+      const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+      const fallbackLabel = `job_${ts}`;
+      const configName = providedLabel !== '' ? providedLabel : fallbackLabel;
+      if (providedLabel === '') {
+        normalizedConfig.parameters = { ...(normalizedConfig.parameters || {}), label: fallbackLabel };
+      }
+      const configResult = await this.jobConfig.saveSettings(normalizedConfig, configName);
       console.log('💾 Configuration saved with ID:', configResult.id);
       
       // Create a NEW JobRunner instance for each job to prevent state conflicts
