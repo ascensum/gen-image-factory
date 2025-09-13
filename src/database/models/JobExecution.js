@@ -73,6 +73,46 @@ class JobExecution {
       console.warn('⚠️ DB migration check failed:', e.message);
     }
 
+    // Cleanup legacy DB files by moving them into a backup folder under the primary directory
+    try {
+      const backupsDir = path.join(primaryDir, 'legacy-db-backups');
+      if (!fs.existsSync(backupsDir)) {
+        fs.mkdirSync(backupsDir, { recursive: true });
+      }
+      const candidateLegacy = [];
+      try {
+        const os = require('os');
+        const homeDir = os.homedir();
+        candidateLegacy.push(path.join(homeDir, '.gen-image-factory', 'gen-image-factory.db'));
+      } catch (_) {}
+      candidateLegacy.push(path.join(__dirname, '..', '..', '..', 'data', 'gen-image-factory.db'));
+      const projectData = path.join(process.cwd(), 'data', 'gen-image-factory.db');
+      if (projectData !== primaryPath) candidateLegacy.push(projectData);
+
+      for (const legacy of candidateLegacy) {
+        if (!legacy || legacy === primaryPath) continue;
+        if (fs.existsSync(legacy)) {
+          const base = path.basename(legacy);
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const dest = path.join(backupsDir, `${base}.${timestamp}.bak`);
+          try {
+            fs.renameSync(legacy, dest);
+            ['-wal', '-shm'].forEach((suffix) => {
+              const extra = legacy + suffix;
+              if (fs.existsSync(extra)) {
+                try { fs.renameSync(extra, dest + suffix); } catch {}
+              }
+            });
+            console.log(`🧹 Moved legacy DB to backup: ${legacy} -> ${dest}`);
+          } catch (e) {
+            console.warn(`⚠️ Could not move legacy DB ${legacy}:`, e.message);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ Legacy DB cleanup skipped:', e.message);
+    }
+
     console.log(`✅ Database path resolved (pinned${usedElectron ? ' userData' : ' project-data'}): ${primaryPath}`);
     return primaryPath;
   }
