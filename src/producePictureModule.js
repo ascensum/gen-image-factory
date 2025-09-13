@@ -480,8 +480,10 @@ async function processImage(inputImagePath, imgName, config = {}) {
   }
 
   // 4. Determine Final Format and Path
-  const finalExtension = convertToJpg ? ".jpg" : ".png";
-  console.log(`🔧 processImage: Final extension determined: ${finalExtension} (convertToJpg: ${convertToJpg})`);
+  // Align behavior with retryExecutor: require both imageConvert AND convertToJpg to convert
+  const shouldConvertToJpg = !!imageConvert && !!convertToJpg;
+  const finalExtension = shouldConvertToJpg ? ".jpg" : ".png";
+  console.log(`🔧 processImage: Final extension determined: ${finalExtension} (convertToJpg: ${convertToJpg}, imageConvert: ${imageConvert})`);
   
   // Use settings path instead of hardcoded relative path
   console.log(`🔧 processImage: DEBUG - config.outputDirectory:`, config.outputDirectory);

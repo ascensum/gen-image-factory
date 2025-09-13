@@ -1865,24 +1865,10 @@ class BackendAdapter {
         throw new Error(`Failed to update ${failedUpdates.length} images to retry status`);
       }
 
-      // If using modified settings, update processing settings for all images
+      // If using modified settings, DO NOT persist them globally to images.
+      // Pass them transiently via retry queue only to avoid configuration bleed.
       if (!useOriginalSettings && sanitizedSettings) {
-        console.log('🔧 BackendAdapter: Updating processing settings for images with sanitized settings');
-        const settingsUpdatePromises = images.map(image => {
-          // Preserve the retry_pending status set above and attach modified processing settings
-          image.qcStatus = 'retry_pending';
-          image.qcReason = 'Retry with modified settings';
-          image.processingSettings = { ...sanitizedSettings };
-          console.log(`🔧 BackendAdapter: Updating image ${image.id} with settings keys:`, Object.keys(image.processingSettings));
-          return this.generatedImage.updateGeneratedImage(image.id, image);
-        });
-
-        const settingsUpdateResults = await Promise.all(settingsUpdatePromises);
-        const failedSettingsUpdates = settingsUpdateResults.filter(result => !result.success);
-        
-        if (failedSettingsUpdates.length > 0) {
-          throw new Error(`Failed to update processing settings for ${failedSettingsUpdates.length} images`);
-        }
+        console.log('🔧 BackendAdapter: Using modified settings transiently for retry (no DB persist)');
       }
 
       // Create a batch retry job
@@ -2362,6 +2348,15 @@ class BackendAdapter {
         };
       }
       
+      // Merge runtime API keys for the first queued job before starting (keys are not stored in DB)
+      try {
+        const currentSettings = await this.getSettings();
+        const apiKeys = currentSettings?.settings?.apiKeys || {};
+        firstJob.configuration = { ...(firstJob.configuration || {}), apiKeys: { ...(firstJob.configuration?.apiKeys || {}), ...apiKeys } };
+      } catch (e) {
+        console.warn('Bulk rerun: failed to merge runtime API keys into configuration:', e.message);
+      }
+
       // Configure JobRunner for rerun mode (same as individual reruns)
       this.jobRunner.configurationId = firstJob.configurationId;
       this.jobRunner.databaseExecutionId = newExecution.id; // Set the execution ID for database operations
@@ -2473,6 +2468,15 @@ class BackendAdapter {
       if (!newExecution.success) {
         console.error('📋 Bulk rerun: Failed to create execution record for queued job');
         return { success: false, error: 'Failed to create execution record' };
+      }
+
+      // Merge runtime API keys for the queued job before starting (keys are not stored in DB)
+      try {
+        const currentSettings = await this.getSettings();
+        const apiKeys = currentSettings?.settings?.apiKeys || {};
+        nextJob.configuration = { ...(nextJob.configuration || {}), apiKeys: { ...(nextJob.configuration?.apiKeys || {}), ...apiKeys } };
+      } catch (e) {
+        console.warn('Process next bulk rerun: failed to merge runtime API keys into configuration:', e.message);
       }
 
       // Configure JobRunner for rerun mode
