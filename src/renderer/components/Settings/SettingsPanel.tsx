@@ -589,15 +589,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   // Processing Section
   const ProcessingSection = () => {
     // Conditional visibility logic
-    const showRemoveBgSize = settings.processing.removeBg;
-    const showImageConvert = settings.processing.imageConvert;
-    const showConvertFormat = settings.processing.imageConvert;
-    const showTrimTransparent = settings.processing.removeBg; // Only show when Remove Background is enabled
-    const showJpgBackground = settings.processing.removeBg && 
-      settings.processing.imageConvert && 
-      settings.processing.convertToJpg;
+    const showRemoveBgSize = form.processing.removeBg;
+    const showImageConvert = form.processing.imageConvert;
+    const showConvertFormat = form.processing.imageConvert;
+    const showTrimTransparent = form.processing.removeBg; // Only show when Remove Background is enabled
+    const showJpgBackground = form.processing.removeBg && 
+      form.processing.imageConvert && 
+      form.processing.convertToJpg;
     const showImageEnhancement = true; // Independent feature - always visible
-    const showQualitySettings = settings.processing.imageConvert;
+    const showQualitySettings = form.processing.imageConvert;
 
 
 
@@ -619,7 +619,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 <p className="text-xs text-gray-500">Remove background from generated images</p>
               </div>
               <Toggle
-                checked={settings.processing.removeBg}
+                checked={form.processing.removeBg}
                 onChange={handleToggleChange('processing', 'removeBg')}
               />
             </div>
@@ -632,7 +632,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </label>
                 <select
                   id="remove-bg-size"
-                  value={settings.processing.removeBgSize}
+                  value={form.processing.removeBgSize}
                   onChange={handleInputChange('processing', 'removeBgSize')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
@@ -655,7 +655,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   <p className="text-xs text-gray-500">Remove transparent areas from images (PNG only)</p>
                 </div>
                 <Toggle
-                  checked={settings.processing.trimTransparentBackground}
+                  checked={form.processing.trimTransparentBackground}
                   onChange={handleToggleChange('processing', 'trimTransparentBackground')}
                 />
               </div>
@@ -672,7 +672,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 <p className="text-xs text-gray-500">Enable image conversion and processing</p>
               </div>
               <Toggle
-                checked={settings.processing.imageConvert}
+                checked={form.processing.imageConvert}
                 onChange={handleToggleChange('processing', 'imageConvert')}
               />
             </div>
@@ -685,10 +685,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </label>
                 <select
                   id="convert-format"
-                  value={settings.processing.convertToJpg ? 'jpg' : 'png'}
+                  value={form.processing.convertToJpg ? 'jpg' : 'png'}
                   onChange={(e) => {
                     const isJpg = e.target.value === 'jpg';
-                    setSettings(prev => ({
+                    setForm(prev => ({
                       ...prev,
                       processing: { ...prev.processing, convertToJpg: isJpg }
                     }));
@@ -713,7 +713,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   <input
                     id="jpg-quality"
                     type="number"
-                    value={settings.processing.jpgQuality}
+                    value={form.processing.jpgQuality}
                     onChange={handleInputChange('processing', 'jpgQuality')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     min="1"
@@ -729,7 +729,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   <input
                     id="png-quality"
                     type="number"
-                    value={settings.processing.pngQuality}
+                    value={form.processing.pngQuality}
                     onChange={handleInputChange('processing', 'pngQuality')}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     min="1"
@@ -746,7 +746,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     </label>
                     <select
                       id="jpg-background"
-                      value={settings.processing.jpgBackground}
+                      value={form.processing.jpgBackground}
                       onChange={handleInputChange('processing', 'jpgBackground')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
@@ -770,13 +770,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     <p className="text-xs text-gray-500">Apply sharpening and saturation effects</p>
                   </div>
                   <Toggle
-                    checked={settings.processing.imageEnhancement}
+                    checked={form.processing.imageEnhancement}
                     onChange={handleToggleChange('processing', 'imageEnhancement')}
                   />
                 </div>
 
                 {/* Sharpening Control - only show when Image Enhancement is enabled */}
-                {settings.processing.imageEnhancement && (
+                {form.processing.imageEnhancement && (
                   <div>
                     <label htmlFor="sharpening" className="block text-sm font-medium text-gray-700 mb-2">
                       Sharpening Intensity (0-10)
@@ -787,20 +787,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       min="0"
                       max="10"
                       step="0.5"
-                      value={settings.processing.sharpening}
+                      value={form.processing.sharpening}
                       onChange={handleInputChange('processing', 'sharpening')}
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                     />
                     <div className="flex justify-between text-xs text-gray-500 mt-1">
                       <span>0 (None)</span>
-                      <span>{settings.processing.sharpening}</span>
+                      <span>{form.processing.sharpening}</span>
                       <span>10 (Maximum)</span>
                     </div>
                   </div>
                 )}
 
                 {/* Saturation Control - only show when Image Enhancement is enabled */}
-                {settings.processing.imageEnhancement && (
+                {form.processing.imageEnhancement && (
                   <div>
                     <label htmlFor="saturation" className="block text-sm font-medium text-gray-700 mb-2">
                       Saturation Level (0-2)
@@ -811,13 +811,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       min="0"
                       max="2"
                       step="0.1"
-                      value={settings.processing.saturation}
+                      value={form.processing.saturation}
                       onChange={handleInputChange('processing', 'saturation')}
                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
                     />
                     <div className="flex justify-between text-xs text-gray-500 mt-1">
                       <span>0 (Grayscale)</span>
-                      <span>{settings.processing.saturation}</span>
+                      <span>{form.processing.saturation}</span>
                       <span>2 (Vibrant)</span>
                     </div>
                   </div>
