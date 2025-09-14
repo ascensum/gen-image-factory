@@ -35,7 +35,7 @@ describe('Inline rename updates configuration name', () => {
 
   afterEach(() => vi.restoreAllMocks())
 
-  it('renameJobExecution updates both execution.label and configuration.name', async () => {
+  it('renameJobExecution updates execution.label (configuration name unchanged)', async () => {
     // Start with fallback so we can see rename effect
     const config = {
       filePaths: { outputDirectory: '/tmp', tempDirectory: '/tmp' },
@@ -58,10 +58,10 @@ describe('Inline rename updates configuration name', () => {
     expect(updatedExec.success).toBe(true)
     expect(updatedExec.execution.label).toBe(newLabel)
 
-    // Verify configuration name is updated too
+    // Configuration name should remain as originally saved (not coupled to inline rename)
     const cfg = await adapter.getJobConfigurationById(updatedExec.execution.configurationId)
     expect(cfg.success).toBe(true)
-    expect(cfg.configuration.name).toBe(newLabel)
+    expect(cfg.configuration.name).not.toBe(newLabel)
   })
 })
 

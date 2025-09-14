@@ -62,6 +62,10 @@ function normalizeProcessingSettings(input) {
       }
     }
   }
+  // Enforce dependent flags: if imageConvert is false, convertToJpg must be false
+  if (Object.prototype.hasOwnProperty.call(out, 'imageConvert') && out.imageConvert === false) {
+    out.convertToJpg = false;
+  }
   return out;
 }
 

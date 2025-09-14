@@ -849,7 +849,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <p className="text-xs text-gray-500">Use AI to check image quality</p>
           </div>
           <Toggle
-            checked={settings.ai.runQualityCheck}
+            checked={form.ai.runQualityCheck}
             onChange={handleToggleChange('ai', 'runQualityCheck')}
           />
         </div>
@@ -862,7 +862,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <p className="text-xs text-gray-500">Generate metadata using AI</p>
           </div>
           <Toggle
-            checked={settings.ai.runMetadataGen}
+            checked={form.ai.runMetadataGen}
             onChange={handleToggleChange('ai', 'runMetadataGen')}
           />
         </div>
@@ -886,7 +886,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <p className="text-xs text-gray-500">Enable detailed logging and debugging</p>
           </div>
           <Toggle
-            checked={settings.advanced.debugMode}
+            checked={form.advanced.debugMode}
             onChange={handleToggleChange('advanced', 'debugMode')}
           />
         </div>

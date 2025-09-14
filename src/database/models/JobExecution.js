@@ -479,6 +479,7 @@ class JobExecution {
             id: row.id,
             configurationId: row.configuration_id,
             configurationName: row.configuration_name,
+            displayLabel: row.label || row.configuration_name || null,
             startedAt: row.started_at ? new Date(row.started_at) : null,
             completedAt: row.completed_at ? new Date(row.completed_at) : null,
             status: row.status,
@@ -784,57 +785,14 @@ class JobExecution {
       // Store reference to database to avoid 'this' context issues
       const db = this.db;
       
-      // First, get the configuration_id for this job execution
-      const getConfigSql = 'SELECT configuration_id FROM job_executions WHERE id = ?';
-      
-      db.get(getConfigSql, [id], (err, row) => {
+      const updateJobSql = 'UPDATE job_executions SET label = ? WHERE id = ?';
+      db.run(updateJobSql, [label, id], function(err) {
         if (err) {
-          console.error('Error getting configuration ID for job execution:', err);
+          console.error('Error updating job execution label:', err);
           reject(err);
-        } else if (!row) {
-          reject(new Error('Job execution not found'));
         } else {
-          const configurationId = row.configuration_id;
-          
-          // Update both the job execution label AND the configuration name
-          const updateJobSql = 'UPDATE job_executions SET label = ? WHERE id = ?';
-          const updateConfigSql = 'UPDATE job_configurations SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
-          
-          // Use a transaction to ensure both updates succeed or fail together
-          db.serialize(() => {
-            db.run('BEGIN TRANSACTION');
-            
-            // Update job execution label
-            db.run(updateJobSql, [label, id], function(err) {
-              if (err) {
-                console.error('Error updating job execution label:', err);
-                db.run('ROLLBACK');
-                reject(err);
-                return;
-              }
-              
-              // Update configuration name
-              db.run(updateConfigSql, [label, configurationId], function(err) {
-                if (err) {
-                  console.error('Error updating configuration name:', err);
-                  db.run('ROLLBACK');
-                  reject(err);
-                  return;
-                }
-                
-                // Commit transaction
-                db.run('COMMIT', function(err) {
-                  if (err) {
-                    console.error('Error committing transaction:', err);
-                    reject(err);
-                  } else {
-                    console.log('Job execution and configuration renamed successfully');
-                    resolve({ success: true, changes: this.changes });
-                  }
-                });
-              });
-            });
-          });
+          console.log('Job execution label renamed successfully');
+          resolve({ success: true, changes: this.changes });
         }
       });
     });

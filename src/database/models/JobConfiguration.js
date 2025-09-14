@@ -159,19 +159,40 @@ class JobConfiguration {
   async saveSettings(settingsObject, configName = 'default') {
     return new Promise((resolve, reject) => {
       const settingsJson = JSON.stringify(settingsObject);
-      const sql = `
-        INSERT OR REPLACE INTO job_configurations (name, settings, updated_at)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
+      const checkSql = 'SELECT id FROM job_configurations WHERE name = ? LIMIT 1';
+      const insertSql = `
+        INSERT INTO job_configurations (name, settings, created_at, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       `;
 
-      this.db.run(sql, [configName, settingsJson], function(err) {
+      const tryInsert = (nameToUse, attempt = 0) => {
+        this.db.run(insertSql, [nameToUse, settingsJson], function(err) {
+          if (err) {
+            // If unique constraint fails, generate a unique suffix and retry a few times
+            if (/UNIQUE/i.test(err.message) && attempt < 3) {
+              const suffix = `-${Date.now().toString().slice(-6)}`;
+              return tryInsert(nameToUse + suffix, attempt + 1);
+            }
+            console.error('Error saving settings:', err);
+            reject(err);
+          } else {
+            console.log('Settings saved successfully');
+            resolve({ success: true, id: this.lastID, name: nameToUse });
+          }
+        });
+      };
+
+      // If name already exists, create a unique variant instead of replacing the row
+      this.db.get(checkSql, [configName], (err, row) => {
         if (err) {
-          console.error('Error saving settings:', err);
-          reject(err);
-        } else {
-          console.log('Settings saved successfully');
-          resolve({ success: true, id: this.lastID });
+          console.warn('Could not check existing configuration name; attempting direct insert');
+          return tryInsert(configName);
         }
+        if (row) {
+          const uniqueName = `${configName}-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+          return tryInsert(uniqueName);
+        }
+        return tryInsert(configName);
       });
     });
   }

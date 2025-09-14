@@ -35,9 +35,16 @@ describe('normalizeProcessingSettings', () => {
     const out = normalizeProcessingSettings({ imageEnhancement: '1', imageConvert: 0, convertToJpg: 'true', removeBg: '', trimTransparentBackground: 123 });
     expect(out.imageEnhancement).toBe(true);
     expect(out.imageConvert).toBe(false);
-    expect(out.convertToJpg).toBe(true);
+    // convertToJpg forced false when imageConvert is false
+    expect(out.convertToJpg).toBe(false);
     expect(out.removeBg).toBe(false);
     expect(out.trimTransparentBackground).toBe(true);
+  });
+
+  it('forces convertToJpg=false when imageConvert=false', () => {
+    const out = normalizeProcessingSettings({ imageConvert: false, convertToJpg: true });
+    expect(out.imageConvert).toBe(false);
+    expect(out.convertToJpg).toBe(false);
   });
 
   it('normalizes removeBgSize to allowed values (auto, full, 4k)', () => {

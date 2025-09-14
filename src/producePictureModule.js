@@ -454,7 +454,7 @@ async function processImage(inputImagePath, imgName, config = {}) {
   if (trimTransparentBackground) {
     if (!removeBg) {
       console.warn("Warning: --trimTransparentBackground requires --removeBg to be true. Skipping trim.");
-    } else if (convertToJpg) {
+    } else if (imageConvert && convertToJpg) {
       console.warn("Warning: --trimTransparentBackground has no effect when converting to JPG. Skipping trim.");
     } else {
       logDebug('Trimming transparent background...');
