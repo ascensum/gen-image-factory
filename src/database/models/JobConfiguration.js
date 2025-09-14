@@ -159,40 +159,45 @@ class JobConfiguration {
   async saveSettings(settingsObject, configName = 'default') {
     return new Promise((resolve, reject) => {
       const settingsJson = JSON.stringify(settingsObject);
-      const checkSql = 'SELECT id FROM job_configurations WHERE name = ? LIMIT 1';
+      const selectSql = 'SELECT id FROM job_configurations WHERE name = ? LIMIT 1';
       const insertSql = `
         INSERT INTO job_configurations (name, settings, created_at, updated_at)
         VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       `;
+      const updateSql = `
+        UPDATE job_configurations SET settings = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `;
 
-      const tryInsert = (nameToUse, attempt = 0) => {
-        this.db.run(insertSql, [nameToUse, settingsJson], function(err) {
-          if (err) {
-            // If unique constraint fails, generate a unique suffix and retry a few times
-            if (/UNIQUE/i.test(err.message) && attempt < 3) {
-              const suffix = `-${Date.now().toString().slice(-6)}`;
-              return tryInsert(nameToUse + suffix, attempt + 1);
-            }
-            console.error('Error saving settings:', err);
-            reject(err);
-          } else {
-            console.log('Settings saved successfully');
-            resolve({ success: true, id: this.lastID, name: nameToUse });
-          }
-        });
-      };
-
-      // If name already exists, create a unique variant instead of replacing the row
-      this.db.get(checkSql, [configName], (err, row) => {
+      this.db.get(selectSql, [configName], (err, row) => {
         if (err) {
-          console.warn('Could not check existing configuration name; attempting direct insert');
-          return tryInsert(configName);
+          console.error('Error checking existing configuration:', err);
+          reject(err);
+          return;
         }
-        if (row) {
-          const uniqueName = `${configName}-${new Date().toISOString().replace(/[:.]/g, '-')}`;
-          return tryInsert(uniqueName);
+
+        if (row && row.id) {
+          // Update existing config with same name (no REPLACE, preserve id)
+          this.db.run(updateSql, [settingsJson, row.id], function(updateErr) {
+            if (updateErr) {
+              console.error('Error updating configuration:', updateErr);
+              reject(updateErr);
+            } else {
+              console.log('Settings saved successfully (updated existing configuration)');
+              resolve({ success: true, id: row.id, name: configName });
+            }
+          });
+        } else {
+          // Insert new configuration
+          this.db.run(insertSql, [configName, settingsJson], function(insertErr) {
+            if (insertErr) {
+              console.error('Error inserting new configuration:', insertErr);
+              reject(insertErr);
+            } else {
+              console.log('Settings saved successfully (inserted new configuration)');
+              resolve({ success: true, id: this.lastID, name: configName });
+            }
+          });
         }
-        return tryInsert(configName);
       });
     });
   }

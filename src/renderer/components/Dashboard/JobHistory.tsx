@@ -289,7 +289,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
             key={job.id}
             role="listitem"
             tabIndex={0}
-            aria-label={`${job.configurationName || 'Unknown'} - ${job.status}`}
+            aria-label={`${job.displayLabel || job.configurationName || 'Unknown'} - ${job.status}`}
             className={`bg-white border rounded-lg p-4 cursor-pointer transition-colors ${
               selectedJob === job.id
                 ? 'border-blue-500 bg-blue-50'
@@ -307,7 +307,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
               <div className="flex items-center space-x-3">
                 {getStatusIcon(job.status)}
                 <div>
-                  <h3 className="font-medium text-gray-900">{job.configurationName || 'Unknown'}</h3>
+                  <h3 className="font-medium text-gray-900">{job.displayLabel || job.configurationName || 'Unknown'}</h3>
                   <div className="text-xs text-gray-500 mb-1">Job ID: {job.id}</div>
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
                                           <span>{formatDate(job.startedAt)}</span>
