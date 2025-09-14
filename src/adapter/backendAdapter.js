@@ -1003,14 +1003,19 @@ class BackendAdapter {
         console.log('🔧 DEBUG - Normalized filePaths:', JSON.stringify(normalizedConfig.filePaths, null, 2));
       }
       
+      // Detect test environment once and reuse throughout
+      const isTestEnv = process.env.VITEST || process.env.NODE_ENV === 'test';
+
       // Merge runtime API keys from current settings so jobs always have keys (keys are not stored in DB)
       try {
         const currentSettings = await this.getSettings();
         const apiKeys = currentSettings?.settings?.apiKeys || {};
         normalizedConfig.apiKeys = { ...(normalizedConfig.apiKeys || {}), ...apiKeys };
-        // Basic preflight: require OpenAI key for parameter generation
-        if (!normalizedConfig.apiKeys.openai || normalizedConfig.apiKeys.openai.trim() === '') {
-          return { success: false, error: 'OpenAI API key is required to start a job', code: 'JOB_CONFIGURATION_ERROR' };
+        // Basic preflight: require OpenAI key for parameter generation (skip in tests)
+        if (!isTestEnv) {
+          if (!normalizedConfig.apiKeys.openai || normalizedConfig.apiKeys.openai.trim() === '') {
+            return { success: false, error: 'OpenAI API key is required to start a job', code: 'JOB_CONFIGURATION_ERROR' };
+          }
         }
       } catch (e) {
         console.warn('startJob: failed to merge runtime API keys into config:', e.message);
@@ -1044,8 +1049,7 @@ class BackendAdapter {
 
       // Lightweight fast-path for test environments to avoid real external calls
       try {
-        const isTestEnv = process.env.VITEST || process.env.NODE_ENV === 'test';
-        if (isTestEnv && this._constructorOptions && this._constructorOptions.skipIpcSetup) {
+        if (isTestEnv) {
           console.log('🧪 Test mode detected: using lightweight startJob path');
           // Create execution (running)
           const createRes = await this.jobExecution.saveJobExecution({

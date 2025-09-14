@@ -101,6 +101,19 @@ const JobTable: React.FC<JobTableProps> = ({
     return sortDirection === 'asc' ? '↑' : '↓';
   };
 
+  const getDisplayLabel = useCallback((job: JobExecution) => {
+    const label = (job.label || '').trim();
+    if (label !== '') return label;
+    // Prefer startedAt for fallback timestamp; fall back to createdAt
+    const started = (job as any).startedAt ? new Date((job as any).startedAt) : ((job as any).createdAt ? new Date((job as any).createdAt) : null);
+    if (started && !isNaN(started.getTime())) {
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const ts = `${started.getFullYear()}${pad(started.getMonth() + 1)}${pad(started.getDate())}_${pad(started.getHours())}${pad(started.getMinutes())}${pad(started.getSeconds())}`;
+      return `job_${ts}`;
+    }
+    return `Job ${job.id}`;
+  }, []);
+
   const handleSort = (field: keyof JobExecution) => {
     const direction = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
     onSort(field, direction);
@@ -226,7 +239,7 @@ const JobTable: React.FC<JobTableProps> = ({
                       className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       checked={selectedJobs.has(job.id)}
                       onChange={(e) => onJobSelect(job.id, e.target.checked)}
-                      aria-label={`Select job ${job.label || job.id}`}
+                      aria-label={`Select job ${getDisplayLabel(job)}`}
                     />
                   </label>
                 </td>
@@ -263,12 +276,12 @@ const JobTable: React.FC<JobTableProps> = ({
                   ) : (
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-medium text-gray-900">
-                        {job.label || `Job ${job.id}`}
+                        {getDisplayLabel(job)}
                       </span>
                       <button
                         onClick={() => handleEditStart(job)}
                         className="text-gray-400 hover:text-gray-600"
-                        aria-label={`Edit label for job ${job.label || job.id}`}
+                        aria-label={`Edit label for job ${getDisplayLabel(job)}`}
                       >
                         ✏️
                       </button>
@@ -304,14 +317,14 @@ const JobTable: React.FC<JobTableProps> = ({
                     <button
                       onClick={() => {/* TODO: Implement view details */}}
                       className="text-blue-600 hover:text-blue-900"
-                      aria-label={`View details for job ${job.label || job.id}`}
+                      aria-label={`View details for job ${getDisplayLabel(job)}`}
                     >
                       View
                     </button>
                     <button
                       onClick={() => {/* TODO: Implement rerun */}}
                       className="text-green-600 hover:text-green-900"
-                      aria-label={`Rerun job ${job.label || job.id}`}
+                      aria-label={`Rerun job ${getDisplayLabel(job)}`}
                     >
                       Rerun
                     </button>
