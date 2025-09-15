@@ -618,6 +618,9 @@ class BackendAdapter {
               error: 'Failed to create job execution record' 
             };
           }
+
+          // Ensure JobRunner carries forward the label for DB updates on completion/error
+          this.jobRunner.persistedLabel = newExecutionData.label;
           
           // Merge runtime API keys into configuration because keys are not persisted in DB settings
           try {
@@ -2385,6 +2388,9 @@ class BackendAdapter {
           failedJobs: failedJobs
         };
       }
+
+      // Ensure JobRunner carries forward the label for DB updates on completion/error
+      this.jobRunner.persistedLabel = newExecutionData.label;
       
       // Merge runtime API keys for the first queued job before starting (keys are not stored in DB)
       try {
