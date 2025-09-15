@@ -1094,6 +1094,11 @@ class BackendAdapter {
       // Pass the configuration ID to the JobRunner so it can link the job execution
       jobRunner.configurationId = configResult.id;
       
+      // Reset any rerun-related state to ensure clean start for normal jobs
+      jobRunner.isRerun = false;
+      jobRunner.databaseExecutionId = null;
+      jobRunner.persistedLabel = null;
+      
       console.log('🔧 jobRunner instance:', jobRunner);
       console.log('🔧 jobRunner.startJob method type:', typeof jobRunner.startJob);
       

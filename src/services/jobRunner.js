@@ -305,6 +305,13 @@ class JobRunner extends EventEmitter {
         }
       });
       
+      // If rerun flag is set but no execution id passed in from backend, clear rerun state for normal job
+      if (this.isRerun && (this.databaseExecutionId === null || this.databaseExecutionId === undefined)) {
+        console.log('🔄 Rerun flag cleared: no databaseExecutionId set for rerun, proceeding as normal job');
+        this.isRerun = false;
+        this.persistedLabel = null;
+      }
+
       this.currentJob = this.executeJob(config, jobId);
       // Save job execution to database if backendAdapter is available
       // BUT NOT during reruns (reruns are handled by the backend rerun handler)
