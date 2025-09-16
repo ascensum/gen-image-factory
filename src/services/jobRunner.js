@@ -48,6 +48,157 @@ class JobRunner extends EventEmitter {
     global.currentJobRunner = this;
   }
 
+  /**
+   * Per-generation orchestration to support partial success
+   */
+  async _generateImagesPerGeneration(config, parameters, generations) {
+    const startTime = Date.now();
+    try {
+      const imagesPerTask = (config.parameters?.processMode === 'single') ? 1 : 4;
+      const allProcessed = [];
+
+      for (let genIndex = 0; genIndex < generations; genIndex += 1) {
+        const imgNameBase = `job_${Date.now()}_${genIndex}`;
+        const settings = {
+          prompt: parameters.prompt,
+          promptContext: parameters.promptContext,
+          apiKeys: config.apiKeys
+        };
+
+        this._logStructured({
+          level: 'info',
+          stepName: 'image_generation',
+          subStep: 'call_module',
+          message: `Calling producePictureModule (generation ${genIndex + 1}/${generations})`,
+          metadata: { imgNameBase, prompt: parameters.prompt, hasApiKeys: !!config.apiKeys }
+        });
+
+        let result;
+        try {
+          result = await producePictureModule.producePictureModule(
+            settings,
+            imgNameBase,
+            (config.ai && config.ai.metadataPrompt) ? config.ai.metadataPrompt : null,
+            {
+              ...this._buildModuleConfig(config, parameters)
+            }
+          );
+        } catch (genErr) {
+          this._logStructured({
+            level: 'error',
+            stepName: 'image_generation',
+            subStep: 'generation_error',
+            message: `Generation ${genIndex + 1} failed: ${genErr.message}`,
+            errorCode: 'IMAGE_GEN_ERROR',
+            metadata: { generationIndex: genIndex }
+          });
+          this.jobState.failedImages = (this.jobState.failedImages || 0) + imagesPerTask;
+          continue;
+        }
+
+        this._logStructured({
+          level: 'info',
+          stepName: 'image_generation',
+          subStep: 'module_result',
+          message: `Generation ${genIndex + 1} returned ${Array.isArray(result) ? result.length : 1} images`,
+          metadata: { resultType: typeof result, isArray: Array.isArray(result), resultLength: Array.isArray(result) ? result.length : 'N/A' }
+        });
+
+        if (Array.isArray(result)) {
+          const processedImages = result.map((item, index) => this._buildImageObject(item, parameters, index, genIndex, result.length));
+          allProcessed.push(...processedImages);
+          this.jobState.totalImages = (this.jobState.totalImages || 0) + processedImages.length;
+          this.jobState.generatedImages = (this.jobState.generatedImages || 0) + processedImages.length;
+        } else if (typeof result === 'string') {
+          const single = [{ path: result, aspectRatio: parameters.aspectRatios?.[0] || '1:1', status: 'generated', metadata: { prompt: parameters.prompt } }];
+          allProcessed.push(...single);
+          this.jobState.totalImages = (this.jobState.totalImages || 0) + 1;
+          this.jobState.generatedImages = (this.jobState.generatedImages || 0) + 1;
+        } else {
+          this.jobState.failedImages = (this.jobState.failedImages || 0) + imagesPerTask;
+          this._logStructured({ level: 'error', stepName: 'image_generation', subStep: 'invalid_result', message: `Invalid generation result format (generation ${genIndex + 1})` });
+        }
+      }
+
+      if (allProcessed.length === 0) {
+        throw new Error('No images were generated across all generations');
+      }
+
+      const expectedPerTask = (config.parameters?.processMode === 'single') ? 1 : 4;
+      const expectedTotal = generations * expectedPerTask;
+      const generatedTotal = this.jobState.generatedImages || allProcessed.length;
+      this.jobState.failedImages = Math.max(0, expectedTotal - generatedTotal);
+
+      const durationSummary = Date.now() - startTime;
+      this._logStructured({
+        level: 'info',
+        stepName: 'image_generation',
+        subStep: 'complete',
+        message: `Image generation completed: ${generatedTotal}/${expectedTotal} images across ${generations} generation(s)`,
+        durationMs: durationSummary,
+        updateProgress: true,
+        metadata: { totalImages: generatedTotal, failedImages: this.jobState.failedImages }
+      });
+
+      return allProcessed;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      this._logStructured({ level: 'error', stepName: 'image_generation', subStep: 'error', message: `Image generation failed: ${error.message}`, durationMs: duration, errorCode: 'IMAGE_GEN_ERROR' });
+      throw new Error(`Failed to generate images: ${error.message}`);
+    }
+  }
+
+  _buildModuleConfig(config, parameters) {
+    const processingEnabled = !(config.ai?.runQualityCheck === true);
+    return {
+      removeBg: processingEnabled ? (config.processing?.removeBg || false) : false,
+      imageConvert: processingEnabled ? (config.processing?.imageConvert || false) : false,
+      convertToJpg: processingEnabled ? (config.processing?.convertToJpg || false) : false,
+      trimTransparentBackground: processingEnabled ? (config.processing?.trimTransparentBackground || false) : false,
+      aspectRatios: Array.isArray(parameters.aspectRatios) ? parameters.aspectRatios : (Array.isArray(config.parameters?.aspectRatios) ? config.parameters.aspectRatios : (typeof config.parameters?.aspectRatios === 'string' ? [config.parameters.aspectRatios] : ['1:1'])),
+      pollingTimeout: config.parameters?.enablePollingTimeout ? (config.parameters?.pollingTimeout || 15) : null,
+      pollingInterval: config.parameters?.pollingInterval || 1,
+      processMode: config.parameters?.processMode || 'single',
+      removeBgSize: processingEnabled ? (config.processing?.removeBgSize || 'preview') : 'preview',
+      runQualityCheck: config.ai?.runQualityCheck || false,
+      runMetadataGen: config.ai?.runMetadataGen || false,
+      imageEnhancement: processingEnabled ? (config.processing?.imageEnhancement || false) : false,
+      sharpening: processingEnabled ? (config.processing?.sharpening || 0) : 0,
+      saturation: processingEnabled ? (config.processing?.saturation || 1) : 1,
+      jpgBackground: processingEnabled ? (config.processing?.jpgBackground || 'white') : 'white',
+      jpgQuality: processingEnabled ? (config.processing?.jpgQuality || 90) : 90,
+      pngQuality: processingEnabled ? (config.processing?.pngQuality || 100) : 100,
+      outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
+      tempDirectory: config.filePaths?.tempDirectory || './pictures/generated'
+    };
+  }
+
+  _buildImageObject(item, parameters, index, genIndex, total) {
+    this._logStructured({
+      level: 'info', stepName: 'ai_operations', subStep: 'process_image', imageIndex: index,
+      message: `Processing image ${index + 1}/${total} (generation ${genIndex + 1})`, updateProgress: index === 0,
+      metadata: { itemType: typeof item, itemKeys: Object.keys(item), mappingId: item.mappingId, currentImageProgress: Math.round(((index + 1) / total) * 100) }
+    });
+
+    const imagePath = item.outputPath || item.path || item;
+    let aspectRatio = '1:1';
+    if (parameters.aspectRatios && parameters.aspectRatios.length > 0) {
+      aspectRatio = parameters.aspectRatios.length === 1 ? parameters.aspectRatios[0] : parameters.aspectRatios[index % parameters.aspectRatios.length];
+    }
+
+    return {
+      path: imagePath,
+      aspectRatio,
+      status: 'generated',
+      metadata: {
+        prompt: parameters.prompt,
+        ...(item.settings?.title?.title && { title: item.settings.title.title }),
+        ...(item.settings?.title?.description && { description: item.settings.title.description }),
+        ...(item.settings?.uploadTags && { uploadTags: item.settings.uploadTags })
+      },
+      mappingId: item.mappingId || `img_${Date.now()}_${genIndex}_${index}`
+    };
+  }
     /**
    * Get enabled progress steps - simplified for 2-step structure
    * @param {Object} config - Job configuration (not used in simplified version)
@@ -1072,6 +1223,11 @@ class JobRunner extends EventEmitter {
   async generateImages(config, parameters) {
     const startTime = Date.now();
     try {
+      // If multiple generations requested, run per-generation orchestration to allow partial success
+      const __genCount = Math.max(1, Number(config?.parameters?.count || 1));
+      if (__genCount > 1) {
+        return await this._generateImagesPerGeneration(config, parameters, __genCount);
+      }
       this._logStructured({
         level: 'info',
         stepName: 'image_generation',
