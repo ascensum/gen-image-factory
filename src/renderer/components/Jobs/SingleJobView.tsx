@@ -1160,7 +1160,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     />
                   </div>
                   <div className="setting-row">
-                    <label>Polling Timeout (seconds)</label>
+                    <label>Polling Timeout (minutes)</label>
                     <input
                       type="number"
                       value={editedSettings.parameters?.pollingTimeout || 0}

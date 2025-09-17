@@ -524,7 +524,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           {form.parameters.enablePollingTimeout && (
             <div>
               <label htmlFor="polling-timeout" className="block text-sm font-medium text-gray-700 mb-2">
-                Polling Timeout (seconds)
+                Polling Timeout (minutes)
               </label>
               <input
                 id="polling-timeout"
