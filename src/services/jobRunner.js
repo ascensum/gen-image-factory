@@ -99,25 +99,59 @@ class JobRunner extends EventEmitter {
         });
 
         let result;
-        try {
-          result = await producePictureModule.producePictureModule(
-            settings,
-            imgNameBase,
-            (config.ai && config.ai.metadataPrompt) ? config.ai.metadataPrompt : null,
-            {
-              ...this._buildModuleConfig(config, genParameters)
+        const maxRetries = Math.max(0, Number(config.parameters?.generationRetryAttempts ?? 1));
+        const backoffMs = Math.max(0, Number(config.parameters?.generationRetryBackoffMs ?? 0));
+        for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+          try {
+            if (attempt > 0) {
+              this._logStructured({
+                level: 'info',
+                stepName: 'image_generation',
+                subStep: 'generation_retry',
+                message: `Retrying generation ${genIndex + 1} (attempt ${attempt}/${maxRetries})`,
+                metadata: { generationIndex: genIndex, attempt, maxRetries }
+              });
+              if (backoffMs > 0) {
+                await new Promise(r => setTimeout(r, backoffMs));
+              }
             }
-          );
-        } catch (genErr) {
-          this._logStructured({
-            level: 'error',
-            stepName: 'image_generation',
-            subStep: 'generation_error',
-            message: `Generation ${genIndex + 1} failed: ${genErr.message}`,
-            errorCode: 'IMAGE_GEN_ERROR',
-            metadata: { generationIndex: genIndex }
-          });
-          this.jobState.failedImages = (this.jobState.failedImages || 0) + imagesPerTask;
+            result = await producePictureModule.producePictureModule(
+              settings,
+              imgNameBase,
+              (config.ai && config.ai.metadataPrompt) ? config.ai.metadataPrompt : null,
+              {
+                ...this._buildModuleConfig(config, genParameters)
+              }
+            );
+            if (attempt > 0) {
+              this._logStructured({
+                level: 'info',
+                stepName: 'image_generation',
+                subStep: 'generation_retry_success',
+                message: `Generation ${genIndex + 1} succeeded after retry (attempt ${attempt})`,
+                metadata: { generationIndex: genIndex, attempt }
+              });
+            }
+            break;
+          } catch (genErr) {
+            const isLast = attempt === maxRetries;
+            this._logStructured({
+              level: 'error',
+              stepName: 'image_generation',
+              subStep: isLast ? 'generation_error' : 'generation_retry_error',
+              message: `Generation ${genIndex + 1} ${isLast ? 'failed' : 'retry failed'}: ${genErr.message}`,
+              errorCode: 'IMAGE_GEN_ERROR',
+              metadata: { generationIndex: genIndex, attempt, maxRetries }
+            });
+            if (isLast) {
+              this.jobState.failedImages = (this.jobState.failedImages || 0) + imagesPerTask;
+            } else {
+              continue;
+            }
+          }
+        }
+        if (typeof result === 'undefined') {
+          // All attempts failed; move to next generation
           continue;
         }
 
