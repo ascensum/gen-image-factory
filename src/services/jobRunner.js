@@ -58,10 +58,35 @@ class JobRunner extends EventEmitter {
       const allProcessed = [];
 
       for (let genIndex = 0; genIndex < generations; genIndex += 1) {
+        // Re-generate parameters per generation to rotate keywords/prompts
+        let genParameters;
+        try {
+          const cfgForGen = { ...config, __forceSequentialIndex: genIndex, __perGen: true };
+          genParameters = await this.generateParameters(cfgForGen);
+          this._logStructured({
+            level: 'info',
+            stepName: 'initialization',
+            subStep: 'parameter_generation_per_gen',
+            message: `Parameters generated for generation ${genIndex + 1}/${generations}`,
+            metadata: { generationIndex: genIndex, hasPrompt: !!genParameters?.prompt }
+          });
+        } catch (paramErr) {
+          this._logStructured({
+            level: 'error',
+            stepName: 'initialization',
+            subStep: 'parameter_generation_per_gen_error',
+            message: `Parameter generation failed for generation ${genIndex + 1}: ${paramErr.message}`,
+            errorCode: 'PARAM_GEN_ERROR',
+            metadata: { generationIndex: genIndex }
+          });
+          this.jobState.failedImages = (this.jobState.failedImages || 0) + imagesPerTask;
+          continue;
+        }
+
         const imgNameBase = `job_${Date.now()}_${genIndex}`;
         const settings = {
-          prompt: parameters.prompt,
-          promptContext: parameters.promptContext,
+          prompt: genParameters.prompt,
+          promptContext: genParameters.promptContext,
           apiKeys: config.apiKeys
         };
 
@@ -80,7 +105,7 @@ class JobRunner extends EventEmitter {
             imgNameBase,
             (config.ai && config.ai.metadataPrompt) ? config.ai.metadataPrompt : null,
             {
-              ...this._buildModuleConfig(config, parameters)
+              ...this._buildModuleConfig(config, genParameters)
             }
           );
         } catch (genErr) {
@@ -105,12 +130,12 @@ class JobRunner extends EventEmitter {
         });
 
         if (Array.isArray(result)) {
-          const processedImages = result.map((item, index) => this._buildImageObject(item, parameters, index, genIndex, result.length));
+          const processedImages = result.map((item, index) => this._buildImageObject(item, genParameters, index, genIndex, result.length));
           allProcessed.push(...processedImages);
           this.jobState.totalImages = (this.jobState.totalImages || 0) + processedImages.length;
           this.jobState.generatedImages = (this.jobState.generatedImages || 0) + processedImages.length;
         } else if (typeof result === 'string') {
-          const single = [{ path: result, aspectRatio: parameters.aspectRatios?.[0] || '1:1', status: 'generated', metadata: { prompt: parameters.prompt } }];
+          const single = [{ path: result, aspectRatio: genParameters.aspectRatios?.[0] || '1:1', status: 'generated', metadata: { prompt: genParameters.prompt } }];
           allProcessed.push(...single);
           this.jobState.totalImages = (this.jobState.totalImages || 0) + 1;
           this.jobState.generatedImages = (this.jobState.generatedImages || 0) + 1;
@@ -1072,9 +1097,15 @@ class JobRunner extends EventEmitter {
               const keywordRandom = !!(config.parameters && config.parameters.keywordRandom);
               const dataStartIndex = 1;
               const dataEndIndex = lines.length - 1;
-              const chosenIndex = keywordRandom
-                ? (dataStartIndex + Math.floor(Math.random() * (dataEndIndex - dataStartIndex + 1)))
-                : dataStartIndex;
+              let chosenIndex;
+              if (keywordRandom) {
+                chosenIndex = dataStartIndex + Math.floor(Math.random() * (dataEndIndex - dataStartIndex + 1));
+              } else if (config.__perGen && Number.isInteger(config.__forceSequentialIndex)) {
+                const span = (dataEndIndex - dataStartIndex + 1);
+                chosenIndex = dataStartIndex + (config.__forceSequentialIndex % span);
+              } else {
+                chosenIndex = dataStartIndex;
+              }
               const dataRow = lines[chosenIndex].split(',').map(cell => cell.trim().replace(/"/g, ''));
               
               // Create object mapping headers to values
@@ -1098,14 +1129,17 @@ class JobRunner extends EventEmitter {
             
             if (keywordsList.length > 0) {
               const keywordRandom = !!(config.parameters && config.parameters.keywordRandom);
-              const index = keywordRandom ? Math.floor(Math.random() * keywordsList.length) : 0;
+              const seqIndex = (config.__perGen && Number.isInteger(config.__forceSequentialIndex))
+                ? (config.__forceSequentialIndex % keywordsList.length)
+                : 0;
+              const index = keywordRandom ? Math.floor(Math.random() * keywordsList.length) : seqIndex;
               keywords = keywordsList[index].trim();
               this._logStructured({
                 level: 'debug',
                 stepName: 'initialization',
                 subStep: 'txt_parsed',
                 message: `Read TXT keywords: ${keywords}`,
-                metadata: { keywordsFile: config.filePaths.keywordsFile, selectedKeyword: keywords, keywordRandom }
+                metadata: { keywordsFile: config.filePaths.keywordsFile, selectedKeyword: keywords, keywordRandom, seqIndex }
               });
             }
           }
