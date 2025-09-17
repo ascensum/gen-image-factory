@@ -30,6 +30,8 @@ interface SettingsObject extends SharedSettingsObject {
     enablePollingTimeout: boolean;
     keywordRandom: boolean;
     count: number;
+    generationRetryAttempts?: number;
+    generationRetryBackoffMs?: number;
   };
   processing: {
     removeBg: boolean;
@@ -96,6 +98,8 @@ const defaultSettings: SettingsObject = {
     enablePollingTimeout: true,
     keywordRandom: false,
     count: 1,
+    generationRetryAttempts: 1,
+    generationRetryBackoffMs: 0,
   },
   processing: {
     removeBg: false,
@@ -580,6 +584,53 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               checked={form.parameters.keywordRandom}
               onChange={handleToggleChange('parameters', 'keywordRandom')}
             />
+          </div>
+
+          {/* Generation Retry Attempts */}
+          <div>
+            <label htmlFor="gen-retry-attempts" className="block text-sm font-medium text-gray-700 mb-2">
+              Generation Retry Attempts
+            </label>
+            <input
+              id="gen-retry-attempts"
+              type="number"
+              defaultValue={String(form.parameters.generationRetryAttempts ?? 1)}
+              onBlur={(e) => {
+                const v = parseInt(e.currentTarget.value || '0', 10);
+                const clamped = Math.min(5, Math.max(0, isNaN(v) ? 0 : v));
+                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, generationRetryAttempts: clamped } }));
+                setHasUnsavedChanges(true);
+              }}
+              onWheel={(e) => { e.currentTarget.blur(); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              min="0"
+              max="5"
+            />
+            <p className="text-xs text-gray-500 mt-1">Number of automatic retries per generation (0–5).</p>
+          </div>
+
+          {/* Retry Backoff (ms) */}
+          <div>
+            <label htmlFor="gen-retry-backoff" className="block text-sm font-medium text-gray-700 mb-2">
+              Retry Backoff (ms)
+            </label>
+            <input
+              id="gen-retry-backoff"
+              type="number"
+              defaultValue={String(form.parameters.generationRetryBackoffMs ?? 0)}
+              onBlur={(e) => {
+                const v = parseInt(e.currentTarget.value || '0', 10);
+                const clamped = Math.min(60000, Math.max(0, isNaN(v) ? 0 : v));
+                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, generationRetryBackoffMs: clamped } }));
+                setHasUnsavedChanges(true);
+              }}
+              onWheel={(e) => { e.currentTarget.blur(); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              min="0"
+              max="60000"
+              step="100"
+            />
+            <p className="text-xs text-gray-500 mt-1">Delay between retries (0–60000 ms).</p>
           </div>
         </div>
       </div>
