@@ -13,6 +13,8 @@ npx vitest run src/renderer/components/Jobs/__tests__/SingleJobView.statistics.t
 npx vitest run src/renderer/components/Jobs/__tests__/SingleJobView.delete-refresh.test.tsx --reporter=dot --environment=jsdom
 npx vitest run src/renderer/components/Jobs/__tests__/JobLabelDisplay.test.tsx --reporter=dot --environment=jsdom
 npx vitest run src/renderer/components/Settings/__tests__/Parameters.behavior.test.tsx --reporter=dot --environment=jsdom
+npx vitest run src/renderer/components/Settings/__tests__/RetryControls.persistence.test.tsx --reporter=dot --environment=jsdom
+npx vitest run src/renderer/components/Jobs/__tests__/SingleJobView.retryControls.persistence.test.tsx --reporter=dot --environment=jsdom
 
 npx vitest run tests/unit/utils/processing.normalizer.test.ts --reporter=dot
 
@@ -23,5 +25,9 @@ npx vitest run tests/integration/backend/LabelNoOverwriteOnCompletion.integratio
 npx vitest run tests/integration/backend/RenameUpdatesConfiguration.integration.test.ts --reporter=dot
 npx vitest run tests/integration/backend/RerunLabelPersistence.integration.test.ts --reporter=dot
 npx vitest run tests/integration/backend/NewJobExecutionIsolation.integration.test.ts --reporter=dot
+
+# 4) New backend unit tests for per-generation retry/parameter regeneration
+npx vitest run tests/unit/services/JobRunner.generationRetry.test.ts --reporter=dot
+npx vitest run tests/unit/services/JobRunner.parameterRegeneration.test.ts --reporter=dot
 
 echo "[husky] All critical tests passed"

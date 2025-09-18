@@ -1197,8 +1197,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <p className="setting-description">Number of generations (250 generations or 1000 images max).</p>
                   </div>
                   <div className="setting-row">
-                    <label>Generation Retry Attempts</label>
+                    <label htmlFor="gen-retry-attempts-modal">Generation Retry Attempts</label>
                     <input
+                      id="gen-retry-attempts-modal"
                       type="number"
                       value={(editedSettings.parameters as any)?.generationRetryAttempts ?? 1}
                       onChange={(e) => handleSettingChange('parameters', 'generationRetryAttempts', Math.max(0, Math.min(5, parseInt(e.target.value))))}
@@ -1207,8 +1208,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     />
                   </div>
                   <div className="setting-row">
-                    <label>Retry Backoff (ms)</label>
+                    <label htmlFor="gen-retry-backoff-modal">Retry Backoff (ms)</label>
                     <input
+                      id="gen-retry-backoff-modal"
                       type="number"
                       value={(editedSettings.parameters as any)?.generationRetryBackoffMs ?? 0}
                       onChange={(e) => handleSettingChange('parameters', 'generationRetryBackoffMs', Math.max(0, Math.min(60000, parseInt(e.target.value))))}
