@@ -97,3 +97,4 @@ Thumbs.db
 # Prevent duplicate JobRunner files
 src/services/JobRunner*.js
 user_settings_terminal_logs.txt
+qc_failed_image_review_logs.txt
