@@ -92,18 +92,17 @@ app.whenReady().then(async () => {
       ...defaultRoots
     ];
 
-    // Try also pulling current saved settings (best-effort)
-    jobConfig.getSettings('default')
-      .then(({ settings }) => {
-        const saved = settings?.filePaths || {};
-        [saved.outputDirectory, saved.tempDirectory]
-          .filter(Boolean)
-          .forEach((p) => allowedRoots.push(p));
-        console.log('🔗 Allowed roots (with saved):', allowedRoots);
-      })
-      .catch(() => {
-        console.log('🔗 Using default allowed roots only');
-      });
+    // Pull current saved settings synchronously before protocol registration
+    try {
+      const { settings } = await jobConfig.getSettings('default');
+      const saved = settings?.filePaths || {};
+      [saved.outputDirectory, saved.tempDirectory]
+        .filter(Boolean)
+        .forEach((p) => allowedRoots.push(p));
+      console.log('🔗 Allowed roots (with saved):', allowedRoots);
+    } catch (_e) {
+      console.log('🔗 Using default allowed roots only');
+    }
 
     console.log('🔗 Allowed roots (initial):', allowedRoots);
 
