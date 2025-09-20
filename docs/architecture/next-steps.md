@@ -28,7 +28,7 @@ This architecture document provides the complete technical blueprint for the enh
 1. ✅ **Story 1.5**: Core Controls UI - Implement job control interface (COMPLETE)
 2. ✅ **Story 1.6**: Results Gallery - Successful results view with Excel export (COMPLETE)
 3. **Story 1.7**: Failed Images Review - Manual approval workflow for failed images
-4. **Story 1.13**: Test Stabilization – Unit & Integration
+4. **Story 1.14**: Test Stabilization – Unit & Integration
 5. **Story 1.8**: Job History - Database integration for job history and persistence
 6. **Story 1.12**: Advanced Export & File Management - ZIP+Excel export and file operations
 

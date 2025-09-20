@@ -4,7 +4,7 @@
 
 This document defines the comprehensive testing strategy for the Electron application, ensuring reliability, maintainability, and user confidence across all layers of the application.
  
-## Stabilization Update (Story 1.13)
+## Stabilization Update (Story 1.14)
  
 To address intermittent failures and align tests with the current architecture, the following stabilization measures are now standard:
  

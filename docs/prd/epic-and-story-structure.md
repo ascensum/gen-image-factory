@@ -70,21 +70,11 @@
 9. **Techical debt: Backend Frontend integration that have no ben done for some reason**
      
 
-10.  **Distribution: Implement Application Packaging**
-    - Configure Electron Builder for cross-platform packaging (NFR3)
-    - Generate distributable installers for Windows, macOS, and Linux
-    - Implement auto-update mechanism
-    - Create deployment documentation
-    - Optimize Vite build for production
-
-11. **Testing: Implement Comprehensive Testing for Story 1.1**
-    - Create unit tests for React components using React Testing Library
-    - Implement integration tests for IPC communication
-    - Create end-to-end tests for basic app functionality
-    - Validate TypeScript type safety and configuration
-    - Test cross-platform compatibility (Windows, macOS, Linux)
-    - Implement security tests for IPC and app security
-    - Create performance and build optimization tests
+10.  **UI Visual Cleanup & Consistency**
+    - Address visual inconsistencies and responsiveness across Dashboard, Job Management, Single Job View and Settings
+    - Standardize status badges and input behaviors
+    - Ensure responsive headers and consistent field widths
+    - Align Single Job View edit with file pickers and stats layout
 
 11. **Security: Implement Production Security Measures**
     - Implement encrypted database fallback for API key storage
@@ -101,11 +91,28 @@
     - Add file validation and error handling for missing images
     - Style ZIP export components with Tailwind CSS
 
-13. **Testing Stabilization: Unit & Integration (Story 1.13)**
+13. **Testing: Implement Comprehensive Testing for Story 1.1**
+    - Create unit tests for React components using React Testing Library
+    - Implement integration tests for IPC communication
+    - Create end-to-end tests for basic app functionality
+    - Validate TypeScript type safety and configuration
+    - Test cross-platform compatibility (Windows, macOS, Linux)
+    - Implement security tests for IPC and app security
+    - Create performance and build optimization tests
+
+14. **Testing Stabilization & Post-1.9 Remediation: Unit & Integration (Story 1.14)**
     - Stabilize database integration tests using in-memory/isolated SQLite and migrations in setup
     - Align settings integration tests with `BackendAdapter` (replace legacy `SettingsAdapter` usage)
     - Centralize Electron and `keytar` mocks; assert IPC handlers and payloads
     - Reflect Story 1.7 clamping rules in assertions
     - Provide npm scripts for targeted subsets (DB, settings, story-1.7)
+    - Remediate failing tests introduced after Story 1.9 development, excluding unit/integration/E2E already green and covered by the HySky pre-commit script
 
-**Testing Strategy**: Each story includes comprehensive testing tasks covering unit tests, integration tests, and end-to-end validation as appropriate for the story scope. TypeScript will provide additional type safety during development. Story 1.10 specifically addresses the testing requirements for the foundational components from Story 1.1. Story 1.13 stabilizes unit and integration tests to ensure CI reliability and alignment with current architecture.
+15.  **Distribution: Implement Application Packaging**
+    - Configure Electron Builder for cross-platform packaging (NFR3)
+    - Generate distributable installers for Windows, macOS, and Linux
+    - Implement auto-update mechanism
+    - Create deployment documentation
+    - Optimize Vite build for production
+
+**Testing Strategy**: Each story includes comprehensive testing tasks covering unit tests, integration tests, and end-to-end validation as appropriate for the story scope. TypeScript will provide additional type safety during development. Story 1.13 specifically addresses the testing requirements for the foundational components from Story 1.1. Story 1.14 stabilizes unit and integration tests to ensure CI reliability and alignment with current architecture.
