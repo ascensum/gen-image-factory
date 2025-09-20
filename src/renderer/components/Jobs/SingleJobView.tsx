@@ -4,6 +4,7 @@ import { JobExecution } from '../../../types/job';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import ExportDialog from '../Common/ExportDialog';
 import './SingleJobView.css';
+import { FileSelector } from '../Settings/FileSelector';
 import StatusBadge from '../common/StatusBadge';
 
 interface SingleJobViewProps {
@@ -1043,38 +1044,38 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     />
                   </div>
                   <div className="setting-row">
-                    <label>System Prompt File</label>
-                    <input
-                      type="text"
+                    <FileSelector
+                      label="System Prompt File"
                       value={editedSettings.filePaths?.systemPromptFile || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'systemPromptFile', e.target.value)}
+                      onChange={(path) => handleSettingChange('filePaths', 'systemPromptFile', path)}
+                      type="file"
                       placeholder="Path to system prompt file"
                     />
                   </div>
                   <div className="setting-row">
-                    <label>Keywords File</label>
-                    <input
-                      type="text"
+                    <FileSelector
+                      label="Keywords File"
                       value={editedSettings.filePaths?.keywordsFile || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'keywordsFile', e.target.value)}
+                      onChange={(path) => handleSettingChange('filePaths', 'keywordsFile', path)}
+                      type="file"
                       placeholder="Path to keywords file"
                     />
                   </div>
                   <div className="setting-row">
-                    <label>Quality Check Prompt File</label>
-                    <input
-                      type="text"
+                    <FileSelector
+                      label="Quality Check Prompt File"
                       value={editedSettings.filePaths?.qualityCheckPromptFile || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'qualityCheckPromptFile', e.target.value)}
+                      onChange={(path) => handleSettingChange('filePaths', 'qualityCheckPromptFile', path)}
+                      type="file"
                       placeholder="Path to QC prompt file"
                     />
                   </div>
                   <div className="setting-row">
-                    <label>Metadata Prompt File</label>
-                    <input
-                      type="text"
+                    <FileSelector
+                      label="Metadata Prompt File"
                       value={editedSettings.filePaths?.metadataPromptFile || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'metadataPromptFile', e.target.value)}
+                      onChange={(path) => handleSettingChange('filePaths', 'metadataPromptFile', path)}
+                      type="file"
                       placeholder="Path to metadata prompt file"
                     />
                   </div>
