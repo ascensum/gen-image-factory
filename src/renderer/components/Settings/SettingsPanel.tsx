@@ -232,6 +232,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     try {
       if (window.electronAPI && window.electronAPI.saveSettings) {
         await window.electronAPI.saveSettings(form);
+        // Hot-refresh protocol roots so local-file URLs work without restart
+        try {
+          await window.electronAPI.refreshProtocolRoots([
+            form.filePaths?.outputDirectory,
+            form.filePaths?.tempDirectory
+          ]);
+        } catch {}
       }
       setSettings(form);
       setHasUnsavedChanges(false);

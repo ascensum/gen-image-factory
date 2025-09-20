@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Settings Management
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settingsObject) => ipcRenderer.invoke('save-settings', settingsObject),
+  refreshProtocolRoots: (extraPaths) => ipcRenderer.invoke('protocol:refresh-roots', extraPaths),
   getConfiguration: () => ipcRenderer.invoke('settings:get-configuration'),
   
   // API Key Management

@@ -354,6 +354,13 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       const result = await window.electronAPI.updateJobConfiguration(job.configurationId, editedSettings);
       
       if (result.success) {
+        // Hot-refresh protocol roots so local-file URLs work without restart after path changes
+        try {
+          await window.electronAPI.refreshProtocolRoots([
+            editedSettings?.filePaths?.outputDirectory,
+            editedSettings?.filePaths?.tempDirectory
+          ]);
+        } catch {}
         setIsEditingSettings(false);
         console.log('Job settings updated successfully');
         // TODO: Refresh job data to show updated settings

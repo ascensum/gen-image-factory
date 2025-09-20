@@ -16,6 +16,45 @@ const { GeneratedImage } = require('../src/database/models/GeneratedImage');
 
 let mainWindow;
 let allowedRoots = [];
+async function refreshAllowedRoots(extraPaths = []) {
+  try {
+    const jobConfig = new JobConfiguration();
+    const defaults = jobConfig.getDefaultSettings();
+    const nextRoots = new Set();
+    // Defaults
+    [defaults?.filePaths?.outputDirectory, defaults?.filePaths?.tempDirectory]
+      .filter(Boolean)
+      .forEach((p) => nextRoots.add(p));
+    // Saved settings
+    try {
+      const { settings } = await jobConfig.getSettings('default');
+      const saved = settings?.filePaths || {};
+      [saved.outputDirectory, saved.tempDirectory]
+        .filter(Boolean)
+        .forEach((p) => nextRoots.add(p));
+    } catch {}
+    // Extra paths provided from renderer (e.g., newly saved per-job paths)
+    (Array.isArray(extraPaths) ? extraPaths : [extraPaths])
+      .filter(Boolean)
+      .forEach((p) => nextRoots.add(p));
+    // Recent image directories
+    try {
+      const gi = new GeneratedImage();
+      const res = await gi.getAllGeneratedImages(500);
+      const images = res && res.success ? res.images : Array.isArray(res) ? res : [];
+      const pathDirs = new Set();
+      images.forEach((img) => {
+        try { if (img.finalImagePath) pathDirs.add(path.dirname(img.finalImagePath)); } catch {}
+        try { if (img.tempImagePath) pathDirs.add(path.dirname(img.tempImagePath)); } catch {}
+      });
+      pathDirs.forEach((d) => nextRoots.add(d));
+    } catch {}
+    allowedRoots = Array.from(nextRoots);
+    console.log('🔗 Allowed roots (refreshed):', allowedRoots);
+  } catch (e) {
+    console.warn('🔗 Failed to refresh allowed roots:', e.message);
+  }
+}
 
 function createWindow() {
   // Create the browser window
@@ -188,6 +227,12 @@ app.whenReady().then(async () => {
     console.error('❌ Failed to setup IPC handlers:', error);
     console.error('❌ Error stack:', error.stack);
   }
+
+  // Hot-refresh protocol roots on demand (no restart required)
+  ipcMain.handle('protocol:refresh-roots', async (event, extraPaths = []) => {
+    await refreshAllowedRoots(extraPaths);
+    return { success: true, roots: allowedRoots };
+  });
   
   createWindow();
   
