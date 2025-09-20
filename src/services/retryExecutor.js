@@ -460,12 +460,15 @@ class RetryExecutor extends EventEmitter {
       // Get the job execution to find the configuration ID
       const JobExecution = require('../database/models/JobExecution');
       const jobExecution = new JobExecution();
+      // Ensure DB initialized to avoid races
+      try { await jobExecution.init(); } catch (e) { console.warn('RetryExecutor: jobExecution.init failed (continuing):', e?.message || e); }
+      try { if (this.jobConfig && this.jobConfig.init) { await this.jobConfig.init(); } } catch (e) { console.warn('RetryExecutor: jobConfig.init failed (continuing):', e?.message || e); }
       
       // First attempt to load execution
       let executionResult = await jobExecution.getJobExecution(image.executionId);
       if (!executionResult.success) {
         console.warn(`🔧 RetryExecutor: First attempt failed to get job execution ${image.executionId} for image ${image.id}. Retrying once...`);
-        try { await this.delay(200); } catch {}
+        try { await this.delay(300); } catch {}
         executionResult = await jobExecution.getJobExecution(image.executionId);
       }
       if (!executionResult.success) {
@@ -484,7 +487,7 @@ class RetryExecutor extends EventEmitter {
       let configResult = await this.jobConfig.getConfigurationById(execution.configurationId);
       if (!configResult.success) {
         console.warn(`🔧 RetryExecutor: First attempt failed to load configuration ${execution.configurationId}. Retrying once...`);
-        try { await this.delay(200); } catch {}
+        try { await this.delay(300); } catch {}
         configResult = await this.jobConfig.getConfigurationById(execution.configurationId);
       }
       if (!configResult.success) {
