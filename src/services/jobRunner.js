@@ -1313,8 +1313,9 @@ class JobRunner extends EventEmitter {
       
       // Prepare the configuration for producePictureModule
       console.log(`🔧 JobRunner: DEBUG - config.filePaths:`, JSON.stringify(config.filePaths, null, 2));
-      console.log(`🔧 JobRunner: DEBUG - config.filePaths?.outputDirectory:`, config.filePaths?.outputDirectory);
-      console.log(`🔧 JobRunner: DEBUG - config.filePaths?.tempDirectory:`, config.filePaths?.tempDirectory);
+      // Clarify directory mapping in logs: temp is where generator writes first; final move goes to outputDirectory
+      console.log(`🔧 JobRunner: DEBUG - OUTPUT directory (final):`, config.filePaths?.outputDirectory);
+      console.log(`🔧 JobRunner: DEBUG - TEMP directory (initial writes):`, config.filePaths?.tempDirectory);
       
       // When QC is enabled, defer processing until retry flows (QC-first design)
       const processingEnabled = !(config.ai?.runQualityCheck === true);
@@ -1339,13 +1340,15 @@ class JobRunner extends EventEmitter {
         jpgBackground: processingEnabled ? (config.processing?.jpgBackground || 'white') : 'white',
         jpgQuality: processingEnabled ? (config.processing?.jpgQuality || 90) : 90,
         pngQuality: processingEnabled ? (config.processing?.pngQuality || 100) : 100,
-        // Paths (QC-first): write to temp first, move to final later
+        // Paths (QC-first): generator writes to temp first; later we move to outputDirectory
         outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
         tempDirectory: config.filePaths?.tempDirectory || './pictures/generated'
       };
       
-      console.log(`🔧 JobRunner: DEBUG - moduleConfig.outputDirectory:`, moduleConfig.outputDirectory);
-      console.log(`🔧 JobRunner: DEBUG - moduleConfig.tempDirectory:`, moduleConfig.tempDirectory);
+      console.log(`🔧 JobRunner: DEBUG - moduleConfig (initial write path):`, {
+        outputDirectory: moduleConfig.outputDirectory,
+        tempDirectory: moduleConfig.tempDirectory
+      });
       
       this._logStructured({
         level: 'debug',

@@ -1026,20 +1026,20 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 <div className="setting-group">
                   <h4 className="setting-group-title">File Paths</h4>
                   <div className="setting-row">
-                    <label>Output Directory</label>
-                    <input
-                      type="text"
+                    <FileSelector
+                      label="Output Directory"
                       value={editedSettings.filePaths?.outputDirectory || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'outputDirectory', e.target.value)}
+                      onChange={(path) => handleSettingChange('filePaths', 'outputDirectory', path)}
+                      type="directory"
                       placeholder="Output directory path"
                     />
                   </div>
                   <div className="setting-row">
-                    <label>Temp Directory</label>
-                    <input
-                      type="text"
+                    <FileSelector
+                      label="Temp Directory"
                       value={editedSettings.filePaths?.tempDirectory || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'tempDirectory', e.target.value)}
+                      onChange={(path) => handleSettingChange('filePaths', 'tempDirectory', path)}
+                      type="directory"
                       placeholder="Temporary directory path"
                     />
                   </div>

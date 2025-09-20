@@ -82,12 +82,22 @@ class ErrorTranslationService {
     const translation = this.errorTranslations[errorCode];
     
     if (translation) {
+      // Special-case: refine PiAPI messages when quota/credits exhausted
+      let userMessage = translation.userMessage;
+      let retryable = translation.retryable;
+      if (errorCode === ERROR_CODES.PIAPI_API_ERROR) {
+        const refined = this.translatePiapiIfApplicable(error);
+        if (refined) {
+          userMessage = refined.userMessage;
+          retryable = refined.retryable;
+        }
+      }
       return {
         error: error.message,
         code: errorCode,
-        userMessage: translation.userMessage,
+        userMessage,
         technicalDetails: error.stack,
-        retryable: translation.retryable,
+        retryable,
         timestamp: new Date()
       };
     }
@@ -162,6 +172,24 @@ class ErrorTranslationService {
     }
 
     return 'UNKNOWN_ERROR';
+  }
+
+  /**
+   * Specialized translator for PiAPI responses to surface insufficient credits nicely
+   */
+  translatePiapiIfApplicable(error) {
+    try {
+      const raw = String(error && (error.response?.data || error.message || error)).toLowerCase();
+      if (raw.includes('insufficient') && (raw.includes('credit') || raw.includes('quota') || raw.includes('balance'))) {
+        return {
+          userMessage: 'PiAPI: insufficient credits. Please top up your PiAPI balance and retry.',
+          retryable: true
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   /**

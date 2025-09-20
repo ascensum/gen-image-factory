@@ -685,11 +685,12 @@ class BackendAdapter {
 
     // Listen for job errors
     this.jobRunner.on('error', (error) => {
-      // Translate error to user-friendly message
+      // Prefer auto-detection unless a specific actionable code was provided
+      const explicitCode = error.code && error.code !== 'JOB_EXECUTION_ERROR' ? error.code : null;
       const translatedError = this.errorTranslation.createJobError(
         error.jobId || 'unknown',
         new Error(error.error || error.message),
-        error.code
+        explicitCode
       );
       console.error('Job error:', translatedError);
     });
