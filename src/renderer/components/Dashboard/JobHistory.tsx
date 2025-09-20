@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import StatusBadge from '../common/StatusBadge';
 import { JobExecution } from './DashboardPanel';
 
 interface JobHistoryProps {
@@ -312,9 +313,16 @@ const JobHistory: React.FC<JobHistoryProps> = ({
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
                                           <span>{formatDate(job.startedAt)}</span>
                       <span>{formatDuration(job.startedAt, job.completedAt)}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-                      {job.status}
-                    </span>
+                    <StatusBadge 
+                      variant="job" 
+                      status={job.status}
+                      labelOverride={
+                        job.status === 'completed' ? 'Completed' :
+                        job.status === 'running' ? 'Running' :
+                        job.status === 'failed' ? 'Failed' :
+                        job.status
+                      }
+                    />
                   </div>
                 </div>
               </div>

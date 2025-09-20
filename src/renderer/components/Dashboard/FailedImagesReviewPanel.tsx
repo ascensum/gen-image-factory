@@ -495,7 +495,12 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-blue-900">🔄 Retry Queue Status</h3>
+              <h3 className="text-lg font-semibold text-blue-900 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Retry Queue Status
+              </h3>
               <div className="text-sm text-blue-700">
                 {retryQueueStatus.isProcessing ? 'Currently Processing' : 'Queued Jobs'}
               </div>
@@ -685,7 +690,10 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
               >
                 Retry Selected
                 {retryQueueStatus.isProcessing && (
-                  <span className="ml-1">⏳</span>
+                  <svg className="ml-1 w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V2A10 10 0 002 12h2zm2 5.291A7.962 7.962 0 014 12H2c0 3.042 1.135 5.824 3 7.938l1-0.647z"></path>
+                  </svg>
                 )}
               </button>
               <button
@@ -747,17 +755,26 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       {(retryQueueStatus.completedJobs > 0 || retryQueueStatus.failedJobs > 0) && (
         <div className="bg-white border-t border-gray-200 px-6 py-4">
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">📊 Retry History</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Retry History
+            </h3>
             <div className="space-y-2 text-sm text-gray-700">
               {retryQueueStatus.completedJobs > 0 && (
                 <div className="flex items-center space-x-2">
-                  <span className="text-green-600">✅</span>
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
                   <span>Completed: {retryQueueStatus.completedJobs} retry jobs</span>
                 </div>
               )}
               {retryQueueStatus.failedJobs > 0 && (
                 <div className="flex items-center space-x-2">
-                  <span className="text-red-600">❌</span>
+                  <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                   <span>Failed: {retryQueueStatus.failedJobs} retry jobs</span>
                 </div>
               )}

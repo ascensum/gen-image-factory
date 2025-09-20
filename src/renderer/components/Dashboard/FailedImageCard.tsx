@@ -21,7 +21,18 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
 
   const getStatusBadge = () => (
     <div className="absolute top-2 left-2">
-      <StatusBadge variant="qc" status={image.qcStatus} />
+      <StatusBadge 
+        variant="qc" 
+        status={image.qcStatus}
+        labelOverride={
+          image.qcStatus === 'qc_failed' ? 'QC Failed' :
+          image.qcStatus === 'retry_pending' ? 'Pending Retry' :
+          image.qcStatus === 'processing' ? 'Processing Retry' :
+          image.qcStatus === 'approved' ? 'Approved' :
+          image.qcStatus === 'failed_retry' ? 'Failed Retry' :
+          (image.qcStatus || '')
+        }
+      />
     </div>
   );
 

@@ -574,7 +574,16 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
               <div className="info-card">
                 <div className="info-label">Status</div>
                 <div className="info-value">
-                  <StatusBadge variant="job" status={job.status} />
+                  <StatusBadge 
+                    variant="job" 
+                    status={job.status}
+                    labelOverride={
+                      job.status === 'completed' ? 'Completed' :
+                      job.status === 'processing' ? 'Processing' :
+                      job.status === 'failed' ? 'Failed' :
+                      'Pending'
+                    }
+                  />
                 </div>
               </div>
               <div className="info-card">

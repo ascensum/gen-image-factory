@@ -695,7 +695,17 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                     </span>
                   </td>
                   <td>
-                    <StatusBadge variant="job" status={job.status} />
+                    <StatusBadge 
+                      variant="job" 
+                      status={job.status}
+                      labelOverride={
+                        job.status === 'completed' ? 'Completed' :
+                        job.status === 'processing' ? 'In Progress' :
+                        job.status === 'failed' ? 'Failed' :
+                        job.status === 'pending' ? 'Pending' :
+                        job.status
+                      }
+                    />
                   </td>
                   <td>
                     <span className="timestamp">
