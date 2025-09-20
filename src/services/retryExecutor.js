@@ -459,7 +459,7 @@ class RetryExecutor extends EventEmitter {
       console.log(`🔧 RetryExecutor: Getting original job configuration for image ${image.id}, executionId: ${image.executionId}`);
       
       // Get the job execution to find the configuration ID
-      const JobExecution = require('../database/models/JobExecution');
+      const { JobExecution } = require('../database/models/JobExecution');
       const jobExecution = new JobExecution();
       // Ensure DB initialized to avoid races
       try { await jobExecution.init(); } catch (e) { console.warn('RetryExecutor: jobExecution.init failed (continuing):', e?.message || e); }

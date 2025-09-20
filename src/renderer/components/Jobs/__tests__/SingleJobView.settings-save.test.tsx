@@ -57,7 +57,7 @@ describe('SingleJobView - Settings Save (focused)', () => {
     mockElectronAPI.updateJobConfiguration.mockResolvedValue({ success: true });
   });
 
-  it('saves new file path and parameter fields via IPC', async () => {
+  it('saves parameter fields; file paths are read-only and unchanged', async () => {
     render(<SingleJobView {...defaultProps} />);
 
     // Wait for initial load (job+config)
@@ -68,9 +68,13 @@ describe('SingleJobView - Settings Save (focused)', () => {
     const editBtn = await screen.findByTitle('Edit job settings');
     fireEvent.click(editBtn);
 
-    // Fill new fields
-    fireEvent.change(screen.getByPlaceholderText('Path to system prompt file'), { target: { value: '/abs/sys.txt' } });
-    fireEvent.change(screen.getByPlaceholderText('Path to QC prompt file'), { target: { value: '/abs/qc.txt' } });
+    // File paths are read-only in Single Job View
+    const sysInput = screen.getByPlaceholderText('Path to system prompt file') as HTMLInputElement;
+    const qcInput = screen.getByPlaceholderText('Path to QC prompt file') as HTMLInputElement;
+    expect(sysInput).toBeDisabled();
+    expect(qcInput).toBeDisabled();
+
+    // Change only parameter fields
     fireEvent.change(screen.getByPlaceholderText('e.g., gpt-4o-mini'), { target: { value: 'gpt-4o-mini' } });
     const checkboxes = screen.getAllByRole('checkbox');
     const enableTimeout = checkboxes[0] as HTMLInputElement; // Enable Polling Timeout
@@ -83,8 +87,9 @@ describe('SingleJobView - Settings Save (focused)', () => {
 
     await waitFor(() => expect(mockElectronAPI.updateJobConfiguration).toHaveBeenCalled());
     const payload = mockElectronAPI.updateJobConfiguration.mock.calls[0][1];
-    expect(payload.filePaths.systemPromptFile).toBe('/abs/sys.txt');
-    expect(payload.filePaths.qualityCheckPromptFile).toBe('/abs/qc.txt');
+    // File paths unchanged (coming from initial config)
+    expect(payload.filePaths.systemPromptFile).toBe('');
+    expect(payload.filePaths.qualityCheckPromptFile).toBe('');
     expect(payload.parameters.openaiModel).toBe('gpt-4o-mini');
     expect(payload.parameters.enablePollingTimeout).toBe(true);
     expect(payload.parameters.pollingTimeout).toBe(45);

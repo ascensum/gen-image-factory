@@ -1024,12 +1024,16 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 {/* File Paths Section */}
                 <div className="setting-group">
                   <h4 className="setting-group-title">File Paths</h4>
+                  <p className="setting-hint" style={{ fontSize: '12px', color: '#6b7280', marginTop: '-6px', marginBottom: '8px' }}>
+                    Edit file contents on disk; paths are reference-only here. Files are re-read at run/rerun. To change paths, use Settings.
+                  </p>
                   <div className="setting-row">
                     <label>Output Directory</label>
                     <input
                       type="text"
                       value={editedSettings.filePaths?.outputDirectory || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'outputDirectory', e.target.value)}
+                      onChange={() => {}}
+                      disabled
                       placeholder="Output directory path"
                     />
                   </div>
@@ -1038,7 +1042,8 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <input
                       type="text"
                       value={editedSettings.filePaths?.tempDirectory || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'tempDirectory', e.target.value)}
+                      onChange={() => {}}
+                      disabled
                       placeholder="Temporary directory path"
                     />
                   </div>
@@ -1047,7 +1052,8 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <input
                       type="text"
                       value={editedSettings.filePaths?.systemPromptFile || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'systemPromptFile', e.target.value)}
+                      onChange={() => {}}
+                      disabled
                       placeholder="Path to system prompt file"
                     />
                   </div>
@@ -1056,7 +1062,8 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <input
                       type="text"
                       value={editedSettings.filePaths?.keywordsFile || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'keywordsFile', e.target.value)}
+                      onChange={() => {}}
+                      disabled
                       placeholder="Path to keywords file"
                     />
                   </div>
@@ -1065,7 +1072,8 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <input
                       type="text"
                       value={editedSettings.filePaths?.qualityCheckPromptFile || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'qualityCheckPromptFile', e.target.value)}
+                      onChange={() => {}}
+                      disabled
                       placeholder="Path to QC prompt file"
                     />
                   </div>
@@ -1074,7 +1082,8 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <input
                       type="text"
                       value={editedSettings.filePaths?.metadataPromptFile || ''}
-                      onChange={(e) => handleSettingChange('filePaths', 'metadataPromptFile', e.target.value)}
+                      onChange={() => {}}
+                      disabled
                       placeholder="Path to metadata prompt file"
                     />
                   </div>
