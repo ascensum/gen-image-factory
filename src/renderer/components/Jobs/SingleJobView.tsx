@@ -4,7 +4,6 @@ import { JobExecution } from '../../../types/job';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import ExportDialog from '../Common/ExportDialog';
 import './SingleJobView.css';
-import { FileSelector } from '../Settings/FileSelector';
 import StatusBadge from '../common/StatusBadge';
 
 interface SingleJobViewProps {
@@ -354,13 +353,6 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       const result = await window.electronAPI.updateJobConfiguration(job.configurationId, editedSettings);
       
       if (result.success) {
-        // Hot-refresh protocol roots so local-file URLs work without restart after path changes
-        try {
-          await window.electronAPI.refreshProtocolRoots([
-            editedSettings?.filePaths?.outputDirectory,
-            editedSettings?.filePaths?.tempDirectory
-          ]);
-        } catch {}
         setIsEditingSettings(false);
         console.log('Job settings updated successfully');
         // TODO: Refresh job data to show updated settings
@@ -1033,56 +1025,56 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 <div className="setting-group">
                   <h4 className="setting-group-title">File Paths</h4>
                   <div className="setting-row">
-                    <FileSelector
-                      label="Output Directory"
+                    <label>Output Directory</label>
+                    <input
+                      type="text"
                       value={editedSettings.filePaths?.outputDirectory || ''}
-                      onChange={(path) => handleSettingChange('filePaths', 'outputDirectory', path)}
-                      type="directory"
+                      onChange={(e) => handleSettingChange('filePaths', 'outputDirectory', e.target.value)}
                       placeholder="Output directory path"
                     />
                   </div>
                   <div className="setting-row">
-                    <FileSelector
-                      label="Temp Directory"
+                    <label>Temp Directory</label>
+                    <input
+                      type="text"
                       value={editedSettings.filePaths?.tempDirectory || ''}
-                      onChange={(path) => handleSettingChange('filePaths', 'tempDirectory', path)}
-                      type="directory"
+                      onChange={(e) => handleSettingChange('filePaths', 'tempDirectory', e.target.value)}
                       placeholder="Temporary directory path"
                     />
                   </div>
                   <div className="setting-row">
-                    <FileSelector
-                      label="System Prompt File"
+                    <label>System Prompt File</label>
+                    <input
+                      type="text"
                       value={editedSettings.filePaths?.systemPromptFile || ''}
-                      onChange={(path) => handleSettingChange('filePaths', 'systemPromptFile', path)}
-                      type="file"
+                      onChange={(e) => handleSettingChange('filePaths', 'systemPromptFile', e.target.value)}
                       placeholder="Path to system prompt file"
                     />
                   </div>
                   <div className="setting-row">
-                    <FileSelector
-                      label="Keywords File"
+                    <label>Keywords File</label>
+                    <input
+                      type="text"
                       value={editedSettings.filePaths?.keywordsFile || ''}
-                      onChange={(path) => handleSettingChange('filePaths', 'keywordsFile', path)}
-                      type="file"
+                      onChange={(e) => handleSettingChange('filePaths', 'keywordsFile', e.target.value)}
                       placeholder="Path to keywords file"
                     />
                   </div>
                   <div className="setting-row">
-                    <FileSelector
-                      label="Quality Check Prompt File"
+                    <label>Quality Check Prompt File</label>
+                    <input
+                      type="text"
                       value={editedSettings.filePaths?.qualityCheckPromptFile || ''}
-                      onChange={(path) => handleSettingChange('filePaths', 'qualityCheckPromptFile', path)}
-                      type="file"
+                      onChange={(e) => handleSettingChange('filePaths', 'qualityCheckPromptFile', e.target.value)}
                       placeholder="Path to QC prompt file"
                     />
                   </div>
                   <div className="setting-row">
-                    <FileSelector
-                      label="Metadata Prompt File"
+                    <label>Metadata Prompt File</label>
+                    <input
+                      type="text"
                       value={editedSettings.filePaths?.metadataPromptFile || ''}
-                      onChange={(path) => handleSettingChange('filePaths', 'metadataPromptFile', path)}
-                      type="file"
+                      onChange={(e) => handleSettingChange('filePaths', 'metadataPromptFile', e.target.value)}
                       placeholder="Path to metadata prompt file"
                     />
                   </div>
