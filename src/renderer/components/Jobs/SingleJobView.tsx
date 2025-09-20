@@ -4,6 +4,7 @@ import { JobExecution } from '../../../types/job';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import ExportDialog from '../Common/ExportDialog';
 import './SingleJobView.css';
+import StatusBadge from '../common/StatusBadge';
 
 interface SingleJobViewProps {
   jobId: string | number;
@@ -573,37 +574,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
               <div className="info-card">
                 <div className="info-label">Status</div>
                 <div className="info-value">
-                  <span className={`status-badge ${getStatusColor(job.status)}`}>
-                    {job.status === 'completed' ? (
-                      <>
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Completed
-                      </>
-                    ) : job.status === 'processing' ? (
-                      <>
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Processing
-                      </>
-                    ) : job.status === 'failed' ? (
-                      <>
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Failed
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Pending
-                      </>
-                    )}
-                  </span>
+                  <StatusBadge variant="job" status={job.status} />
                 </div>
               </div>
               <div className="info-card">

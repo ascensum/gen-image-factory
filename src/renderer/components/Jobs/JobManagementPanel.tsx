@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { JobExecution, JobFilters } from '../../../types/job';
 import ExportDialog from '../Common/ExportDialog';
+import StatusBadge from '../common/StatusBadge';
 import './JobManagementPanel.css';
 
 interface JobManagementPanelProps {
@@ -694,13 +695,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                     </span>
                   </td>
                   <td>
-                    <span className={`status-badge status-${job.status}`}>
-                      {job.status === 'completed' && '✓ Completed'}
-                      {job.status === 'processing' && '⟳ In Progress'}
-                      {job.status === 'failed' && '✗ Failed'}
-                      {job.status === 'pending' && '⏳ Pending'}
-                      {!['completed', 'processing', 'failed', 'pending'].includes(job.status) && job.status}
-                    </span>
+                    <StatusBadge variant="job" status={job.status} />
                   </td>
                   <td>
                     <span className="timestamp">
