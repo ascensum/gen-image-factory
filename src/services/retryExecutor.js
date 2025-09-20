@@ -461,9 +461,15 @@ class RetryExecutor extends EventEmitter {
       const JobExecution = require('../database/models/JobExecution');
       const jobExecution = new JobExecution();
       
-      const executionResult = await jobExecution.getJobExecution(image.executionId);
+      // First attempt to load execution
+      let executionResult = await jobExecution.getJobExecution(image.executionId);
       if (!executionResult.success) {
-        console.warn(`🔧 RetryExecutor: Failed to get job execution for image ${image.id}, using fallback`);
+        console.warn(`🔧 RetryExecutor: First attempt failed to get job execution ${image.executionId} for image ${image.id}. Retrying once...`);
+        try { await this.delay(200); } catch {}
+        executionResult = await jobExecution.getJobExecution(image.executionId);
+      }
+      if (!executionResult.success) {
+        console.warn(`🔧 RetryExecutor: Failed to get job execution after retry. Falling back. executionId=${image.executionId}`);
         return this.getFallbackConfiguration();
       }
       
@@ -474,14 +480,20 @@ class RetryExecutor extends EventEmitter {
       }
       
       // Get the original job configuration
-      const configResult = await this.jobConfig.getConfigurationById(execution.configurationId);
+      console.log(`🔧 RetryExecutor: Loading job configuration by ID: ${execution.configurationId}`);
+      let configResult = await this.jobConfig.getConfigurationById(execution.configurationId);
       if (!configResult.success) {
-        console.warn(`🔧 RetryExecutor: Failed to get job configuration ${execution.configurationId}, using fallback`);
+        console.warn(`🔧 RetryExecutor: First attempt failed to load configuration ${execution.configurationId}. Retrying once...`);
+        try { await this.delay(200); } catch {}
+        configResult = await this.jobConfig.getConfigurationById(execution.configurationId);
+      }
+      if (!configResult.success) {
+        console.warn(`🔧 RetryExecutor: Failed to load configuration after retry. Falling back. configurationId=${execution.configurationId}`);
         return this.getFallbackConfiguration();
       }
       
       const originalConfig = configResult.configuration;
-      console.log(`🔧 RetryExecutor: Retrieved original job configuration for image ${image.id}`);
+      console.log(`🔧 RetryExecutor: Retrieved original job configuration for image ${image.id} (configurationId=${execution.configurationId})`);
       
       // Apply cross-platform path logic if original job didn't have custom paths
       const settings = originalConfig.settings || {};
