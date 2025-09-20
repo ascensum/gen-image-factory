@@ -1201,12 +1201,15 @@ class JobRunner extends EventEmitter {
         });
       }
       
-      // Ensure aspectRatios is always an array
+      // Ensure aspectRatios is always an array; support comma-separated input like "16:9,1:1,9:16"
       let aspectRatios = config.parameters?.aspectRatios || ['1:1'];
       if (typeof aspectRatios === 'string') {
-        aspectRatios = [aspectRatios]; // Convert string to array
+        const raw = aspectRatios;
+        aspectRatios = raw.includes(',')
+          ? raw.split(',').map(r => r.trim()).filter(Boolean)
+          : [raw.trim()];
       } else if (!Array.isArray(aspectRatios)) {
-        aspectRatios = ['1:1']; // Fallback to default
+        aspectRatios = ['1:1'];
       }
       
       const mjVersion = config.parameters?.mjVersion || '6';
@@ -1324,9 +1327,15 @@ class JobRunner extends EventEmitter {
         imageConvert: processingEnabled ? (config.processing?.imageConvert || false) : false,
         convertToJpg: processingEnabled ? (config.processing?.convertToJpg || false) : false,
         trimTransparentBackground: processingEnabled ? (config.processing?.trimTransparentBackground || false) : false,
-        aspectRatios: Array.isArray(parameters.aspectRatios) ? parameters.aspectRatios : 
-                     (Array.isArray(config.parameters?.aspectRatios) ? config.parameters.aspectRatios : 
-                     (typeof config.parameters?.aspectRatios === 'string' ? [config.parameters.aspectRatios] : ['1:1'])),
+        aspectRatios: Array.isArray(parameters.aspectRatios)
+          ? parameters.aspectRatios
+          : (Array.isArray(config.parameters?.aspectRatios)
+              ? config.parameters.aspectRatios
+              : (typeof config.parameters?.aspectRatios === 'string'
+                  ? (config.parameters.aspectRatios.includes(',')
+                      ? config.parameters.aspectRatios.split(',').map(r => r.trim()).filter(Boolean)
+                      : [config.parameters.aspectRatios.trim()])
+                  : ['1:1'])),
         pollingTimeout: config.parameters?.enablePollingTimeout ? (config.parameters?.pollingTimeout || 15) : null, // 15 minutes if enabled, null if disabled
         pollingInterval: config.parameters?.pollingInterval || 1, // 1 minute (from parameters settings)
         processMode: config.parameters?.processMode || 'single',
