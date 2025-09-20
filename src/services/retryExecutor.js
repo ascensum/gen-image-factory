@@ -40,7 +40,8 @@ class RetryExecutor extends EventEmitter {
     this.tempDirectory = options.tempDirectory || tempDir;
     this.outputDirectory = options.outputDirectory || outputDir;
     this.generatedImage = options.generatedImage;
-    this.jobConfig = new JobConfiguration(); // Add JobConfiguration access
+    // Prefer shared JobConfiguration instance from backend adapter to avoid DB init races
+    this.jobConfig = options.jobConfig || new JobConfiguration();
     this.currentImageId = null; // Track current image being processed
     
     if (!this.generatedImage) {

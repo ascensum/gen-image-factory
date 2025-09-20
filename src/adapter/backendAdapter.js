@@ -105,7 +105,8 @@ class BackendAdapter {
         this.retryExecutor = new RetryExecutor({
           tempDirectory: tempDir,
           outputDirectory: outputDir,
-          generatedImage: this.generatedImage
+          generatedImage: this.generatedImage,
+          jobConfig: this.jobConfig
         });
         console.log('🔧 BackendAdapter: RetryExecutor created successfully');
         
