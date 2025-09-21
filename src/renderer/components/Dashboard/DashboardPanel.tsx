@@ -195,6 +195,50 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   const [imageSortBy, setImageSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
   const [imageDateFrom, setImageDateFrom] = useState<string | null>(null);
   const [imageDateTo, setImageDateTo] = useState<string | null>(null);
+  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+
+  // Helpers to reflect filtered selection data from ImageGallery
+  const filteredImageIds = React.useCallback(() => {
+    // Build the same filter used in ImageGallery to compute ids quickly
+    const uniqueJobIds = Array.from(new Set((generatedImages || []).map(img => img.executionId)));
+    const images = generatedImages || [];
+    const parseMetadata = (raw: any) => {
+      if (!raw) return {};
+      if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { return {}; } }
+      return raw;
+    };
+    const ids = images.filter(image => {
+      if (imageJobFilter !== 'all' && image.executionId != imageJobFilter) return false;
+      if (imageSearchQuery) {
+        const q = imageSearchQuery.toLowerCase();
+        const meta = parseMetadata(image.metadata);
+        const title = typeof meta?.title === 'string' ? meta.title : meta?.title?.en || '';
+        const description = typeof meta?.description === 'string' ? meta.description : meta?.description?.en || '';
+        const tags = Array.isArray(meta?.tags) ? meta.tags.join(' ') : '';
+        const metaPrompt = typeof meta?.prompt === 'string' ? meta.prompt : '';
+        const matches = (image.generationPrompt || '').toLowerCase().includes(q)
+          || title.toLowerCase().includes(q)
+          || description.toLowerCase().includes(q)
+          || tags.toLowerCase().includes(q)
+          || metaPrompt.toLowerCase().includes(q);
+        if (!matches) return false;
+      }
+      if (imageDateFrom || imageDateTo) {
+        if (!image.createdAt) return false;
+        const d = new Date(image.createdAt as any);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const ymd = `${y}-${m}-${day}`;
+        if (imageDateFrom && ymd < imageDateFrom) return false;
+        if (imageDateTo && ymd > imageDateTo) return false;
+      }
+      return true;
+    }).map(img => img.id);
+    return ids;
+  }, [generatedImages, imageJobFilter, imageSearchQuery, imageDateFrom, imageDateTo]);
+
+  const filteredImagesCount = React.useMemo(() => filteredImageIds().length, [filteredImageIds]);
   
 
   
@@ -1106,14 +1150,37 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                 <div className="flex items-center space-x-2">
                   {/* Select All Checkbox */}
                   <div className="flex items-center space-x-2">
-                    <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <input
+                      type="checkbox"
+                      checked={selectedImages.size === filteredImagesCount && filteredImagesCount > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          // select all currently filtered images
+                          const ids = filteredImageIds();
+                          setSelectedImages(new Set(ids));
+                        } else {
+                          setSelectedImages(new Set());
+                        }
+                      }}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
                     <span className="text-sm text-gray-700">
-                      Select All (0/{generatedImages.length})
+                      Select All ({selectedImages.size}/{filteredImagesCount})
                     </span>
                   </div>
 
                   {/* Clear Button */}
-                  <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors">
+                  <button
+                    onClick={() => {
+                      setImageJobFilter('all');
+                      setImageSearchQuery('');
+                      setImageSortBy('newest');
+                      setImageDateFrom(null);
+                      setImageDateTo(null);
+                      setSelectedImages(new Set());
+                    }}
+                    className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+                  >
                     Clear
                   </button>
 
