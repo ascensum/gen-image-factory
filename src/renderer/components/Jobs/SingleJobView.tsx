@@ -1143,10 +1143,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   </div>
                   <div className="setting-row">
                     <label>Enable Polling Timeout</label>
-                    <input
-                      type="checkbox"
+                    <Toggle
                       checked={editedSettings.parameters?.enablePollingTimeout || false}
-                      onChange={(e) => handleSettingChange('parameters', 'enablePollingTimeout', e.target.checked)}
+                      onChange={(checked) => handleSettingChange('parameters', 'enablePollingTimeout', checked)}
                     />
                   </div>
                   <div className="setting-row">
@@ -1169,10 +1168,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   </div>
                   <div className="setting-row">
                     <label>Random Keywords</label>
-                    <input
-                      type="checkbox"
+                    <Toggle
                       checked={editedSettings.parameters?.keywordRandom || false}
-                      onChange={(e) => handleSettingChange('parameters', 'keywordRandom', e.target.checked)}
+                      onChange={(checked) => handleSettingChange('parameters', 'keywordRandom', checked)}
                     />
                   </div>
                   <div className="setting-row">

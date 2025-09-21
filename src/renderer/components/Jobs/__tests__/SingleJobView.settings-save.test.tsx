@@ -76,9 +76,9 @@ describe('SingleJobView - Settings Save (focused)', () => {
 
     // Change only parameter fields
     fireEvent.change(screen.getByPlaceholderText('e.g., gpt-4o-mini'), { target: { value: 'gpt-4o-mini' } });
-    const checkboxes = screen.getAllByRole('checkbox');
-    const enableTimeout = checkboxes[0] as HTMLInputElement; // Enable Polling Timeout
-    if (!enableTimeout.checked) fireEvent.click(enableTimeout);
+    const switches = screen.getAllByRole('switch');
+    const enableTimeout = switches[0] as HTMLButtonElement; // Enable Polling Timeout
+    if (enableTimeout.getAttribute('aria-checked') !== 'true') fireEvent.click(enableTimeout);
     const timeoutInput = screen.getAllByDisplayValue('0')[0] as HTMLInputElement;
     fireEvent.change(timeoutInput, { target: { value: '45' } });
 
