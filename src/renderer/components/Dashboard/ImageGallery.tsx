@@ -170,7 +170,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     });
 
     return sorted;
-  }, [images, jobFilter, searchQuery, sortBy]);
+  }, [images, jobFilter, searchQuery, sortBy, dateFrom, dateTo]);
 
   // Note: QC status functions removed since we only show success images in main dashboard
 
