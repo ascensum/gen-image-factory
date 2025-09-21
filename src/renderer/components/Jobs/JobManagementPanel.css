@@ -357,9 +357,8 @@
 }
 
 /* Ensure clear gap between date group and search */
-.job-filters-row > .relative.flex-\[1_1_24rem\] {
-  margin-left: 1rem;
-}
+/* Increase left margin on search input for clearer separation */
+.job-filters-row > .relative.flex-\[1_1_24rem\] { margin-left: 1.5rem; }
 
 .checkbox-wrapper[aria-checked="true"] {
   background-color: var(--primary);
