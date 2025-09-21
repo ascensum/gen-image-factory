@@ -17,6 +17,10 @@ declare global {
         success: boolean;
         error?: string;
       }>;
+      refreshProtocolRoots: (extraPaths?: string[] | string) => Promise<{
+        success: boolean;
+        roots: string[];
+      }>;
       
       // API Key Management
       getApiKey: (serviceName: string) => Promise<{
@@ -39,6 +43,7 @@ declare global {
       
       // Generic invoke method
       invoke: (channel: string, ...args: any[]) => Promise<any>;
+      openExternal?: (url: string) => Promise<void>;
       
       // Job Management
       jobManagement: {

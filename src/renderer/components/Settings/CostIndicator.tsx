@@ -311,11 +311,4 @@ export const formatCost = (cost: number, currency: string = 'USD'): string => {
   return formatter.format(cost);
 };
 
-// Type declarations for Electron API
-declare global {
-  interface Window {
-    electronAPI?: {
-      openExternal: (url: string) => Promise<void>;
-    };
-  }
-}
+// Electron API types are declared centrally in src/types/ipc.d.ts

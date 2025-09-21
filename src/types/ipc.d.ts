@@ -93,6 +93,16 @@ export interface ElectronAPI {
   // Utility
   ping: () => Promise<string>;
   getAppVersion: () => Promise<string>;
+  refreshProtocolRoots: (extraPaths?: string[] | string) => Promise<{ success: boolean; roots: string[] }>;
+  openExternal: (url: string) => Promise<void>;
+  // Secure storage (used by ApiKeysSection)
+  isSecureStorageAvailable?: () => Promise<boolean>;
+  setSecureValue?: (service: string, account: string, value: string) => Promise<void>;
+  getSecureValue?: (service: string, account: string) => Promise<string | null>;
+  deleteSecureValue?: (service: string, account: string) => Promise<void>;
+  // Validation helpers used around settings
+  validatePath?: (path: string, type: 'file' | 'directory', permissions?: string[] | string[]) => Promise<any>;
+  selectFile?: (options: any) => Promise<any>;
 }
 
 export interface JobExecutionsResult {

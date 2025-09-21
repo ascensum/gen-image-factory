@@ -317,24 +317,4 @@ export const FilePathsSection: React.FC<FilePathsSectionProps> = ({
   );
 };
 
-// Type declarations for Electron API
-declare global {
-  interface Window {
-    electronAPI?: {
-      showOpenDialog: (options: {
-        type: 'file' | 'directory' | 'multiple';
-        fileTypes?: string[];
-        defaultPath?: string;
-      }) => Promise<{ filePaths: string[]; canceled: boolean }>;
-      validatePath: (path: string, type: 'file' | 'directory', permissions: string[]) => Promise<{
-        isValid: boolean;
-        exists?: boolean;
-        isAccessible?: boolean;
-        hasReadPermission?: boolean;
-        hasWritePermission?: boolean;
-        errorMessage?: string;
-        warningMessage?: string;
-      }>;
-    };
-  }
-}
+// Electron API types are declared centrally in src/types/ipc.d.ts

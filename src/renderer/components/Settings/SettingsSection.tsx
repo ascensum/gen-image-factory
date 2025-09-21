@@ -380,11 +380,4 @@ export const useSettingsSections = (initialStates: Record<string, boolean> = {})
   };
 };
 
-// Type declarations for Electron API
-declare global {
-  interface Window {
-    electronAPI?: {
-      openExternal: (url: string) => Promise<void>;
-    };
-  }
-}
+// Note: Electron API types are declared centrally in src/types/ipc.d.ts

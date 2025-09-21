@@ -232,13 +232,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     try {
       if (window.electronAPI && window.electronAPI.saveSettings) {
         await window.electronAPI.saveSettings(form);
-        // Hot-refresh protocol roots so local-file URLs work without restart
-        try {
-          await window.electronAPI.refreshProtocolRoots([
-            form.filePaths?.outputDirectory,
-            form.filePaths?.tempDirectory
-          ]);
-        } catch {}
       }
       setSettings(form);
       setHasUnsavedChanges(false);
@@ -531,7 +524,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           {form.parameters.enablePollingTimeout && (
             <div>
               <label htmlFor="polling-timeout" className="block text-sm font-medium text-gray-700 mb-2">
-                Polling Timeout (minutes)
+                Polling Timeout (seconds)
               </label>
               <input
                 id="polling-timeout"

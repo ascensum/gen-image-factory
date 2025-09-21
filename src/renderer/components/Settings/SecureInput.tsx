@@ -355,14 +355,4 @@ export const SecureInput: React.FC<SecureInputProps> = ({
   );
 };
 
-// Type declaration for Electron API (if not already declared)
-declare global {
-  interface Window {
-    electronAPI?: {
-      isSecureStorageAvailable: () => Promise<boolean>;
-      setSecureValue: (service: string, account: string, value: string) => Promise<void>;
-      getSecureValue: (service: string, account: string) => Promise<string | null>;
-      deleteSecureValue: (service: string, account: string) => Promise<boolean>;
-    };
-  }
-}
+// Electron API types are declared centrally in src/types/ipc.d.ts

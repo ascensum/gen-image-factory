@@ -443,21 +443,4 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
   );
 };
 
-// Type declarations for Electron API
-declare global {
-  interface Window {
-    electronAPI?: {
-      selectFile: (options: {
-        type: 'file' | 'directory';
-        fileTypes?: string[];
-        title?: string;
-      }) => Promise<{ success: boolean; filePath?: string; canceled?: boolean }>;
-      validatePath: (path: string, type: 'file' | 'directory', fileTypes?: string[]) => Promise<{
-        isValid: boolean;
-        message?: string;
-      }>;
-      getRecentPaths: (type: 'file' | 'directory') => Promise<RecentPath[]>;
-      saveRecentPath: (path: string, type: 'file' | 'directory') => Promise<void>;
-    };
-  }
-}
+// Electron API types are declared centrally in src/types/ipc.d.ts
