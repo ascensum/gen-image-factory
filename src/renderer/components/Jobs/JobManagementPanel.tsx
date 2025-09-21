@@ -484,13 +484,13 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
 
       {/* Filters and Search Bar following exact design specification */}
       <div className="px-6 py-4 space-y-4 border-b border-[--border] shrink-0">
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           {/* Status Filter */}
-          <div className="relative w-48">
+          <div className="relative w-48 focus-within:z-10">
             <select 
               value={filters.status}
               onChange={(e) => handleFiltersChange({ ...filters, status: e.target.value as any })}
-              className="w-full appearance-none bg-[--background] border border-[--border] rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-[--ring]"
+              className="w-full h-10 appearance-none bg-[--background] border border-[--border] rounded-lg px-4 pr-8 focus:outline-none focus:ring-2 focus:ring-[--ring]"
             >
               <option value="all">All Status</option>
               <option value="completed">Completed</option>
@@ -505,17 +505,17 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
 
           {/* Date Range Filter */}
           <div className="relative flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-2 bg-[--background] border border-[--border] rounded-lg p-2">
+            <div className="flex items-center gap-2 bg-[--background] border border-[--border] rounded-lg h-10 px-2">
               <input 
                 type="date" 
-                className="bg-transparent px-2 focus:outline-none" 
+                className="bg-transparent px-2 h-full focus:outline-none" 
                 placeholder="From"
                 onChange={(e) => handleFiltersChange({ ...filters, dateRange: e.target.value })}
               />
               <div className="h-4 w-px bg-[--border]"></div>
               <input 
                 type="date" 
-                className="bg-transparent px-2 focus:outline-none" 
+                className="bg-transparent px-2 h-full focus:outline-none" 
                 placeholder="To"
                 onChange={(e) => handleFiltersChange({ ...filters, dateRange: e.target.value })}
               />
@@ -544,13 +544,13 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           </div>
 
           {/* Search Input */}
-          <div className="relative flex-1 min-w-[16rem]">
+          <div className="relative flex-1 min-w-[16rem] h-10">
             <input 
               type="text" 
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search jobs..." 
-              className="w-full bg-[--background] border border-[--border] rounded-lg px-4 py-2 pl-10 pr-10 focus:outline-none focus:ring-2 focus:ring-[--ring]"
+              className="w-full h-10 bg-[--background] border border-[--border] rounded-lg px-4 pl-10 pr-10 focus:outline-none focus:ring-2 focus:ring-[--ring]"
             />
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[--muted-foreground]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />

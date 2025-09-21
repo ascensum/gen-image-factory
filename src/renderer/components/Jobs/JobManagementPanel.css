@@ -417,6 +417,11 @@
   .quick-actions {
     opacity: 1;
   }
+
+  /* Prevent overlap of status select with date range when wrapping */
+  .job-management-header + .px-6 .flex.flex-wrap.items-center.gap-4 > .relative.w-48 {
+    flex: 0 0 auto;
+  }
 }
 
 /* Custom Scrollbar Styling */
