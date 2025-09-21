@@ -511,9 +511,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 className="bg-transparent px-2 h-full focus:outline-none" 
                 placeholder="From"
                 onChange={(e) => {
-                  const v = e.target.value;
-                  const dateFrom = v ? new Date(`${v}T00:00:00`) : undefined;
-                  handleFiltersChange({ ...filters, dateFrom });
+                  const v = e.target.value; // yyyy-mm-dd from input
+                  handleFiltersChange({ ...filters, dateFrom: v || undefined });
                 }}
               />
               <div className="h-4 w-px bg-[--border]"></div>
@@ -522,9 +521,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 className="bg-transparent px-2 h-full focus:outline-none" 
                 placeholder="To"
                 onChange={(e) => {
-                  const v = e.target.value;
-                  const dateTo = v ? new Date(`${v}T23:59:59.999`) : undefined;
-                  handleFiltersChange({ ...filters, dateTo });
+                  const v = e.target.value; // yyyy-mm-dd from input
+                  handleFiltersChange({ ...filters, dateTo: v || undefined });
                 }}
               />
             </div>

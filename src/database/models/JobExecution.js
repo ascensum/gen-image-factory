@@ -647,12 +647,19 @@ class JobExecution {
       
       if (filters.dateFrom || filters.dateTo) {
         if (filters.dateFrom) {
+          // filters.dateFrom can be yyyy-mm-dd (string) or Date
+          const fromIso = typeof filters.dateFrom === 'string'
+            ? new Date(filters.dateFrom + 'T00:00:00').toISOString()
+            : new Date(filters.dateFrom).toISOString();
           sql += ' AND je.started_at >= ?';
-          params.push(new Date(filters.dateFrom).toISOString());
+          params.push(fromIso);
         }
         if (filters.dateTo) {
+          const toIso = typeof filters.dateTo === 'string'
+            ? new Date(filters.dateTo + 'T23:59:59.999').toISOString()
+            : new Date(filters.dateTo).toISOString();
           sql += ' AND je.started_at <= ?';
-          params.push(new Date(filters.dateTo).toISOString());
+          params.push(toIso);
         }
       } else if (filters.dateRange && filters.dateRange !== 'all') {
         const now = new Date();
@@ -740,12 +747,18 @@ class JobExecution {
       
       if (filters.dateFrom || filters.dateTo) {
         if (filters.dateFrom) {
+          const fromIso = typeof filters.dateFrom === 'string'
+            ? new Date(filters.dateFrom + 'T00:00:00').toISOString()
+            : new Date(filters.dateFrom).toISOString();
           sql += ' AND je.started_at >= ?';
-          params.push(new Date(filters.dateFrom).toISOString());
+          params.push(fromIso);
         }
         if (filters.dateTo) {
+          const toIso = typeof filters.dateTo === 'string'
+            ? new Date(filters.dateTo + 'T23:59:59.999').toISOString()
+            : new Date(filters.dateTo).toISOString();
           sql += ' AND je.started_at <= ?';
-          params.push(new Date(filters.dateTo).toISOString());
+          params.push(toIso);
         }
       } else if (filters.dateRange && filters.dateRange !== 'all') {
         const now = new Date();
