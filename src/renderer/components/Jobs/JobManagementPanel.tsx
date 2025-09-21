@@ -523,7 +523,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           </div>
 
           {/* Search Input */}
-          <div className="relative flex-[1_1_24rem] min-w-[16rem] max-w-[42rem] h-10">
+          <div className="relative flex-[1_1_24rem] min-w-[16rem] max-w-[42rem] h-10 ml-4">
             <input 
               type="text" 
               value={searchQuery}

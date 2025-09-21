@@ -356,6 +356,11 @@
   row-gap: 0.75rem;
 }
 
+/* Ensure clear gap between date group and search */
+.job-filters-row > .relative.flex-\[1_1_24rem\] {
+  margin-left: 1rem;
+}
+
 .checkbox-wrapper[aria-checked="true"] {
   background-color: var(--primary);
   border-color: var(--primary);
