@@ -484,7 +484,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
 
       {/* Filters and Search Bar following exact design specification */}
       <div className="px-6 py-4 space-y-4 border-b border-[--border] shrink-0">
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           {/* Status Filter */}
           <div className="relative w-48">
             <select 
@@ -504,7 +504,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           </div>
 
           {/* Date Range Filter */}
-          <div className="relative flex items-center gap-2">
+          <div className="relative flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-2 bg-[--background] border border-[--border] rounded-lg p-2">
               <input 
                 type="date" 
@@ -544,7 +544,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           </div>
 
           {/* Search Input */}
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-[16rem]">
             <input 
               type="text" 
               value={searchQuery}
