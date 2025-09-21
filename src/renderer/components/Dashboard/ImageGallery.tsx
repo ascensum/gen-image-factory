@@ -102,7 +102,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 
   // Clear selection when job filter changes
   React.useEffect(() => {
-    setSelectedImages(new Set());
+    updateSelected(new Set());
   }, [jobFilter]);
 
   // Get unique job IDs for filtering
@@ -526,7 +526,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                   
                   {/* Table Body */}
                   <div className="divide-y divide-gray-200">
-                    {filteredAndSortedImages.map((image) => (
+                        {filteredAndSortedImages.map((image) => (
                       <div
                         key={image.id}
                         className={`grid grid-cols-12 gap-4 px-4 py-3 hover:bg-gray-50 transition-colors ${
@@ -535,20 +535,20 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                       >
                         {/* Checkbox */}
                         <div className="col-span-1 flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedImages.has(image.id)}
-                            onChange={(e) => {
-                              const newSelected = new Set(selectedImages);
-                              if (e.target.checked) {
-                                newSelected.add(image.id);
-                              } else {
-                                newSelected.delete(image.id);
-                              }
-                              setSelectedImages(newSelected);
-                            }}
-                            className="rounded border-gray-300"
-                          />
+                            <input
+                              type="checkbox"
+                              checked={selectedImages.has(image.id)}
+                              onChange={(e) => {
+                                const newSelected = new Set(selectedImages);
+                                if (e.target.checked) {
+                                  newSelected.add(image.id);
+                                } else {
+                                  newSelected.delete(image.id);
+                                }
+                                updateSelected(newSelected);
+                              }}
+                              className="rounded border-gray-300"
+                            />
                         </div>
                         
                         {/* Image Thumbnail */}
