@@ -647,19 +647,18 @@ class JobExecution {
       
       if (filters.dateFrom || filters.dateTo) {
         if (filters.dateFrom) {
-          // filters.dateFrom can be yyyy-mm-dd (string) or Date
-          const fromIso = typeof filters.dateFrom === 'string'
-            ? new Date(filters.dateFrom + 'T00:00:00').toISOString()
-            : new Date(filters.dateFrom).toISOString();
-          sql += ' AND je.started_at >= ?';
-          params.push(fromIso);
+          const fromSql = typeof filters.dateFrom === 'string'
+            ? `${filters.dateFrom} 00:00:00`
+            : `${new Date(filters.dateFrom).getFullYear()}-${String(new Date(filters.dateFrom).getMonth()+1).padStart(2,'0')}-${String(new Date(filters.dateFrom).getDate()).padStart(2,'0')} 00:00:00`;
+          sql += ' AND datetime(je.started_at) >= datetime(?)';
+          params.push(fromSql);
         }
         if (filters.dateTo) {
-          const toIso = typeof filters.dateTo === 'string'
-            ? new Date(filters.dateTo + 'T23:59:59.999').toISOString()
-            : new Date(filters.dateTo).toISOString();
-          sql += ' AND je.started_at <= ?';
-          params.push(toIso);
+          const toSql = typeof filters.dateTo === 'string'
+            ? `${filters.dateTo} 23:59:59`
+            : `${new Date(filters.dateTo).getFullYear()}-${String(new Date(filters.dateTo).getMonth()+1).padStart(2,'0')}-${String(new Date(filters.dateTo).getDate()).padStart(2,'0')} 23:59:59`;
+          sql += ' AND datetime(je.started_at) <= datetime(?)';
+          params.push(toSql);
         }
       } else if (filters.dateRange && filters.dateRange !== 'all') {
         const now = new Date();
@@ -747,18 +746,18 @@ class JobExecution {
       
       if (filters.dateFrom || filters.dateTo) {
         if (filters.dateFrom) {
-          const fromIso = typeof filters.dateFrom === 'string'
-            ? new Date(filters.dateFrom + 'T00:00:00').toISOString()
-            : new Date(filters.dateFrom).toISOString();
-          sql += ' AND je.started_at >= ?';
-          params.push(fromIso);
+          const fromSql = typeof filters.dateFrom === 'string'
+            ? `${filters.dateFrom} 00:00:00`
+            : `${new Date(filters.dateFrom).getFullYear()}-${String(new Date(filters.dateFrom).getMonth()+1).padStart(2,'0')}-${String(new Date(filters.dateFrom).getDate()).padStart(2,'0')} 00:00:00`;
+          sql += ' AND datetime(je.started_at) >= datetime(?)';
+          params.push(fromSql);
         }
         if (filters.dateTo) {
-          const toIso = typeof filters.dateTo === 'string'
-            ? new Date(filters.dateTo + 'T23:59:59.999').toISOString()
-            : new Date(filters.dateTo).toISOString();
-          sql += ' AND je.started_at <= ?';
-          params.push(toIso);
+          const toSql = typeof filters.dateTo === 'string'
+            ? `${filters.dateTo} 23:59:59`
+            : `${new Date(filters.dateTo).getFullYear()}-${String(new Date(filters.dateTo).getMonth()+1).padStart(2,'0')}-${String(new Date(filters.dateTo).getDate()).padStart(2,'0')} 23:59:59`;
+          sql += ' AND datetime(je.started_at) <= datetime(?)';
+          params.push(toSql);
         }
       } else if (filters.dateRange && filters.dateRange !== 'all') {
         const now = new Date();
