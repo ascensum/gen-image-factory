@@ -1225,6 +1225,14 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                 dateTo={imageDateTo}
                 selectedIds={selectedImages}
                 onSelectionChange={setSelectedImages}
+                onClearFilters={() => {
+                  setImageJobFilter('all');
+                  setImageSearchQuery('');
+                  setImageSortBy('newest');
+                  setImageDateFrom(null);
+                  setImageDateTo(null);
+                  setSelectedImages(new Set());
+                }}
               />
             </div>
           </div>

@@ -48,6 +48,7 @@ interface ImageGalleryProps {
   dateTo?: string | null;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  onClearFilters?: () => void;
 }
 
 const ImageGallery: React.FC<ImageGalleryProps> = ({
@@ -65,7 +66,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   dateFrom = null,
   dateTo = null,
   selectedIds,
-  onSelectionChange
+  onSelectionChange,
+  onClearFilters
 }) => {
   // Safety check for images prop
   if (!images || !Array.isArray(images)) {
@@ -341,8 +343,16 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       {/* Image Grid/List - SCROLLABLE AREA */}
       <div className="flex-1 overflow-y-auto min-h-0">
         {filteredAndSortedImages.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            No images found matching the current filters.
+          <div className="text-center py-8 text-gray-500" aria-live="polite">
+            <div>No images match the current filters.</div>
+            {onClearFilters && (
+              <button
+                onClick={onClearFilters}
+                className="mt-3 inline-flex items-center px-3 py-1 text-sm rounded-md bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
           <>
