@@ -484,9 +484,9 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
 
       {/* Filters and Search Bar following exact design specification */}
       <div className="px-6 py-4 space-y-4 border-b border-[--border] shrink-0">
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="job-filters-row flex flex-wrap items-center gap-6">
           {/* Status Filter */}
-          <div className="relative w-48">
+          <div className="relative w-48 flex-none">
             <select 
               value={filters.status}
               onChange={(e) => handleFiltersChange({ ...filters, status: e.target.value as any })}
@@ -504,8 +504,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           </div>
 
           {/* Date Range Filter */}
-          <div className="relative flex items-center gap-2 flex-wrap z-10">
-            <div className="flex items-center gap-2 bg-[--background] border border-[--border] rounded-lg h-10 px-2 z-10">
+          <div className="relative flex items-center gap-2 flex-nowrap flex-none">
+            <div className="flex items-center gap-2 bg-[--background] border border-[--border] rounded-lg h-10 px-2">
               <input 
                 type="date" 
                 className="bg-transparent px-2 h-full focus:outline-none" 
@@ -523,7 +523,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           </div>
 
           {/* Search Input */}
-          <div className="relative flex-1 min-w-[16rem] h-10">
+          <div className="relative flex-1 min-w-[20rem] h-10">
             <input 
               type="text" 
               value={searchQuery}
