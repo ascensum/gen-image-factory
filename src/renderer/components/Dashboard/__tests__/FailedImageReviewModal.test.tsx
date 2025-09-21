@@ -239,7 +239,8 @@ describe('FailedImageReviewModal', () => {
         />
       );
 
-      expect(screen.getByText('⚠️ Failed')).toBeInTheDocument();
+      // QC Failed badge rendered
+      expect(screen.getByText('QC Failed')).toBeInTheDocument();
     });
 
     it('handles missing failure reason gracefully', () => {
@@ -467,9 +468,9 @@ describe('FailedImageReviewModal', () => {
         />
       );
 
-      expect(screen.getByText('✓ Approve Image')).toBeInTheDocument();
-      expect(screen.getByText('🔄 Add to Retry Pool')).toBeInTheDocument();
-      expect(screen.getByText('🗑 Delete Image')).toBeInTheDocument();
+      expect(screen.getByText('Approve Image')).toBeInTheDocument();
+      expect(screen.getByText('Add to Retry Pool')).toBeInTheDocument();
+      expect(screen.getByText('Delete Image')).toBeInTheDocument();
     });
 
     it('calls onAction with correct parameters for approve', () => {
@@ -482,7 +483,7 @@ describe('FailedImageReviewModal', () => {
         />
       );
 
-      const approveButton = screen.getByText('✓ Approve Image');
+      const approveButton = screen.getByText('Approve Image');
       fireEvent.click(approveButton);
 
       expect(mockOnAction).toHaveBeenCalledWith('approve', 'modal-test-image-1');
@@ -498,7 +499,7 @@ describe('FailedImageReviewModal', () => {
         />
       );
 
-      const retryButton = screen.getByText('🔄 Add to Retry Pool');
+      const retryButton = screen.getByText('Add to Retry Pool');
       fireEvent.click(retryButton);
 
       expect(mockOnAction).toHaveBeenCalledWith('retry', 'modal-test-image-1');
@@ -514,7 +515,7 @@ describe('FailedImageReviewModal', () => {
         />
       );
 
-      const deleteButton = screen.getByText('🗑 Delete Image');
+      const deleteButton = screen.getByText('Delete Image');
       fireEvent.click(deleteButton);
 
       expect(mockOnAction).toHaveBeenCalledWith('delete', 'modal-test-image-1');
