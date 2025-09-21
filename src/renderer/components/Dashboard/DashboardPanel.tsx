@@ -193,6 +193,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   const [imageJobFilter, setImageJobFilter] = useState<string>('all');
   const [imageSearchQuery, setImageSearchQuery] = useState<string>('');
   const [imageSortBy, setImageSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
+  const [imageDateFrom, setImageDateFrom] = useState<string | null>(null);
+  const [imageDateTo, setImageDateTo] = useState<string | null>(null);
   
 
   
@@ -998,6 +1000,81 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                     </select>
                   </div>
 
+                {/* Date Range Filter (Dashboard font sizes/styles) */}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-md h-9 px-2">
+                    <input
+                      type="date"
+                      className="bg-transparent px-2 h-full text-sm focus:outline-none"
+                      value={imageDateFrom ?? ''}
+                      onChange={(e) => setImageDateFrom(e.target.value || null)}
+                    />
+                    <div className="h-4 w-px bg-gray-300" />
+                    <input
+                      type="date"
+                      className="bg-transparent px-2 h-full text-sm focus:outline-none"
+                      value={imageDateTo ?? ''}
+                      onChange={(e) => setImageDateTo(e.target.value || null)}
+                    />
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => {
+                        const today = new Date();
+                        const yyyy = today.getFullYear();
+                        const mm = String(today.getMonth() + 1).padStart(2, '0');
+                        const dd = String(today.getDate()).padStart(2, '0');
+                        const d = `${yyyy}-${mm}-${dd}`;
+                        setImageDateFrom(d);
+                        setImageDateTo(d);
+                      }}
+                      className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+                    >
+                      Today
+                    </button>
+                    <button
+                      onClick={() => {
+                        const now = new Date();
+                        const toY = now.getFullYear();
+                        const toM = String(now.getMonth() + 1).padStart(2, '0');
+                        const toD = String(now.getDate()).padStart(2, '0');
+                        const end = `${toY}-${toM}-${toD}`;
+                        const startDate = new Date(now);
+                        startDate.setDate(startDate.getDate() - 7);
+                        const frY = startDate.getFullYear();
+                        const frM = String(startDate.getMonth() + 1).padStart(2, '0');
+                        const frD = String(startDate.getDate()).padStart(2, '0');
+                        const start = `${frY}-${frM}-${frD}`;
+                        setImageDateFrom(start);
+                        setImageDateTo(end);
+                      }}
+                      className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+                    >
+                      Week
+                    </button>
+                    <button
+                      onClick={() => {
+                        const now = new Date();
+                        const toY = now.getFullYear();
+                        const toM = String(now.getMonth() + 1).padStart(2, '0');
+                        const toD = String(now.getDate()).padStart(2, '0');
+                        const end = `${toY}-${toM}-${toD}`;
+                        const startDate = new Date(now);
+                        startDate.setMonth(startDate.getMonth() - 1);
+                        const frY = startDate.getFullYear();
+                        const frM = String(startDate.getMonth() + 1).padStart(2, '0');
+                        const frD = String(startDate.getDate()).padStart(2, '0');
+                        const start = `${frY}-${frM}-${frD}`;
+                        setImageDateFrom(start);
+                        setImageDateTo(end);
+                      }}
+                      className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+                    >
+                      Month
+                    </button>
+                  </div>
+                </div>
+
                   {/* Search Field */}
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-700">Search:</span>
@@ -1065,6 +1142,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                 searchQuery={imageSearchQuery}
                 sortBy={imageSortBy}
                 jobIdToLabel={Object.fromEntries(jobHistory.map(j => [j.id, (j as any).label || j.configurationName || `Job ${j.id}`]))}
+                dateFrom={imageDateFrom}
+                dateTo={imageDateTo}
               />
             </div>
           </div>

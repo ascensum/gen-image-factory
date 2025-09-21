@@ -520,27 +520,6 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 onChange={(e) => handleFiltersChange({ ...filters, dateRange: e.target.value })}
               />
             </div>
-            {/* Quick Date Ranges */}
-            <div className="flex gap-1">
-              <button 
-                onClick={() => handleFiltersChange({ ...filters, dateRange: 'today' })}
-                className="px-2 py-1 text-xs bg-[--secondary] hover:bg-opacity-80 rounded"
-              >
-                Today
-              </button>
-              <button 
-                onClick={() => handleFiltersChange({ ...filters, dateRange: 'week' })}
-                className="px-2 py-1 text-xs bg-[--secondary] hover:bg-opacity-80 rounded"
-              >
-                Week
-              </button>
-              <button 
-                onClick={() => handleFiltersChange({ ...filters, dateRange: 'month' })}
-                className="px-2 py-1 text-xs bg-[--secondary] hover:bg-opacity-80 rounded"
-              >
-                Month
-              </button>
-            </div>
           </div>
 
           {/* Search Input */}

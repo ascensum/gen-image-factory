@@ -44,6 +44,8 @@ interface ImageGalleryProps {
   searchQuery?: string;
   sortBy?: 'newest' | 'oldest' | 'name';
   jobIdToLabel?: Record<string, string>;
+  dateFrom?: string | null;
+  dateTo?: string | null;
 }
 
 const ImageGallery: React.FC<ImageGalleryProps> = ({
@@ -57,7 +59,9 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   jobFilter = 'all',
   searchQuery = '',
   sortBy = 'newest',
-  jobIdToLabel = {}
+  jobIdToLabel = {},
+  dateFrom = null,
+  dateTo = null
 }) => {
   // Safety check for images prop
   if (!images || !Array.isArray(images)) {
@@ -137,6 +141,19 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         }
       }
       
+      // Date range filter (inclusive). Expect YYYY-MM-DD from inputs
+      if (dateFrom || dateTo) {
+        const created = image.createdAt ? new Date(image.createdAt as any).getTime() : null;
+        if (!created) return false;
+        if (dateFrom) {
+          const fromTs = new Date(dateFrom + 'T00:00:00').getTime();
+          if (created < fromTs) return false;
+        }
+        if (dateTo) {
+          const toTs = new Date(dateTo + 'T23:59:59').getTime();
+          if (created > toTs) return false;
+        }
+      }
       return true;
     });
 
