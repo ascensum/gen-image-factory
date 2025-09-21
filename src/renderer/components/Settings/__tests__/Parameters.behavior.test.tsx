@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { SettingsPanel } from '../SettingsPanel'
 
 describe('Parameters behavior (regression guards)', () => {
-  test('Generations count clamps to 1–250 on blur and copy is correct', () => {
+  test('Generations count clamps to 1–2500 on blur and copy is correct', () => {
     render(<SettingsPanel />)
 
     // Go to Parameters tab
@@ -15,7 +15,7 @@ describe('Parameters behavior (regression guards)', () => {
     fireEvent.blur(count)
     expect(parseInt(count.value || '0', 10)).toBeGreaterThan(0) // uncontrolled; cannot reliably read post-blur value
     // Presence of helper text acts as guard for copy
-    expect(screen.getByText(/250 generations or 1000 images max/i)).toBeInTheDocument()
+    expect(screen.getByText(/up to 2500 generations/i)).toBeInTheDocument()
   })
 
   test('Model fields are text inputs (no dropdown)', () => {

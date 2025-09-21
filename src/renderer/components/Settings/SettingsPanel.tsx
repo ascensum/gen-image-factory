@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { SettingsObject as SharedSettingsObject } from '../../../types/settings';
 import { Eye, EyeOff, Save, RotateCcw, AlertCircle, CheckCircle, X, Key, FolderOpen, Sliders, Cog, Settings } from 'lucide-react';
 import { Toggle } from './Toggle';
@@ -143,13 +143,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const [settings, setSettings] = useState<SettingsObject>(defaultSettings);
   const [form, setForm] = useState<SettingsObject>(defaultSettings);
-  // Draft inputs to avoid focus loss while typing
-  const [labelDraft, setLabelDraft] = useState<string>('');
-  const [apiDraft, setApiDraft] = useState<{ openai: string; piapi: string; removeBg: string }>({ openai: '', piapi: '', removeBg: '' });
-  const [aspectRatiosDraft, setAspectRatiosDraft] = useState<string>('');
-  const [mjVersionDraft, setMjVersionDraft] = useState<string>('');
-  const [openaiModelDraft, setOpenaiModelDraft] = useState<string>('');
-  const [countDraft, setCountDraft] = useState<number | ''>(1);
+  // Draft inputs removed; using uncontrolled inputs with blur commit for stability
   const [activeTab, setActiveTab] = useState<TabId>('api-keys');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({
@@ -561,16 +555,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               defaultValue={String(form.parameters.count)}
               onBlur={(e) => {
                 const v = parseInt(e.currentTarget.value || '1', 10);
-                const clamped = Math.min(250, Math.max(1, isNaN(v) ? 1 : v));
+                const clamped = Math.min(2500, Math.max(1, isNaN(v) ? 1 : v));
                 setForm(prev => ({ ...prev, parameters: { ...prev.parameters, count: clamped } }));
                 setHasUnsavedChanges(true);
               }}
               onWheel={(e) => { e.currentTarget.blur(); }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               min="1"
-              max="250"
+              max="2500"
             />
-            <p className="text-xs text-gray-500 mt-1">Number of generations (250 generations or 1000 images max).</p>
+            <p className="text-xs text-gray-500 mt-1">Number of generations (up to 2500 generations).</p>
           </div>
 
           <div className="flex items-center justify-between">
@@ -641,7 +635,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const ProcessingSection = () => {
     // Conditional visibility logic
     const showRemoveBgSize = form.processing.removeBg;
-    const showImageConvert = form.processing.imageConvert;
     const showConvertFormat = form.processing.imageConvert;
     const showTrimTransparent = form.processing.removeBg; // Only show when Remove Background is enabled
     const showJpgBackground = form.processing.removeBg && 

@@ -1181,9 +1181,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       value={editedSettings.parameters?.count || 1}
                       onChange={(e) => handleSettingChange('parameters', 'count', parseInt(e.target.value))}
                       min="1"
-                      max="250"
+                      max="2500"
                     />
-                    <p className="setting-description">Number of generations (250 generations or 1000 images max).</p>
+                    <p className="setting-description">Number of generations (up to 2500 generations).</p>
                   </div>
                   <div className="setting-row">
                     <label htmlFor="gen-retry-attempts-modal">Generation Retry Attempts</label>
