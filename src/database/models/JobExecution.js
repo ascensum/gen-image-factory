@@ -695,7 +695,7 @@ class JobExecution {
       }
       
       // Add sorting and pagination
-      sql += ' ORDER BY je.started_at DESC LIMIT ? OFFSET ?';
+      sql += ' ORDER BY datetime(je.started_at) DESC LIMIT ? OFFSET ?';
       params.push(pageSize, (page - 1) * pageSize);
       
       this.db.all(sql, params, (err, rows) => {
@@ -738,7 +738,16 @@ class JobExecution {
         params.push(`%${filters.label.trim()}%`);
       }
       
-      if (filters.dateRange && filters.dateRange !== 'all') {
+      if (filters.dateFrom || filters.dateTo) {
+        if (filters.dateFrom) {
+          sql += ' AND je.started_at >= ?';
+          params.push(new Date(filters.dateFrom).toISOString());
+        }
+        if (filters.dateTo) {
+          sql += ' AND je.started_at <= ?';
+          params.push(new Date(filters.dateTo).toISOString());
+        }
+      } else if (filters.dateRange && filters.dateRange !== 'all') {
         const now = new Date();
         let startDate = new Date();
         
