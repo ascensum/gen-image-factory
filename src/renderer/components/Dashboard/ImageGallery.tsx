@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import StatusBadge from '../common/StatusBadge';
 import * as XLSX from 'xlsx';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import ImageModal from './ImageModal';
@@ -333,8 +334,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                     }`}
                   >
-                  {/* Selection Checkbox */}
-                  <div className="absolute top-2 left-2 z-10">
+                  {/* Selection Checkbox moved to top-right */}
+                  <div className="absolute top-2 right-2 z-10">
                     <input
                       type="checkbox"
                       checked={selectedImages.has(image.id)}
@@ -346,6 +347,10 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 
                   {/* Image */}
                   <div className="relative aspect-square">
+                    {/* Approved badge (success-only gallery) */}
+                    <div className="absolute top-2 left-2 z-10">
+                      <StatusBadge variant="qc" status="approved" />
+                    </div>
                     {(image.finalImagePath || image.tempImagePath) ? (
                       <img
                         src={`local-file://${image.finalImagePath || image.tempImagePath}`}
@@ -453,8 +458,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                           </span>
                         )}
                       </div>
-                      <div title={formatDate(image.createdAt)}>
-                        {new Date(image.createdAt).toLocaleDateString()}
+                      <div title={image.createdAt ? formatDate(image.createdAt as any) : ''}>
+                        {image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : ''}
                       </div>
                     </div>
                     
@@ -527,11 +532,11 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                           <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
                             <img
                               src={(image.finalImagePath || image.tempImagePath) ? `local-file://${image.finalImagePath || image.tempImagePath}` : ''}
-                              alt={() => {
+                              alt={(() => {
                                 const meta = parseMetadata(image.metadata);
                                 const t = (meta?.title && typeof meta.title === 'object' ? meta.title.en : meta?.title) || 'Generated Image';
                                 return typeof t === 'string' ? t : 'Generated Image';
-                              }}
+                              })()}
                               className="w-full h-full object-cover cursor-pointer"
                               onClick={() => setShowImageModal(image.id)}
                               onError={(e) => {

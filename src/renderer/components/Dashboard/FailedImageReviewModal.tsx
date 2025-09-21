@@ -61,9 +61,9 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
           data-testid="modal-header"
           className="flex items-center justify-between p-6 border-b border-gray-200"
         >
-          <div>
+          <div className="flex items-center gap-3">
             <h2 className="text-xl font-semibold text-gray-900">Failed Image Review</h2>
-            <p className="text-sm text-gray-600">Review and manage failed image</p>
+            <StatusBadge variant="qc" status={(image as any)?.qcStatus || 'qc_failed'} />
           </div>
           <button
             type="button"
@@ -106,10 +106,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
                 </div>
               )}
 
-              {/* Failure Overlay */}
-              <div className="absolute top-4 left-4">
-                <StatusBadge variant="qc" status="qc_failed" />
-              </div>
+              {/* QC badge moved to header for consistency */}
             </div>
           </div>
 
