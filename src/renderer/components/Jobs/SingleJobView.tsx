@@ -1148,24 +1148,28 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       onChange={(checked) => handleSettingChange('parameters', 'enablePollingTimeout', checked)}
                     />
                   </div>
-                  <div className="setting-row">
-                    <label>Polling Timeout (minutes)</label>
-                    <input
-                      type="number"
-                      value={editedSettings.parameters?.pollingTimeout || 0}
-                      onChange={(e) => handleSettingChange('parameters', 'pollingTimeout', parseInt(e.target.value))}
-                      min="0"
-                    />
-                  </div>
-                  <div className="setting-row">
-                    <label>Polling Interval (minutes)</label>
-                    <input
-                      type="number"
-                      value={editedSettings.parameters?.pollingInterval || 1}
-                      onChange={(e) => handleSettingChange('parameters', 'pollingInterval', parseInt(e.target.value))}
-                      min="1"
-                    />
-                  </div>
+                  {editedSettings.parameters?.enablePollingTimeout && (
+                    <>
+                      <div className="setting-row">
+                        <label>Polling Timeout (minutes)</label>
+                        <input
+                          type="number"
+                          value={editedSettings.parameters?.pollingTimeout || 0}
+                          onChange={(e) => handleSettingChange('parameters', 'pollingTimeout', parseInt(e.target.value))}
+                          min="0"
+                        />
+                      </div>
+                      <div className="setting-row">
+                        <label>Polling Interval (minutes)</label>
+                        <input
+                          type="number"
+                          value={editedSettings.parameters?.pollingInterval || 1}
+                          onChange={(e) => handleSettingChange('parameters', 'pollingInterval', parseInt(e.target.value))}
+                          min="1"
+                        />
+                      </div>
+                    </>
+                  )}
                   <div className="setting-row">
                     <label>Random Keywords</label>
                     <Toggle
