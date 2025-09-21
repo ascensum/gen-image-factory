@@ -141,18 +141,16 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         }
       }
       
-      // Date range filter (inclusive). Expect YYYY-MM-DD from inputs
+      // Date range filter (inclusive). Expect YYYY-MM-DD from inputs (local date-safe)
       if (dateFrom || dateTo) {
-        const created = image.createdAt ? new Date(image.createdAt as any).getTime() : null;
-        if (!created) return false;
-        if (dateFrom) {
-          const fromTs = new Date(dateFrom + 'T00:00:00').getTime();
-          if (created < fromTs) return false;
-        }
-        if (dateTo) {
-          const toTs = new Date(dateTo + 'T23:59:59').getTime();
-          if (created > toTs) return false;
-        }
+        if (!image.createdAt) return false;
+        const d = new Date(image.createdAt as any);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const createdYmd = `${y}-${m}-${day}`;
+        if (dateFrom && createdYmd < dateFrom) return false;
+        if (dateTo && createdYmd > dateTo) return false;
       }
       return true;
     });
