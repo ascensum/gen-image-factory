@@ -646,19 +646,18 @@ class JobExecution {
       }
       
       if (filters.dateFrom || filters.dateTo) {
+        // Normalize to yyyy-mm-dd for SQLite date() comparison (time-zone safe)
         if (filters.dateFrom) {
-          const fromSql = typeof filters.dateFrom === 'string'
-            ? `${filters.dateFrom} 00:00:00`
-            : `${new Date(filters.dateFrom).getFullYear()}-${String(new Date(filters.dateFrom).getMonth()+1).padStart(2,'0')}-${String(new Date(filters.dateFrom).getDate()).padStart(2,'0')} 00:00:00`;
-          sql += ' AND datetime(je.started_at) >= datetime(?)';
-          params.push(fromSql);
+          const d = new Date(typeof filters.dateFrom === 'string' ? filters.dateFrom : filters.dateFrom);
+          const fromDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          sql += ' AND date(je.started_at) >= date(?)';
+          params.push(fromDate);
         }
         if (filters.dateTo) {
-          const toSql = typeof filters.dateTo === 'string'
-            ? `${filters.dateTo} 23:59:59`
-            : `${new Date(filters.dateTo).getFullYear()}-${String(new Date(filters.dateTo).getMonth()+1).padStart(2,'0')}-${String(new Date(filters.dateTo).getDate()).padStart(2,'0')} 23:59:59`;
-          sql += ' AND datetime(je.started_at) <= datetime(?)';
-          params.push(toSql);
+          const d = new Date(typeof filters.dateTo === 'string' ? filters.dateTo : filters.dateTo);
+          const toDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          sql += ' AND date(je.started_at) <= date(?)';
+          params.push(toDate);
         }
       } else if (filters.dateRange && filters.dateRange !== 'all') {
         const now = new Date();
@@ -746,18 +745,16 @@ class JobExecution {
       
       if (filters.dateFrom || filters.dateTo) {
         if (filters.dateFrom) {
-          const fromSql = typeof filters.dateFrom === 'string'
-            ? `${filters.dateFrom} 00:00:00`
-            : `${new Date(filters.dateFrom).getFullYear()}-${String(new Date(filters.dateFrom).getMonth()+1).padStart(2,'0')}-${String(new Date(filters.dateFrom).getDate()).padStart(2,'0')} 00:00:00`;
-          sql += ' AND datetime(je.started_at) >= datetime(?)';
-          params.push(fromSql);
+          const d = new Date(typeof filters.dateFrom === 'string' ? filters.dateFrom : filters.dateFrom);
+          const fromDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          sql += ' AND date(je.started_at) >= date(?)';
+          params.push(fromDate);
         }
         if (filters.dateTo) {
-          const toSql = typeof filters.dateTo === 'string'
-            ? `${filters.dateTo} 23:59:59`
-            : `${new Date(filters.dateTo).getFullYear()}-${String(new Date(filters.dateTo).getMonth()+1).padStart(2,'0')}-${String(new Date(filters.dateTo).getDate()).padStart(2,'0')} 23:59:59`;
-          sql += ' AND datetime(je.started_at) <= datetime(?)';
-          params.push(toSql);
+          const d = new Date(typeof filters.dateTo === 'string' ? filters.dateTo : filters.dateTo);
+          const toDate = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          sql += ' AND date(je.started_at) <= date(?)';
+          params.push(toDate);
         }
       } else if (filters.dateRange && filters.dateRange !== 'all') {
         const now = new Date();
