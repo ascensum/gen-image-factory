@@ -168,18 +168,15 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                     Choose whether to regenerate metadata for the selected images during retry processing.
                   </p>
                   <div className="mt-3">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        aria-label="Also regenerate metadata"
-                        checked={includeMetadata}
-                        onChange={(e) => setIncludeMetadata(e.target.checked)}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
+                    <div className="flex items-center justify-between">
                       <span className="text-sm text-blue-800 font-medium">
                         Also regenerate metadata (titles, descriptions, tags)
                       </span>
-                    </label>
+                      <Toggle
+                        checked={includeMetadata}
+                        onChange={setIncludeMetadata}
+                      />
+                    </div>
                     <p className="text-xs text-blue-600 mt-1">
                       This will regenerate AI-generated metadata for all selected images using the current AI model settings.
                     </p>

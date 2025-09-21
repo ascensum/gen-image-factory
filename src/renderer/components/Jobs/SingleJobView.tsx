@@ -3,6 +3,7 @@ import type { SettingsObject } from '../../../types/settings';
 import { JobExecution } from '../../../types/job';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import ExportDialog from '../Common/ExportDialog';
+import { Toggle } from '../Settings/Toggle';
 import './SingleJobView.css';
 import StatusBadge from '../common/StatusBadge';
 
@@ -1220,15 +1221,10 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <label>Remove Background</label>
                       <p className="setting-description">Remove background from generated images</p>
                     </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={editedSettings.processing?.removeBg || false}
-                      onClick={() => handleToggleChange('processing', 'removeBg')(!editedSettings.processing?.removeBg)}
-                      className={`toggle-button ${editedSettings.processing?.removeBg ? 'toggle-on' : 'toggle-off'}`}
-                    >
-                      <span className="toggle-slider"></span>
-                    </button>
+                    <Toggle
+                      checked={editedSettings.processing?.removeBg || false}
+                      onChange={handleToggleChange('processing', 'removeBg')}
+                    />
                   </div>
 
                   {/* Remove.bg Size - conditional */}
@@ -1253,15 +1249,10 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <label>Image Convert</label>
                       <p className="setting-description">Enable image conversion and processing</p>
                     </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={editedSettings.processing?.imageConvert || false}
-                      onClick={() => handleToggleChange('processing', 'imageConvert')(!editedSettings.processing?.imageConvert)}
-                      className={`toggle-button ${editedSettings.processing?.imageConvert ? 'toggle-on' : 'toggle-off'}`}
-                    >
-                      <span className="toggle-slider"></span>
-                    </button>
+                    <Toggle
+                      checked={editedSettings.processing?.imageConvert || false}
+                      onChange={handleToggleChange('processing', 'imageConvert')}
+                    />
                   </div>
 
                   {/* Convert Format - conditional */}
@@ -1321,21 +1312,16 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
                   {/* Trim Transparent Background - conditional */}
                   {editedSettings.processing?.removeBg && (
-                    <div className="setting-row toggle-row">
-                      <div>
-                        <label>Trim Transparent Background</label>
-                        <p className="setting-description">Remove transparent areas from images (PNG only)</p>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={editedSettings.processing?.trimTransparentBackground || false}
-                        onClick={() => handleToggleChange('processing', 'trimTransparentBackground')(!editedSettings.processing?.trimTransparentBackground)}
-                        className={`toggle-button ${editedSettings.processing?.trimTransparentBackground ? 'toggle-on' : 'toggle-off'}`}
-                      >
-                        <span className="toggle-slider"></span>
-                      </button>
+                  <div className="setting-row toggle-row">
+                    <div>
+                      <label>Trim Transparent Background</label>
+                      <p className="setting-description">Remove transparent areas from images (PNG only)</p>
                     </div>
+                    <Toggle
+                      checked={editedSettings.processing?.trimTransparentBackground || false}
+                      onChange={handleToggleChange('processing', 'trimTransparentBackground')}
+                    />
+                  </div>
                   )}
 
                   {/* Image Enhancement - independent feature */}
@@ -1344,15 +1330,10 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <label>Image Enhancement</label>
                       <p className="setting-description">Apply sharpening and saturation effects</p>
                     </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={editedSettings.processing?.imageEnhancement || false}
-                      onClick={() => handleToggleChange('processing', 'imageEnhancement')(!editedSettings.processing?.imageEnhancement)}
-                      className={`toggle-button ${editedSettings.processing?.imageEnhancement ? 'toggle-on' : 'toggle-off'}`}
-                    >
-                      <span className="toggle-slider"></span>
-                    </button>
+                    <Toggle
+                      checked={editedSettings.processing?.imageEnhancement || false}
+                      onChange={handleToggleChange('processing', 'imageEnhancement')}
+                    />
                   </div>
 
                   {/* Sharpening Control - conditional */}
@@ -1406,30 +1387,20 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <label>AI Quality Check</label>
                       <p className="setting-description">Use AI to check image quality</p>
                     </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={editedSettings.ai?.runQualityCheck || false}
-                      onClick={() => handleToggleChange('ai', 'runQualityCheck')(!editedSettings.ai?.runQualityCheck)}
-                      className={`toggle-button ${editedSettings.ai?.runQualityCheck ? 'toggle-on' : 'toggle-off'}`}
-                    >
-                      <span className="toggle-slider"></span>
-                    </button>
+                    <Toggle
+                      checked={editedSettings.ai?.runQualityCheck || false}
+                      onChange={handleToggleChange('ai', 'runQualityCheck')}
+                    />
                   </div>
                   <div className="setting-row toggle-row">
                     <div>
                       <label>AI Metadata Generation</label>
                       <p className="setting-description">Generate metadata using AI</p>
                     </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={editedSettings.ai?.runMetadataGen || false}
-                      onClick={() => handleToggleChange('ai', 'runMetadataGen')(!editedSettings.ai?.runMetadataGen)}
-                      className={`toggle-button ${editedSettings.ai?.runMetadataGen ? 'toggle-on' : 'toggle-off'}`}
-                    >
-                      <span className="toggle-slider"></span>
-                    </button>
+                    <Toggle
+                      checked={editedSettings.ai?.runMetadataGen || false}
+                      onChange={handleToggleChange('ai', 'runMetadataGen')}
+                    />
                   </div>
                 </div>
 
@@ -1441,15 +1412,10 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <label>Debug Mode</label>
                       <p className="setting-description">Enable detailed logging and debugging</p>
                     </div>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={editedSettings.advanced?.debugMode || false}
-                      onClick={() => handleToggleChange('advanced', 'debugMode')(!editedSettings.advanced?.debugMode)}
-                      className={`toggle-button ${editedSettings.advanced?.debugMode ? 'toggle-on' : 'toggle-off'}`}
-                    >
-                      <span className="toggle-slider"></span>
-                    </button>
+                    <Toggle
+                      checked={editedSettings.advanced?.debugMode || false}
+                      onChange={handleToggleChange('advanced', 'debugMode')}
+                    />
                   </div>
                 </div>
               </div>
