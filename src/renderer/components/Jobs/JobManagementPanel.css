@@ -350,6 +350,11 @@
   background-color: var(--secondary);
 }
 
+/* Ensure date range group stacks above status select when overlapping */
+.px-6 .flex.flex-wrap.items-center.gap-4 > .relative.w-48 {
+  z-index: 1;
+}
+
 .checkbox-wrapper[aria-checked="true"] {
   background-color: var(--primary);
   border-color: var(--primary);

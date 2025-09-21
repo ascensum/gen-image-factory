@@ -486,7 +486,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       <div className="px-6 py-4 space-y-4 border-b border-[--border] shrink-0">
         <div className="flex flex-wrap items-center gap-4">
           {/* Status Filter */}
-          <div className="relative w-48 focus-within:z-10">
+          <div className="relative w-48">
             <select 
               value={filters.status}
               onChange={(e) => handleFiltersChange({ ...filters, status: e.target.value as any })}
@@ -504,8 +504,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           </div>
 
           {/* Date Range Filter */}
-          <div className="relative flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-2 bg-[--background] border border-[--border] rounded-lg h-10 px-2">
+          <div className="relative flex items-center gap-2 flex-wrap z-10">
+            <div className="flex items-center gap-2 bg-[--background] border border-[--border] rounded-lg h-10 px-2 z-10">
               <input 
                 type="date" 
                 className="bg-transparent px-2 h-full focus:outline-none" 
