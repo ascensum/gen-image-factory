@@ -676,8 +676,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   return (
     <div className="dashboard-panel min-h-screen bg-gray-50">
       {/* Dashboard Header - compact with ordered elements */}
-      <div className="bg-white border-b border-gray-200 h-14 flex items-center px-6">
-        <div className="flex items-center justify-between w-full">
+      <div className="bg-white border-b border-gray-200 py-2 flex items-center px-6">
+        <div className="flex items-center justify-between w-full flex-wrap gap-y-2">
           {/* Left: Close, Menu, Start/Stop/Force */}
           <div className="flex items-center space-x-3">
             {onBack && (
@@ -710,7 +710,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
             />
           </div>
           {/* Right: compact stats only */}
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center flex-wrap gap-x-6 gap-y-2 justify-end">
             <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Total Jobs:</span><span className="ml-1 font-semibold text-blue-600">{statistics.totalJobs}</span></div>
             <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Success Rate:</span><span className="ml-1 font-semibold text-green-600">{statistics.successRate}%</span></div>
             <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Images Generated:</span><span className="ml-1 font-semibold text-purple-600">{statistics.totalImagesGenerated}</span></div>
