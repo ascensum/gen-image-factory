@@ -794,6 +794,18 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
                   Job Progress
+                  {/* Delete Selected Button */}
+                  {selectedImages.size > 0 && (
+                    <button
+                      onClick={() => handleBulkAction('delete', Array.from(selectedImages))}
+                      className="px-3 py-1 text-sm rounded-md transition-colors flex items-center space-x-1 bg-red-600 text-white hover:bg-red-700"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>Delete Selected</span>
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="panel-content">
@@ -1211,6 +1223,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                 jobIdToLabel={Object.fromEntries(jobHistory.map(j => [j.id, (j as any).label || j.configurationName || `Job ${j.id}`]))}
                 dateFrom={imageDateFrom}
                 dateTo={imageDateTo}
+                selectedIds={selectedImages}
+                onSelectionChange={setSelectedImages}
               />
             </div>
           </div>

@@ -46,6 +46,8 @@ interface ImageGalleryProps {
   jobIdToLabel?: Record<string, string>;
   dateFrom?: string | null;
   dateTo?: string | null;
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }
 
 const ImageGallery: React.FC<ImageGalleryProps> = ({
@@ -61,7 +63,9 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   sortBy = 'newest',
   jobIdToLabel = {},
   dateFrom = null,
-  dateTo = null
+  dateTo = null,
+  selectedIds,
+  onSelectionChange
 }) => {
   // Safety check for images prop
   if (!images || !Array.isArray(images)) {
@@ -73,7 +77,12 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       </div>
     );
   }
-  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [internalSelected, setInternalSelected] = useState<Set<string>>(new Set());
+  const selectedImages: Set<string> = selectedIds ?? internalSelected;
+  const updateSelected = (next: Set<string>) => {
+    if (onSelectionChange) onSelectionChange(next);
+    else setInternalSelected(next);
+  };
   const [showImageModal, setShowImageModal] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -181,14 +190,14 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     } else {
       newSelected.add(imageId);
     }
-    setSelectedImages(newSelected);
+    updateSelected(newSelected);
   };
 
   const handleSelectAll = () => {
     if (selectedImages.size === filteredAndSortedImages.length) {
-      setSelectedImages(new Set());
+      updateSelected(new Set());
     } else {
-      setSelectedImages(new Set(filteredAndSortedImages.map(img => img.id)));
+      updateSelected(new Set(filteredAndSortedImages.map(img => img.id)));
     }
   };
 
@@ -199,7 +208,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     selectedImages.forEach(imageId => {
       onImageAction(action, imageId);
     });
-    setSelectedImages(new Set());
+    updateSelected(new Set());
   };
 
   // Note: QC status changes are handled in the separate Failed Images Review page
@@ -498,9 +507,9 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                           checked={selectedImages.size === filteredAndSortedImages.length && filteredAndSortedImages.length > 0}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedImages(new Set(filteredAndSortedImages.map(img => img.id)));
+                              updateSelected(new Set(filteredAndSortedImages.map(img => img.id)));
                             } else {
-                              setSelectedImages(new Set());
+                              updateSelected(new Set());
                             }
                           }}
                           className="rounded border-gray-300"
