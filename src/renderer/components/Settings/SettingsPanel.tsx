@@ -526,7 +526,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Enable Polling Timeout
               </label>
-              <p className="text-xs text-gray-500">Use custom polling timeout instead of default</p>
+              <p className="text-xs text-gray-500">Use custom polling timeout instead of default (30 seconds)</p>
             </div>
             <Toggle
               checked={form.parameters.enablePollingTimeout}
