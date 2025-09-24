@@ -105,6 +105,42 @@ function generateImageMappingId(imageUrl, index, jobId) {
 }
 
 /**
+ * Parse Runware dimensions CSV and return width/height for a generation index
+ * @param {string} csv - e.g., "1024x1024,1280x720"
+ * @param {number} generationIndex - zero-based index
+ * @returns {{width:number,height:number}|null}
+ */
+function getRunwareDimensionsForGeneration(csv, generationIndex) {
+  try {
+    const value = (csv || '').trim();
+    if (!value) return null;
+    const items = value.split(',').map(s => s.trim()).filter(Boolean);
+    if (items.length === 0) return null;
+    const selected = items[Math.abs(generationIndex) % items.length];
+    const match = selected.match(/^(\d+)x(\d+)$/i);
+    if (!match) return null;
+    const width = parseInt(match[1], 10);
+    const height = parseInt(match[2], 10);
+    if (!(width > 0 && height > 0)) return null;
+    return { width, height };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract list of image URLs from Runware response
+ * @param {any} rwData - response body
+ * @returns {string[]}
+ */
+function extractRunwareImageUrls(rwData) {
+  if (!rwData || !Array.isArray(rwData.data)) return [];
+  return rwData.data
+    .map(item => item && item.imageURL)
+    .filter(u => typeof u === 'string' && /^https?:\/\//i.test(u));
+}
+
+/**
  * Produces pictures based on the provided settings and image name base.
  * Implements polling mechanism for image generation status.
  * 
@@ -154,25 +190,9 @@ async function producePictureModule(
   // Select current dimensions if provided (sequential per generation)
   const currentGenerationIndex = Number(config.generationIndex || 0);
   const dimensionsList = (settings?.parameters?.runwareDimensionsCsv || config?.runwareDimensionsCsv || '').trim();
-  let width = undefined;
-  let height = undefined;
-  if (dimensionsList) {
-    const items = dimensionsList.split(',').map(s => s.trim()).filter(Boolean);
-    if (items.length > 0) {
-      const selected = items[currentGenerationIndex % items.length];
-      const match = selected.match(/^(\d+)x(\d+)$/i);
-      if (!match) {
-        console.warn(`Invalid dimension '${selected}'. Expected widthxheight, e.g., 1024x1024. Omitting width/height for this generation.`);
-      } else {
-        width = parseInt(match[1], 10);
-        height = parseInt(match[2], 10);
-        if (!(width > 0 && height > 0)) {
-          width = undefined;
-          height = undefined;
-        }
-      }
-    }
-  }
+  const dims = getRunwareDimensionsForGeneration(dimensionsList, currentGenerationIndex);
+  const width = dims?.width;
+  const height = dims?.height;
 
   // Build Runware request
   const runwareModel = settings?.parameters?.runwareModel || 'runware:101@1';
@@ -213,7 +233,7 @@ async function producePictureModule(
 
   const rwData = rwResponse?.data;
   // Expect shape: { data: [{ imageURL: "..." }, ...] }
-  const imageUrls = Array.isArray(rwData?.data) ? rwData.data.map(item => item.imageURL).filter(u => typeof u === 'string' && u.startsWith('http')) : [];
+  const imageUrls = extractRunwareImageUrls(rwData);
   if (!imageUrls.length) {
     throw new Error('Runware returned no images. Please adjust parameters or try again.');
   }
