@@ -172,6 +172,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   });
   const [showError, setShowError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showRunwareAdvanced, setShowRunwareAdvanced] = useState(false);
   
   // Refs to maintain focus
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -438,7 +439,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         {/* Runware Settings */}
         <div className="space-y-4">
           <h4 className="text-md font-medium text-gray-800">Runware Settings</h4>
-
+          
           <div>
             <label htmlFor="runware-model" className="block text-sm font-medium text-gray-700 mb-2">
               Runware Model
@@ -494,38 +495,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <p className="text-xs text-gray-500 mt-1">Processing conversions support JPG/PNG only in this story.</p>
           </div>
 
-          <div>
-            <label htmlFor="runware-variations" className="block text-sm font-medium text-gray-700 mb-2">
-              Variations per generation (1–20)
-            </label>
-            <input
-              id="runware-variations"
-              type="number"
-              defaultValue={String(form.parameters.variations ?? 1)}
-              onBlur={(e) => {
-                const v = parseInt(e.currentTarget.value || '1', 10);
-                const clamped = Math.max(1, Math.min(20, isNaN(v) ? 1 : v));
-                // Enforce total cap: generations × variations ≤ 10000 by clamping generations if needed
-                const currentCount = Math.max(1, Number((form.parameters.count as any) || 1));
-                const maxCountAllowed = Math.max(1, Math.floor(10000 / clamped));
-                const adjustedCount = Math.min(currentCount, maxCountAllowed);
-                setForm(prev => ({
-                  ...prev,
-                  parameters: {
-                    ...prev.parameters,
-                    variations: clamped,
-                    count: adjustedCount
-                  }
-                }));
-                setHasUnsavedChanges(true);
-              }}
-              onWheel={(e) => { e.currentTarget.blur(); }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              min="1"
-              max="20"
-            />
-            <p className="text-xs text-gray-500 mt-1">Total images = Generations × Variations (cap 10,000)</p>
-          </div>
+          {/* Variations moved to Generation Settings */}
         </div>
 
         {/* OpenAI Settings */}
@@ -568,7 +538,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           {form.parameters.enablePollingTimeout && (
             <div>
               <label htmlFor="polling-timeout" className="block text-sm font-medium text-gray-700 mb-2">
-                Polling Timeout (seconds)
+                Polling Timeout (minutes)
               </label>
               <input
                 id="polling-timeout"
@@ -577,26 +547,35 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 defaultValue={String(form.parameters.pollingTimeout)}
                 onBlur={(e) => {
                   const v = parseInt(e.currentTarget.value || '0', 10);
-                  const clamped = Math.min(300, Math.max(1, isNaN(v) ? 1 : v));
+                  const clamped = Math.min(60, Math.max(1, isNaN(v) ? 1 : v));
                   setForm(prev => ({ ...prev, parameters: { ...prev.parameters, pollingTimeout: clamped } }));
                   setHasUnsavedChanges(true);
                 }}
                 onWheel={(e) => { e.currentTarget.blur(); }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 min="1"
-                max="300"
+                max="60"
               />
-              <p className="text-xs text-gray-500 mt-1">Maximum time to wait for API response</p>
+              <p className="text-xs text-gray-500 mt-1">Used as HTTP timeout for Runware (minutes). For Runware, we ignore polling interval.</p>
             </div>
           )}
         </div>
 
-        {/* Advanced Controls (Runware) */}
+        {/* Advanced Controls (Runware) - collapsible */}
         <div className="space-y-4">
-          <h4 className="text-md font-medium text-gray-800">Runware Advanced Controls</h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-md font-medium text-gray-800">Runware Advanced Controls</h4>
+            <Toggle
+              checked={showRunwareAdvanced}
+              onChange={(checked) => setShowRunwareAdvanced(checked)}
+            />
+          </div>
+          <p className="text-xs text-gray-600">Note: Check Runware model docs for valid ranges and supported fields. Defaults may be used if fields are empty. Not all models support these settings.</p>
 
-          {/* LoRA list (simple textarea for MVP) */}
+          {showRunwareAdvanced && (
           <div>
+            {/* LoRA list (simple textarea for MVP) */}
+            <div>
             <label htmlFor="runware-lora" className="block text-sm font-medium text-gray-700 mb-2">
               LoRA list (model:weight per line)
             </label>
@@ -618,77 +597,80 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               rows={4}
               placeholder={"flux-lora:0.8\nartist-style:0.5"}
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="runware-cfg" className="block text-sm font-medium text-gray-700 mb-2">CFG Scale</label>
-              <input
-                id="runware-cfg"
-                type="number"
-                defaultValue={String(form.parameters.runwareAdvanced?.CFGScale ?? '')}
-                onBlur={(e) => {
-                  const v = e.currentTarget.value.trim();
-                  const num = v === '' ? undefined : Number(v);
-                  setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), CFGScale: (isNaN(Number(num)) ? undefined : num) as any } } }));
-                  setHasUnsavedChanges(true);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
             </div>
-            <div>
-              <label htmlFor="runware-steps" className="block text-sm font-medium text-gray-700 mb-2">Steps</label>
-              <input
-                id="runware-steps"
-                type="number"
-                defaultValue={String(form.parameters.runwareAdvanced?.steps ?? '')}
-                onBlur={(e) => {
-                  const v = e.currentTarget.value.trim();
-                  const num = v === '' ? undefined : Number(v);
-                  setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), steps: (isNaN(Number(num)) ? undefined : num) as any } } }));
-                  setHasUnsavedChanges(true);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center justify-between">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Check NSFW</label>
-                <p className="text-xs text-gray-500">Provider-side NSFW checking</p>
+                <label htmlFor="runware-cfg" className="block text-sm font-medium text-gray-700 mb-2">CFG Scale</label>
+                <input
+                  id="runware-cfg"
+                  type="number"
+                  defaultValue={String(form.parameters.runwareAdvanced?.CFGScale ?? '')}
+                  onBlur={(e) => {
+                    const v = e.currentTarget.value.trim();
+                    const num = v === '' ? undefined : Number(v);
+                    setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), CFGScale: (isNaN(Number(num)) ? undefined : num) as any } } }));
+                    setHasUnsavedChanges(true);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
-              <Toggle
-                checked={!!form.parameters.runwareAdvanced?.checkNSFW}
-                onChange={(checked) => {
-                  setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), checkNSFW: checked } } }));
-                  setHasUnsavedChanges(true);
-                }}
-              />
+              <div>
+                <label htmlFor="runware-steps" className="block text-sm font-medium text-gray-700 mb-2">Steps</label>
+                <input
+                  id="runware-steps"
+                  type="number"
+                  defaultValue={String(form.parameters.runwareAdvanced?.steps ?? '')}
+                  onBlur={(e) => {
+                    const v = e.currentTarget.value.trim();
+                    const num = v === '' ? undefined : Number(v);
+                    setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), steps: (isNaN(Number(num)) ? undefined : num) as any } } }));
+                    setHasUnsavedChanges(true);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
             </div>
-            <div>
-              <label htmlFor="runware-scheduler" className="block text-sm font-medium text-gray-700 mb-2">Scheduler</label>
-              <input
-                id="runware-scheduler"
-                type="text"
-                defaultValue={form.parameters.runwareAdvanced?.scheduler || ''}
-                onBlur={(e) => {
-                  const val = e.currentTarget.value.trim();
-                  setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), scheduler: val || undefined } } }));
-                  setHasUnsavedChanges(true);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="(optional)"
-              />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Check NSFW</label>
+                  <p className="text-xs text-gray-500">Provider-side NSFW checking</p>
+                </div>
+                <Toggle
+                  checked={!!form.parameters.runwareAdvanced?.checkNSFW}
+                  onChange={(checked) => {
+                    setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), checkNSFW: checked } } }));
+                    setHasUnsavedChanges(true);
+                  }}
+                />
+              </div>
+              <div>
+                <label htmlFor="runware-scheduler" className="block text-sm font-medium text-gray-700 mb-2">Scheduler</label>
+                <input
+                  id="runware-scheduler"
+                  type="text"
+                  defaultValue={form.parameters.runwareAdvanced?.scheduler || ''}
+                  onBlur={(e) => {
+                    const val = e.currentTarget.value.trim();
+                    setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), scheduler: val || undefined } } }));
+                    setHasUnsavedChanges(true);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="(optional)"
+                />
+              </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* Generation Settings */}
         <div className="space-y-4">
           <h4 className="text-md font-medium text-gray-800">Generation Settings</h4>
           
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="count" className="block text-sm font-medium text-gray-700 mb-2">
               Generations count
@@ -700,18 +682,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               onBlur={(e) => {
                 const v = parseInt(e.currentTarget.value || '1', 10);
                 const clamped = Math.min(2500, Math.max(1, isNaN(v) ? 1 : v));
-                // Enforce total cap: generations × variations ≤ 10000 by clamping variations if needed
-                const currentVariations = Math.max(1, Math.min(20, Number(form.parameters.variations || 1)));
-                const maxVariationsAllowed = Math.max(1, Math.min(20, Math.floor(10000 / clamped)));
-                const adjustedVariations = Math.min(currentVariations, maxVariationsAllowed);
-                setForm(prev => ({
-                  ...prev,
-                  parameters: {
-                    ...prev.parameters,
-                    count: clamped,
-                    variations: adjustedVariations
-                  }
-                }));
+                  // Enforce total cap: generations × variations ≤ 10000 by clamping variations if needed
+                  const currentVariations = Math.max(1, Math.min(20, Number(form.parameters.variations || 1)));
+                  const maxVariationsAllowed = Math.max(1, Math.min(20, Math.floor(10000 / clamped)));
+                  const adjustedVariations = Math.min(currentVariations, maxVariationsAllowed);
+                  setForm(prev => ({
+                    ...prev,
+                    parameters: {
+                      ...prev.parameters,
+                      count: clamped,
+                      variations: adjustedVariations
+                    }
+                  }));
                 setHasUnsavedChanges(true);
               }}
               onWheel={(e) => { e.currentTarget.blur(); }}
@@ -719,7 +701,40 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               min="1"
               max="2500"
             />
-            <p className="text-xs text-gray-500 mt-1">Number of generations (up to 2500 generations).</p>
+              <p className="text-xs text-gray-500 mt-1">Number of generations (up to 2500 generations).</p>
+            </div>
+            <div>
+              <label htmlFor="runware-variations" className="block text-sm font-medium text-gray-700 mb-2">
+                Variations per generation (1–20)
+              </label>
+              <input
+                id="runware-variations"
+                type="number"
+                defaultValue={String(form.parameters.variations ?? 1)}
+                onBlur={(e) => {
+                  const v = parseInt(e.currentTarget.value || '1', 10);
+                  const clamped = Math.max(1, Math.min(20, isNaN(v) ? 1 : v));
+                  // Enforce total cap: generations × variations ≤ 10000 by clamping generations if needed
+                  const currentCount = Math.max(1, Number((form.parameters.count as any) || 1));
+                  const maxCountAllowed = Math.max(1, Math.floor(10000 / clamped));
+                  const adjustedCount = Math.min(currentCount, maxCountAllowed);
+                  setForm(prev => ({
+                    ...prev,
+                    parameters: {
+                      ...prev.parameters,
+                      variations: clamped,
+                      count: adjustedCount
+                    }
+                  }));
+                  setHasUnsavedChanges(true);
+                }}
+                onWheel={(e) => { e.currentTarget.blur(); }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                min="1"
+                max="20"
+              />
+              <p className="text-xs text-gray-500 mt-1">Total images = Generations × Variations (cap 10,000)</p>
+            </div>
           </div>
 
           <div className="flex items-center justify-between">
