@@ -134,10 +134,32 @@ function getRunwareDimensionsForGeneration(csv, generationIndex) {
  * @returns {string[]}
  */
 function extractRunwareImageUrls(rwData) {
-  if (!rwData || !Array.isArray(rwData.data)) return [];
-  return rwData.data
-    .map(item => item && item.imageURL)
-    .filter(u => typeof u === 'string' && /^https?:\/\//i.test(u));
+  const urls = [];
+  if (!rwData) return urls;
+  // Case 1: object with data: [ { imageURL } ]
+  if (Array.isArray(rwData.data)) {
+    for (const item of rwData.data) {
+      const u = item && (item.imageURL || item.url);
+      if (typeof u === 'string' && /^https?:\/\//i.test(u)) urls.push(u);
+    }
+    return urls;
+  }
+  // Case 2: array of result objects, each may have data: [ { imageURL } ] or imageURL directly
+  if (Array.isArray(rwData)) {
+    for (const entry of rwData) {
+      if (Array.isArray(entry?.data)) {
+        for (const item of entry.data) {
+          const u = item && (item.imageURL || item.url);
+          if (typeof u === 'string' && /^https?:\/\//i.test(u)) urls.push(u);
+        }
+      } else {
+        const u = entry && (entry.imageURL || entry.url);
+        if (typeof u === 'string' && /^https?:\/\//i.test(u)) urls.push(u);
+      }
+    }
+    return urls;
+  }
+  return urls;
 }
 
 /**
@@ -244,18 +266,23 @@ async function producePictureModule(
     throw new Error('Runware API key is missing. Please set it in Settings → API Keys.');
   }
 
+  // Runware API expects an array payload
+  const payload = [body];
   let rwResponse;
   try {
     rwResponse = await axios.post(
       'https://api.runware.ai/v1/images/generate',
-      body,
+      payload,
       { headers: rwHeaders, timeout: httpTimeoutMs }
     );
   } catch (err) {
     // Surface provider error details if present
     const status = err?.response?.status;
     const serverErrors = err?.response?.data?.errors;
-    const details = Array.isArray(serverErrors) ? ` Provider: ${JSON.stringify(serverErrors)}` : '';
+    const raw = err?.response?.data;
+    const details = Array.isArray(serverErrors)
+      ? ` Provider: ${JSON.stringify(serverErrors)}`
+      : (raw ? ` Provider: ${JSON.stringify(raw)}` : '');
     const message = status ? `Runware request failed (${status}).${details}` : (err?.message || 'Runware request failed');
     throw new Error(message);
   }
