@@ -22,11 +22,9 @@ describe('Parameters behavior (regression guards)', () => {
     render(<SettingsPanel />)
     fireEvent.click(screen.getByTestId('parameters-tab'))
 
-    const mj = screen.getByLabelText('Midjourney Version') as HTMLInputElement
     const openai = screen.getByLabelText('OpenAI Model') as HTMLInputElement
 
-    expect(mj.tagName).toBe('INPUT')
-    expect(mj.type).toBe('text')
+    // Midjourney field removed in favor of Runware; ensure OpenAI remains text input
     expect(openai.tagName).toBe('INPUT')
     expect(openai.type).toBe('text')
   })

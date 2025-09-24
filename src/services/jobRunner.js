@@ -87,7 +87,9 @@ class JobRunner extends EventEmitter {
         const settings = {
           prompt: genParameters.prompt,
           promptContext: genParameters.promptContext,
-          apiKeys: config.apiKeys
+          apiKeys: config.apiKeys,
+          // Pass through full parameters so provider-specific fields are available
+          parameters: { ...(config.parameters || {}) }
         };
 
         this._logStructured({
@@ -133,7 +135,9 @@ class JobRunner extends EventEmitter {
             const moduleConfig = {
               ...this._buildModuleConfig(cfgForGen, genParameters),
               generationIndex: genIndex,
-              variations: effectiveVariations
+              variations: effectiveVariations,
+              // Surface Runware-specific params also on config for module convenience
+              runwareDimensionsCsv: (config.parameters && config.parameters.runwareDimensionsCsv) || ''
             };
 
             result = await producePictureModule.producePictureModule(

@@ -411,7 +411,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     <div className="space-y-6" data-testid="parameters-section">
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">AI Model Parameters</h3>
-        <p className="text-sm text-gray-600 mb-6">Configure parameters for PiAPI (Midjourney) and OpenAI models.</p>
+        <p className="text-sm text-gray-600 mb-6">Configure parameters for Runware and OpenAI.</p>
       </div>
 
       <div className="space-y-6">
@@ -435,66 +435,96 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <p className="text-xs text-gray-500 mt-1">If empty, a default job_timestamp label will be used.</p>
         </div>
 
-        {/* Midjourney Settings */}
+        {/* Runware Settings */}
         <div className="space-y-4">
-          <h4 className="text-md font-medium text-gray-800">Midjourney Settings</h4>
-          
-          <div>
-            <label htmlFor="process-mode" className="block text-sm font-medium text-gray-700 mb-2">
-              Process Mode
-            </label>
-            <select
-              id="process-mode"
-              value={form.parameters.processMode}
-              onChange={handleInputChange('parameters', 'processMode')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="relax">Relax</option>
-              <option value="fast">Fast</option>
-              <option value="turbo">Turbo</option>
-            </select>
-            <p className="text-xs text-gray-500 mt-1">Midjourney generation speed mode</p>
-          </div>
+          <h4 className="text-md font-medium text-gray-800">Runware Settings</h4>
 
           <div>
-            <label htmlFor="aspect-ratios" className="block text-sm font-medium text-gray-700 mb-2">
-              Aspect Ratios
+            <label htmlFor="runware-model" className="block text-sm font-medium text-gray-700 mb-2">
+              Runware Model
             </label>
             <input
-              id="aspect-ratios"
+              id="runware-model"
               type="text"
-              defaultValue={Array.isArray(form.parameters.aspectRatios) ? form.parameters.aspectRatios.join(',') : (form.parameters.aspectRatios as any) || ''}
-              onBlur={(e) => {
-                const arr = e.currentTarget.value
-                  .split(',')
-                  .map(v => v.trim())
-                  .filter(Boolean);
-                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, aspectRatios: arr.length ? arr : ['1:1'] } }));
-                setHasUnsavedChanges(true);
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="1:1,16:9,9:16"
-            />
-            <p className="text-xs text-gray-500 mt-1">Comma-separated list of aspect ratios</p>
-          </div>
-
-          <div>
-            <label htmlFor="mj-version" className="block text-sm font-medium text-gray-700 mb-2">
-              Midjourney Version
-            </label>
-            <input
-              id="mj-version"
-              type="text"
-              defaultValue={form.parameters.mjVersion}
+              defaultValue={form.parameters.runwareModel || 'runware:101@1'}
               onBlur={(e) => {
                 const val = e.currentTarget.value;
-                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, mjVersion: val } }));
+                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareModel: val || 'runware:101@1' } }));
                 setHasUnsavedChanges(true);
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="6.1"
+              placeholder="runware:101@1"
             />
-            <p className="text-xs text-gray-500 mt-1">Midjourney model version</p>
+            <p className="text-xs text-gray-500 mt-1">Freeform model id. Defaults to runware:101@1.</p>
+          </div>
+
+          <div>
+            <label htmlFor="runware-dimensions" className="block text-sm font-medium text-gray-700 mb-2">
+              Image Dimensions (CSV)
+            </label>
+            <input
+              id="runware-dimensions"
+              type="text"
+              defaultValue={form.parameters.runwareDimensionsCsv || ''}
+              onBlur={(e) => {
+                const val = (e.currentTarget.value || '').trim();
+                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareDimensionsCsv: val } }));
+                setHasUnsavedChanges(true);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="1024x1024,1280x720,720x1280"
+            />
+            <p className="text-xs text-gray-500 mt-1">Leave empty to use provider defaults (typically square).</p>
+          </div>
+
+          <div>
+            <label htmlFor="runware-format" className="block text-sm font-medium text-gray-700 mb-2">
+              Output Format
+            </label>
+            <select
+              id="runware-format"
+              value={form.parameters.runwareFormat || 'png'}
+              onChange={handleInputChange('parameters', 'runwareFormat')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="png">PNG</option>
+              <option value="jpg">JPG</option>
+              <option value="webp">WEBP</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Processing conversions support JPG/PNG only in this story.</p>
+          </div>
+
+          <div>
+            <label htmlFor="runware-variations" className="block text-sm font-medium text-gray-700 mb-2">
+              Variations per generation (1–20)
+            </label>
+            <input
+              id="runware-variations"
+              type="number"
+              defaultValue={String(form.parameters.variations ?? 1)}
+              onBlur={(e) => {
+                const v = parseInt(e.currentTarget.value || '1', 10);
+                const clamped = Math.max(1, Math.min(20, isNaN(v) ? 1 : v));
+                // Enforce total cap: generations × variations ≤ 10000 by clamping generations if needed
+                const currentCount = Math.max(1, Number((form.parameters.count as any) || 1));
+                const maxCountAllowed = Math.max(1, Math.floor(10000 / clamped));
+                const adjustedCount = Math.min(currentCount, maxCountAllowed);
+                setForm(prev => ({
+                  ...prev,
+                  parameters: {
+                    ...prev.parameters,
+                    variations: clamped,
+                    count: adjustedCount
+                  }
+                }));
+                setHasUnsavedChanges(true);
+              }}
+              onWheel={(e) => { e.currentTarget.blur(); }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              min="1"
+              max="20"
+            />
+            <p className="text-xs text-gray-500 mt-1">Total images = Generations × Variations (cap 10,000)</p>
           </div>
         </div>
 
@@ -561,6 +591,100 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           )}
         </div>
 
+        {/* Advanced Controls (Runware) */}
+        <div className="space-y-4">
+          <h4 className="text-md font-medium text-gray-800">Runware Advanced Controls</h4>
+
+          {/* LoRA list (simple textarea for MVP) */}
+          <div>
+            <label htmlFor="runware-lora" className="block text-sm font-medium text-gray-700 mb-2">
+              LoRA list (model:weight per line)
+            </label>
+            <textarea
+              id="runware-lora"
+              defaultValue={Array.isArray(form.parameters.runwareAdvanced?.lora)
+                ? form.parameters.runwareAdvanced!.lora!.map(l => `${l.model}:${l.weight ?? 1}`).join('\n')
+                : ''}
+              onBlur={(e) => {
+                const lines = e.currentTarget.value.split('\n').map(s => s.trim()).filter(Boolean);
+                const lora = lines.map(line => {
+                  const [model, weightStr] = line.split(':').map(s => s.trim());
+                  return model ? { model, weight: Number(weightStr) || 1 } : null;
+                }).filter(Boolean) as Array<{ model: string; weight?: number }>;
+                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), lora } } }));
+                setHasUnsavedChanges(true);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              rows={4}
+              placeholder={"flux-lora:0.8\nartist-style:0.5"}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="runware-cfg" className="block text-sm font-medium text-gray-700 mb-2">CFG Scale</label>
+              <input
+                id="runware-cfg"
+                type="number"
+                defaultValue={String(form.parameters.runwareAdvanced?.CFGScale ?? '')}
+                onBlur={(e) => {
+                  const v = e.currentTarget.value.trim();
+                  const num = v === '' ? undefined : Number(v);
+                  setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), CFGScale: (isNaN(Number(num)) ? undefined : num) as any } } }));
+                  setHasUnsavedChanges(true);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="runware-steps" className="block text-sm font-medium text-gray-700 mb-2">Steps</label>
+              <input
+                id="runware-steps"
+                type="number"
+                defaultValue={String(form.parameters.runwareAdvanced?.steps ?? '')}
+                onBlur={(e) => {
+                  const v = e.currentTarget.value.trim();
+                  const num = v === '' ? undefined : Number(v);
+                  setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), steps: (isNaN(Number(num)) ? undefined : num) as any } } }));
+                  setHasUnsavedChanges(true);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Check NSFW</label>
+                <p className="text-xs text-gray-500">Provider-side NSFW checking</p>
+              </div>
+              <Toggle
+                checked={!!form.parameters.runwareAdvanced?.checkNSFW}
+                onChange={(checked) => {
+                  setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), checkNSFW: checked } } }));
+                  setHasUnsavedChanges(true);
+                }}
+              />
+            </div>
+            <div>
+              <label htmlFor="runware-scheduler" className="block text-sm font-medium text-gray-700 mb-2">Scheduler</label>
+              <input
+                id="runware-scheduler"
+                type="text"
+                defaultValue={form.parameters.runwareAdvanced?.scheduler || ''}
+                onBlur={(e) => {
+                  const val = e.currentTarget.value.trim();
+                  setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), scheduler: val || undefined } } }));
+                  setHasUnsavedChanges(true);
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="(optional)"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Generation Settings */}
         <div className="space-y-4">
           <h4 className="text-md font-medium text-gray-800">Generation Settings</h4>
@@ -576,7 +700,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
               onBlur={(e) => {
                 const v = parseInt(e.currentTarget.value || '1', 10);
                 const clamped = Math.min(2500, Math.max(1, isNaN(v) ? 1 : v));
-                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, count: clamped } }));
+                // Enforce total cap: generations × variations ≤ 10000 by clamping variations if needed
+                const currentVariations = Math.max(1, Math.min(20, Number(form.parameters.variations || 1)));
+                const maxVariationsAllowed = Math.max(1, Math.min(20, Math.floor(10000 / clamped)));
+                const adjustedVariations = Math.min(currentVariations, maxVariationsAllowed);
+                setForm(prev => ({
+                  ...prev,
+                  parameters: {
+                    ...prev.parameters,
+                    count: clamped,
+                    variations: adjustedVariations
+                  }
+                }));
                 setHasUnsavedChanges(true);
               }}
               onWheel={(e) => { e.currentTarget.blur(); }}
