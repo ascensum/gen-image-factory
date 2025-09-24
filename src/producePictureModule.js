@@ -141,6 +141,25 @@ function extractRunwareImageUrls(rwData) {
 }
 
 /**
+ * Remove common Midjourney-style flags from prompt (e.g., --v 6.1) for Runware
+ * @param {string} prompt
+ * @returns {string}
+ */
+function sanitizePromptForRunware(prompt) {
+  if (!prompt || typeof prompt !== 'string') return '';
+  let p = prompt;
+  // Remove version flags and common MJ toggles that cause provider 400s
+  p = p.replace(/\s--v\s?\d+(?:\.\d+)?/gi, '');
+  p = p.replace(/\s--(ar|aspect-ratio)\s?\d+:\d+/gi, '');
+  p = p.replace(/\s--(stylize|style)\s?\d+/gi, '');
+  p = p.replace(/\s--(q|quality)\s?\d+(?:\.\d+)?/gi, '');
+  p = p.replace(/\s--(chaos|weird)\s?\d+/gi, '');
+  p = p.replace(/\s--(seed)\s?\d+/gi, '');
+  p = p.replace(/\s--(tile|uplight|upbeta|niji|turbo)\b/gi, '');
+  return p.trim();
+}
+
+/**
  * Produces pictures based on the provided settings and image name base.
  * Implements polling mechanism for image generation status.
  * 
@@ -203,7 +222,7 @@ async function producePictureModule(
 
   const body = {
     model: runwareModel,
-    positivePrompt: prompt,
+    positivePrompt: sanitizePromptForRunware(prompt),
     numberResults: variations,
     outputType: 'URL',
     outputFormat,
@@ -225,11 +244,21 @@ async function producePictureModule(
     throw new Error('Runware API key is missing. Please set it in Settings → API Keys.');
   }
 
-  const rwResponse = await axios.post(
-    'https://api.runware.ai/v1/images/generate',
-    body,
-    { headers: rwHeaders, timeout: httpTimeoutMs }
-  );
+  let rwResponse;
+  try {
+    rwResponse = await axios.post(
+      'https://api.runware.ai/v1/images/generate',
+      body,
+      { headers: rwHeaders, timeout: httpTimeoutMs }
+    );
+  } catch (err) {
+    // Surface provider error details if present
+    const status = err?.response?.status;
+    const serverErrors = err?.response?.data?.errors;
+    const details = Array.isArray(serverErrors) ? ` Provider: ${JSON.stringify(serverErrors)}` : '';
+    const message = status ? `Runware request failed (${status}).${details}` : (err?.message || 'Runware request failed');
+    throw new Error(message);
+  }
 
   const rwData = rwResponse?.data;
   // Expect shape: { data: [{ imageURL: "..." }, ...] }
