@@ -115,13 +115,32 @@ class JobRunner extends EventEmitter {
                 await new Promise(r => setTimeout(r, backoffMs));
               }
             }
+            // Build module config with per-generation context and Runware parameters
+            const cfgForGen = { ...config, __forceSequentialIndex: genIndex, __perGen: true };
+            // Enforce total images cap: generations × variations ≤ 10000 (variations 1–20)
+            const requestedVariations = Math.max(1, Math.min(20, Number(cfgForGen.parameters?.variations || 1)));
+            const maxVariationsAllowed = Math.max(1, Math.min(20, Math.floor(10000 / Math.max(1, generations))));
+            const effectiveVariations = Math.min(requestedVariations, maxVariationsAllowed);
+            if (effectiveVariations !== requestedVariations) {
+              this._logStructured({
+                level: 'warn',
+                stepName: 'image_generation',
+                subStep: 'clamp_total_cap',
+                message: `Clamped variations from ${requestedVariations} to ${effectiveVariations} to satisfy total images cap (≤ 10000)`,
+                metadata: { generations, requestedVariations, effectiveVariations }
+              });
+            }
+            const moduleConfig = {
+              ...this._buildModuleConfig(cfgForGen, genParameters),
+              generationIndex: genIndex,
+              variations: effectiveVariations
+            };
+
             result = await producePictureModule.producePictureModule(
               settings,
               imgNameBase,
               (config.ai && config.ai.metadataPrompt) ? config.ai.metadataPrompt : null,
-              {
-                ...this._buildModuleConfig(config, genParameters)
-              }
+              moduleConfig
             );
             if (attempt > 0) {
               this._logStructured({
@@ -655,9 +674,9 @@ class JobRunner extends EventEmitter {
       console.log('❌ OpenAI API key missing or invalid');
       return { valid: false, error: 'OpenAI API key is required' };
     }
-    if (!config.apiKeys.piapi) {
-      console.log('❌ PiAPI key missing');
-      return { valid: false, error: 'PiAPI key is required' };
+    if (!config.apiKeys.runware) {
+      console.log('❌ Runware API key missing');
+      return { valid: false, error: 'Runware API key is required' };
     }
 
     // Check file paths
@@ -683,7 +702,7 @@ class JobRunner extends EventEmitter {
   setEnvironmentFromConfig(config) {
     // Never log raw API keys
     console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
-    console.log('  - PIAPI_API_KEY:', process.env.PIAPI_API_KEY ? 'SET' : 'NOT SET');
+    console.log('  - RUNWARE_API_KEY:', process.env.RUNWARE_API_KEY ? 'SET' : 'NOT SET');
     console.log('  - REMOVE_BG_API_KEY:', process.env.REMOVE_BG_API_KEY ? 'SET' : 'NOT SET');
     
     // Set API keys
@@ -691,9 +710,9 @@ class JobRunner extends EventEmitter {
       process.env.OPENAI_API_KEY = config.apiKeys.openai;
       console.log('✅ OpenAI API key set');
     }
-    if (config.apiKeys.piapi) {
-      process.env.PIAPI_API_KEY = config.apiKeys.piapi;  // Fixed: was PIAPI_KEY
-      console.log('✅ PiAPI key set');
+    if (config.apiKeys.runware) {
+      process.env.RUNWARE_API_KEY = config.apiKeys.runware;
+      console.log('✅ Runware API key set');
     }
     if (config.apiKeys.removeBg) {
       process.env.REMOVE_BG_API_KEY = config.apiKeys.removeBg;
@@ -707,7 +726,7 @@ class JobRunner extends EventEmitter {
     }
     
     console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
-    console.log('  - PIAPI_API_KEY:', process.env.PIAPI_API_KEY ? 'SET' : 'NOT SET');
+    console.log('  - RUNWARE_API_KEY:', process.env.RUNWARE_API_KEY ? 'SET' : 'NOT SET');
     console.log('  - REMOVE_BG_API_KEY:', process.env.REMOVE_BG_API_KEY ? 'SET' : 'NOT SET');
   }
 

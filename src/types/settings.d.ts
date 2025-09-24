@@ -2,6 +2,7 @@ export interface SettingsObject {
   apiKeys: {
     openai: string;
     piapi: string;
+    runware: string;
     removeBg: string;
   };
   filePaths: {
@@ -17,6 +18,18 @@ export interface SettingsObject {
     aspectRatios: string[] | string;
     mjVersion: string;
     openaiModel: string;
+    // Runware fields
+    runwareModel?: string; // default runware:101@1
+    runwareDimensionsCsv?: string; // e.g. 1024x1024,1280x720
+    runwareFormat?: 'png' | 'jpg' | 'webp';
+    variations?: number; // 1–20, default 1
+    runwareAdvanced?: {
+      lora?: Array<{ model: string; weight?: number }>;
+      checkNSFW?: boolean;
+      scheduler?: string;
+      CFGScale?: number;
+      steps?: number;
+    };
     /** Optional job label to apply at creation time */
     label?: string;
     pollingTimeout: number;

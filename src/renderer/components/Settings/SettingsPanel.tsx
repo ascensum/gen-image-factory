@@ -9,6 +9,7 @@ interface SettingsObject extends SharedSettingsObject {
   apiKeys: {
     openai: string;
     piapi: string;
+    runware: string;
     removeBg: string;
   };
   filePaths: {
@@ -24,6 +25,18 @@ interface SettingsObject extends SharedSettingsObject {
     aspectRatios: string[];
     mjVersion: string;
     openaiModel: string;
+    // Runware
+    runwareModel?: string;
+    runwareDimensionsCsv?: string;
+    runwareFormat?: 'png' | 'jpg' | 'webp';
+    variations?: number;
+    runwareAdvanced?: {
+      lora?: Array<{ model: string; weight?: number }>;
+      checkNSFW?: boolean;
+      scheduler?: string;
+      CFGScale?: number;
+      steps?: number;
+    };
     label?: string;
     pollingTimeout: number;
     pollingInterval: number;
@@ -77,6 +90,7 @@ const defaultSettings: SettingsObject = {
   apiKeys: {
     openai: '',
     piapi: '',
+    runware: '',
     removeBg: '',
   },
   filePaths: {
@@ -92,6 +106,10 @@ const defaultSettings: SettingsObject = {
             aspectRatios: ['1:1', '16:9', '9:16'],
     mjVersion: '6.1',
     openaiModel: 'gpt-4o',
+    runwareModel: 'runware:101@1',
+    runwareDimensionsCsv: '',
+    runwareFormat: 'png',
+    variations: 1,
     label: '',
     pollingTimeout: 15,
     pollingInterval: 1,
@@ -149,6 +167,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({
     openai: false,
     piapi: false,
+    runware: false,
     removeBg: false,
   });
   const [showError, setShowError] = useState(false);
@@ -274,6 +293,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       <div className="space-y-4">
         {Object.entries({
           openai: 'OpenAI API Key',
+          runware: 'Runware API Key',
           piapi: 'PiAPI (Midjourney) API Key',
           removeBg: 'Remove.bg API Key'
         }).map(([key, label]) => {

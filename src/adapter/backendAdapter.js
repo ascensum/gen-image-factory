@@ -15,6 +15,7 @@ const SERVICE_NAME = 'GenImageFactory';
 const ACCOUNT_NAMES = {
   OPENAI: 'openai-api-key',
   PIAPI: 'piapi-api-key', 
+  RUNWARE: 'runware-api-key',
   REMOVE_BG: 'remove-bg-api-key'
 };
 
@@ -785,6 +786,12 @@ class BackendAdapter {
             // Continue without this API key
           }
         }
+        // Normalize new Runware params defaults if missing
+        if (!settings.parameters) settings.parameters = {};
+        settings.parameters.runwareModel = settings.parameters.runwareModel || 'runware:101@1';
+        settings.parameters.runwareDimensionsCsv = settings.parameters.runwareDimensionsCsv || '';
+        settings.parameters.runwareFormat = settings.parameters.runwareFormat || 'png';
+        settings.parameters.variations = Math.max(1, Math.min(20, Number(settings.parameters.variations || 1)));
         
         return { success: true, settings };
       } else {

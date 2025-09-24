@@ -151,140 +151,74 @@ async function producePictureModule(
     const promptContext = settings.promptContext || ''; // Keep this for the quality check
     const prompt = settings.prompt || '';
 
-    // Rotate through aspect ratios
-    const aspect_ratio = aspectRatios[aspectRatioIndex];
-    aspectRatioIndex = (aspectRatioIndex + 1) % aspectRatios.length;
-
-    logDebug('Current aspect ration: ', aspect_ratio);
-
-    // Initiate image generation with PIAPI API
-    const response = await axios.post(
-      'https://api.piapi.ai/api/v1/task', // Corrected Imagine endpoint based on docs
-      {
-        model: 'midjourney', // Required by PiAPI
-        task_type: 'imagine', // Required by PiAPI
-        input: {
-          prompt: prompt,
-          aspect_ratio: aspect_ratio,
-          process_mode: processMode,
-        },
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': process.env.PIAPI_API_KEY,
-        },
+  // Select current dimensions if provided (sequential per generation)
+  const currentGenerationIndex = Number(config.generationIndex || 0);
+  const dimensionsList = (settings?.parameters?.runwareDimensionsCsv || config?.runwareDimensionsCsv || '').trim();
+  let width = undefined;
+  let height = undefined;
+  if (dimensionsList) {
+    const items = dimensionsList.split(',').map(s => s.trim()).filter(Boolean);
+    if (items.length > 0) {
+      const selected = items[currentGenerationIndex % items.length];
+      const match = selected.match(/^(\d+)x(\d+)$/i);
+      if (!match) {
+        console.warn(`Invalid dimension '${selected}'. Expected widthxheight, e.g., 1024x1024. Omitting width/height for this generation.`);
+      } else {
+        width = parseInt(match[1], 10);
+        height = parseInt(match[2], 10);
+        if (!(width > 0 && height > 0)) {
+          width = undefined;
+          height = undefined;
+        }
       }
-    );
-
-    logDebug('PIAPI imagine response:', response.data);
-
-    if (!response.data || !response.data.data || !response.data.data.task_id) {
-      throw new Error(`Invalid response from PIAPI API: ${JSON.stringify(response.data)}`);
     }
+  }
 
-    const taskId = response.data.data.task_id; // Use the task_id returned by the API
+  // Build Runware request
+  const runwareModel = settings?.parameters?.runwareModel || 'runware:101@1';
+  const variations = Math.max(1, Math.min(20, Number(config?.variations || settings?.parameters?.variations || 1)));
+  const providerFormat = (settings?.parameters?.runwareFormat || 'png').toLowerCase(); // png|jpg|webp
+  const outputFormat = providerFormat === 'jpeg' ? 'jpg' : providerFormat;
+  const advanced = settings?.parameters?.runwareAdvanced || {};
 
-    // Polling mechanism for image generation status
-    let imageUrls = [];
-    
-    // Check if polling is disabled
-    if (!pollingTimeout) {
-      logDebug(`Polling disabled for task ${taskId} - expecting immediate result`);
-      // For vendors that return results immediately, we don't need polling
-      // This will be handled by the calling code
-      return [];
-    }
-    
-    const pollingInterval = (config.pollingInterval || 1) * 60 * 1000; // Use configured interval, default to 1 minute
-    const maxPollingTime = pollingTimeout * 60 * 1000; // Use configured timeout in minutes
-    const startTime = Date.now();
+  const body = {
+    model: runwareModel,
+    positivePrompt: prompt,
+    numberResults: variations,
+    outputType: 'URL',
+    outputFormat,
+    ...(width && height ? { width, height } : {}),
+    ...(Array.isArray(advanced?.lora) && advanced.lora.length > 0 ? { loras: advanced.lora.filter(x => x && x.model).map(x => ({ model: x.model, weight: Number(x.weight) || 1 })) } : {}),
+    ...(typeof advanced.checkNSFW === 'boolean' ? { checkNSFW: !!advanced.checkNSFW } : {}),
+    ...(advanced.scheduler ? { scheduler: String(advanced.scheduler) } : {}),
+    ...(Number.isFinite(Number(advanced.CFGScale)) ? { CFGScale: Number(advanced.CFGScale) } : {}),
+    ...(Number.isFinite(Number(advanced.steps)) ? { steps: Number(advanced.steps) } : {})
+  };
 
-    logDebug(`Polling for task ${taskId} (timeout: ${maxPollingTime / 60000} minutes, interval: ${pollingInterval / 60000} minutes)...`);
+  // Timeouts: reuse pollingTimeout (minutes) as HTTP timeout (ms) if provided
+  const httpTimeoutMs = (config?.pollingTimeout ? Number(config.pollingTimeout) * 60 * 1000 : 30000);
+  const rwHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${process.env.RUNWARE_API_KEY || ''}`
+  };
+  if (!rwHeaders.Authorization || rwHeaders.Authorization.endsWith(' ')) {
+    throw new Error('Runware API key is missing. Please set it in Settings → API Keys.');
+  }
 
-    let lastStatus = null; // Track the last reported status
-    let consecutiveErrors = 0; // Track consecutive errors
-    const maxConsecutiveErrors = 3; // Maximum consecutive errors before giving up
-    const maxTotalRetries = 10; // Maximum total retry attempts
-    let totalRetries = 0;
+  const rwResponse = await axios.post(
+    'https://api.runware.ai/v1/images/generate',
+    body,
+    { headers: rwHeaders, timeout: httpTimeoutMs }
+  );
 
-    while (Date.now() - startTime < maxPollingTime && totalRetries < maxTotalRetries) {
-      // Check if we've exceeded the timeout
-      if (Date.now() - startTime >= maxPollingTime) {
-        throw new Error(`Image generation timed out after ${maxPollingTime / 60000} minutes`);
-      }
-      try {
-        const statusResponse = await axios.get(
-          `https://api.piapi.ai/api/v1/task/${taskId}`, // Corrected polling endpoint based on common PiAPI pattern
-          {
-            headers: {
-              'X-API-Key': process.env.PIAPI_API_KEY,
-            },
-            timeout: 10000, // 10 second timeout for individual API calls
-          }
-        );
+  const rwData = rwResponse?.data;
+  // Expect shape: { data: [{ imageURL: "..." }, ...] }
+  const imageUrls = Array.isArray(rwData?.data) ? rwData.data.map(item => item.imageURL).filter(u => typeof u === 'string' && u.startsWith('http')) : [];
+  if (!imageUrls.length) {
+    throw new Error('Runware returned no images. Please adjust parameters or try again.');
+  }
 
-        const taskData = statusResponse.data.data; // Access data.data as per response example
-        
-        // Reset error counter on successful request
-        consecutiveErrors = 0;
-        
-        if (taskData.status !== lastStatus) {
-          logDebug(`Task ${taskId} status: ${taskData.status}`);
-          lastStatus = taskData.status;
-        }
-
-        if (taskData.status.toLowerCase() === 'completed' && taskData.output) {
-          // Prioritize temporary_image_urls, then image_urls, then image_url
-          if (taskData.output.temporary_image_urls && taskData.output.temporary_image_urls.length > 0) {
-            imageUrls = taskData.output.temporary_image_urls;
-          } else if (taskData.output.image_urls && taskData.output.image_urls.length > 0) {
-            imageUrls = taskData.output.image_urls;
-          } else if (taskData.output.image_url) {
-            // Fallback for single image_url if image_urls/temporary_image_urls are not present
-            imageUrls = [taskData.output.image_url];
-          }
-
-          if (imageUrls.length > 0) {
-            break; // Exit loop on completion
-          }
-        } else if (taskData.status.toLowerCase() === 'failed') {
-          throw new Error(`Image generation failed for task ${taskId}: ${taskData.error?.message || 'Unknown error'}`);
-        } else if (taskData.status.toLowerCase() === 'staged') {
-          logDebug(`Task ${taskId} is staged. Waiting...`); // Use global logDebug
-        }
-      } catch (pollError) {
-        consecutiveErrors++;
-        totalRetries++;
-        console.error(`Error while polling for task ${taskId} (total retries: ${totalRetries}/${maxTotalRetries}, consecutive errors: ${consecutiveErrors}/${maxConsecutiveErrors}): ${pollError.message}`);
-        
-        // If we've hit max total retries, give up
-        if (totalRetries >= maxTotalRetries) {
-          console.error(`Task ${taskId}: Maximum total retries (${maxTotalRetries}) reached, giving up`);
-          throw new Error(`PiAPI task ${taskId} failed after ${maxTotalRetries} total retry attempts: ${pollError.message}`);
-        }
-        
-        // If we've had too many consecutive errors, give up
-        if (consecutiveErrors >= maxConsecutiveErrors) {
-          console.error(`Task ${taskId}: Too many consecutive errors (${consecutiveErrors}), giving up`);
-          throw new Error(`PiAPI task ${taskId} failed after ${consecutiveErrors} consecutive errors: ${pollError.message}`);
-        }
-        
-        // Wait a bit longer on errors to avoid overwhelming the API (exponential backoff)
-        const backoffDelay = Math.min(pollingInterval * Math.pow(2, consecutiveErrors - 1), 5 * 60 * 1000); // Max 5 minutes
-        console.log(`Waiting ${backoffDelay / 60000} minutes before retry ${totalRetries + 1}...`);
-        await pause(false, backoffDelay / 1000);
-        continue;
-      }
-
-      await pause(false, pollingInterval / 1000); // Wait before next poll (pause expects seconds)
-    }
-
-    if (imageUrls.length === 0) {
-      throw new Error('Image generation timed out or no images were generated.');
-    }
-
-    logDebug('Image URLs:', imageUrls);
+  logDebug('Image URLs:', imageUrls);
 
     // Process each image URL
     const processedImages = [];

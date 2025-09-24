@@ -1003,12 +1003,12 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     />
                   </div>
                   <div className="setting-row">
-                    <label>PiAPI Key</label>
+                    <label>Runware API Key</label>
                     <input
                       type="password"
-                      value={editedSettings.apiKeys?.piapi || ''}
-                      onChange={(e) => handleSettingChange('apiKeys', 'piapi', e.target.value)}
-                      placeholder="Enter PiAPI key"
+                      value={editedSettings.apiKeys?.runware || ''}
+                      onChange={(e) => handleSettingChange('apiKeys', 'runware', e.target.value)}
+                      placeholder="Enter Runware API key"
                     />
                   </div>
                   <div className="setting-row">

@@ -249,7 +249,12 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     const pollJobStatus = async () => {
       try {
         const status = await window.electronAPI.jobManagement.getJobStatus();
-        setJobStatus(status);
+        // UI guard: if backend reports progress ~100% but state not flipped, treat as completed for display
+        const normalized = { ...status } as any;
+        if (normalized && normalized.state === 'running' && typeof normalized.progress === 'number' && normalized.progress >= 0.999) {
+          normalized.state = 'completed';
+        }
+        setJobStatus(normalized);
       } catch (error) {
         console.error('Failed to get job status:', error);
       }
@@ -326,6 +331,13 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         console.log('🔄 Delayed refresh of generated images to ensure metadata is complete...');
       loadGeneratedImages();
       }, 500); // 500ms delay to ensure backend metadata generation completes
+    } else if (jobStatus.state === 'failed' || jobStatus.state === 'error') {
+      console.log('🔄 Job failed, refreshing data...');
+      // Refresh lists so Job History reflects failure without waiting for manual actions
+      loadJobHistory();
+      loadStatistics();
+      // Keep logs visible by marking a short grace period
+      lastCompletionRef.current = Date.now();
     }
   }, [jobStatus.state]);
 
@@ -387,7 +399,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     try {
       const withinGrace =
         lastCompletionRef.current !== null && Date.now() - lastCompletionRef.current < 60_000;
-      if (!(jobStatus.state === 'running' || withinGrace)) {
+      const failedOrError = jobStatus.state === 'failed' || jobStatus.state === 'error';
+      if (!(jobStatus.state === 'running' || withinGrace || failedOrError)) {
         setLogs([]);
         return;
       }
@@ -582,6 +595,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       switch (action) {
         case 'delete':
           await window.electronAPI.jobManagement.bulkDeleteImages(imageIds);
+          // Clear selection immediately so UI hides the button and resets the counter
+          setSelectedImages(new Set());
           break;
         // Note: Review actions (approve/reject) are handled in the separate Failed Images Review page
       }
@@ -671,40 +686,30 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     const count = config.parameters?.count || 1; // Total generations (e.g., 100, 1000, 10000)
     
     // Get current progress from job status if available
-    const currentProgress = jobStatus?.progress || 0; // 0.0 to 1.0 from backend
-    const currentStep = jobStatus?.currentStep || 1; // 1 or 2
-    
-    // Calculate current generation progress (0-100%)
+    const jobState = jobStatus?.state;
+    const currentProgress = Math.max(0, Math.min(jobStatus?.progress || 0, 1)); // 0.0..1.0
+    // Derive step from progress to avoid dependency on currentStep
     let currentGenerationProgress = 0;
-    if (currentStep === 1) {
-      // Initialization step (20% weight) - only show progress if actually progressing
-      currentGenerationProgress = currentProgress > 0 ? Math.min(currentProgress * 100, 20) : 0;
-    } else if (currentStep === 2) {
-      // Image Generation step (80% weight)
-      currentGenerationProgress = 20 + Math.min((currentProgress - 0.2) * 100, 80);
+    if (jobState === 'failed' || jobState === 'error') {
+      currentGenerationProgress = 0;
+    } else if (jobState === 'completed') {
+      currentGenerationProgress = 100;
+    } else if (currentProgress <= 0.2) {
+      // Map 0..0.2 -> 0..20%
+      currentGenerationProgress = (currentProgress / 0.2) * 20;
+    } else {
+      // Map 0.2..1.0 -> 20..100%
+      const stepProgress = (currentProgress - 0.2) / 0.8; // 0..1
+      currentGenerationProgress = 20 + Math.min(Math.max(stepProgress, 0), 1) * 80;
     }
     
     // For multiple generations, calculate overall progress correctly
     let overallGenerationProgress = 0;
     let currentGeneration = 1;
     
-    if (count > 1) {
-      // Simple logic: 1 iteration = 1 generation
-      // Overall progress = current generation progress / total generations * 100
-      
-      // For now, we'll assume we're always on the first generation
-      // In a real implementation, the backend should tell us which generation we're on
-      
-      // Overall progress = (current generation progress) / total generations * 100
-      overallGenerationProgress = Math.round((currentGenerationProgress / count));
-      
-      // Current generation number = 1 (for now, until backend provides this)
-      currentGeneration = 1;
-    } else {
-      // Single generation - no overall progress needed
-      overallGenerationProgress = 0;
-      currentGeneration = 1;
-    }
+    // For now, mirror the current generation progress in the overall bar
+    overallGenerationProgress = Math.round(jobState === 'failed' || jobState === 'error' ? 0 : currentGenerationProgress);
+    currentGeneration = 1;
     
     // Calculate generated images based on current generation progress
     const generatedImagesCount = Math.floor(currentGenerationProgress / 100 * 4);
@@ -852,17 +857,23 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                       const currentProgress = getSmartProgressValues(jobConfiguration, jobStatus).current;
                       let stepState = 'pending'; // pending, active, completed
                       
-                      if (step.name === 'Initialization') {
-                        if (currentProgress <= 20) {
-                          stepState = 'active';
-                        } else {
-                          stepState = 'completed';
+                      const jobState = jobStatus?.state;
+                      if (jobState === 'failed' || jobState === 'error') {
+                        // Failure coloring rules
+                        if (step.name === 'Initialization') {
+                          stepState = currentProgress >= 20 ? 'completed' : 'failed';
+                        } else if (step.name === 'Image Generation') {
+                          stepState = currentProgress > 20 ? 'failed' : 'failed';
                         }
-                      } else if (step.name === 'Image Generation') {
-                        if (currentProgress > 20) {
-                          stepState = 'active';
-                        } else {
-                          stepState = 'pending';
+                      } else if (jobState === 'completed') {
+                        // Success: both green
+                        stepState = 'completed';
+                      } else {
+                        // Running/pending: only active step highlighted, other gray
+                        if (step.name === 'Initialization') {
+                          stepState = currentProgress >= 20 ? 'completed' : (currentProgress > 0 ? 'active' : 'pending');
+                        } else if (step.name === 'Image Generation') {
+                          stepState = currentProgress > 20 ? 'active' : 'pending';
                         }
                       }
                       
@@ -870,23 +881,14 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                         <React.Fragment key={step.name}>
                           <div className="progress-step">
                             <div className={`step-icon ${stepState}`}>
-                              {stepState === 'completed' ? (
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                              ) : step.name === 'Initialization' ? (
+                              {step.name === 'Initialization' ? (
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                </svg>
-                              ) : step.name === 'Image Generation' ? (
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                                 </svg>
                               ) : (
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                                 </svg>
                               )}
                             </div>
