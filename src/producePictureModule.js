@@ -129,6 +129,16 @@ function getRunwareDimensionsForGeneration(csv, generationIndex) {
   }
 }
 
+function normalizeRunwareDimension(value) {
+  if (!Number.isFinite(Number(value))) return null;
+  let v = Math.round(Number(value));
+  v = Math.max(128, Math.min(2048, v));
+  // round to nearest multiple of 64 within bounds
+  v = Math.round(v / 64) * 64;
+  v = Math.max(128, Math.min(2048, v));
+  return v;
+}
+
 /**
  * Extract list of image URLs from Runware response
  * @param {any} rwData - response body
@@ -233,8 +243,9 @@ async function producePictureModule(
   const currentGenerationIndex = Number(config.generationIndex || 0);
   const dimensionsList = (settings?.parameters?.runwareDimensionsCsv || config?.runwareDimensionsCsv || '').trim();
   const dims = getRunwareDimensionsForGeneration(dimensionsList, currentGenerationIndex);
-  const width = dims?.width;
-  const height = dims?.height;
+  // Default to safe 1024x1024 if not provided
+  let width = normalizeRunwareDimension(dims?.width ?? 1024);
+  let height = normalizeRunwareDimension(dims?.height ?? 1024);
 
   // Build Runware request
   const runwareModel = settings?.parameters?.runwareModel || 'runware:101@1';
@@ -251,7 +262,8 @@ async function producePictureModule(
     numberResults: variations,
     outputType: 'URL',
     outputFormat,
-    ...(width && height ? { width, height } : {}),
+    width,
+    height,
     ...(Array.isArray(advanced?.lora) && advanced.lora.length > 0 ? { loras: advanced.lora.filter(x => x && x.model).map(x => ({ model: x.model, weight: Number(x.weight) || 1 })) } : {}),
     ...(typeof advanced.checkNSFW === 'boolean' ? { checkNSFW: !!advanced.checkNSFW } : {}),
     ...(advanced.scheduler ? { scheduler: String(advanced.scheduler) } : {}),
@@ -273,6 +285,7 @@ async function producePictureModule(
   const payload = [body];
   let rwResponse;
   try {
+    logDebug('Runware payload (sanitized):', { ...body, positivePrompt: '[redacted]' });
     rwResponse = await axios.post(
       'https://api.runware.ai/v1/images/generate',
       payload,
