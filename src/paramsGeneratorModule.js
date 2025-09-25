@@ -9,7 +9,7 @@ async function paramsGeneratorModule(
   keywordFilePath,
   config = {}
 ) {
-  const { keywordRandom, openaiModel, mjVersion } = config;
+  const { keywordRandom, openaiModel, mjVersion, appendMjVersion = true } = config;
 
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -115,9 +115,10 @@ async function paramsGeneratorModule(
       parsedResponse = { prompt: response };
     }
 
-    // Add version to the prompt if specified
-    const versionSuffix = mjVersion ? ` --v ${mjVersion}` : '';
-    parsedResponse.prompt += versionSuffix;
+    // Optionally add Midjourney version flag only when explicitly enabled
+    if (appendMjVersion && mjVersion) {
+      parsedResponse.prompt += ` --v ${mjVersion}`;
+    }
 
     return {
       prompt: parsedResponse.prompt,

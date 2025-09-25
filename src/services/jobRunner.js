@@ -1279,6 +1279,8 @@ class JobRunner extends EventEmitter {
         null, // keywordFilePath not needed
         {
           mjVersion: mjVersion,
+          // Do not append MJ flags for non-Midjourney provider (Runware)
+          appendMjVersion: false,
           openaiModel: config.parameters?.openaiModel || 'gpt-4o'
         }
       );
