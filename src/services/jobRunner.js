@@ -797,6 +797,19 @@ class JobRunner extends EventEmitter {
       if (this.backendAdapter && Array.isArray(images)) {
         try {
           console.log("💾 Saving generated images to database...");
+      // Local helper to strip Midjourney-style flags from prompt for storage/UI
+      const sanitizePromptForRunware = (prompt) => {
+        if (!prompt || typeof prompt !== 'string') return '';
+        let p = prompt;
+        p = p.replace(/\s--v\s?\d+(?:\.\d+)?/gi, '');
+        p = p.replace(/\s--(ar|aspect-ratio)\s?\d+:\d+/gi, '');
+        p = p.replace(/\s--(stylize|style)\s?\d+/gi, '');
+        p = p.replace(/\s--(q|quality)\s?\d+(?:\.\d+)?/gi, '');
+        p = p.replace(/\s--(chaos|weird)\s?\d+/gi, '');
+        p = p.replace(/\s--(seed)\s?\d+/gi, '');
+        p = p.replace(/\s--(tile|uplight|upbeta|niji|turbo)\b/gi, '');
+        return p.trim();
+      };
           for (const image of images) {
             if (image.path && image.status === "generated") {
               const executionId = this.databaseExecutionId;
@@ -810,10 +823,12 @@ class JobRunner extends EventEmitter {
                 const initialQCStatus = (this.jobConfiguration?.ai?.runQualityCheck) ? 'qc_failed' : 'approved';
                 const initialQCReason = (this.jobConfiguration?.ai?.runQualityCheck) ? null : 'Auto-approved (quality checks disabled)';
                 
+            const rawPrompt = image.metadata?.prompt || 'Generated image';
+            const displayPrompt = sanitizePromptForRunware(rawPrompt);
                 const generatedImage = {
                   imageMappingId: image.mappingId || `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   executionId: executionId,
-                  generationPrompt: image.metadata?.prompt || 'Generated image',
+              generationPrompt: displayPrompt,
                   seed: null,
                   qcStatus: initialQCStatus,
                   qcReason: initialQCReason,
