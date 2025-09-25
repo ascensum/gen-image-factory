@@ -8,6 +8,7 @@ const sharp = require("sharp");
 const { Blob } = require('node:buffer'); // Import Blob
 const { logDebug } = require('./utils/logDebug'); // Corrected path
 const aiVision = require('./aiVision');
+const { randomUUID } = require('node:crypto');
 //const ngrok = require('ngrok'); // Removed ngrok dependency
 //require("dotenv").config(); // dotenv is already required in index.js
 
@@ -243,6 +244,8 @@ async function producePictureModule(
   const advanced = settings?.parameters?.runwareAdvanced || {};
 
   const body = {
+    taskType: 'imageInference',
+    taskUUID: randomUUID(),
     model: runwareModel,
     positivePrompt: sanitizePromptForRunware(prompt),
     numberResults: variations,
