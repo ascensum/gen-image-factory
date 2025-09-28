@@ -32,7 +32,9 @@ class JobRunner extends EventEmitter {
       currentStep: null,
       totalImages: 0,
       successfulImages: 0,
-      failedImages: 0
+      failedImages: 0,
+      gensDone: 0,
+      totalGenerations: Math.max(1, Number(options?.parameters?.count || 1))
     };
     this.completedSteps = [];
     this.isStopping = false;
@@ -191,11 +193,14 @@ class JobRunner extends EventEmitter {
           allProcessed.push(...processedImages);
           this.jobState.totalImages = (this.jobState.totalImages || 0) + processedImages.length;
           this.jobState.generatedImages = (this.jobState.generatedImages || 0) + processedImages.length;
+          // Update gensDone for UI overall progress (1/N)
+          this.jobState.gensDone = Math.max(this.jobState.gensDone || 0, genIndex + 1);
         } else if (typeof result === 'string') {
           const single = [{ path: result, aspectRatio: genParameters.aspectRatios?.[0] || '1:1', status: 'generated', metadata: { prompt: genParameters.prompt } }];
           allProcessed.push(...single);
           this.jobState.totalImages = (this.jobState.totalImages || 0) + 1;
           this.jobState.generatedImages = (this.jobState.generatedImages || 0) + 1;
+          this.jobState.gensDone = Math.max(this.jobState.gensDone || 0, genIndex + 1);
         } else {
           this.jobState.failedImages = (this.jobState.failedImages || 0) + imagesPerTask;
           this._logStructured({ level: 'error', stepName: 'image_generation', subStep: 'invalid_result', message: `Invalid generation result format (generation ${genIndex + 1})` });
@@ -453,7 +458,9 @@ class JobRunner extends EventEmitter {
         currentStep: 'initialization',
         totalImages: 0,
         generatedImages: 0,      // Renamed from successfulImages for clarity
-        failedImages: 0
+        failedImages: 0,
+        gensDone: 0,
+        totalGenerations: Math.max(1, Number(config?.parameters?.count || 1))
       };
       this.completedSteps = [];
       this.isStopping = false;
@@ -2187,7 +2194,9 @@ class JobRunner extends EventEmitter {
         currentStep: currentStepIndex + 1,
         totalSteps: PROGRESS_STEPS.length,
         configurationId: this.configurationId || null,
-        executionId: this.databaseExecutionId || null
+        executionId: this.databaseExecutionId || null,
+        gensDone: this.jobState.gensDone || 0,
+        totalGenerations: this.jobState.totalGenerations || Math.max(1, Number(this.jobConfiguration?.parameters?.count || 1))
       } : null,
       progress: this.jobState.progress / 100,
       currentStep: currentStepIndex + 1,
