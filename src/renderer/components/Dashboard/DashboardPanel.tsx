@@ -720,6 +720,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     const variations = statusVariations || cfgVariations;
 
     const jobState = jobStatus?.state;
+    const qcEnabled = !!(config?.ai?.runQualityCheck);
 
     // Single-gen: no 20/80 mapping. Show 0 while running, 100 on completion.
     let singleProgress = 0;
@@ -746,6 +747,10 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
           gensDone = Math.floor((imagesForExec.length || 0) / variations);
         }
         overallGenerationProgress = Math.round(Math.min(100, (gensDone / count) * 100));
+        // QC gating: hold below 100% until completion when QC is enabled
+        if (qcEnabled && jobState !== 'completed') {
+          overallGenerationProgress = Math.min(overallGenerationProgress, 95);
+        }
         if (jobState === 'completed') overallGenerationProgress = 100;
         currentGeneration = Math.min(count, Math.max(1, gensDone + 1));
       } else {
@@ -880,27 +885,22 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                   <h4 className="text-sm font-medium mb-3 text-gray-700">Progress Steps</h4>
                   <div className="progress-steps">
                     {getDynamicProgressSteps(jobConfiguration).map((step, index) => {
-                      // Determine step state based on current progress
-                      const currentProgress = getSmartProgressValues(jobConfiguration, jobStatus).current;
-                      let stepState = 'pending'; // pending, active, completed
-                      
+                      // Determine step state using backend-reported currentStep
                       const jobState = jobStatus?.state;
+                      const currentStepIdx = Number(jobStatus?.currentStep || jobStatus?.currentJob?.currentStep || 1); // 1-based
+                      let stepState = 'pending'; // pending, active, completed, failed
+                      
                       if (jobState === 'failed' || jobState === 'error') {
-                        // Failure coloring rules
-                        if (step.name === 'Initialization') {
-                          stepState = currentProgress >= 20 ? 'completed' : 'failed';
-                        } else if (step.name === 'Image Generation') {
-                          stepState = currentProgress > 20 ? 'failed' : 'failed';
-                        }
+                        stepState = 'failed';
                       } else if (jobState === 'completed') {
-                        // Success: both green
                         stepState = 'completed';
                       } else {
-                        // Running/pending: only active step highlighted, other gray
                         if (step.name === 'Initialization') {
-                          stepState = currentProgress >= 20 ? 'completed' : (currentProgress > 0 ? 'active' : 'pending');
+                          // Completed once we move to step 2; active while at step 1
+                          stepState = currentStepIdx > 1 ? 'completed' : 'active';
                         } else if (step.name === 'Image Generation') {
-                          stepState = currentProgress > 20 ? 'active' : 'pending';
+                          // Active when at step 2; pending before
+                          stepState = currentStepIdx >= 2 ? 'active' : 'pending';
                         }
                       }
                       
