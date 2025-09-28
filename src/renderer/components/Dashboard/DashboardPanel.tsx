@@ -735,29 +735,26 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       currentGenerationProgress = 20 + Math.min(Math.max(stepProgress, 0), 1) * 80;
     }
 
-    // Multi-generation progress: discrete 1/N per completed generation
+    // Multi-generation progress: discrete 1/N per completed generation, keyed by executionId
     let overallGenerationProgress = 0;
     let currentGeneration = 1;
     let gensDone = 0;
     try {
-      const execId = jobStatus?.currentJob?.id;
+      const execId = jobStatus?.currentJob?.executionId || jobStatus?.currentJob?.id;
       if (count > 1 && execId && Array.isArray(generatedImages)) {
         const imagesForExec = generatedImages.filter(img => String(img.executionId) === String(execId));
         gensDone = Math.floor((imagesForExec.length || 0) / variations);
         overallGenerationProgress = Math.min(100, Math.round((gensDone / count) * 100));
-        // QC gating: hold at 95% until completion when QC is enabled
         if (qcEnabled && jobState !== 'completed') {
           overallGenerationProgress = Math.min(overallGenerationProgress, 95);
         }
         currentGeneration = Math.min(count, Math.max(1, gensDone + 1));
       } else {
-        // Single-gen or unknown exec id: mirror single-gen bar for overall (not shown in UI when single)
         overallGenerationProgress = Math.round(jobState === 'failed' || jobState === 'error' ? 0 : currentGenerationProgress);
         currentGeneration = 1;
       }
     } catch {}
 
-    // Single-gen helper: derive images produced out of variations
     const generatedImagesCount = Math.floor((currentGenerationProgress / 100) * variations);
 
     return {

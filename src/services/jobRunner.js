@@ -2185,7 +2185,9 @@ class JobRunner extends EventEmitter {
         startTime: this.jobState.startTime,
         progress: this.jobState.progress,
         currentStep: currentStepIndex + 1,
-        totalSteps: PROGRESS_STEPS.length
+        totalSteps: PROGRESS_STEPS.length,
+        configurationId: this.configurationId || null,
+        executionId: this.databaseExecutionId || null
       } : null,
       progress: this.jobState.progress / 100,
       currentStep: currentStepIndex + 1,
