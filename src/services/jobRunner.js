@@ -773,6 +773,8 @@ class JobRunner extends EventEmitter {
         subStep: 'start',
         message: '🎨 Step 2: Image Generation - calling producePictureModule...'
       });
+      // Flip UI to Image Generation active (blue) immediately after initialization
+      this.emitProgress('image_generation', 25, 'Image generation started');
       
       let images;
       try {

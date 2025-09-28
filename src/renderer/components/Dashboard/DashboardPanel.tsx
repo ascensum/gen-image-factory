@@ -318,6 +318,15 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     return () => clearInterval(interval);
   }, [jobStatus.state]);
 
+  // While running, refresh generated images more frequently to drive multi-gen progress (1/N)
+  useEffect(() => {
+    if (jobStatus.state !== 'running') return;
+    const interval = setInterval(() => {
+      loadGeneratedImages();
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [jobStatus.state]);
+
   // Refresh data when job status changes to completed
   useEffect(() => {
     if (jobStatus.state === 'completed') {
