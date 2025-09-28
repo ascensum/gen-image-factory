@@ -1362,6 +1362,8 @@ class JobRunner extends EventEmitter {
       
       // When QC is enabled, defer processing until retry flows (QC-first design)
       const processingEnabled = !(config.ai?.runQualityCheck === true);
+      const requestedVariations = Math.max(1, Math.min(20, Number(config.parameters?.variations || 1)));
+      const effectiveVariations = Math.min(requestedVariations, 20);
       const moduleConfig = {
         removeBg: processingEnabled ? (config.processing?.removeBg || false) : false,
         imageConvert: processingEnabled ? (config.processing?.imageConvert || false) : false,
@@ -1391,7 +1393,8 @@ class JobRunner extends EventEmitter {
         pngQuality: processingEnabled ? (config.processing?.pngQuality || 100) : 100,
         // Paths (QC-first): generator writes to temp first; later we move to outputDirectory
         outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
-        tempDirectory: config.filePaths?.tempDirectory || './pictures/generated'
+        tempDirectory: config.filePaths?.tempDirectory || './pictures/generated',
+        variations: effectiveVariations
       };
       
       console.log(`🔧 JobRunner: DEBUG - moduleConfig (initial write path):`, {

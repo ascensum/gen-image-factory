@@ -271,6 +271,9 @@ async function producePictureModule(
     ...(Number.isFinite(Number(advanced.steps)) ? { steps: Number(advanced.steps) } : {})
   };
 
+  // Explicit debug for variations request
+  try { logDebug(`Runware request params: numberResults=${String(variations)} width=${String(width)} height=${String(height)} model=${String(runwareModel)}`); } catch {}
+
   // Timeouts: reuse pollingTimeout (minutes) as HTTP timeout (ms) if provided
   const httpTimeoutMs = (config?.pollingTimeout ? Number(config.pollingTimeout) * 60 * 1000 : 30000);
   const rwHeaders = {
@@ -305,9 +308,42 @@ async function producePictureModule(
 
   const rwData = rwResponse?.data;
   // Expect shape: { data: [{ imageURL: "..." }, ...] }
-  const imageUrls = extractRunwareImageUrls(rwData);
+  let imageUrls = extractRunwareImageUrls(rwData);
   if (!imageUrls.length) {
     throw new Error('Runware returned no images. Please adjust parameters or try again.');
+  }
+
+  // If provider returns fewer URLs than requested variations, top-up with additional requests
+  // Safety: up to 5 extra attempts to avoid long loops
+  if (imageUrls.length < variations) {
+    let remaining = variations - imageUrls.length;
+    let attempts = 0;
+    try { logDebug(`Top-up init: initial=${imageUrls.length} requested=${variations} remaining=${remaining}`); } catch {}
+    while (remaining > 0 && attempts < 5) {
+      try {
+        const extraBody = { ...body, taskUUID: randomUUID(), numberResults: Math.min(remaining, 20) };
+        try { logDebug(`Top-up attempt ${attempts + 1}: requesting ${Math.min(remaining, 20)} more`); } catch {}
+        const extraResp = await axios.post(
+          'https://api.runware.ai/v1/images/generate',
+          [extraBody],
+          { headers: rwHeaders, timeout: httpTimeoutMs }
+        );
+        const extraUrls = extractRunwareImageUrls(extraResp?.data);
+        if (Array.isArray(extraUrls) && extraUrls.length > 0) {
+          for (const u of extraUrls) {
+            if (imageUrls.length < variations) imageUrls.push(u);
+          }
+          try { logDebug(`Top-up received: +${extraUrls.length} → total=${imageUrls.length}`); } catch {}
+        }
+      } catch (e) {
+        // Break on provider errors to avoid spinning
+        try { logDebug(`Top-up aborted due to error: ${e?.message || e}`); } catch {}
+        break;
+      } finally {
+        remaining = Math.max(0, variations - imageUrls.length);
+        attempts += 1;
+      }
+    }
   }
 
   logDebug('Image URLs:', imageUrls);

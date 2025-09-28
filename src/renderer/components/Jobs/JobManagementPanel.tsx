@@ -190,8 +190,38 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       const result = await window.electronAPI.jobManagement.getJobExecutionsWithFilters(filters, currentPage, pageSize);
       
       if (result.success) {
-        setJobs(result.jobs || []);
-        setTotalJobs(result.totalCount || result.jobs?.length || 0);
+        let list: JobExecution[] = (result.jobs || []) as any;
+        // Merge current running job from status to ensure visibility while in-flight
+        try {
+          const status = await (window as any).electronAPI?.jobManagement?.getJobStatus?.();
+          const current = (status as any)?.currentJob;
+          const stateStr = String((status as any)?.state || (current as any)?.status || '').toLowerCase();
+          const idVal = (current as any)?.id;
+          if (current && idVal && (stateStr === 'running' || stateStr === 'processing')) {
+            const idx = list.findIndex(j => String((j as any).id) === String(idVal));
+            const hasRunningInList = list.some(j => String((j as any).status).toLowerCase() === 'running');
+            const safeLabel = (current as any)?.label || (current as any)?.configurationName || `Job ${idVal}`;
+            const normalized: any = {
+              ...(idx >= 0 ? (list[idx] as any) : {}),
+              ...(current as any),
+              status: 'running',
+              label: safeLabel,
+            };
+            // Normalize startedAt from possible startTime fields to avoid 'Unknown'
+            if (!normalized.startedAt) {
+              const startedAtRaw = (current as any)?.startedAt || (current as any)?.startTime || (status as any)?.startTime;
+              if (startedAtRaw) normalized.startedAt = new Date(startedAtRaw);
+            }
+            if (idx >= 0) {
+              (list as any)[idx] = normalized as JobExecution;
+            } else if (!hasRunningInList) {
+              list = [normalized as JobExecution, ...list];
+            }
+          }
+        } catch {}
+
+        setJobs(list);
+        setTotalJobs(result.totalCount || list.length || 0);
       } else {
         throw new Error(result.error || 'Failed to load jobs');
       }

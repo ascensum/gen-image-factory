@@ -345,15 +345,35 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     try {
       setIsLoading(true);
       setError(null);
-      const jobs = await window.electronAPI.jobManagement.getJobHistory();
-      console.log('Job history loaded:', jobs);
-      // Ensure jobs is always an array
-      if (jobs && Array.isArray(jobs)) {
-        setJobHistory(jobs);
-      } else {
-        console.warn('getJobHistory returned non-array:', jobs);
-        setJobHistory([]);
+          const jobApi = (window as any).electronAPI?.jobManagement as any;
+      const jobsResponse = await jobApi.getJobHistory();
+      console.log('Job history loaded:', jobsResponse);
+      let jobsArray: any[] = Array.isArray(jobsResponse) ? [...jobsResponse] : [];
+      if (!Array.isArray(jobsResponse)) {
+        console.warn('getJobHistory returned non-array:', jobsResponse);
+        jobsArray = [];
       }
+      const runningFromStatus = (jobStatus as any)?.currentJob;
+      if (runningFromStatus) {
+        const idVal = (runningFromStatus as any)?.id;
+        const statusStr = String((runningFromStatus as any)?.status || (jobStatus as any)?.state || '').toLowerCase();
+        if (idVal && (statusStr === 'running' || statusStr === 'processing')) {
+          const idx = jobsArray.findIndex(job => String(job?.id) === String(idVal));
+          const safeLabel = (runningFromStatus as any)?.displayLabel || (runningFromStatus as any)?.configurationName || `Job ${idVal}`;
+          const normalized = {
+            ...(idx >= 0 ? jobsArray[idx] : {}),
+            ...runningFromStatus,
+            status: 'running',
+            displayLabel: safeLabel,
+          } as any;
+          if (idx >= 0) {
+            jobsArray[idx] = normalized;
+      } else {
+            jobsArray = [normalized, ...jobsArray];
+      }
+        }
+      }
+      setJobHistory(jobsArray);
     } catch (error) {
       console.error('Failed to load job history:', error);
       setError('Failed to load job history');
@@ -681,14 +701,17 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
   // NEW: Smart progress calculation based on backend weights (20% + 80%) and generation counts
   const getSmartProgressValues = (config, jobStatus) => {
-    if (!config) return { overallGenerationProgress: 0, current: 0, currentGeneration: 1, totalGenerations: 1, generatedImages: 0, totalImages: 4 };
+    if (!config) return { overallGenerationProgress: 0, current: 0, currentGeneration: 1, totalGenerations: 1, generatedImages: 0, totalImages: 1, gensDone: 0 };
     
-    const count = config.parameters?.count || 1; // Total generations (e.g., 100, 1000, 10000)
-    
+    const count = Math.max(1, Number(config.parameters?.count || 1));
+    const variations = Math.max(1, Math.min(20, Number(config.parameters?.variations || 1)));
+    const qcEnabled = !!(config.ai?.runQualityCheck);
+
     // Get current progress from job status if available
     const jobState = jobStatus?.state;
     const currentProgress = Math.max(0, Math.min(jobStatus?.progress || 0, 1)); // 0.0..1.0
-    // Derive step from progress to avoid dependency on currentStep
+
+    // Map backend progress (0..1) into 0..100 for single-gen visualization
     let currentGenerationProgress = 0;
     if (jobState === 'failed' || jobState === 'error') {
       currentGenerationProgress = 0;
@@ -702,25 +725,40 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       const stepProgress = (currentProgress - 0.2) / 0.8; // 0..1
       currentGenerationProgress = 20 + Math.min(Math.max(stepProgress, 0), 1) * 80;
     }
-    
-    // For multiple generations, calculate overall progress correctly
+
+    // Multi-generation progress: discrete 1/N per completed generation
     let overallGenerationProgress = 0;
     let currentGeneration = 1;
-    
-    // For now, mirror the current generation progress in the overall bar
-    overallGenerationProgress = Math.round(jobState === 'failed' || jobState === 'error' ? 0 : currentGenerationProgress);
-    currentGeneration = 1;
-    
-    // Calculate generated images based on current generation progress
-    const generatedImagesCount = Math.floor(currentGenerationProgress / 100 * 4);
-    
+    let gensDone = 0;
+    try {
+      const execId = jobStatus?.currentJob?.id;
+      if (count > 1 && execId && Array.isArray(generatedImages)) {
+        const imagesForExec = generatedImages.filter(img => String(img.executionId) === String(execId));
+        gensDone = Math.floor((imagesForExec.length || 0) / variations);
+        overallGenerationProgress = Math.min(100, Math.round((gensDone / count) * 100));
+        // QC gating: hold at 95% until completion when QC is enabled
+        if (qcEnabled && jobState !== 'completed') {
+          overallGenerationProgress = Math.min(overallGenerationProgress, 95);
+        }
+        currentGeneration = Math.min(count, Math.max(1, gensDone + 1));
+      } else {
+        // Single-gen or unknown exec id: mirror single-gen bar for overall (not shown in UI when single)
+        overallGenerationProgress = Math.round(jobState === 'failed' || jobState === 'error' ? 0 : currentGenerationProgress);
+        currentGeneration = 1;
+      }
+    } catch {}
+
+    // Single-gen helper: derive images produced out of variations
+    const generatedImagesCount = Math.floor((currentGenerationProgress / 100) * variations);
+
     return {
       overallGenerationProgress: Math.round(overallGenerationProgress),
       current: Math.round(currentGenerationProgress),
       currentGeneration: currentGeneration,
       totalGenerations: count,
       generatedImages: generatedImagesCount,
-      totalImages: 4
+      totalImages: variations,
+      gensDone
     };
   };
 
@@ -818,7 +856,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                 {shouldShowOverallProgress(jobConfiguration) && (
                   <div className="mb-6">
                     <h4 className="text-sm font-medium mb-3 text-gray-700">
-                      Overall Progress ({jobConfiguration.parameters.count} generations)
+                      Multi Generation Progress ({jobConfiguration.parameters.count} generations)
                     </h4>
                     <div className="progress-container">
                       <div 
@@ -827,26 +865,28 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                       ></div>
                     </div>
                     <p className="text-sm text-gray-600">
-                      Generation {getSmartProgressValues(jobConfiguration, jobStatus).currentGeneration} of {jobConfiguration.parameters.count} ({getSmartProgressValues(jobConfiguration, jobStatus).overallGenerationProgress}% complete)
+                      Completed {getSmartProgressValues(jobConfiguration, jobStatus).gensDone} of {jobConfiguration.parameters.count} generations ({getSmartProgressValues(jobConfiguration, jobStatus).overallGenerationProgress}% complete)
                     </p>
                   </div>
                 )}
 
-                {/* Current Generation Progress */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium mb-3 text-gray-700">
-                    {shouldShowOverallProgress(jobConfiguration) ? 'Current Generation Progress' : 'Single Generation Progress'}
-                  </h4>
-                                      <div className="progress-container">
+                {/* Single Generation Progress - Only when count === 1 */}
+                {!shouldShowOverallProgress(jobConfiguration) && (
+                  <div className="mb-4">
+                    <h4 className="text-sm font-medium mb-3 text-gray-700">
+                      Single Generation Progress
+                    </h4>
+                    <div className="progress-container">
                       <div 
                         className="progress-fill" 
                         style={{ width: `${getSmartProgressValues(jobConfiguration, jobStatus).current}%` }}
                       ></div>
                     </div>
                     <p className="text-sm text-gray-600">
-                      Images {getSmartProgressValues(jobConfiguration, jobStatus).generatedImages} of 4 ({getSmartProgressValues(jobConfiguration, jobStatus).current}% complete)
+                      Images {getSmartProgressValues(jobConfiguration, jobStatus).generatedImages} of {getSmartProgressValues(jobConfiguration, jobStatus).totalImages} ({getSmartProgressValues(jobConfiguration, jobStatus).current}% complete)
                     </p>
-                </div>
+                  </div>
+                )}
 
                 {/* Progress Steps - Dynamic based on job configuration */}
                 <div>
