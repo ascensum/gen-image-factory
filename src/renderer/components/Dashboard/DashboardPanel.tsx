@@ -740,13 +740,14 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       const execId = jobStatus?.currentJob?.executionId || jobStatus?.currentJob?.id;
       const runnerGensDone = Number(jobStatus?.currentJob?.gensDone || 0);
       if (count > 1) {
-        if (runnerGensDone > 0) {
+        if (jobStatus?.currentJob) {
           gensDone = Math.min(runnerGensDone, count);
+          overallGenerationProgress = Math.round(Math.min(100, (gensDone / count) * 100));
         } else if (execId && Array.isArray(generatedImages)) {
           const imagesForExec = generatedImages.filter(img => String(img.executionId) === String(execId));
           gensDone = Math.floor((imagesForExec.length || 0) / variations);
+          overallGenerationProgress = Math.round(Math.min(100, (gensDone / count) * 100));
         }
-        overallGenerationProgress = Math.round(Math.min(100, (gensDone / count) * 100));
         // QC gating: hold below 100% until completion when QC is enabled
         if (qcEnabled && jobState !== 'completed') {
           overallGenerationProgress = Math.min(overallGenerationProgress, 95);
