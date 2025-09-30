@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GeneratedImage } from './DashboardPanel';
+import type { GeneratedImage } from '../../../types/generatedImage';
 import FailedImageCard from './FailedImageCard';
 import FailedImageReviewModal from './FailedImageReviewModal';
 import ProcessingSettingsModal from './ProcessingSettingsModal';
@@ -37,7 +37,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   const [selectedImageForReview, setSelectedImageForReview] = useState<GeneratedImage | null>(null);
   const [showProcessingSettingsModal, setShowProcessingSettingsModal] = useState(false);
   const [activeTab, setActiveTab] = useState<QCStatus>('qc_failed');
-  const [processingSettings, setProcessingSettings] = useState<ProcessingSettings>({
+  const [processingSettings] = useState<ProcessingSettings>({
     imageEnhancement: false,
     sharpening: 0,
     saturation: 1,
@@ -52,7 +52,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filterJob, setFilterJob] = useState<string | number>('all');
+  const [filterJob, setFilterJob] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
   const [retryQueueStatus, setRetryQueueStatus] = useState<{
@@ -71,6 +71,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     completedJobs: 0,
     failedJobs: 0
   });
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Load all image statuses on component mount
   useEffect(() => {
@@ -79,21 +80,21 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     loadRetryQueueStatus();
     
     // Set up real-time retry event listeners
-    const handleRetryProgress = (event: any, data: any) => {
+    const handleRetryProgress = (_event: any, data: any) => {
       console.log('🔧 Retry progress event received:', data);
       // Refresh data when progress updates
       loadAllImageStatuses();
       loadRetryQueueStatus();
     };
 
-    const handleRetryCompleted = (event: any, data: any) => {
+    const handleRetryCompleted = (_event: any, data: any) => {
       console.log('🔧 Retry completed event received:', data);
       // Refresh data when job completes
       loadAllImageStatuses();
       loadRetryQueueStatus();
     };
 
-    const handleRetryError = (event: any, data: any) => {
+    const handleRetryError = (_event: any, data: any) => {
       console.log('🔧 Retry error event received:', data);
       setError(`Retry error: ${data.error}`);
       // Refresh data when error occurs
@@ -101,14 +102,14 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       loadRetryQueueStatus();
     };
 
-    const handleRetryQueueUpdated = (event: any, data: any) => {
-      console.log('🔧 Retry queue updated event received:', data);
+    const handleRetryQueueUpdated = (_event: any, _data: any) => {
+      console.log('🔧 Retry queue updated event received');
       // Refresh queue status
       loadRetryQueueStatus();
     };
 
-    const handleRetryStatusUpdated = (event: any, data: any) => {
-      console.log('🔧 Retry status updated event received:', data);
+    const handleRetryStatusUpdated = (_event: any, _data: any) => {
+      console.log('🔧 Retry status updated event received');
       // Refresh data when status changes
       loadAllImageStatuses();
       loadRetryQueueStatus();
@@ -222,11 +223,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     if (selectedImages.size === currentImages.length) {
       setSelectedImages(new Set());
     } else {
-      setSelectedImages(new Set(currentImages.map(img => img.id)));
+      setSelectedImages(new Set(currentImages.map(img => String(img.id))));
     }
   };
 
-  const handleImageAction = async (action: string, imageId: string, data?: any) => {
+  const handleImageAction = async (action: string, imageId: string) => {
     try {
       setError(null);
       
@@ -249,7 +250,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
           break;
         case 'view':
           const allImages = [...failedImages, ...retryPendingImages, ...processingImages, ...retryFailedImages];
-          const image = allImages.find(img => img.id === imageId);
+          const image = allImages.find(img => String(img.id) === imageId);
           if (image) {
             setSelectedImageForReview(image);
           }
@@ -261,7 +262,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     }
   };
 
-  const handleBulkAction = async (action: string, settings?: { useOriginalSettings: boolean }) => {
+  const handleBulkAction = async (action: string) => {
     if (selectedImages.size === 0) return;
     
     try {
@@ -342,7 +343,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     
     let filtered = currentImages.filter(image => {
       // Job filter
-      if (filterJob !== 'all' && image.executionId !== filterJob) {
+      if (filterJob !== 'all' && String(image.executionId) !== filterJob) {
         return false;
       }
       
@@ -382,9 +383,9 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     const sorted = [...filtered].sort((a, b) => {
       switch (sortBy) {
         case 'newest':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return (b.createdAt ? new Date(b.createdAt as any).getTime() : 0) - (a.createdAt ? new Date(a.createdAt as any).getTime() : 0);
         case 'oldest':
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          return (a.createdAt ? new Date(a.createdAt as any).getTime() : 0) - (b.createdAt ? new Date(b.createdAt as any).getTime() : 0);
         case 'name':
           return a.generationPrompt.localeCompare(b.generationPrompt);
         default:
@@ -396,10 +397,10 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   }, [activeTab, failedImages, retryPendingImages, processingImages, retryFailedImages, filterJob, searchQuery, sortBy]);
 
   const uniqueJobIds = Array.from(new Set([
-    ...failedImages.map(img => img.executionId),
-    ...retryPendingImages.map(img => img.executionId),
-    ...processingImages.map(img => img.executionId),
-    ...retryFailedImages.map(img => img.executionId)
+    ...failedImages.map(img => String(img.executionId)),
+    ...retryPendingImages.map(img => String(img.executionId)),
+    ...processingImages.map(img => String(img.executionId)),
+    ...retryFailedImages.map(img => String(img.executionId))
   ]));
 
   const getTabCount = (status: QCStatus) => {
@@ -536,7 +537,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                   </span>
                 </div>
                 <div className="space-y-2">
-                  {processingImages.map((image, index) => (
+                  {processingImages.map((image) => (
                     <div key={image.id} className="flex items-center justify-between text-sm">
                       <span className="text-blue-800">🖼️ Image {image.id}: Processing...</span>
                       <div className="w-24 bg-blue-200 rounded-full h-2">
@@ -627,6 +628,24 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
             </div>
           </div>
 
+          {/* View Toggle */}
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-1 text-sm rounded-md border ${viewMode === 'grid' ? 'bg-gray-100 border-gray-400 text-gray-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+              title="Grid view"
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1 text-sm rounded-md border ${viewMode === 'list' ? 'bg-gray-100 border-gray-400 text-gray-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+              title="List view"
+            >
+              List
+            </button>
+          </div>
+
           {/* Clear Button */}
           <button
             onClick={() => {
@@ -713,7 +732,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         </div>
       </div>
 
-      {/* Images Grid */}
+      {/* Images Grid/List */}
       <div className="flex-1 p-6">
         {filteredAndSortedImages.length === 0 ? (
           <div className="text-center py-12">
@@ -737,17 +756,88 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            {filteredAndSortedImages.map((image) => (
-              <FailedImageCard
-                key={image.id}
-                image={image}
-                isSelected={selectedImages.has(image.id)}
-                onSelect={() => handleImageSelect(image.id)}
-                onAction={handleImageAction}
-              />
-            ))}
-          </div>
+          <>
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                {filteredAndSortedImages.map((image) => (
+                  <FailedImageCard
+                    key={image.id}
+                    image={image}
+                    isSelected={selectedImages.has(String(image.id))}
+                    onSelect={() => handleImageSelect(String(image.id))}
+                    onAction={(action, id) => handleImageAction(action, id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Status</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Execution</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th className="px-4 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredAndSortedImages.map((image) => (
+                      <tr key={image.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedImages.has(String(image.id))}
+                            onChange={() => handleImageSelect(String(image.id))}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-900">Image {image.id}</td>
+                        <td className="px-4 py-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200">
+                            {image.qcStatus}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-sm text-gray-700">{image.qcReason || '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-700 font-mono">{image.executionId}</td>
+                        <td className="px-4 py-2 text-sm text-gray-700">{image.createdAt ? new Date(image.createdAt as any).toLocaleString() : '-'}</td>
+                        <td className="px-4 py-2">
+                          <div className="flex items-center gap-2 justify-end">
+                            <button
+                              onClick={() => handleImageAction('view', String(image.id))}
+                              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={() => handleImageAction('approve', String(image.id))}
+                              className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleImageAction('retry', String(image.id))}
+                              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                            >
+                              Retry
+                            </button>
+                            <button
+                              onClick={() => handleImageAction('delete', String(image.id))}
+                              className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
 

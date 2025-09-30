@@ -1,5 +1,5 @@
 import React from 'react';
-import { GeneratedImage } from './DashboardPanel';
+import type { GeneratedImage } from '../../../types/generatedImage';
 import StatusBadge from '../common/StatusBadge';
 
 interface FailedImageCardProps {
