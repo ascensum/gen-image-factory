@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import StatusBadge from '../common/StatusBadge';
+import StatusBadge from '../Common/StatusBadge';
 import { JobExecution } from './DashboardPanel';
 
 interface JobHistoryProps {
@@ -24,8 +24,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [scrollPosition, setScrollPosition] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('newest');
+  // Controlled via props from DashboardPanel
   const jobListRef = useRef<HTMLDivElement>(null);
 
   // Filter and sort jobs
@@ -36,32 +35,31 @@ const JobHistory: React.FC<JobHistoryProps> = ({
     }
     
     // Prefer controlled filters when provided
-    const activeStatusFilter = (typeof (arguments as any) !== 'undefined' && typeof controlledStatusFilter !== 'undefined') ? (controlledStatusFilter as string) : (undefined as any);
-    const activeSortBy = (typeof (arguments as any) !== 'undefined' && typeof controlledSortBy !== 'undefined') ? (controlledSortBy as any) : (undefined as any);
+    const activeStatusFilter = (controlledStatusFilter !== undefined ? controlledStatusFilter : 'all') as string;
+    const activeSortBy = (controlledSortBy !== undefined ? controlledSortBy : 'newest') as ('newest' | 'oldest' | 'name');
 
     let filtered = jobs;
     
     // Apply status filter
-    const statusToApply = (activeStatusFilter ?? statusFilter);
-    if (statusToApply !== 'all') {
-      filtered = filtered.filter(job => job.status === statusToApply);
+    if (activeStatusFilter !== 'all') {
+      filtered = filtered.filter(job => job.status === activeStatusFilter);
     }
     
     // Apply sorting
     const sorted = [...filtered].sort((a, b) => {
-      switch (activeSortBy ?? sortBy) {
+      switch (activeSortBy) {
         case 'oldest':
           // Handle null/undefined dates by putting them at the end
           if (!a.startedAt && !b.startedAt) return 0;
           if (!a.startedAt) return 1;
           if (!b.startedAt) return -1;
-          return a.startedAt.getTime() - b.startedAt.getTime();
+          return new Date(a.startedAt as any).getTime() - new Date(b.startedAt as any).getTime();
         case 'newest':
           // Handle null/undefined dates by putting them at the end
           if (!a.startedAt && !b.startedAt) return 0;
           if (!a.startedAt) return 1;
           if (!b.startedAt) return -1;
-          return b.startedAt.getTime() - a.startedAt.getTime();
+          return new Date(b.startedAt as any).getTime() - new Date(a.startedAt as any).getTime();
         case 'name':
           // Handle null/undefined configuration names
           const nameA = a.configurationName || 'Unknown';
@@ -73,7 +71,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
     });
     
     return sorted;
-  }, [jobs, statusFilter, sortBy, controlledStatusFilter, controlledSortBy]);
+  }, [jobs, controlledStatusFilter, controlledSortBy]);
 
   const handleJobClick = (jobId: string) => {
     setSelectedJob(jobId);
@@ -117,8 +115,9 @@ const JobHistory: React.FC<JobHistoryProps> = ({
     setShowDeleteConfirm(null);
   };
 
-  const confirmDeleteJob = (jobId: string) => {
-    setShowDeleteConfirm(jobId);
+  // Helper to safely read optional label merged from other views
+  const getJobLabel = (job: JobExecution & any): string => {
+    return job.displayLabel || job.configurationName || 'Unknown';
   };
 
   const cancelDeleteJob = () => {
@@ -184,18 +183,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
-      case 'running':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  
 
   // Maintain scroll position during updates
   useEffect(() => {
@@ -299,7 +287,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
             key={job.id}
             role="listitem"
             tabIndex={0}
-            aria-label={`${job.displayLabel || job.configurationName || 'Unknown'} - ${job.status}`}
+            aria-label={`${getJobLabel(job)} - ${job.status}`}
             className={`bg-white border rounded-lg p-4 cursor-pointer transition-colors ${
               selectedJob === job.id
                 ? 'border-blue-500 bg-blue-50'
@@ -317,7 +305,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
               <div className="flex items-center space-x-3">
                 {getStatusIcon(job.status)}
                 <div>
-                  <h3 className="font-medium text-gray-900">{job.displayLabel || job.configurationName || 'Unknown'}</h3>
+                  <h3 className="font-medium text-gray-900">{getJobLabel(job)}</h3>
                   <div className="text-xs text-gray-500 mb-1">Job ID: {job.id}</div>
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
                                           <span>{formatDate(job.startedAt)}</span>
