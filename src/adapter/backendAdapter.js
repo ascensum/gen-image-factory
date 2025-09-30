@@ -533,6 +533,18 @@ class BackendAdapter {
         return await this.processNextBulkRerunJob();
       });
 
+      // Expose the current bulk rerun queue size for UI Pending stats
+      _ipc.handle('job-execution:get-bulk-rerun-queue-size', async () => {
+        try {
+          await this.ensureInitialized();
+          const size = (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) ? global.bulkRerunQueue.length : 0;
+          return { success: true, count: size };
+        } catch (error) {
+          console.error('Error getting bulk rerun queue size:', error);
+          return { success: false, error: error.message };
+        }
+      });
+
       _ipc.handle('get-job-executions-with-filters', async (event, filters, page = 1, pageSize = 25) => {
         try {
           await this.ensureInitialized();

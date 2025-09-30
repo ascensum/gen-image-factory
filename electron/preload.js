@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     bulkExportJobExecutions: (ids) => ipcRenderer.invoke('job-execution:bulk-export', ids),
     bulkRerunJobExecutions: (ids) => ipcRenderer.invoke('job-execution:bulk-rerun', ids),
     processNextBulkRerunJob: () => ipcRenderer.invoke('job-execution:process-next-bulk-rerun'),
+    getBulkRerunQueueSize: () => ipcRenderer.invoke('job-execution:get-bulk-rerun-queue-size'),
     getJobExecutionsWithFilters: (filters, page, pageSize) => ipcRenderer.invoke('get-job-executions-with-filters', filters, page, pageSize),
     getJobExecutionsCount: (filters) => ipcRenderer.invoke('get-job-executions-count', filters),
     getJobStatistics: () => ipcRenderer.invoke('job-execution:statistics'),

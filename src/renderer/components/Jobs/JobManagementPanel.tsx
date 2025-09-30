@@ -293,7 +293,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
         }
       };
 
-      const [total, completed, failed, processing, running, pending, queued] = await Promise.all([
+      const [total, completed, failed, processing, running, pending, queued, queueSize] = await Promise.all([
         getCount('all'),
         getCount('completed'),
         getCount('failed'),
@@ -301,6 +301,12 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
         getCount('running'),
         getCount('pending'),
         getCount('queued'),
+        (async () => {
+          try {
+            const res = await api.getBulkRerunQueueSize?.();
+            return Number((res && (res.count ?? 0)) || 0);
+          } catch { return 0; }
+        })()
       ]);
 
       setCounts({
@@ -308,7 +314,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
         completed,
         failed,
         processing: processing + running,
-        pending: pending + queued,
+        pending: Math.max(pending + queued, queueSize),
       });
     } catch (e) {
       // Non-fatal; keep existing counts
