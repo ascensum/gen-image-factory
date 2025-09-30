@@ -54,11 +54,21 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
 
     // Apply status filter
     if (filters.status !== 'all') {
-      if (filters.status === 'processing') {
+      const sFilter = filters.status;
+      if (sFilter === 'processing') {
         // Treat both 'processing' and 'running' as In Progress
-        filtered = filtered.filter(job => String((job as any).status) === 'processing' || String((job as any).status) === 'running');
+        filtered = filtered.filter(job => {
+          const s = String((job as any).status);
+          return s === 'processing' || s === 'running';
+        });
+      } else if (sFilter === 'pending') {
+        // Treat both 'pending' and 'queued' as Pending
+        filtered = filtered.filter(job => {
+          const s = String((job as any).status);
+          return s === 'pending' || s === 'queued';
+        });
       } else {
-        filtered = filtered.filter(job => String((job as any).status) === filters.status);
+        filtered = filtered.filter(job => String((job as any).status) === sFilter);
       }
     }
 
@@ -154,7 +164,10 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       const s = String((job as any).status);
       return s === 'processing' || s === 'running';
     }).length;
-    const pending = jobs.filter(job => job.status === 'pending').length;
+    const pending = jobs.filter(job => {
+      const s = String((job as any).status);
+      return s === 'pending' || s === 'queued';
+    }).length;
     
     const totalImages = jobs.reduce((sum, job) => sum + (job.totalImages || 0), 0);
     const averageImagesPerJob = jobs.length > 0 ? totalImages / jobs.length : 0;
@@ -196,7 +209,19 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       const result = await window.electronAPI.jobManagement.getJobExecutionsWithFilters(filters, currentPage, pageSize);
       
       if (result.success) {
-        let list: JobExecution[] = (result.jobs || []) as any;
+        // Accept multiple possible response shapes
+        let list: JobExecution[] = (
+          (Array.isArray((result as any).executions) ? (result as any).executions :
+          (Array.isArray((result as any).jobs) ? (result as any).jobs :
+          (Array.isArray((result as any).data) ? (result as any).data : [])))
+        ) as any;
+
+        // Normalize statuses for UI consistency
+        list = list.map((job: any) => {
+          const raw = String(job.status || '');
+          const normalized = raw === 'queued' ? 'pending' : raw;
+          return { ...job, status: normalized } as JobExecution;
+        });
         // Merge current running job from status to ensure visibility while in-flight
         try {
           const status = await (window as any).electronAPI?.jobManagement?.getJobStatus?.();
@@ -227,7 +252,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
         } catch {}
 
         setJobs(list);
-        setTotalJobs(result.totalCount || list.length || 0);
+        setTotalJobs((result as any).count || (result as any).totalCount || list.length || 0);
       } else {
         throw new Error(result.error || 'Failed to load jobs');
       }
