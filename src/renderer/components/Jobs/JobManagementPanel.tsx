@@ -32,6 +32,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportType, setExportType] = useState<'single' | 'bulk'>('single');
   const [exportJobId, setExportJobId] = useState<string | number | null>(null);
+  const [counts, setCounts] = useState<{ total: number; completed: number; failed: number; processing: number; pending: number } | null>(null);
 
   // Refs for performance optimization
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -158,13 +159,13 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
   }, [sortedJobs.length, pageSize]);
 
   const statistics = useMemo(() => {
-    const completed = jobs.filter(job => job.status === 'completed').length;
-    const failed = jobs.filter(job => job.status === 'failed').length;
-    const processing = jobs.filter(job => {
+    const fallbackCompleted = jobs.filter(job => job.status === 'completed').length;
+    const fallbackFailed = jobs.filter(job => job.status === 'failed').length;
+    const fallbackProcessing = jobs.filter(job => {
       const s = String((job as any).status);
       return s === 'processing' || s === 'running';
     }).length;
-    const pending = jobs.filter(job => {
+    const fallbackPending = jobs.filter(job => {
       const s = String((job as any).status);
       return s === 'pending' || s === 'queued';
     }).length;
@@ -173,17 +174,16 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     const averageImagesPerJob = jobs.length > 0 ? totalImages / jobs.length : 0;
 
     return {
-      totalJobs: jobs.length,
-      completedJobs: completed,
-      failedJobs: failed,
-      processingJobs: processing,
-      pendingJobs: pending,
+      totalJobs: counts?.total ?? jobs.length,
+      completedJobs: counts?.completed ?? fallbackCompleted,
+      failedJobs: counts?.failed ?? fallbackFailed,
+      processingJobs: counts?.processing ?? fallbackProcessing,
+      pendingJobs: counts?.pending ?? fallbackPending,
       totalImages,
       averageImagesPerJob
     };
-  }, [jobs]);
+  }, [jobs, counts]);
 
-  
   // Debounced search handler following BMad-Method performance principles
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -268,9 +268,37 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     }
   }, [filters, currentPage, pageSize]);
 
+  // Load aggregated counts from backend to avoid page-limited stats
+  const refreshCounts = useCallback(async () => {
+    try {
+      const api = (window as any).electronAPI?.jobManagement;
+      if (!api?.getJobExecutionsCount) return;
+      const [total, completed, failed, processing, running, pending, queued] = await Promise.all([
+        api.getJobExecutionsCount({ status: 'all' }),
+        api.getJobExecutionsCount({ status: 'completed' }),
+        api.getJobExecutionsCount({ status: 'failed' }),
+        api.getJobExecutionsCount({ status: 'processing' }),
+        api.getJobExecutionsCount({ status: 'running' }),
+        api.getJobExecutionsCount({ status: 'pending' }),
+        api.getJobExecutionsCount({ status: 'queued' }),
+      ]);
+      const readCount = (res: any) => Number((res && (res.count ?? res.totalCount ?? res)) || 0);
+      setCounts({
+        total: readCount(total),
+        completed: readCount(completed),
+        failed: readCount(failed),
+        processing: readCount(processing) + readCount(running),
+        pending: readCount(pending) + readCount(queued),
+      });
+    } catch (e) {
+      // Non-fatal; keep existing counts
+    }
+  }, []);
+
   // Load jobs on mount and when dependencies change
   useEffect(() => {
     loadJobs();
+    refreshCounts();
   }, [loadJobs]);
 
   // Auto-refresh while there are active jobs (running/processing/pending)
@@ -283,12 +311,13 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     if (hasActive) {
       interval = setInterval(() => {
         loadJobs(true); // silent refresh to avoid overlay blink
+        refreshCounts();
       }, 3000); // 3s cadence to reduce visual blinking
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [jobs, loadJobs]);
+  }, [jobs, loadJobs, refreshCounts]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -376,6 +405,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
         console.log('Bulk rerun started:', result.message);
         // Refresh jobs and clear selection
         await loadJobs();
+        await refreshCounts();
         setSelectedJobs(new Set());
       } else {
         console.error('Bulk rerun failed:', result.error);
@@ -390,7 +420,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     } finally {
       setIsProcessing(false);
     }
-  }, [selectedJobs, loadJobs]);
+  }, [selectedJobs, loadJobs, refreshCounts]);
 
   
 
@@ -408,6 +438,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       
       // Refresh jobs and clear selection
       await loadJobs();
+      await refreshCounts();
       setSelectedJobs(new Set());
       
     } catch (err) {
@@ -415,7 +446,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     } finally {
       setIsProcessing(false);
     }
-  }, [selectedJobs, loadJobs]);
+  }, [selectedJobs, loadJobs, refreshCounts]);
 
   // Handle single job view
   const handleOpenSingleJob = useCallback((jobId: string | number) => {
