@@ -248,6 +248,23 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     loadJobs();
   }, [loadJobs]);
 
+  // Auto-refresh while there are active jobs (running/processing/pending)
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    const hasActive = jobs.some(j => {
+      const s = String((j as any).status);
+      return s === 'running' || s === 'processing' || s === 'pending';
+    });
+    if (hasActive) {
+      interval = setInterval(() => {
+        loadJobs();
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [jobs, loadJobs]);
+
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
