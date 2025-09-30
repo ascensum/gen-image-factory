@@ -240,8 +240,9 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
   const filteredImagesCount = React.useMemo(() => filteredImageIds().length, [filteredImageIds]);
   
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<string>('all');
+  const [historySortBy, setHistorySortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
 
-  
   // Removed local failed images review state; navigation handled at App level
 
   // Poll for job status updates
@@ -954,20 +955,20 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">
                       <label className="text-sm font-medium text-gray-700">Status:</label>
-                      <select className="control-select">
-                        <option>All Statuses</option>
-                        <option>Completed</option>
-                        <option>Failed</option>
-                        <option>Running</option>
-                        <option>Pending</option>
+                      <select className="control-select" value={historyStatusFilter} onChange={(e) => setHistoryStatusFilter(e.target.value)}>
+                        <option value="all">All</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
+                        <option value="running">Running</option>
+                        <option value="pending">Pending</option>
                       </select>
                     </div>
                     <div className="flex items-center space-x-2">
                       <label className="text-sm font-medium text-gray-700">Sort:</label>
-                      <select className="control-select">
-                        <option>Newest First</option>
-                        <option>Oldest First</option>
-                        <option>By Name</option>
+                      <select className="control-select" value={historySortBy} onChange={(e) => setHistorySortBy(e.target.value as any)}>
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                        <option value="name">By Name</option>
                       </select>
                     </div>
                   </div>
@@ -980,6 +981,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
               onJobAction={handleJobAction}
               onDeleteJob={(jobId) => handleJobAction('delete', jobId)}
               isLoading={isLoading}
+              statusFilter={historyStatusFilter}
+              sortBy={historySortBy}
             />
           </div>
         </div>

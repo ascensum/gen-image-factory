@@ -7,13 +7,17 @@ interface JobHistoryProps {
   onJobAction: (action: string, jobId: string) => void;
   onDeleteJob?: (jobId: string) => void;
   isLoading: boolean;
+  statusFilter?: string;
+  sortBy?: 'newest' | 'oldest' | 'name';
 }
 
 const JobHistory: React.FC<JobHistoryProps> = ({
   jobs,
   onJobAction,
   onDeleteJob,
-  isLoading
+  isLoading,
+  statusFilter: controlledStatusFilter,
+  sortBy: controlledSortBy
 }) => {
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const [showContextMenu, setShowContextMenu] = useState<string | null>(null);
@@ -31,16 +35,21 @@ const JobHistory: React.FC<JobHistoryProps> = ({
       return [];
     }
     
+    // Prefer controlled filters when provided
+    const activeStatusFilter = (typeof (arguments as any) !== 'undefined' && typeof controlledStatusFilter !== 'undefined') ? (controlledStatusFilter as string) : (undefined as any);
+    const activeSortBy = (typeof (arguments as any) !== 'undefined' && typeof controlledSortBy !== 'undefined') ? (controlledSortBy as any) : (undefined as any);
+
     let filtered = jobs;
     
     // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(job => job.status === statusFilter);
+    const statusToApply = (activeStatusFilter ?? statusFilter);
+    if (statusToApply !== 'all') {
+      filtered = filtered.filter(job => job.status === statusToApply);
     }
     
     // Apply sorting
     const sorted = [...filtered].sort((a, b) => {
-      switch (sortBy) {
+      switch (activeSortBy ?? sortBy) {
         case 'oldest':
           // Handle null/undefined dates by putting them at the end
           if (!a.startedAt && !b.startedAt) return 0;
@@ -64,7 +73,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
     });
     
     return sorted;
-  }, [jobs, statusFilter, sortBy]);
+  }, [jobs, statusFilter, sortBy, controlledStatusFilter, controlledSortBy]);
 
   const handleJobClick = (jobId: string) => {
     setSelectedJob(jobId);
