@@ -5,7 +5,7 @@ import type { GeneratedImageWithStringId as GeneratedImage } from '../../../type
 import ExportDialog from '../Common/ExportDialog';
 import { Toggle } from '../Settings/Toggle';
 import './SingleJobView.css';
-import StatusBadge from '../common/StatusBadge';
+import StatusBadge from '../Common/StatusBadge';
 
 interface SingleJobViewProps {
   jobId: string | number;
@@ -401,7 +401,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   const filteredImages = useMemo(() => {
     if (imageFilter === 'all') return images;
-    return images.filter(img => img.qcStatus === imageFilter);
+    const map: Record<string, string> = { completed: 'approved', failed: 'failed', pending: 'pending' };
+    const status = map[imageFilter] || imageFilter;
+    return images.filter(img => img.qcStatus === status);
   }, [images, imageFilter]);
 
   const formatDate = (dateString: string | Date) => {
@@ -736,6 +738,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   <option value="all">All Images</option>
                   <option value="completed">Completed</option>
                   <option value="failed">Failed</option>
+                  <option value="pending">Pending</option>
                 </select>
               </div>
               <div className="view-controls">
