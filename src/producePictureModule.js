@@ -435,7 +435,7 @@ async function producePictureModule(
     }
 
     if (processedImages.length === 0) {
-      throw new Error('No images passed the quality check.');
+      throw new Error('No images were successfully generated.');
     }
 
     // Cleanup if no pending tasks
