@@ -319,6 +319,14 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     };
   }, [jobs, loadJobs, refreshCounts]);
 
+  // Always refresh header counts every 3s (lightweight), regardless of current page
+  useEffect(() => {
+    const iv = setInterval(() => {
+      refreshCounts();
+    }, 3000);
+    return () => clearInterval(iv);
+  }, [refreshCounts]);
+
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
