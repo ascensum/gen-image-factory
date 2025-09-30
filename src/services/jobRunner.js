@@ -1131,6 +1131,23 @@ class JobRunner extends EventEmitter {
         userMessage: 'Job execution failed. Please check the configuration and try again.',
         retryable: true
       });
+
+      // If this was part of a bulk rerun, advance the queue even on failure
+      if (this.backendAdapter && this.isRerun) {
+        try {
+          console.log('📋 Bulk rerun: current job failed, attempting to start next queued job...');
+          const nextJobResult = await this.backendAdapter.processNextBulkRerunJob();
+          if (nextJobResult.success) {
+            console.log(`📋 Started next bulk rerun job after failure: ${nextJobResult.message}`);
+          } else if (nextJobResult.message === 'No jobs in queue') {
+            console.log('📋 No more bulk rerun jobs in queue after failure');
+          } else {
+            console.log(`📋 Next bulk rerun job not ready after failure: ${nextJobResult.message}`);
+          }
+        } catch (queueErr) {
+          console.error('❌ Error advancing bulk rerun queue after failure:', queueErr);
+        }
+      }
     }
   }
 
