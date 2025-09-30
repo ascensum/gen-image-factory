@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { JobExecution, JobFilters } from '../../../types/job';
 import ExportDialog from '../Common/ExportDialog';
-import StatusBadge from '../common/StatusBadge';
+import StatusBadge from '../Common/StatusBadge';
 import './JobManagementPanel.css';
 
 interface JobManagementPanelProps {
@@ -18,11 +18,11 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     dateRange: 'all',
     label: '',
     minImages: 0,
-    maxImages: null
+    maxImages: undefined
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState<keyof JobExecution>('startedAt');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortField] = useState<keyof JobExecution>('startedAt');
+  const [sortDirection] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [totalJobs, setTotalJobs] = useState(0);
@@ -34,7 +34,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
   const [exportJobId, setExportJobId] = useState<string | number | null>(null);
 
   // Refs for performance optimization
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Memoized computed values following BMad-Method performance principles
   const filteredJobs = useMemo(() => {
@@ -54,12 +54,16 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
 
     // Apply status filter
     if (filters.status !== 'all') {
-      filtered = filtered.filter(job => job.status === filters.status);
+      if (filters.status === 'processing') {
+        // Treat both 'processing' and 'running' as In Progress
+        filtered = filtered.filter(job => String((job as any).status) === 'processing' || String((job as any).status) === 'running');
+      } else {
+        filtered = filtered.filter(job => String((job as any).status) === filters.status);
+      }
     }
 
     // Apply date range filter
     if (filters.dateRange !== 'all') {
-      const now = new Date();
       let startDate = new Date();
       
       switch (filters.dateRange) {
@@ -79,19 +83,20 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     }
 
     // Apply label filter
-    if (filters.label.trim()) {
-      const labelQuery = filters.label.toLowerCase();
+    if ((filters.label || '').trim()) {
+      const labelQuery = (filters.label || '').toLowerCase();
       filtered = filtered.filter(job => 
         job.label?.toLowerCase().includes(labelQuery)
       );
     }
 
     // Apply image count filters
-    if (filters.minImages > 0) {
-      filtered = filtered.filter(job => (job.totalImages || 0) >= filters.minImages);
+    const minImages = filters.minImages ?? 0;
+    if (minImages > 0) {
+      filtered = filtered.filter(job => (job.totalImages || 0) >= minImages);
     }
-    if (filters.maxImages !== null) {
-      filtered = filtered.filter(job => (job.totalImages || 0) <= filters.maxImages);
+    if (typeof filters.maxImages === 'number') {
+      filtered = filtered.filter(job => (job.totalImages || 0) <= (filters.maxImages as number));
     }
 
     return filtered;
@@ -145,7 +150,10 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
   const statistics = useMemo(() => {
     const completed = jobs.filter(job => job.status === 'completed').length;
     const failed = jobs.filter(job => job.status === 'failed').length;
-    const processing = jobs.filter(job => job.status === 'processing').length;
+    const processing = jobs.filter(job => {
+      const s = String((job as any).status);
+      return s === 'processing' || s === 'running';
+    }).length;
     const pending = jobs.filter(job => job.status === 'pending').length;
     
     const totalImages = jobs.reduce((sum, job) => sum + (job.totalImages || 0), 0);
@@ -162,8 +170,6 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     };
   }, [jobs]);
 
-  // Global rerun call counter to debug duplicate job creation
-  const rerunCallCounter = useRef(0);
   
   // Debounced search handler following BMad-Method performance principles
   const handleSearch = useCallback((query: string) => {
@@ -252,11 +258,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     setFilters(newFilters);
   }, []);
 
-  // Handle sorting
-  const handleSort = useCallback((field: keyof JobExecution, direction: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(direction);
-  }, []);
+  
 
   // Handle pagination
   const handlePageChange = useCallback((page: number) => {
@@ -341,34 +343,14 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       
     } catch (err) {
       console.error('Error rerunning jobs:', err);
-      alert(`Error rerunning jobs: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Error rerunning jobs: ${message}`);
     } finally {
       setIsProcessing(false);
     }
   }, [selectedJobs, loadJobs]);
 
-  const handleBulkExport = useCallback(async () => {
-    if (selectedJobs.size === 0) return;
-    
-    try {
-      setIsProcessing(true);
-      const jobIds = Array.from(selectedJobs);
-      
-      // Use bulk export endpoint for proper batched handling
-      const result = await window.electronAPI.jobManagement.bulkExportJobExecutions(jobIds);
-      if (!result?.success) {
-        console.error('Bulk export failed:', result?.error);
-      }
-      
-      // Clear selection after export
-      setSelectedJobs(new Set());
-      
-    } catch (err) {
-      console.error('Error exporting jobs:', err);
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [selectedJobs]);
+  
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedJobs.size === 0) return;
@@ -542,7 +524,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 placeholder="From"
                 onChange={(e) => {
                   const v = e.target.value; // yyyy-mm-dd from input
-                  handleFiltersChange({ ...filters, dateFrom: v || undefined });
+                  const date = v ? new Date(v) : undefined;
+                  handleFiltersChange({ ...filters, dateFrom: date });
                 }}
               />
               <div className="h-4 w-px bg-[--border]"></div>
@@ -552,7 +535,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 placeholder="To"
                 onChange={(e) => {
                   const v = e.target.value; // yyyy-mm-dd from input
-                  handleFiltersChange({ ...filters, dateTo: v || undefined });
+                  const date = v ? new Date(v) : undefined;
+                  handleFiltersChange({ ...filters, dateTo: date });
                 }}
               />
             </div>
@@ -590,7 +574,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
               <span className="text-[--muted-foreground]">3 active filters</span>
               <button 
                 onClick={() => {
-                  setFilters({ status: 'all', dateRange: 'all', label: '', minImages: 0, maxImages: null });
+                  setFilters({ status: 'all', dateRange: 'all', label: '', minImages: 0, maxImages: undefined });
                   setSearchQuery('');
                 }}
                 className="text-[--primary] hover:underline text-sm"
@@ -715,7 +699,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                       status={job.status}
                       labelOverride={
                         job.status === 'completed' ? 'Completed' :
-                        job.status === 'processing' ? 'In Progress' :
+                        job.status === 'running' ? 'In Progress' :
+                        (String((job as any).status) === 'processing') ? 'In Progress' :
                         job.status === 'failed' ? 'Failed' :
                         job.status === 'pending' ? 'Pending' :
                         job.status
