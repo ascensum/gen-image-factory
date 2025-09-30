@@ -188,9 +188,9 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
   }, []);
 
   // Load jobs from backend following BMad-Method structured approach
-  const loadJobs = useCallback(async () => {
+  const loadJobs = useCallback(async (silent: boolean = false) => {
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       setError(null);
 
       const result = await window.electronAPI.jobManagement.getJobExecutionsWithFilters(filters, currentPage, pageSize);
@@ -239,7 +239,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       setJobs([]);
       setTotalJobs(0);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [filters, currentPage, pageSize]);
 
@@ -257,8 +257,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     });
     if (hasActive) {
       interval = setInterval(() => {
-        loadJobs();
-      }, 1000);
+        loadJobs(true); // silent refresh to avoid overlay blink
+      }, 3000); // 3s cadence to reduce visual blinking
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -439,7 +439,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
             <div className="text-red-600 mb-4">⚠️ Error</div>
             <p className="text-gray-600">{error}</p>
             <button 
-              onClick={loadJobs} 
+              onClick={() => loadJobs(false)} 
               className="mt-4 bg-[--primary] text-white px-4 py-2 rounded hover:opacity-90"
             >
               Retry
@@ -469,7 +469,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           </div>
           <div className="header-actions">
             <button 
-              onClick={loadJobs}
+              onClick={() => loadJobs(false)}
               className="refresh-button"
               disabled={isLoading}
               aria-label="Refresh jobs"
