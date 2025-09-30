@@ -272,23 +272,43 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
   const refreshCounts = useCallback(async () => {
     try {
       const api = (window as any).electronAPI?.jobManagement;
-      if (!api?.getJobExecutionsCount) return;
-      const [total, completed, failed, processing, running, pending, queued] = await Promise.all([
-        api.getJobExecutionsCount({ status: 'all' }),
-        api.getJobExecutionsCount({ status: 'completed' }),
-        api.getJobExecutionsCount({ status: 'failed' }),
-        api.getJobExecutionsCount({ status: 'processing' }),
-        api.getJobExecutionsCount({ status: 'running' }),
-        api.getJobExecutionsCount({ status: 'pending' }),
-        api.getJobExecutionsCount({ status: 'queued' }),
-      ]);
+      if (!api) return;
+
       const readCount = (res: any) => Number((res && (res.count ?? res.totalCount ?? res)) || 0);
+
+      const getCount = async (status: string) => {
+        try {
+          if (api.getJobExecutionsCount) {
+            const res = await api.getJobExecutionsCount({ status });
+            const c = readCount(res);
+            if (!Number.isNaN(c)) return c;
+          }
+        } catch {}
+        // Fallback: ask for 1 item and read the total count
+        try {
+          const res = await api.getJobExecutionsWithFilters({ status }, 1, 1);
+          return readCount((res as any)) || (Array.isArray((res as any)?.executions) ? (res as any).executions.length : 0);
+        } catch {
+          return 0;
+        }
+      };
+
+      const [total, completed, failed, processing, running, pending, queued] = await Promise.all([
+        getCount('all'),
+        getCount('completed'),
+        getCount('failed'),
+        getCount('processing'),
+        getCount('running'),
+        getCount('pending'),
+        getCount('queued'),
+      ]);
+
       setCounts({
-        total: readCount(total),
-        completed: readCount(completed),
-        failed: readCount(failed),
-        processing: readCount(processing) + readCount(running),
-        pending: readCount(pending) + readCount(queued),
+        total,
+        completed,
+        failed,
+        processing: processing + running,
+        pending: pending + queued,
       });
     } catch (e) {
       // Non-fatal; keep existing counts
