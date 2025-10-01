@@ -578,93 +578,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         </div>
       </div>
 
-      {/* Filters and Controls */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center space-x-4">
-            {/* Job Filter */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-gray-700">Job:</span>
-              <select
-                value={filterJob}
-                onChange={(e) => setFilterJob(e.target.value)}
-                className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Jobs</option>
-                {uniqueJobIds.length > 0 ? uniqueJobIds.map(jobId => (
-                  <option key={jobId} value={jobId}>
-                    Job {String(jobId).slice(0, 8)}...
-                  </option>
-                )) : (
-                  <option value="all" disabled>No jobs available</option>
-                )}
-              </select>
-            </div>
-
-            {/* Search Field */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-gray-700">Search:</span>
-              <input
-                type="text"
-                placeholder="Search images..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Sort Control */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-gray-700">Sort:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="name">By Name</option>
-              </select>
-            </div>
-          </div>
-
-          {/* View Toggle */}
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`px-3 py-1 text-sm rounded-md border ${viewMode === 'grid' ? 'bg-gray-100 border-gray-400 text-gray-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-              title="Grid view"
-            >
-              Grid
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-3 py-1 text-sm rounded-md border ${viewMode === 'list' ? 'bg-gray-100 border-gray-400 text-gray-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-              title="List view"
-            >
-              List
-            </button>
-          </div>
-
-          {/* Clear Button */}
-          <button
-            onClick={() => {
-              setFilterJob('all');
-              setSearchQuery('');
-              setSortBy('newest');
-              setSelectedImages(new Set());
-            }}
-            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-
-      {/* Selection Controls */}
+      {/* Selection & Controls Ribbon (unified) */}
       <div className="bg-white border-b border-gray-200 px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          {/* Left: selection + bulk actions */}
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -677,7 +595,6 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
               </span>
             </div>
 
-            {/* Bulk Actions (visible always, disabled when none selected) */}
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => handleBulkAction('approve')}
@@ -729,8 +646,92 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
               </button>
             </div>
           </div>
+
+          {/* Right: filters + view toggle + clear */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Job Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Job:</span>
+              <select
+                value={filterJob}
+                onChange={(e) => setFilterJob(e.target.value)}
+                className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Jobs</option>
+                {uniqueJobIds.length > 0 ? uniqueJobIds.map(jobId => (
+                  <option key={jobId} value={jobId}>
+                    Job {String(jobId).slice(0, 8)}...
+                  </option>
+                )) : (
+                  <option value="all" disabled>No jobs available</option>
+                )}
+              </select>
+            </div>
+
+            {/* Search */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Search:</span>
+              <input
+                type="text"
+                placeholder="Search images..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Sort */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Sort:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="name">By Name</option>
+              </select>
+            </div>
+
+            {/* View toggle (match Image Gallery style) */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">View:</span>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded border ${viewMode === 'grid' ? 'bg-gray-100 border-gray-400 text-gray-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                aria-label="Grid view"
+                title="Grid view"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 3H3v7h7V3zm11 0h-7v7h7V3zM10 14H3v7h7v-7zm11 0h-7v7h7v-7z" /></svg>
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded border ${viewMode === 'list' ? 'bg-gray-100 border-gray-400 text-gray-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+                aria-label="List view"
+                title="List view"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" /></svg>
+              </button>
+            </div>
+
+            {/* Clear */}
+            <button
+              onClick={() => {
+                setFilterJob('all');
+                setSearchQuery('');
+                setSortBy('newest');
+                setSelectedImages(new Set());
+              }}
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              Clear
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* (Old selection controls removed in favor of unified ribbon above) */}
 
       {/* Images Grid/List */}
       <div className="flex-1 p-6">
