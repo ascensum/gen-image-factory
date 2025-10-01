@@ -37,7 +37,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
   };
 
   const handleAction = (action: string) => {
-    onAction(action, image.id);
+    onAction(action, String(image.id));
     onClose();
   };
 

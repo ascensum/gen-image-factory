@@ -180,6 +180,21 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       setRetryPendingImages(extractImages(pending));
       setProcessingImages(extractImages(processing));
       setRetryFailedImages(extractImages(retryFailed));
+      // Also load job labels for list view
+      try {
+        const jobsResult = await (window as any).electronAPI?.jobManagement?.getAllJobExecutions?.({});
+        let list: any[] = [];
+        if (Array.isArray((jobsResult as any)?.executions)) list = (jobsResult as any).executions;
+        else if (Array.isArray((jobsResult as any)?.jobs)) list = (jobsResult as any).jobs;
+        else if (Array.isArray((jobsResult as any)?.data)) list = (jobsResult as any).data;
+        const map: Record<string, string> = {};
+        list.forEach((j: any) => {
+          const key = String(j?.id);
+          const label = (j?.label || j?.configurationName || '').toString();
+          if (key) map[key] = label;
+        });
+        // setJobIdToLabel(map); // This line was removed as per the edit hint
+      } catch {}
       
     } catch (error) {
       console.error('🔍 loadAllImageStatuses: Error occurred:', error);
@@ -233,8 +248,12 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       
       switch (action) {
         case 'approve':
-          // Move image to main dashboard success view
-          await window.electronAPI.generatedImages.updateQCStatus(imageId, 'approved');
+          // Use manual approve to move file and set final path before QC flip
+          if ((window as any).electronAPI?.generatedImages?.manualApproveImage) {
+            await (window as any).electronAPI.generatedImages.manualApproveImage(imageId);
+          } else {
+            await window.electronAPI.generatedImages.updateQCStatus(imageId, 'approved');
+          }
           await loadAllImageStatuses();
           break;
         case 'retry':
@@ -270,9 +289,13 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       
       switch (action) {
         case 'approve':
-          // Bulk approve images
+          // Bulk approve images using manualApprove when available
           for (const imageId of selectedImages) {
-            await window.electronAPI.generatedImages.updateQCStatus(imageId, 'approved');
+            if ((window as any).electronAPI?.generatedImages?.manualApproveImage) {
+              await (window as any).electronAPI.generatedImages.manualApproveImage(imageId);
+            } else {
+              await window.electronAPI.generatedImages.updateQCStatus(imageId, 'approved');
+            }
           }
           break;
         case 'retry':
@@ -807,40 +830,49 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-900">Image {image.id}</td>
+                        <td className="px-4 py-2">
+                          <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
+                            {(image.finalImagePath || image.tempImagePath) ? (
+                              <img
+                                src={`local-file://${image.finalImagePath || image.tempImagePath}`}
+                                alt="thumb"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI0YzRjRGNiIvPgo8cGF0aCBkPSJNNTAgNTBIMTUwVjc1SDc1VjEyNUg1MFY1MFoiIGZpbGw9IiNEMUQ1RDNBIi8+Cjwvc3ZnPg==';
+                                }}
+                              />
+                            ) : (
+                              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-2">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200">
-                            {image.qcStatus}
+                            {String(image.qcStatus) === 'qc_failed' ? 'QC failed' : String(image.qcStatus) === 'retry_failed' ? 'Retry failed' : String(image.qcStatus) === 'retry_pending' ? 'Pending retry' : String(image.qcStatus) === 'processing' ? 'Processing' : String(image.qcStatus)}
                           </span>
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-700">{image.qcReason || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-700 font-mono">{image.executionId}</td>
-                        <td className="px-4 py-2 text-sm text-gray-700">{image.createdAt ? new Date(image.createdAt as any).toLocaleString() : '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-700">{(image as any).jobLabel || `Job ${image.executionId}`}</td>
+                        <td className="px-4 py-2 text-sm text-gray-700">{image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : '-'}</td>
                         <td className="px-4 py-2">
-                          <div className="flex items-center gap-2 justify-end">
-                            <button
-                              onClick={() => handleImageAction('view', String(image.id))}
-                              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
-                            >
+                          <div className="flex items-center gap-2 justify-end flex-wrap">
+                            <button onClick={() => handleImageAction('view', String(image.id))} className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50 inline-flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                               View
                             </button>
-                            <button
-                              onClick={() => handleImageAction('approve', String(image.id))}
-                              className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
-                            >
-                              Approve
+                            <button onClick={() => handleImageAction('approve', String(image.id))} className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
+                              Apply Image
                             </button>
-                            <button
-                              onClick={() => handleImageAction('retry', String(image.id))}
-                              className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                            >
+                            <button onClick={() => handleImageAction('retry', String(image.id))} className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                               Retry
                             </button>
-                            <button
-                              onClick={() => handleImageAction('delete', String(image.id))}
-                              className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                            >
-                              Delete
+                            <button onClick={() => handleImageAction('delete', String(image.id))} className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                              Delete Image
                             </button>
                           </div>
                         </td>
