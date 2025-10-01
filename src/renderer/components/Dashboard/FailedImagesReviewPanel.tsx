@@ -699,19 +699,31 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
               <span className="text-sm font-medium text-gray-700">View:</span>
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded border ${viewMode === 'grid' ? 'bg-gray-100 border-gray-400 text-gray-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-                aria-label="Grid view"
-                title="Grid view"
+                className={`p-2 rounded-md transition-all duration-200 ${
+                  viewMode === 'grid'
+                    ? 'bg-gray-200 text-gray-900 border border-gray-300'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent'
+                }`}
+                aria-label="Grid View"
+                title="Grid View"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10 3H3v7h7V3zm11 0h-7v7h7V3zM10 14H3v7h7v-7zm11 0h-7v7h7v-7z" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded border ${viewMode === 'list' ? 'bg-gray-100 border-gray-400 text-gray-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'}`}
-                aria-label="List view"
-                title="List view"
+                className={`p-2 rounded-md transition-all duration-200 ${
+                  viewMode === 'list'
+                    ? 'bg-gray-200 text-gray-900 border border-gray-300'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent'
+                }`}
+                aria-label="List View"
+                title="List View"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z" /></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
               </button>
             </div>
 
