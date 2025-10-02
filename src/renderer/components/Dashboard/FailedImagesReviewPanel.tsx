@@ -72,6 +72,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     failedJobs: 0
   });
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [jobIdToLabel, setJobIdToLabel] = useState<Record<string, string>>({});
 
   // Load all image statuses on component mount
   useEffect(() => {
@@ -180,6 +181,22 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       setRetryPendingImages(extractImages(pending));
       setProcessingImages(extractImages(processing));
       setRetryFailedImages(extractImages(retryFailed));
+
+      // Load job labels for list view mapping
+      try {
+        const jobsResp = await (window as any).electronAPI?.jobManagement?.getAllJobExecutions?.({});
+        let list: any[] = [];
+        if (Array.isArray((jobsResp as any)?.executions)) list = (jobsResp as any).executions;
+        else if (Array.isArray((jobsResp as any)?.jobs)) list = (jobsResp as any).jobs;
+        else if (Array.isArray((jobsResp as any)?.data)) list = (jobsResp as any).data;
+        const map: Record<string, string> = {};
+        list.forEach((j: any) => {
+          const k = String(j?.id);
+          const label = (j?.label || j?.configurationName || '').toString();
+          if (k) map[k] = label;
+        });
+        setJobIdToLabel(map);
+      } catch {}
       // Also load job labels for list view
       try {
         const jobsResult = await (window as any).electronAPI?.jobManagement?.getAllJobExecutions?.({});
@@ -814,9 +831,9 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Status</th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Execution</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                      <th className="px-4 py-2"></th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Name/Label</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -854,7 +871,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                           </span>
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-700">{image.qcReason || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-700">{(image as any).jobLabel || `Job ${image.executionId}`}</td>
+                        <td className="px-4 py-2 text-sm text-gray-700">{jobIdToLabel[String(image.executionId)] || `Job ${image.executionId}`}</td>
                         <td className="px-4 py-2 text-sm text-gray-700">{image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : '-'}</td>
                         <td className="px-4 py-2">
                           <div className="flex items-center gap-2 justify-end flex-wrap">
@@ -864,15 +881,15 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                             </button>
                             <button onClick={() => handleImageAction('approve', String(image.id))} className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 inline-flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
-                              Apply Image
+                              Apply
                             </button>
                             <button onClick={() => handleImageAction('retry', String(image.id))} className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 inline-flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                              Retry
+                              Add to Retry
                             </button>
                             <button onClick={() => handleImageAction('delete', String(image.id))} className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 inline-flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                              Delete Image
+                              Delete
                             </button>
                           </div>
                         </td>

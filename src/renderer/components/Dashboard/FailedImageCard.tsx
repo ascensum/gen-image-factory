@@ -1,6 +1,6 @@
 import React from 'react';
 import type { GeneratedImage } from '../../../types/generatedImage';
-import StatusBadge from '../common/StatusBadge';
+import StatusBadge from '../Common/StatusBadge';
 
 interface FailedImageCardProps {
   image: GeneratedImage;
@@ -15,8 +15,8 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
   onSelect,
   onAction
 }) => {
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString();
+  const formatDate = (date?: Date) => {
+    return date ? new Date(date).toLocaleDateString() : '';
   };
 
   const getStatusBadge = () => (
@@ -25,12 +25,12 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
         variant="qc" 
         status={image.qcStatus}
         labelOverride={
-          image.qcStatus === 'qc_failed' ? 'QC Failed' :
-          image.qcStatus === 'retry_pending' ? 'Pending Retry' :
-          image.qcStatus === 'processing' ? 'Processing Retry' :
-          image.qcStatus === 'approved' ? 'Approved' :
-          image.qcStatus === 'failed_retry' ? 'Failed Retry' :
-          (image.qcStatus || '')
+          String(image.qcStatus) === 'qc_failed' ? 'QC Failed' :
+          String(image.qcStatus) === 'retry_pending' ? 'Pending Retry' :
+          String(image.qcStatus) === 'processing' ? 'Processing Retry' :
+          String(image.qcStatus) === 'approved' ? 'Approved' :
+          String(image.qcStatus) === 'retry_failed' ? 'Failed Retry' :
+          (String(image.qcStatus) || '')
         }
       />
     </div>
@@ -54,7 +54,7 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
       </div>
 
       {/* Image (click to view) */}
-      <div className="relative aspect-square" onClick={() => onAction('view', image.id)}>
+      <div className="relative aspect-square" onClick={() => onAction('view', String(image.id))}>
         {(image.finalImagePath || image.tempImagePath) ? (
           <img 
             src={`local-file://${image.finalImagePath || image.tempImagePath || ''}`} 
@@ -107,7 +107,7 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
         {/* Action Buttons */}
         <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => onAction('approve', image.id)}
+            onClick={() => onAction('approve', String(image.id))}
             className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
             title="Approve image (move to success)"
           >
@@ -119,7 +119,7 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
             </span>
           </button>
           <button
-            onClick={() => onAction('retry', image.id)}
+            onClick={() => onAction('retry', String(image.id))}
             className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
             title="Add to retry selection bucket"
           >
@@ -131,7 +131,7 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
             </span>
           </button>
           <button
-            onClick={() => onAction('view', image.id)}
+            onClick={() => onAction('view', String(image.id))}
             className="px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
             title="View full image details"
           >
@@ -144,7 +144,7 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
             </span>
           </button>
           <button
-            onClick={() => onAction('delete', image.id)}
+            onClick={() => onAction('delete', String(image.id))}
             className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
             title="Delete image permanently"
           >

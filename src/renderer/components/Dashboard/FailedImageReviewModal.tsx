@@ -9,13 +9,19 @@ interface FailedImageReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAction: (action: string, imageId: string) => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  hasPrevious?: boolean;
+  hasNext?: boolean;
 }
 
 const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
   image,
   isOpen,
   onClose,
-  onAction
+  onAction,
+  onPrevious,
+  onNext
 }) => {
   if (!isOpen) return null;
 
@@ -132,25 +138,39 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
       onClick={handleBackdropClick}
     >
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div 
-          data-testid="modal-header"
-          className="flex items-center justify-between p-6 border-b border-gray-200"
-        >
+        {/* Header with QC badge, actions, navigation, close */}
+        <div data-testid="modal-header" className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-semibold text-gray-900">Failed Image Review</h2>
-            <StatusBadge variant="qc" status={(image as any)?.qcStatus || 'qc_failed'} />
+            <h2 className="text-xl font-semibold text-gray-900">Image Details</h2>
+            <div className="inline-flex items-center">
+              <StatusBadge variant="qc" status={(image as any)?.qcStatus || 'qc_failed'} />
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Close modal"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => handleAction('approve')} className="px-2.5 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs inline-flex items-center gap-1" title="Approve image (move to success)">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+              Apply
+            </button>
+            <button onClick={() => handleAction('retry')} className="px-2.5 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs inline-flex items-center gap-1" title="Add image to retry pool">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              Add to Retry
+            </button>
+            <button onClick={() => handleAction('delete')} className="px-2.5 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 text-xs inline-flex items-center gap-1" title="Delete image permanently">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              Delete
+            </button>
+            <div className="flex items-center space-x-1">
+              <button onClick={onPrevious} className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100" aria-label="Previous image">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <button onClick={onNext} className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100" aria-label="Next image">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+              </button>
+              <button type="button" onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600" aria-label="Close modal">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Content */}
@@ -359,36 +379,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
               )}
             </div>
 
-            {/* Action Buttons */}
-            <div data-testid="modal-footer" className="mt-6 flex justify-between items-center gap-4">
-              <h3 className="text-lg font-semibold text-gray-900">Actions</h3>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => handleAction('approve')}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium inline-flex items-center gap-2"
-                  title="Approve image (move to success)"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  Approve Image
-                </button>
-                <button
-                  onClick={() => handleAction('retry')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center gap-2"
-                  title="Add image to retry pool"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                  Add to Retry Pool
-                </button>
-                <button
-                  onClick={() => handleAction('delete')}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium inline-flex items-center gap-2"
-                  title="Delete image permanently"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  Delete Image
-                </button>
-              </div>
-            </div>
+            {/* Footer trimmed - actions are in header */}
           </div>
         </div>
       </div>
