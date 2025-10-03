@@ -74,8 +74,10 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
     const maxW = rect.width - 32;
     const maxH = rect.height - 32;
     if (naturalW <= 0 || naturalH <= 0 || maxW <= 0 || maxH <= 0) return;
-    const s = Math.min(maxW / naturalW, maxH / naturalH, 1);
-    setScale(s);
+    // Default zoom closer (target ~80% of fit)
+    const fit = Math.min(maxW / naturalW, maxH / naturalH, 1);
+    const s = Math.min(1, fit * 0.8);
+    setScale(s > 0 ? s : fit);
     setTranslate({ x: 0, y: 0 });
   }, []);
 
@@ -181,7 +183,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
               {(image.finalImagePath || image.tempImagePath) ? (
                 <div
                   ref={containerRef}
-                  className="relative w-full h-[28rem] lg:h-[36rem] overflow-hidden rounded bg-white border"
+                  className="relative w-full h-[calc(90vh-140px)] overflow-hidden rounded bg-white border"
                   onWheel={handleWheel}
                   onDoubleClick={fitToContainer}
                 >
