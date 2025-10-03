@@ -34,13 +34,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
   const panStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const translateStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const formatDate = (date: Date | string) => {
-    try {
-      return new Date(date).toLocaleString();
-    } catch {
-      return String(date);
-    }
-  };
+  // No longer used after aligning to date-only format
 
   const handleAction = (action: string) => {
     onAction(action, String(image.id));
@@ -285,34 +279,32 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
             <div className="flex-1">
               {activeTab === 'details' && (
                 <div className="space-y-6">
+                  {/* Details: Job Id, Image Id */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Job Id</label>
+                      <p className="text-sm text-gray-900 font-mono">{image.executionId}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Image Id</label>
+                      <p className="text-sm text-gray-900 font-mono">{image.id}</p>
+                    </div>
+                  </div>
+
                   {/* Failure Analysis */}
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Failure Analysis</h3>
-                    {image.qcReason ? (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <div className="flex items-start">
-                          <svg className="w-5 h-5 text-red-400 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                          </svg>
-                          <div>
-                            <h4 className="text-sm font-medium text-red-800">Failure Reason</h4>
-                            <p className="text-sm text-red-700 mt-1">{image.qcReason}</p>
-                          </div>
+                    <div className={image.qcReason ? 'bg-red-50 border border-red-200 rounded-lg p-4' : 'bg-yellow-50 border border-yellow-200 rounded-lg p-4'}>
+                      <div className="flex items-start">
+                        <svg className={`w-5 h-5 mt-0.5 mr-2 ${image.qcReason ? 'text-red-400' : 'text-yellow-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={image.qcReason ? 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z' : 'M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'} />
+                        </svg>
+                        <div>
+                          <h4 className={`text-sm font-medium ${image.qcReason ? 'text-red-800' : 'text-yellow-800'}`}>{image.qcReason ? 'Failure Reason' : 'No Specific Reason'}</h4>
+                          <p className={`${image.qcReason ? 'text-red-700' : 'text-yellow-700'} text-sm mt-1`}>{image.qcReason || 'Image failed quality check but no specific reason provided.'}</p>
                         </div>
                       </div>
-                    ) : (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <div className="flex items-start">
-                          <svg className="w-5 h-5 text-yellow-400 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <div>
-                            <h4 className="text-sm font-medium text-yellow-800">No Specific Reason</h4>
-                            <p className="text-sm text-yellow-700 mt-1">Image failed quality check but no specific reason provided.</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    </div>
                   </div>
 
                   {/* Generation Details */}
@@ -320,22 +312,12 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Generation Details</h3>
                     <div className="space-y-3">
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Prompt</label>
-                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border mt-1">{image.generationPrompt}</p>
-                      </div>
-                      {image.seed && (
-                        <div>
-                          <label className="text-sm font-medium text-gray-700">Seed</label>
-                          <p className="text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded border mt-1">{image.seed}</p>
-                        </div>
-                      )}
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Created</label>
-                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border mt-1">{image.createdAt ? formatDate(image.createdAt as any) : '—'}</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Prompt</label>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border">{image.generationPrompt}</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Job ID</label>
-                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border mt-1">{image.executionId}</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border">{image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : '—'}</p>
                       </div>
                     </div>
                   </div>

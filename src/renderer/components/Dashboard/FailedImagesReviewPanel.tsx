@@ -962,14 +962,25 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       )}
 
       {/* Individual Image Review Modal */}
-      {selectedImageForReview && (
-        <FailedImageReviewModal
-          image={selectedImageForReview}
-          isOpen={!!selectedImageForReview}
-          onClose={() => setSelectedImageForReview(null)}
-          onAction={handleImageAction}
-        />
-      )}
+      {selectedImageForReview && (() => {
+        const currentIndex = filteredAndSortedImages.findIndex(img => String(img.id) === String((selectedImageForReview as any).id));
+        const hasPrevious = currentIndex > 0;
+        const hasNext = currentIndex >= 0 && currentIndex < filteredAndSortedImages.length - 1;
+        const onPrevious = hasPrevious ? () => setSelectedImageForReview(filteredAndSortedImages[currentIndex - 1]) : undefined;
+        const onNext = hasNext ? () => setSelectedImageForReview(filteredAndSortedImages[currentIndex + 1]) : undefined;
+        return (
+          <FailedImageReviewModal
+            image={selectedImageForReview}
+            isOpen={!!selectedImageForReview}
+            onClose={() => setSelectedImageForReview(null)}
+            onAction={handleImageAction}
+            onPrevious={onPrevious}
+            onNext={onNext}
+            hasPrevious={hasPrevious}
+            hasNext={hasNext}
+          />
+        );
+      })()}
 
       {/* Processing Settings Modal */}
       {showProcessingSettingsModal && (
