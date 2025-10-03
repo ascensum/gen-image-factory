@@ -884,8 +884,8 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                             <button onClick={() => handleImageAction('retry', String(image.id))} className="text-blue-600 hover:text-blue-700" title="Add to Retry" aria-label="Add to Retry">
                               {/* lucide redo-2 */}
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 7v6h-6"/>
-                                <path d="M3 17a8 8 0 1 0 14-5"/>
+                                <path d="m15 14 5-5-5-5" />
+                                <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5 5.5 5.5 0 0 0 9.5 20H13" />
                               </svg>
                             </button>
                             <button onClick={() => handleImageAction('delete', String(image.id))} className="text-red-600 hover:text-red-700" title="Delete" aria-label="Delete">
