@@ -305,7 +305,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Failure Analysis */}
+                  {/* Failure Analysis + QC Status */}
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 mb-2">Failure Analysis</h3>
                     <div className={image.qcReason ? 'bg-red-50 border border-red-200 rounded-lg p-4' : 'bg-yellow-50 border border-yellow-200 rounded-lg p-4'}>
@@ -313,7 +313,11 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
                         <svg className={`w-5 h-5 mt-0.5 mr-2 ${image.qcReason ? 'text-red-400' : 'text-yellow-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={image.qcReason ? 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z' : 'M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'} />
                         </svg>
-                        <div>
+                        <div className="flex-1">
+                          <div className="mb-2">
+                            <label className="block text-xs font-medium text-gray-600">QC Status</label>
+                            <StatusBadge variant="qc" status={(image as any)?.qcStatus || 'qc_failed'} />
+                          </div>
                           <h4 className={`text-sm font-medium ${image.qcReason ? 'text-red-800' : 'text-yellow-800'}`}>{image.qcReason ? 'Failure Reason' : 'No Specific Reason'}</h4>
                           <p className={`${image.qcReason ? 'text-red-700' : 'text-yellow-700'} text-sm mt-1`}>{image.qcReason || 'Image failed quality check but no specific reason provided.'}</p>
                         </div>
