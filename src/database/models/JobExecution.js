@@ -461,10 +461,19 @@ class JobExecution {
 
   async getJobHistory(limit = 50) {
     return new Promise((resolve, reject) => {
+      // Join with generated_images to compute technical counts on the fly to avoid stale values
       const sql = `
-        SELECT je.*, jc.name as configuration_name 
+        SELECT 
+          je.*, 
+          jc.name as configuration_name,
+          COALESCE(gi.actualImages, 0) AS actual_images
         FROM job_executions je
         LEFT JOIN job_configurations jc ON je.configuration_id = jc.id
+        LEFT JOIN (
+          SELECT execution_id, COUNT(*) AS actualImages
+          FROM generated_images
+          GROUP BY execution_id
+        ) gi ON gi.execution_id = je.id
         ORDER BY je.started_at DESC
         LIMIT ?
       `;
@@ -475,20 +484,25 @@ class JobExecution {
           reject(err);
         } else {
           // Convert timestamps to Date objects
-          const history = rows.map(row => ({
-            id: row.id,
-            configurationId: row.configuration_id,
-            configurationName: row.configuration_name,
-            displayLabel: row.label || row.configuration_name || null,
-            startedAt: row.started_at ? new Date(row.started_at) : null,
-            completedAt: row.completed_at ? new Date(row.completed_at) : null,
-            status: row.status,
-            totalImages: row.total_images,
-            successfulImages: row.successful_images,
-            failedImages: row.failed_images,
-            errorMessage: row.error_message,
-            label: row.label
-          }));
+          const history = rows.map(row => {
+            const total = Number(row.total_images || 0);
+            const actual = Number((row.actual_images != null ? row.actual_images : row.successful_images) || 0);
+            const failed = Math.max(0, total - actual);
+            return {
+              id: row.id,
+              configurationId: row.configuration_id,
+              configurationName: row.configuration_name,
+              displayLabel: row.label || row.configuration_name || null,
+              startedAt: row.started_at ? new Date(row.started_at) : null,
+              completedAt: row.completed_at ? new Date(row.completed_at) : null,
+              status: row.status,
+              totalImages: total,
+              successfulImages: actual,
+              failedImages: failed,
+              errorMessage: row.error_message,
+              label: row.label
+            };
+          });
           resolve({ success: true, history });
         }
       });

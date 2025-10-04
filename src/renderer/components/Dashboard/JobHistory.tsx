@@ -183,8 +183,6 @@ const JobHistory: React.FC<JobHistoryProps> = ({
     }
   };
 
-  
-
   // Maintain scroll position during updates
   useEffect(() => {
     if (jobListRef.current && scrollPosition > 0) {
@@ -308,7 +306,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
                   <h3 className="font-medium text-gray-900">{getJobLabel(job)}</h3>
                   <div className="text-xs text-gray-500 mb-1">Job ID: {job.id}</div>
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                          <span>{formatDate(job.startedAt)}</span>
+                      <span>{formatDate(job.startedAt)}</span>
                       <span>{formatDuration(job.startedAt, job.completedAt)}</span>
                     <StatusBadge 
                       variant="job" 
@@ -334,7 +332,9 @@ const JobHistory: React.FC<JobHistoryProps> = ({
                 
                 <div>
                   <span className="font-medium">Images:</span>
-                  <div>{job.totalImages} total ({job.successfulImages} successful, {job.failedImages} failed)</div>
+                  <div>
+                    {job.totalImages ?? 0} total ({job.successfulImages ?? 0} successful, {job.failedImages ?? 0} failed)
+                  </div>
                 </div>
                 
                 {/* Quick Actions */}

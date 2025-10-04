@@ -6,13 +6,24 @@ interface LogViewerProps {
   jobStatus: 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'stopped';
   isLoading?: boolean;
   onRefresh?: () => void;
+  // Optional sizing controls for the scrollable log area
+  // Use numbers for pixel values, or 'none' for no max cap
+  minHeight?: number;
+  maxHeight?: number | 'none' | string;
+  height?: number | string;
+  disableInternalScroll?: boolean;
 }
 
 const LogViewer: React.FC<LogViewerProps> = ({
   logs,
   jobStatus,
   isLoading = false,
-  onRefresh
+  onRefresh,
+  // Defaults match original Dashboard behavior so other panels aren't impacted
+  minHeight = 144,
+  maxHeight = 320,
+  height,
+  disableInternalScroll = false
 }) => {
   const [logMode, setLogMode] = useState<'standard' | 'debug'>('standard');
   const [autoScroll, setAutoScroll] = useState(true);
@@ -152,7 +163,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 flex flex-col h-full">
+    <div className="bg-white rounded-lg border border-gray-200 flex flex-col">
       {/* Log Header */}
       <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
@@ -278,7 +289,12 @@ const LogViewer: React.FC<LogViewerProps> = ({
           role="list"
           aria-label="Log entries"
           className="flex-1 font-mono text-sm bg-gray-50 rounded-lg p-4 min-h-0 logs-scroll border border-gray-200"
-          style={{ minHeight: '144px', maxHeight: '320px', overflowY: 'auto' }}
+          style={{ 
+            minHeight: `${minHeight}px`, 
+            maxHeight: disableInternalScroll ? 'none' : (maxHeight === 'none' ? 'none' : (typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight)), 
+            height: height ? (typeof height === 'number' ? `${height}px` : height) : undefined,
+            overflowY: disableInternalScroll ? 'visible' : 'auto' 
+          }}
         >
           {/* Scroll indicator */}
           {/* Scroll indicator removed for cleaner production UI */}

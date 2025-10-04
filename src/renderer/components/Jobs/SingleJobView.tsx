@@ -6,6 +6,7 @@ import ExportDialog from '../Common/ExportDialog';
 import { Toggle } from '../Settings/Toggle';
 import './SingleJobView.css';
 import StatusBadge from '../Common/StatusBadge';
+import LogViewer from '../Dashboard/LogViewer';
 
 interface SingleJobViewProps {
   jobId: string | number;
@@ -187,9 +188,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     setActiveTab(tabId);
     if (tabId === 'logs') {
       // Refresh logs when switching to Logs tab
-      window.electronAPI.jobManagement.getJobLogs('standard')
-        .then((jobLogs: any[]) => setLogs(Array.isArray(jobLogs) ? jobLogs : []))
-        .catch(() => setLogs([]));
+      refreshLogs();
     }
   }, []);
   
@@ -219,6 +218,23 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   
   const handleCancelDelete = useCallback(() => {
     setShowDeleteConfirm(false);
+  }, []);
+
+  // Logs refresh handler using same standard/debug mode as Dashboard
+  const refreshLogs = useCallback(async () => {
+    try {
+      let mode = 'standard';
+      try {
+        const settingsRes = await (window as any).electronAPI.getSettings?.();
+        if (settingsRes?.settings?.advanced?.debugMode) {
+          mode = 'debug';
+        }
+      } catch {}
+      const jobLogs = await (window as any).electronAPI.jobManagement.getJobLogs(mode);
+      setLogs(Array.isArray(jobLogs) ? jobLogs : []);
+    } catch {
+      setLogs([]);
+    }
   }, []);
 
   // Job label editing handlers
@@ -901,27 +917,15 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
             id="logs" 
             className={`tab-content ${activeTab === 'logs' ? 'active' : ''}`}
           >
-            <div className="logs-content">
-              <div className="logs-timeline">
-                {logs.length === 0 ? (
-                  <div className="no-logs">No logs yet…</div>
-                ) : (
-                  logs.map((log: any, index: number) => (
-                    <div key={index} className="log-entry">
-                      <div className="log-dot"></div>
-                      <div className="log-content">
-                        <div className="log-header">
-                          <div className="log-title">{log.level?.toUpperCase?.() || 'INFO'}</div>
-                          <div className="log-time">
-                            {log.timestamp ? formatDate(log.timestamp) : (job?.startedAt ? formatDate(job.startedAt) : 'Unknown time')}
-                          </div>
-                        </div>
-                        <div className="log-message">{typeof log === 'string' ? log : log.message}</div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+            <div className="logs-content" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+              <LogViewer
+                logs={logs as any}
+                jobStatus={(job?.status === 'running' || job?.status === 'processing') ? 'running' : (job?.status === 'completed' ? 'completed' : (job?.status === 'failed' ? 'failed' : 'idle'))}
+                onRefresh={refreshLogs}
+                // Keep inner scroll; remove tab viewport scroll; make logs comfortably tall
+                minHeight={320}
+                maxHeight={'70vh'}
+              />
             </div>
           </div>
         )}

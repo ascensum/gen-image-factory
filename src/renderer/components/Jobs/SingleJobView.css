@@ -668,6 +668,19 @@
   padding: 1.5rem;
 }
 
+/* Logs tab: match Overview sizing/behavior */
+#logs.tab-content {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+#logs .logs-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .logs-timeline {
   border: 1px solid var(--border);
   border-radius: var(--radius);

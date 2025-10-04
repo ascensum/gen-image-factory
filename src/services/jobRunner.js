@@ -56,10 +56,17 @@ class JobRunner extends EventEmitter {
   async _generateImagesPerGeneration(config, parameters, generations) {
     const startTime = Date.now();
     try {
-      const imagesPerTask = (config.parameters?.processMode === 'single') ? 1 : 4;
+      // Compute expected variations per generation dynamically; no fixed "4 per gen" legacy
       const allProcessed = [];
+      let expectedTotalAcrossGens = 0;
 
       for (let genIndex = 0; genIndex < generations; genIndex += 1) {
+        // Determine expected variations for this generation (clamped)
+        const requestedVariationsCfg = Math.max(1, Number((config.parameters && config.parameters.variations) || 1));
+        const maxVariationsAllowed = Math.max(1, Math.min(20, Math.floor(10000 / Math.max(1, generations))));
+        const effectiveVariationsForGen = Math.min(requestedVariationsCfg, maxVariationsAllowed);
+        expectedTotalAcrossGens += effectiveVariationsForGen;
+
         // Re-generate parameters per generation to rotate keywords/prompts
         let genParameters;
         try {
@@ -81,7 +88,8 @@ class JobRunner extends EventEmitter {
             errorCode: 'PARAM_GEN_ERROR',
             metadata: { generationIndex: genIndex }
           });
-          this.jobState.failedImages = (this.jobState.failedImages || 0) + imagesPerTask;
+          // If parameter generation fails for this generation, all its variations are considered failed
+          this.jobState.failedImages = (this.jobState.failedImages || 0) + effectiveVariationsForGen;
           continue;
         }
 
@@ -123,8 +131,8 @@ class JobRunner extends EventEmitter {
             const cfgForGen = { ...config, __forceSequentialIndex: genIndex, __perGen: true };
             // Enforce total images cap: generations × variations ≤ 10000 (variations 1–20)
             const requestedVariations = Math.max(1, Math.min(20, Number(cfgForGen.parameters?.variations || 1)));
-            const maxVariationsAllowed = Math.max(1, Math.min(20, Math.floor(10000 / Math.max(1, generations))));
-            const effectiveVariations = Math.min(requestedVariations, maxVariationsAllowed);
+            const maxAllowed = Math.max(1, Math.min(20, Math.floor(10000 / Math.max(1, generations))));
+            const effectiveVariations = Math.min(requestedVariations, maxAllowed);
             if (effectiveVariations !== requestedVariations) {
               this._logStructured({
                 level: 'warn',
@@ -202,7 +210,8 @@ class JobRunner extends EventEmitter {
           this.jobState.generatedImages = (this.jobState.generatedImages || 0) + 1;
           this.jobState.gensDone = Math.max(this.jobState.gensDone || 0, genIndex + 1);
         } else {
-          this.jobState.failedImages = (this.jobState.failedImages || 0) + imagesPerTask;
+          // Treat entire generation as failed for this gen's expected variations
+          this.jobState.failedImages = (this.jobState.failedImages || 0) + effectiveVariationsForGen;
           this._logStructured({ level: 'error', stepName: 'image_generation', subStep: 'invalid_result', message: `Invalid generation result format (generation ${genIndex + 1})` });
         }
       }
@@ -211,9 +220,10 @@ class JobRunner extends EventEmitter {
         throw new Error('No images were generated across all generations');
       }
 
-      const expectedPerTask = (config.parameters?.processMode === 'single') ? 1 : 4;
-      const expectedTotal = generations * expectedPerTask;
+      // Final reconciliation based on actual expected count across generations (sum of per-gen effective variations)
       const generatedTotal = this.jobState.generatedImages || allProcessed.length;
+      const expectedTotal = expectedTotalAcrossGens > 0 ? expectedTotalAcrossGens : generatedTotal;
+      this.jobState.totalImages = expectedTotal;
       this.jobState.failedImages = Math.max(0, expectedTotal - generatedTotal);
 
       const durationSummary = Date.now() - startTime;
@@ -224,7 +234,7 @@ class JobRunner extends EventEmitter {
         message: `Image generation completed: ${generatedTotal}/${expectedTotal} images across ${generations} generation(s)`,
         durationMs: durationSummary,
         updateProgress: true,
-        metadata: { totalImages: generatedTotal, failedImages: this.jobState.failedImages }
+        metadata: { totalImages: generatedTotal, expectedTotal, failedImages: this.jobState.failedImages }
       });
 
       return allProcessed;
@@ -1054,6 +1064,14 @@ class JobRunner extends EventEmitter {
           // console.log("🔍 About to update job execution with data:", JSON.stringify(updatedJobExecution, null, 2));
           const updateResult = await this.backendAdapter.updateJobExecution(this.databaseExecutionId, updatedJobExecution);
           console.log("✅ Job execution updated in database:", updateResult);
+          // Recalculate and persist technical counts (successful/failed) from DB snapshot
+          try {
+            if (this.databaseExecutionId) {
+              await this.backendAdapter.updateJobExecutionStatistics(this.databaseExecutionId);
+            }
+          } catch (statsErr) {
+            console.warn('⚠️ Failed to update job execution statistics:', statsErr?.message || statsErr);
+          }
           
           // Verify the update worked by reading back the job execution
           if (updateResult.success) {
