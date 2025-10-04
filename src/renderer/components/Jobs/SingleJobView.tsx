@@ -418,9 +418,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   // Normalize qcStatus to UI filter/status buckets
   const getImageUiStatus = useCallback((qcStatus?: string | null): 'completed' | 'failed' | 'pending' => {
     const s = (qcStatus || '').toLowerCase();
-    if (s === 'approved') return 'completed';
-    if (s === 'qc_failed' || s === 'retry_failed' || s === 'failed') return 'failed';
-    // Treat undefined/null, 'pending', 'processing', 'retry_pending' as pending
+    if (s === 'approved' || s === 'complete' || s === 'completed') return 'completed';
+    if (s === 'qc_failed' || s === 'retry_failed' || s === 'failed' || s.includes('fail')) return 'failed';
+    if (s === 'pending' || s === 'processing' || s === 'retry_pending' || s.includes('pending') || s.includes('process')) return 'pending';
     return 'pending';
   }, []);
 
@@ -769,7 +769,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
               <div className="filter-controls">
                 <select 
                   value={imageFilter}
-                  onChange={(e) => setImageFilter(e.target.value)}
+                  onChange={(e) => setImageFilter(e.target.value as 'all' | 'completed' | 'failed' | 'pending')}
                   className="filter-select"
                 >
                   <option value="all">All Images</option>
