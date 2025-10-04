@@ -405,22 +405,19 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     handleSettingChange(section, key, checked);
   }, [handleSettingChange]);
 
+  // Match Image Gallery badge colors/styles
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'status-complete';
-      case 'failed': return 'status-failed';
-      case 'running': return 'status-processing';
-      case 'pending': return 'status-pending';
-      default: return 'status-pending';
-    }
+    const s = String(status || '').toLowerCase();
+    if (s === 'approved') return 'status-complete'; // green
+    if (s === 'qc_failed') return 'status-failed';   // red
+    if (s === 'processing') return 'status-processing';
+    return 'status-failed'; // Treat others in SJV view as QC Failed
   };
 
   // Normalize qcStatus to UI filter/status buckets
-  const getImageUiStatus = useCallback((qcStatus?: string | null): 'completed' | 'pending' => {
+  const getImageUiStatus = useCallback((qcStatus?: string | null): 'approved' | 'qc_failed' => {
     const s = (qcStatus || '').toLowerCase();
-    if (s === 'approved' || s === 'complete' || s === 'completed') return 'completed';
-    // All other statuses (qc_failed, pending, processing, retry_*) treated as not-approved in SJV view
-    return 'pending';
+    return (s === 'approved' || s === 'complete' || s === 'completed') ? 'approved' : 'qc_failed';
   }, []);
 
   const parseImageMetadata = (raw: any): any => {
@@ -768,12 +765,12 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
               <div className="filter-controls">
                 <select 
                   value={imageFilter}
-                  onChange={(e) => setImageFilter(e.target.value as 'all' | 'completed' | 'pending')}
+                  onChange={(e) => setImageFilter(e.target.value as 'all' | 'approved' | 'qc_failed')}
                   className="filter-select"
                 >
-                  <option value="all">All Images</option>
-                  <option value="completed">Completed</option>
-                  <option value="pending">Pending</option>
+                  <option value="all">All</option>
+                  <option value="approved">Approved</option>
+                  <option value="qc_failed">QC Failed</option>
                 </select>
               </div>
               <div className="view-controls">

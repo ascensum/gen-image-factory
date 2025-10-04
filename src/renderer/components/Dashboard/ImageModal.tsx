@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
+import StatusBadge from '../common/StatusBadge';
 
 // Modal tab configuration
 type TabType = 'details' | 'metadata' | 'processing';
@@ -194,9 +195,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <h2 className="text-xl font-semibold text-gray-900">Image Details</h2>
-              <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getQCStatusColor(image.qcStatus)}`}>
-                {image.qcStatus || 'pending'}
-              </div>
+              <StatusBadge variant="qc" status={image.qcStatus || 'approved'} />
             </div>
             
             {/* Navigation and Close */}
@@ -407,10 +406,8 @@ const ImageModal: React.FC<ImageModalProps> = ({
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">QC Status</label>
-                      <div className="flex items-center space-x-2">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getQCStatusColor(image.qcStatus)}`}>
-                          {image.qcStatus || 'pending'}
-                        </span>
+                      <div className="flex items-center space-x-2 whitespace-nowrap">
+                        <StatusBadge variant="qc" status={image.qcStatus || 'approved'} />
                         {image.qcReason && (
                           <span className="text-sm text-gray-600">- {image.qcReason}</span>
                         )}
