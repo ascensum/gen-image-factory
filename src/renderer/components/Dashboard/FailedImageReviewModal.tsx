@@ -34,6 +34,19 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
   const panStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const translateStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Parse metadata safely (string or object) similar to Image Gallery modal
+  const parseMetadata = (raw: any): any => {
+    if (!raw) return {};
+    if (typeof raw === 'string') {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return {};
+      }
+    }
+    return raw;
+  };
+
   // No longer used after aligning to date-only format
 
   const handleAction = (action: string) => {
@@ -74,10 +87,9 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
     const maxW = rect.width - 32;
     const maxH = rect.height - 32;
     if (naturalW <= 0 || naturalH <= 0 || maxW <= 0 || maxH <= 0) return;
-    // Default zoom closer (target ~80% of fit)
+    // Default zoom to fit (no upscale)
     const fit = Math.min(maxW / naturalW, maxH / naturalH, 1);
-    const s = Math.min(1, fit * 0.8);
-    setScale(s > 0 ? s : fit);
+    setScale(fit > 0 ? fit : 1);
     setTranslate({ x: 0, y: 0 });
   }, []);
 
@@ -133,7 +145,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
       onKeyDown={handleKeyDown}
       onClick={handleBackdropClick}
     >
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
         {/* Header with QC badge, actions, navigation, close */}
         <div data-testid="modal-header" className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center gap-3">
@@ -145,7 +157,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
           <div className="flex items-center gap-2">
             <button onClick={() => handleAction('approve')} className="px-2.5 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs inline-flex items-center gap-1" title="Approve image (move to success)">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-              Apply
+              Approve
             </button>
             <button onClick={() => handleAction('retry')} className="px-2.5 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs inline-flex items-center gap-1" title="Add image to retry pool">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
@@ -172,18 +184,18 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
         {/* Content */}
         <div 
           data-testid="modal-content"
-          className="flex flex-col lg:flex-row h-full overflow-hidden"
+          className="flex flex-col lg:flex-row h-[calc(90vh-80px)] overflow-hidden"
         >
           {/* Left Panel - Image Display with pan/zoom/center */}
-          <div className="lg:w-2/3 p-6 bg-gray-50">
+          <div className="lg:w-2/3 p-6 bg-gray-50 flex flex-col h-full">
             <div 
               data-testid="image-container"
-              className="relative"
+              className="relative flex-1 h-full min-h-0"
             >
               {(image.finalImagePath || image.tempImagePath) ? (
                 <div
                   ref={containerRef}
-                  className="relative w-full h-[calc(90vh-140px)] overflow-hidden rounded bg-white border"
+                  className="relative w-full h-full overflow-hidden rounded bg-white border"
                   onWheel={handleWheel}
                   onDoubleClick={fitToContainer}
                 >
@@ -295,7 +307,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
 
                   {/* Failure Analysis */}
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Failure Analysis</h3>
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Failure Analysis</h3>
                     <div className={image.qcReason ? 'bg-red-50 border border-red-200 rounded-lg p-4' : 'bg-yellow-50 border border-yellow-200 rounded-lg p-4'}>
                       <div className="flex items-start">
                         <svg className={`w-5 h-5 mt-0.5 mr-2 ${image.qcReason ? 'text-red-400' : 'text-yellow-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -311,7 +323,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
 
                   {/* Generation Details */}
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Generation Details</h3>
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Generation Details</h3>
                     <div className="space-y-3">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Prompt</label>
@@ -319,46 +331,116 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border">{image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : '—'}</p>
+                        <p className="text-sm text-gray-900">{image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : '—'}</p>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {activeTab === 'metadata' && image.metadata && (
-                <div className="space-y-3">
-                  {image.metadata.title && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Title</label>
-                      <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border mt-1">{image.metadata.title as any}</p>
-                    </div>
-                  )}
-                  {image.metadata.description && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Description</label>
-                      <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded border mt-1">{image.metadata.description as any}</p>
-                    </div>
-                  )}
-                  {image.metadata.tags && (image.metadata.tags as any[]).length > 0 && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Tags</label>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {(image.metadata.tags as any[]).map((tag: any, index: number) => (
-                          <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{String(tag)}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+              {activeTab === 'metadata' && (
+                <div className="space-y-4">
+                  {(() => {
+                    const meta = parseMetadata((image as any).metadata);
+                    const title = typeof meta?.title === 'object' ? (meta.title.en || '') : (meta?.title || '');
+                    const description = typeof meta?.description === 'object' ? (meta.description.en || '') : (meta?.description || '');
+                    // Build tags array from uploadTags.en, tags[] or comma string
+                    let tagsArray: string[] = [];
+                    if (meta?.uploadTags?.en) {
+                      tagsArray = String(meta.uploadTags.en).split(',').map((t: string) => t.trim()).filter(Boolean);
+                    } else if (Array.isArray(meta?.tags)) {
+                      tagsArray = meta.tags as string[];
+                    } else if (typeof meta?.tags === 'string') {
+                      tagsArray = String(meta.tags).split(',').map((t: string) => t.trim()).filter(Boolean);
+                    }
+
+                    if (!title && !description && tagsArray.length === 0) {
+                      return <p className="text-sm text-gray-500">No AI metadata available.</p>;
+                    }
+
+                    return (
+                      <>
+                        {title && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">AI-Generated Title</label>
+                            <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md border">{title}</p>
+                          </div>
+                        )}
+                        {description && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">AI-Generated Description</label>
+                            <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md border">{description}</p>
+                          </div>
+                        )}
+                        {tagsArray.length > 0 && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">AI-Generated Tags</label>
+                            <div className="flex flex-wrap gap-1">
+                              {tagsArray.map((tag: string, idx: number) => (
+                                <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{tag}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 
-              {activeTab === 'processing' && image.processingSettings && (
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="bg-gray-50 p-2 rounded border"><span className="font-medium">Enhancement:</span> {image.processingSettings.imageEnhancement ? 'Yes' : 'No'}</div>
-                  <div className="bg-gray-50 p-2 rounded border"><span className="font-medium">Sharpening:</span> {image.processingSettings.sharpening || 0}</div>
-                  <div className="bg-gray-50 p-2 rounded border"><span className="font-medium">Saturation:</span> {image.processingSettings.saturation || 1}</div>
-                  <div className="bg-gray-50 p-2 rounded border"><span className="font-medium">Remove BG:</span> {image.processingSettings.removeBg ? 'Yes' : 'No'}</div>
+              {activeTab === 'processing' && (
+                <div className="space-y-4">
+                  {(() => {
+                    const ps = (image as any).processingSettings || {};
+                    return (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Image Enhancement</label>
+                          <p className="text-sm text-gray-900">{ps.imageEnhancement ? 'Yes' : 'No'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Sharpening</label>
+                          <p className="text-sm text-gray-900">{ps.imageEnhancement ? (ps.sharpening || 0) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Saturation</label>
+                          <p className="text-sm text-gray-900">{ps.imageEnhancement ? (ps.saturation || 1.4) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Image Convert</label>
+                          <p className="text-sm text-gray-900">{ps.imageConvert ? 'Yes' : 'No'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Convert Format</label>
+                          <p className="text-sm text-gray-900">{ps.imageConvert ? (ps.convertToJpg ? 'JPG' : 'PNG') : <span className="text-gray-500 italic">Not applied (Image Convert OFF)</span>}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">JPG Quality</label>
+                          <p className="text-sm text-gray-900">{ps.imageConvert && ps.convertToJpg ? (ps.jpgQuality || 100) : <span className="text-gray-500 italic">Not applied (Convert Format is not JPG)</span>}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">PNG Quality</label>
+                          <p className="text-sm text-gray-900">{ps.imageConvert && !ps.convertToJpg ? (ps.pngQuality || 100) : <span className="text-gray-500 italic">Not applied (Convert Format is not PNG)</span>}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Remove Background</label>
+                          <p className="text-sm text-gray-900">{ps.removeBg ? 'Yes' : 'No'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Remove.bg Size</label>
+                          <p className="text-sm text-gray-900">{ps.removeBg ? (ps.removeBgSize || 'auto') : <span className="text-gray-500 italic">Not applied (Remove Background OFF)</span>}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Trim Transparent</label>
+                          <p className="text-sm text-gray-900">{ps.trimTransparentBackground ? 'Yes' : 'No'}</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">JPG Background Colour</label>
+                          <p className="text-sm text-gray-900">{ps.imageConvert && ps.convertToJpg && ps.removeBg ? (ps.jpgBackground || 'white') : <span className="text-gray-500 italic">Not applied (Remove Background, Image Convert are set to OFF and Convert Format is not JPG)</span>}</p>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>

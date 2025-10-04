@@ -88,9 +88,18 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       loadRetryQueueStatus();
     };
 
-    const handleRetryCompleted = (_event: any, data: any) => {
+    const handleRetryCompleted = async (_event: any, data: any) => {
       console.log('🔧 Retry completed event received:', data);
       // Refresh data when job completes
+      try {
+        const newPath: string | undefined = data?.result?.newPath || data?.result?.processedImagePath;
+        if (newPath && (window as any).electronAPI?.refreshProtocolRoots) {
+          const dir = newPath.replace(/\\[^/]*$/, '').replace(/\/[^/]*$/, '');
+          await (window as any).electronAPI.refreshProtocolRoots([dir]);
+        }
+      } catch (e) {
+        console.warn('⚠️ Failed to refresh protocol roots after retry-completed:', (e as any)?.message || e);
+      }
       loadAllImageStatuses();
       loadRetryQueueStatus();
     };
@@ -266,10 +275,22 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       switch (action) {
         case 'approve':
           // Use manual approve to move file and set final path before QC flip
+          let approveResult: any = null;
           if ((window as any).electronAPI?.generatedImages?.manualApproveImage) {
-            await (window as any).electronAPI.generatedImages.manualApproveImage(imageId);
+            approveResult = await (window as any).electronAPI.generatedImages.manualApproveImage(imageId);
           } else {
-            await window.electronAPI.generatedImages.updateQCStatus(imageId, 'approved');
+            approveResult = await window.electronAPI.generatedImages.updateQCStatus(imageId, 'approved');
+          }
+          try {
+            const outDir = approveResult?.outputDirectory;
+            const finalPath = approveResult?.finalImagePath;
+            const dirFromPath = finalPath && typeof finalPath === 'string' ? finalPath.replace(/\\[^/]*$/,'').replace(/\/[^/]*$/, '') : null;
+            const rootToAdd = outDir || dirFromPath || null;
+            if (rootToAdd && (window as any).electronAPI?.refreshProtocolRoots) {
+              await (window as any).electronAPI.refreshProtocolRoots([rootToAdd]);
+            }
+          } catch (e) {
+            console.warn('⚠️ refreshProtocolRoots failed (non-blocking):', (e as any)?.message || e);
           }
           await loadAllImageStatuses();
           break;
@@ -874,11 +895,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                         <td className="px-4 py-2 text-sm text-gray-700">{jobIdToLabel[String(image.executionId)] || `Job ${image.executionId}`}</td>
                         <td className="px-4 py-2 text-sm text-gray-700">{image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : '-'}</td>
                         <td className="px-4 py-2">
-                          <div className="flex items-center gap-3 justify-end flex-wrap">
+                          <div className="flex items-center gap-3 justify-start flex-wrap">
                             <button onClick={() => handleImageAction('view', String(image.id))} className="text-gray-600 hover:text-gray-900" title="View" aria-label="View">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             </button>
-                            <button onClick={() => handleImageAction('approve', String(image.id))} className="text-green-600 hover:text-green-700" title="Apply" aria-label="Apply">
+                            <button onClick={() => handleImageAction('approve', String(image.id))} className="text-green-600 hover:text-green-700" title="Approve" aria-label="Approve">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
                             </button>
                             <button onClick={() => handleImageAction('retry', String(image.id))} className="text-blue-600 hover:text-blue-700" title="Add to Retry" aria-label="Add to Retry">

@@ -2,7 +2,7 @@ const keytar = require('keytar');
 const { ipcMain } = require('electron');
 const XLSX = require('xlsx');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises;
 const { JobConfiguration } = require('../database/models/JobConfiguration');
 const { JobExecution } = require('../database/models/JobExecution');
 const { GeneratedImage } = require('../database/models/GeneratedImage');
@@ -1595,7 +1595,7 @@ class BackendAdapter {
       const jobExecution = jobExecutionData.execution;
       
       // Get the job configuration
-      const jobConfigData = await this.jobConfig.getConfiguration(jobExecution.configurationId);
+      const jobConfigData = await this.jobConfig.getConfigurationById(jobExecution.configurationId);
       if (!jobConfigData.success) {
         return null;
       }
@@ -1656,10 +1656,16 @@ class BackendAdapter {
         await fs.rename(image.tempImagePath, finalImagePath);
         console.log(`🔧 manualApproveImage: Successfully moved image to: ${finalImagePath}`);
         
-        // Update database with final path and clear temp path
+        // Update database with full row to satisfy NOT NULL constraints
         await this.generatedImage.updateGeneratedImage(imageId, {
+          executionId: image.executionId,
+          generationPrompt: image.generationPrompt,
+          seed: image.seed || null,
+          qcStatus: image.qcStatus || 'approved',
+          qcReason: image.qcReason || null,
           finalImagePath: finalImagePath,
-          tempImagePath: null
+          metadata: image.metadata || null,
+          processingSettings: image.processingSettings || null
         });
         
         console.log(`🔧 manualApproveImage: Updated database with final path`);

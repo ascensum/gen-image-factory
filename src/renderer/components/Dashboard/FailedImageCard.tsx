@@ -76,7 +76,7 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
         {getStatusBadge()}
 
         {/* Overlay actions (icon-only) */}
-        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
+        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-40 transition-all duration-200 flex items-center justify-start pl-3 opacity-0 hover:opacity-100">
           <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
             {/* View */}
             <button
@@ -90,12 +90,12 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
               </svg>
             </button>
-            {/* Apply */}
+            {/* Approve */}
             <button
               onClick={() => onAction('approve', String(image.id))}
               className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700"
-              title="Apply"
-              aria-label="Apply"
+              title="Approve"
+              aria-label="Approve"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
             </button>
