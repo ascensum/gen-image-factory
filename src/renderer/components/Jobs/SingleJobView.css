@@ -511,6 +511,13 @@
   z-index: 10;
 }
 
+/* Scrollable area for grid/list so controls stay fixed */
+.images-scroll-area {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 0.25rem; /* prevent scrollbar overlay */
+}
+
 .filter-controls {
   display: flex;
   align-items: center;

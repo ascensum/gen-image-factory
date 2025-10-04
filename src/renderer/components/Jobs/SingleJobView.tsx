@@ -779,6 +779,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
               </div>
             </div>
 
+            <div className="images-scroll-area">
             {/* Grid View */}
             {viewMode === 'grid' && (
               <div className="image-grid">
@@ -908,6 +909,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 </tbody>
               </table>
             )}
+            </div>
           </div>
         </div>
 
