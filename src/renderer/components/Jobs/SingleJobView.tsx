@@ -415,12 +415,33 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     }
   };
 
+  // Normalize qcStatus to UI filter/status buckets
+  const getImageUiStatus = useCallback((qcStatus?: string | null): 'completed' | 'failed' | 'pending' => {
+    const s = (qcStatus || '').toLowerCase();
+    if (s === 'approved') return 'completed';
+    if (s === 'qc_failed' || s === 'retry_failed' || s === 'failed') return 'failed';
+    // Treat undefined/null, 'pending', 'processing', 'retry_pending' as pending
+    return 'pending';
+  }, []);
+
+  const parseImageMetadata = (raw: any): any => {
+    if (!raw) return {};
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch { return {}; }
+    }
+    return raw;
+  };
+
+  const getImageTitle = useCallback((img: any): string => {
+    const meta = parseImageMetadata(img?.metadata);
+    const title = typeof meta?.title === 'string' ? meta.title : (meta?.title?.en || '');
+    return title && title.trim() !== '' ? title : `Image ${img?.id}`;
+  }, []);
+
   const filteredImages = useMemo(() => {
     if (imageFilter === 'all') return images;
-    const map: Record<string, string> = { completed: 'approved', failed: 'failed', pending: 'pending' };
-    const status = map[imageFilter] || imageFilter;
-    return images.filter(img => img.qcStatus === status);
-  }, [images, imageFilter]);
+    return images.filter(img => getImageUiStatus((img as any).qcStatus) === imageFilter);
+  }, [images, imageFilter, getImageUiStatus]);
 
   const formatDate = (dateString: string | Date) => {
     if (dateString instanceof Date) {
@@ -810,7 +831,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                         )}
                       </div>
                       <div className="image-info">
-                        <span className="image-id">Image {image.id}</span>
+                          <span className="image-id">{getImageTitle(image)}</span>
                         <span className={`image-status ${getStatusColor(image.qcStatus)}`}>
                           {image.qcStatus === 'approved' ? (
                             <>
@@ -876,7 +897,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                           )}
                         </div>
                       </td>
-                      <td>Image {image.id}</td>
+                      <td>{getImageTitle(image)}</td>
                       <td>
                         <span className={`image-status ${getStatusColor(image.qcStatus)}`}>
                           {image.qcStatus === 'approved' ? (
