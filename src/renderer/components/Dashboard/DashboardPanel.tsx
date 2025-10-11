@@ -811,9 +811,9 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
               isLoading={isLoading}
             />
           </div>
-          {/* Center: logo (absolute center layer) */}
-          <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex" style={{minWidth:'40px'}}>
-            <AppLogo variant="square" size="lg" />
+          {/* Center: logo (absolute center layer, responsive sizing) */}
+          <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none hidden md:flex z-0">
+            <AppLogo variant="square" className="h-10 md:h-12 lg:h-14" />
           </div>
 
           {/* Right: compact stats only */}
