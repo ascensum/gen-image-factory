@@ -311,12 +311,6 @@ const JobHistory: React.FC<JobHistoryProps> = ({
                     <StatusBadge 
                       variant="job" 
                       status={job.status}
-                      labelOverride={
-                        job.status === 'completed' ? 'Completed' :
-                        job.status === 'running' ? 'Running' :
-                        job.status === 'failed' ? 'Failed' :
-                        job.status
-                      }
                     />
                   </div>
                 </div>

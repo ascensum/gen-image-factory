@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SettingsPanel } from './components/Settings';
 import { DashboardPanel, FailedImagesReviewPanel } from './components/Dashboard';
 import { JobManagementPanel, SingleJobView } from './components/Jobs';
+import { AppLogo } from './components/Common/AppLogo';
 
 /**
  * Main App Component - Full Navigation
@@ -41,10 +42,26 @@ function App() {
     getVersion();
   }, []);
 
+  const homeBtnStyle = {
+    height: 44,
+    lineHeight: '44px',
+    padding: 0,
+    border: 0,
+    outline: 'none',
+    boxShadow: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    appearance: 'none'
+  };
+  const homeBtnClass = 'block w-full p-0 m-0 text-center select-none rounded-md';
+
   return (
     <div className="min-h-screen bg-gray-100">
       {currentView === 'settings' ? (
-        <SettingsPanel onBack={() => setCurrentView('main')} />
+        <SettingsPanel 
+          onBack={() => setCurrentView('main')}
+          onOpenDashboard={() => setCurrentView('dashboard')}
+        />
       ) : currentView === 'dashboard' ? (
         <DashboardPanel
           key={dashboardRefreshKey}
@@ -111,56 +128,29 @@ function App() {
           }}
         />
       ) : (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-            <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">
-              Gen Image Factory
-            </h1>
-            
-            <div className="space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <h2 className="text-lg font-semibold text-blue-800 mb-2">
-                  Electron + React + TypeScript + Tailwind CSS
-                </h2>
-                <p className="text-blue-600">
-                  Basic Electron shell successfully set up with modern frontend tooling.
-                </p>
-              </div>
-
-              <div className="p-4 bg-green-50 rounded-lg">
-                <h3 className="font-semibold text-green-800 mb-1">IPC Communication</h3>
-                <p className="text-green-600">{ipcStatus}</p>
-              </div>
-
-              <div className="p-4 bg-purple-50 rounded-lg">
-                <h3 className="font-semibold text-purple-800 mb-1">App Version</h3>
-                <p className="text-purple-600">{appVersion}</p>
-              </div>
-
-              <div className="p-4 bg-yellow-50 rounded-lg">
-                <h3 className="font-semibold text-yellow-800 mb-1">Development Status</h3>
-                <p className="text-yellow-600">
-                  ✅ Story 1.1 Foundation Setup Complete
-                </p>
-                <p className="text-yellow-600">
-                  🚧 Story 1.8 Job Management - Core Infrastructure Complete
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <button
-                  onClick={() => setCurrentView('settings')}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  Open Settings
-                </button>
-                <button
-                  onClick={() => setCurrentView('dashboard')}
-                  className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
-                >
-                  Open Dashboard
-                </button>
-              </div>
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-lg px-6 py-5 text-center home-launch">
+            <div className="mb-3 mx-auto max-w-[380px] w-full">
+              <AppLogo variant="banner" fit="width" className="mx-auto" />
+            </div>
+            <div className="text-base text-gray-700 mb-3">Version {appVersion}</div>
+            <div className="grid gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentView('settings')}
+                className={`${homeBtnClass} bg-blue-600 text-white hover:bg-blue-700 transition-colors`}
+                style={homeBtnStyle}
+              >
+                Open Settings
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentView('dashboard')}
+                className={`${homeBtnClass} bg-green-600 text-white hover:bg-green-700 transition-colors`}
+                style={homeBtnStyle}
+              >
+                Open Dashboard
+              </button>
             </div>
           </div>
         </div>

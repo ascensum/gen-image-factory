@@ -721,14 +721,32 @@ class BackendAdapter {
       return { success: true, apiKey: apiKey || '', securityLevel: 'native-keychain' };
     } catch (error) {
       console.error('Error getting API key (keytar failed):', error);
-      console.warn('Using plain text fallback (dev mode) - will be encrypted in Story 1.11');
-      // Fallback: return empty string instead of failing
-      return { 
-        success: true, 
-        apiKey: '', 
-        securityLevel: 'plain-text-fallback',
-        message: 'Secure storage unavailable - using plain text (dev mode)'
-      };
+      // Fallback: try to load from database settings
+      try {
+        if (typeof this.ensureInitialized === 'function') {
+          await this.ensureInitialized();
+        }
+        const res = await this.jobConfig.getSettings();
+        const dbKey = (res && res.settings && res.settings.apiKeys)
+          ? (res.settings.apiKeys[serviceName.toLowerCase()] || '')
+          : '';
+        return {
+          success: true,
+          apiKey: dbKey,
+          securityLevel: 'plain-text-database',
+          message: dbKey
+            ? 'Loaded API key from database because secure storage is unavailable'
+            : 'No API key found in database; secure storage unavailable'
+        };
+      } catch (e2) {
+        console.warn('DB fallback for getApiKey failed, returning empty string:', e2.message);
+        return {
+          success: true,
+          apiKey: '',
+          securityLevel: 'plain-text-fallback',
+          message: 'Secure storage and DB lookup unavailable'
+        };
+      }
     }
   }
 
@@ -771,9 +789,22 @@ class BackendAdapter {
       return { success: true };
     } catch (error) {
       console.error('Error setting API key (keytar failed):', error);
-      // Fallback: return success but log the issue
-      console.warn('API key storage failed, but continuing without secure storage');
-      return { success: true };
+      // Fallback: persist in database settings
+      try {
+        if (typeof this.ensureInitialized === 'function') {
+          await this.ensureInitialized();
+        }
+        const res = await this.getSettings();
+        const settings = (res && res.settings) ? res.settings : this.jobConfig.getDefaultSettings();
+        if (!settings.apiKeys) settings.apiKeys = {};
+        settings.apiKeys[serviceName.toLowerCase()] = apiKey || '';
+        await this.jobConfig.saveSettings(settings);
+        console.warn('Stored API key in database as a fallback');
+        return { success: true, storage: 'database' };
+      } catch (e2) {
+        console.warn('API key DB fallback failed, continuing without persistent storage:', e2.message);
+        return { success: true, storage: 'none' };
+      }
     }
   }
 

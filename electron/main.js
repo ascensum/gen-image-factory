@@ -57,10 +57,24 @@ async function refreshAllowedRoots(extraPaths = []) {
 }
 
 function createWindow() {
+  // Determine icon path based on platform
+  let iconPath;
+  if (process.platform === 'darwin') {
+    // macOS
+    iconPath = path.join(__dirname, '../build/icons/mac/icon.icns');
+  } else if (process.platform === 'win32') {
+    // Windows
+    iconPath = path.join(__dirname, '../build/icons/win/icon.ico');
+  } else {
+    // Linux
+    iconPath = path.join(__dirname, '../build/icons/png/512x512.png');
+  }
+
   // Create the browser window
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 960,
+    height: 640,
+    icon: iconPath, // Custom application icon
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -115,6 +129,34 @@ let backendAdapter;
 console.log('🚨 MAIN PROCESS: About to call app.whenReady()...');
 app.whenReady().then(async () => {
   console.log('🚨 MAIN PROCESS: app.whenReady() resolved successfully!');
+  // Set macOS Dock icon explicitly in dev/prod; BrowserWindow.icon is ignored on macOS
+  if (process.platform === 'darwin') {
+    try {
+      const { nativeImage } = require('electron');
+      const icnsPath = path.resolve(__dirname, '../build/icons/mac/icon.icns');
+      const pngFallbackPath = path.resolve(__dirname, '../build/icons/png/512x512.png');
+
+      let img = null;
+      if (fs.existsSync(icnsPath)) {
+        img = nativeImage.createFromPath(icnsPath);
+        console.log('🖼️ Attempting to set macOS dock icon from ICNS:', icnsPath, 'empty:', img.isEmpty());
+      }
+      if (!img || img.isEmpty()) {
+        if (fs.existsSync(pngFallbackPath)) {
+          img = nativeImage.createFromPath(pngFallbackPath);
+          console.log('🖼️ Fallback: setting macOS dock icon from PNG:', pngFallbackPath, 'empty:', img.isEmpty());
+        } else {
+          console.warn('🖼️ No valid icon found at ICNS or PNG fallback paths');
+        }
+      }
+      if (img && !img.isEmpty() && app.dock && typeof app.dock.setIcon === 'function') {
+        app.dock.setIcon(img);
+        console.log('🖼️ macOS dock icon applied');
+      }
+    } catch (e) {
+      console.warn('🖼️ Failed to set macOS dock icon:', e.message);
+    }
+  }
   // Precompute dynamic allowed roots from defaults and saved settings
   try {
     const jobConfig = new JobConfiguration();

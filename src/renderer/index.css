@@ -44,6 +44,12 @@ button:disabled {
 }
 
 /* Force specific button styles */
+/* Remove forced padding/size for launch buttons */
+.home-launch button.bg-blue-600,
+.home-launch button.bg-green-600 {
+  padding: 0 !important;
+}
+
 button.bg-blue-600 {
   background-color: rgb(37 99 235) !important;
   color: rgb(255 255 255) !important;

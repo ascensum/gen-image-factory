@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { AppLogo } from '../Common/AppLogo';
 import { JobExecution, JobFilters } from '../../../types/job';
 import ExportDialog from '../Common/ExportDialog';
 import StatusBadge from '../Common/StatusBadge';
@@ -543,8 +544,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
   return (
     <div className="min-h-screen bg-[--background] text-[--foreground] flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="job-management-header">
-        <div className="header-content">
+      <header className="job-management-header relative py-3 md:py-4">
+        <div className="header-content relative">
           <div className="header-left">
             <button 
               onClick={onBack}
@@ -557,7 +558,10 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
             </button>
             <h1 className="header-title">Job Management</h1>
           </div>
-          <div className="header-actions">
+          <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex pointer-events-none">
+            <AppLogo variant="square" size="lg" />
+          </div>
+          <div className="header-actions ml-auto">
             <button 
               onClick={() => loadJobs(false)}
               className="refresh-button"
@@ -804,14 +808,6 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                     <StatusBadge 
                       variant="job" 
                       status={job.status}
-                      labelOverride={
-                        job.status === 'completed' ? 'Completed' :
-                        job.status === 'running' ? 'In Progress' :
-                        (String((job as any).status) === 'processing') ? 'In Progress' :
-                        job.status === 'failed' ? 'Failed' :
-                        job.status === 'pending' ? 'Pending' :
-                        job.status
-                      }
                     />
                   </td>
                   <td>

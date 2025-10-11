@@ -51,6 +51,9 @@ data/*.db
 # Build outputs
 /dist
 /build
+# Exception: keep application icons for Electron
+!/build/icons/
+!/build/icons/**/*
 /out
 /.next
 /.nuxt

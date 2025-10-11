@@ -653,15 +653,16 @@
 }
 
 .thumbnail {
-  width: 48px;
-  height: 48px;
+  width: 64px;
+  height: 64px;
   background-color: var(--secondary);
-  border-radius: var(--radius-sm);
+  border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
   color: var(--muted-foreground);
+  overflow: hidden;
 }
 
 .no-images {

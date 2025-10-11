@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AppLogo } from '../Common/AppLogo';
 import type { GeneratedImage } from '../../../types/generatedImage';
 import FailedImageCard from './FailedImageCard';
 import FailedImageReviewModal from './FailedImageReviewModal';
@@ -512,7 +513,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white border-b border-gray-200 px-6 py-4 relative">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
@@ -543,7 +544,10 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex pointer-events-none">
+            <AppLogo variant="square" size="lg" />
+          </div>
+          <div className="flex items-center space-x-4 ml-auto">
             <div className="text-right">
               <div className="text-2xl font-bold text-red-600">{getTabCount('qc_failed')}</div>
               <div className="text-sm text-gray-500">Failed Images</div>

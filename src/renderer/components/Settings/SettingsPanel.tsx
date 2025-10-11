@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AppLogo } from '../Common/AppLogo';
 import type { SettingsObject as SharedSettingsObject } from '../../../types/settings';
 import { Eye, EyeOff, Save, RotateCcw, AlertCircle, CheckCircle, X, Key, FolderOpen, Sliders, Cog, Settings } from 'lucide-react';
 import { Toggle } from './Toggle';
@@ -72,6 +73,7 @@ interface SettingsPanelProps {
   onSave?: (settings: SettingsObject) => void;
   onReset?: () => void;
   onBack?: () => void;
+  onOpenDashboard?: () => void;
   isLoading?: boolean;
   error?: string | null;
   success?: string | null;
@@ -155,6 +157,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onSave,
   onReset,
   onBack,
+  onOpenDashboard,
   isLoading = false,
   error = null,
   success = null
@@ -1152,6 +1155,20 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <p className="mt-2 text-sm text-gray-500">
             Configure your application settings and API keys
           </p>
+          
+          {/* Direct Dashboard Navigation */}
+          {onOpenDashboard && (
+            <button
+              onClick={onOpenDashboard}
+              className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+              aria-label="Go to Dashboard"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              Go to Dashboard
+            </button>
+          )}
         </div>
 
         {/* Navigation */}
@@ -1233,13 +1250,27 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         {/* Content Area */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-4xl mx-auto">
+            <div className="w-full flex justify-center mb-6">
+              <AppLogo variant="square" size="md" />
+            </div>
             {renderTabContent()}
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="border-t border-gray-200 bg-white p-4">
-          <div className="flex items-center justify-center max-w-4xl mx-auto">
+          <div className="flex flex-col items-center justify-center max-w-4xl mx-auto gap-3">
+            {/* Unsaved changes message above buttons - fixed position, won't shift layout */}
+            <div className="h-6 flex items-center justify-center">
+              {hasUnsavedChanges && (
+                <div className="text-sm text-amber-600 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  You have unsaved changes
+                </div>
+              )}
+            </div>
+
+            {/* Buttons in fixed position */}
             <div className="flex items-center gap-4">
               <button
                 onClick={handleSave}
@@ -1261,13 +1292,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 Reset to Defaults
               </button>
             </div>
-
-            {hasUnsavedChanges && (
-              <div className="text-sm text-amber-600 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                You have unsaved changes
-              </div>
-            )}
           </div>
         </div>
       </main>

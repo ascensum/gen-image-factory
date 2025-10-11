@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AppLogo } from '../Common/AppLogo';
 import JobControls from './JobControls';
 import ProgressIndicator from './ProgressIndicator';
 import LogViewer from './LogViewer';
@@ -777,7 +778,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   return (
     <div className="dashboard-panel min-h-screen bg-gray-50">
       {/* Dashboard Header - compact with ordered elements */}
-      <div className="bg-white border-b border-gray-200 py-2 flex items-center px-6">
+      <div className="bg-white border-b border-gray-200 py-3 md:py-4 flex items-center px-6 relative">
         <div className="flex items-center justify-between w-full flex-wrap gap-y-2">
           {/* Left: Close, Menu, Start/Stop/Force */}
           <div className="flex items-center space-x-3">
@@ -810,8 +811,13 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
               isLoading={isLoading}
             />
           </div>
+          {/* Center: logo (absolute center layer) */}
+          <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex" style={{minWidth:'40px'}}>
+            <AppLogo variant="square" size="lg" />
+          </div>
+
           {/* Right: compact stats only */}
-          <div className="flex items-center flex-wrap gap-x-6 gap-y-2 justify-end">
+          <div className="flex items-center flex-wrap gap-x-6 gap-y-2 justify-end ml-auto">
             <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Total Jobs:</span><span className="ml-1 font-semibold text-blue-600">{statistics.totalJobs}</span></div>
             <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Success Rate:</span><span className="ml-1 font-semibold text-green-600">{statistics.successRate}%</span></div>
             <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Images Generated:</span><span className="ml-1 font-semibold text-purple-600">{statistics.totalImagesGenerated}</span></div>

@@ -29,6 +29,7 @@
   "include": [
     "src/renderer/**/*",
     "src/types/**/*",
+    "src/renderer/types/**/*",
     "vite.config.ts"
   ],
   "exclude": [
