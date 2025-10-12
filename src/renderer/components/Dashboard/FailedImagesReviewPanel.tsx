@@ -544,9 +544,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
             </div>
           </div>
           
-          <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex pointer-events-none z-0">
-            <AppLogo variant="square" className="h-10 md:h-12 lg:h-14" />
-          </div>
+          {/* Removed main logo from header to de-emphasize branding in utility view */}
           <div className="flex items-center space-x-4 ml-auto">
             <div className="text-right">
               <div className="text-2xl font-bold text-red-600">{getTabCount('qc_failed')}</div>

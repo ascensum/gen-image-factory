@@ -1250,9 +1250,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         {/* Content Area */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-4xl mx-auto">
-            <div className="w-full flex justify-center mb-6">
-              <AppLogo variant="square" className="h-10 md:h-12 lg:h-14" />
-            </div>
+            {/* Removed redundant logo at top of tab content */}
             {renderTabContent()}
           </div>
         </div>

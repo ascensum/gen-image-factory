@@ -558,9 +558,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
             </button>
             <h1 className="header-title">Job Management</h1>
           </div>
-          <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex pointer-events-none z-0">
-            <AppLogo variant="square" className="h-10 md:h-12 lg:h-14" />
-          </div>
+          {/* Removed main logo from header to simplify desktop layout */}
           <div className="header-actions ml-auto">
             <button 
               onClick={() => loadJobs(false)}
