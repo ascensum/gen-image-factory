@@ -130,8 +130,8 @@ function App() {
       ) : (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-lg px-6 py-5 text-center home-launch">
-            <div className="mb-3 mx-auto max-w-[380px] w-full">
-              <AppLogo variant="banner" fit="width" className="mx-auto" />
+            <div className="mb-3 mx-auto">
+              <AppLogo variant="square" className="h-28 md:h-32 lg:h-36 mx-auto" />
             </div>
             <div className="text-base text-gray-700 mb-3">Version {appVersion}</div>
             <div className="grid gap-2">
