@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { AppLogo } from '../Common/AppLogo';
 import type { GeneratedImage } from '../../../types/generatedImage';
 import FailedImageCard from './FailedImageCard';
 import FailedImageReviewModal from './FailedImageReviewModal';
@@ -511,7 +510,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 relative">
         <div className="flex items-center justify-between">
@@ -808,8 +807,10 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
 
       {/* (Old selection controls removed in favor of unified ribbon above) */}
 
-      {/* Images Grid/List */}
-      <div className="flex-1 p-6">
+      {/* Scrollable content area: only images/list (and history) scroll, headers stay fixed */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Images Grid/List */}
+        <div className="p-6">
         {filteredAndSortedImages.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
@@ -924,12 +925,12 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
             )}
           </>
         )}
-      </div>
+        </div>
 
-      {/* Retry History */}
-      {(retryQueueStatus.completedJobs > 0 || retryQueueStatus.failedJobs > 0) && (
-        <div className="bg-white border-t border-gray-200 px-6 py-4">
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        {/* Retry History */}
+        {(retryQueueStatus.completedJobs > 0 || retryQueueStatus.failedJobs > 0) && (
+          <div className="bg-white border-t border-gray-200 px-6 py-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -954,9 +955,10 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                 </div>
               )}
             </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Error Display */}
       {error && (
