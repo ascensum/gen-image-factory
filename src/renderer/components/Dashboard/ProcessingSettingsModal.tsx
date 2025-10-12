@@ -21,7 +21,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
     imageEnhancement: false,
     sharpening: 5,
     saturation: 1.0,
-    imageConvert: true, // Enable by default for testing
+    imageConvert: false,
     convertToJpg: true, // Convert to JPG by default
     jpgQuality: 85, // Set to 85% quality as requested
     pngQuality: 100,
@@ -221,6 +221,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                     <p className="text-xs text-gray-500">Enable image enhancement effects (sharpening, saturation)</p>
                   </div>
                   <Toggle
+                    ariaLabel="Enable image enhancement"
                     checked={batchSettings.imageEnhancement}
                     onChange={(checked) => updateSetting('imageEnhancement', checked)}
                   />
@@ -278,6 +279,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                     <p className="text-xs text-gray-500">Enable image conversion and processing</p>
                   </div>
                   <Toggle
+                    ariaLabel="Enable image conversion"
                     checked={batchSettings.imageConvert}
                     onChange={(checked) => updateSetting('imageConvert', checked)}
                   />
@@ -291,6 +293,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                     </label>
                     <select
                       id="convert-format"
+                      aria-label="Convert Format"
                       value={batchSettings.convertToJpg ? 'jpg' : 'png'}
                       onChange={(e) => {
                         const isJpg = e.target.value === 'jpg';
@@ -361,6 +364,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                     <p className="text-xs text-gray-500">Remove background using Remove.bg API</p>
                   </div>
                   <Toggle
+                    ariaLabel="Remove background"
                     checked={batchSettings.removeBg}
                     onChange={(checked) => updateSetting('removeBg', checked)}
                   />
@@ -396,6 +400,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                       <p className="text-xs text-gray-500">Remove transparent areas from images (PNG only)</p>
                     </div>
                     <Toggle
+                      ariaLabel="Trim transparent background"
                       checked={batchSettings.trimTransparentBackground}
                       onChange={(checked) => updateSetting('trimTransparentBackground', checked)}
                     />

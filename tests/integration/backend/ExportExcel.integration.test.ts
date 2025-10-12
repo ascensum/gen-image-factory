@@ -1,8 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import XLSX from 'xlsx';
+
+// Ensure no stray fs mock from other suites
+vi.unmock('fs');
 
 // Mock Electron app.getPath to write exports to a temp dir
 const tempDir = path.join(os.tmpdir(), `gif-export-test-${Date.now()}`);

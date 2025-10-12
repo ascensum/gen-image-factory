@@ -176,6 +176,8 @@ export const ParametersSection: React.FC<ParametersSectionProps> = ({
   mjVersion,
   openaiModel,
   pollingTimeout,
+  // New props with sane defaults to avoid reference errors in tests/UI
+  pollingInterval: pollingIntervalProp,
   keywordRandom,
   removeBg,
   imageConvert,
@@ -193,6 +195,7 @@ export const ParametersSection: React.FC<ParametersSectionProps> = ({
   onMjVersionChange,
   onOpenaiModelChange,
   onPollingTimeoutChange,
+  onPollingIntervalChange,
   onKeywordRandomChange,
   onRemoveBgChange,
   onImageConvertChange,
@@ -208,6 +211,9 @@ export const ParametersSection: React.FC<ParametersSectionProps> = ({
   isLoading = false,
   error = null
 }) => {
+  // Provide defaults if not passed to prevent ReferenceError
+  const pollingInterval = typeof pollingIntervalProp === 'number' ? pollingIntervalProp : 1;
+
   const [isAdvancedExpanded, setIsAdvancedExpanded] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string>('standard');
 

@@ -1570,8 +1570,10 @@ class BackendAdapter {
       const exportDir = app && typeof app.getPath === 'function'
         ? path.join(app.getPath('userData'), 'exports')
         : path.join(require('os').tmpdir(), 'gen-image-factory-exports');
-      if (!fs.existsSync(exportDir)) {
-        fs.mkdirSync(exportDir, { recursive: true });
+      // Use sync fs API for existence checks to avoid mixing promise/sync APIs
+      const fsSync = require('fs');
+      if (!fsSync.existsSync(exportDir)) {
+        fsSync.mkdirSync(exportDir, { recursive: true });
       }
       
       const filePath = path.join(exportDir, filename);
@@ -1583,11 +1585,11 @@ class BackendAdapter {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       // Verify file exists and has content
-      if (!fs.existsSync(filePath)) {
+      if (!fsSync.existsSync(filePath)) {
         throw new Error('Export file was not created successfully');
       }
       
-      const stats = fs.statSync(filePath);
+      const stats = fsSync.statSync(filePath);
       if (stats.size === 0) {
         throw new Error('Export file is empty');
       }

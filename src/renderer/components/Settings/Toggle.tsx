@@ -5,19 +5,22 @@ interface ToggleProps {
   onChange: (checked: boolean) => void;
   disabled?: boolean;
   className?: string;
+  ariaLabel?: string;
 }
 
 export const Toggle: React.FC<ToggleProps> = ({ 
   checked, 
   onChange, 
   disabled = false,
-  className = ''
+  className = '',
+  ariaLabel
 }) => {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => !disabled && onChange(!checked)}
       style={{

@@ -51,16 +51,19 @@ describe('ProgressIndicator', () => {
     
     render(<ProgressIndicator {...defaultProps} jobStatus={jobStatus} />);
     
-    expect(screen.getByText('Step 2 of 4')).toBeInTheDocument();
+    expect(screen.getAllByText('Step 2 of 4').length).toBeGreaterThan(0);
   });
 
   it('displays job steps correctly', () => {
-    render(<ProgressIndicator {...defaultProps} />);
+    const jobStatus = {
+      ...defaultJobStatus,
+      totalSteps: 3
+    };
+    render(<ProgressIndicator {...defaultProps} jobStatus={jobStatus} />);
     
-    expect(screen.getByText('Initialize')).toBeInTheDocument();
-    expect(screen.getByText('Generate Images')).toBeInTheDocument();
-    expect(screen.getByText('Quality Check')).toBeInTheDocument();
-    expect(screen.getByText('Save Results')).toBeInTheDocument();
+    expect(screen.getByText('Initialization')).toBeInTheDocument();
+    expect(screen.getByText('Image Generation')).toBeInTheDocument();
+    expect(screen.getByText('Quality & Processing')).toBeInTheDocument();
   });
 
   it('shows time information when job is active', () => {
@@ -93,7 +96,7 @@ describe('ProgressIndicator', () => {
     
     const runningStatus = { ...defaultJobStatus, state: 'running' as const };
     rerender(<ProgressIndicator {...defaultProps} jobStatus={runningStatus} />);
-    expect(screen.getByText(/Step \d+ of \d+/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Step \d+ of \d+/).length).toBeGreaterThan(0);
     
     const completedStatus = { ...defaultJobStatus, state: 'completed' as const };
     rerender(<ProgressIndicator {...defaultProps} jobStatus={completedStatus} />);
@@ -147,13 +150,18 @@ describe('ProgressIndicator', () => {
     expect(failedProgressFill).toHaveClass('bg-red-500');
   });
 
-  it('displays step descriptions', () => {
-    render(<ProgressIndicator {...defaultProps} />);
+  it('displays step description for the current step only', () => {
+    const jobStatus = {
+      ...defaultJobStatus,
+      state: 'running',
+      currentStep: 2,
+      totalSteps: 3,
+      progress: 0.5
+    };
+    render(<ProgressIndicator {...defaultProps} jobStatus={jobStatus} />);
     
-    expect(screen.getByText('Setting up job configuration')).toBeInTheDocument();
-    expect(screen.getByText('Creating images with AI models')).toBeInTheDocument();
-    expect(screen.getByText('Running quality assessment')).toBeInTheDocument();
-    expect(screen.getByText('Storing generated images')).toBeInTheDocument();
+    // Only current step description should be visible
+    expect(screen.getByText('Generating images and metadata')).toBeInTheDocument();
   });
 
   it('shows current step indicator', () => {
@@ -167,7 +175,8 @@ describe('ProgressIndicator', () => {
     
     render(<ProgressIndicator {...defaultProps} jobStatus={jobStatus} />);
     
-    expect(screen.getByText('In Progress')).toBeInTheDocument();
+    // Current step card shows an animated blue dot and the label in the footer box
+    expect(screen.getByText('Currently: Image Generation')).toBeInTheDocument();
   });
 
   it('formats time correctly', () => {

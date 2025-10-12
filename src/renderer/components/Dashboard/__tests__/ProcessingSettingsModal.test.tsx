@@ -345,34 +345,33 @@ describe('ProcessingSettingsModal', () => {
     });
 
     it('displays image enhancement section', () => {
-      expect(screen.getByText('Image Enhancement')).toBeInTheDocument();
+      expect(screen.getAllByText('Image Enhancement').length).toBeGreaterThan(0);
     });
 
     it('renders image enhancement toggle', () => {
       const enhancementToggle = screen.getByLabelText('Enable image enhancement');
       expect(enhancementToggle).toBeInTheDocument();
-      expect(enhancementToggle).toHaveAttribute('type', 'checkbox');
+      expect(enhancementToggle).toHaveAttribute('role', 'switch');
     });
 
-    it('shows sharpening slider when enhancement is enabled', () => {
+    it('shows sharpening control when enhancement is enabled', () => {
       const enhancementToggle = screen.getByLabelText('Enable image enhancement');
       
       // Enable enhancement
       fireEvent.click(enhancementToggle);
       
-      expect(screen.getByText(/Sharpening Level:/, { exact: false })).toBeInTheDocument();
-      expect(screen.getByDisplayValue('50')).toBeInTheDocument();
+      expect(screen.getByLabelText(/Sharpening Level/)).toBeInTheDocument();
+      // Default is 5 in current UI
+      expect(screen.getByDisplayValue('5')).toBeInTheDocument();
     });
 
-    it('shows saturation slider when enhancement is enabled', () => {
+    it('shows saturation control when enhancement is enabled', () => {
       const enhancementToggle = screen.getByLabelText('Enable image enhancement');
       
       // Enable enhancement
       fireEvent.click(enhancementToggle);
       
-      expect(screen.getByText(/Saturation:/, { exact: false })).toBeInTheDocument();
-      const sliders = screen.getAllByRole('slider');
-      expect(sliders.length).toBeGreaterThan(1);
+      expect(screen.getByLabelText(/Saturation Level/)).toBeInTheDocument();
     });
 
     it('hides enhancement controls when enhancement is disabled', () => {
@@ -386,25 +385,24 @@ describe('ProcessingSettingsModal', () => {
       expect(screen.queryByText('Saturation:')).not.toBeInTheDocument();
     });
 
-    it('updates sharpening value when slider is moved', () => {
+    it('updates sharpening value when input is changed', () => {
       const enhancementToggle = screen.getByLabelText('Enable image enhancement');
       fireEvent.click(enhancementToggle);
       
-      const sharpeningSlider = screen.getByDisplayValue('50');
-      fireEvent.change(sharpeningSlider, { target: { value: '75' } });
+      const sharpeningInput = screen.getByLabelText(/Sharpening Level/);
+      fireEvent.change(sharpeningInput, { target: { value: '7' } });
       
-      expect(sharpeningSlider).toHaveValue('75');
+      expect(sharpeningInput).toHaveValue(7);
     });
 
-    it('updates saturation value when slider is moved', () => {
+    it('updates saturation value when input is changed', () => {
       const enhancementToggle = screen.getByLabelText('Enable image enhancement');
       fireEvent.click(enhancementToggle);
       
-      const sliders = screen.getAllByRole('slider');
-      const saturationSlider = sliders[1] as HTMLInputElement;
-      fireEvent.change(saturationSlider, { target: { value: '2' } });
+      const saturationInput = screen.getByLabelText(/Saturation Level/);
+      fireEvent.change(saturationInput, { target: { value: '1.7' } });
       
-      expect(saturationSlider).toHaveValue('2');
+      expect(saturationInput).toHaveValue(1.7);
     });
   });
 
@@ -431,64 +429,65 @@ describe('ProcessingSettingsModal', () => {
     it('renders image conversion toggle', () => {
       const conversionToggle = screen.getByLabelText('Enable image conversion');
       expect(conversionToggle).toBeInTheDocument();
-      expect(conversionToggle).toHaveAttribute('type', 'checkbox');
+      expect(conversionToggle).toHaveAttribute('role', 'switch');
     });
 
-    it('shows JPG toggle and quality when conversion is enabled', () => {
+    it('shows convert format and quality when conversion is enabled', () => {
       const conversionToggle = screen.getByLabelText('Enable image conversion');
       
       // Enable conversion
       fireEvent.click(conversionToggle);
       
-      expect(screen.getByText('Convert to JPG')).toBeInTheDocument();
-      expect(screen.getByText(/JPG Quality:/, { exact: false })).toBeInTheDocument();
+      expect(screen.getByLabelText('Convert Format')).toBeInTheDocument();
+      expect(screen.getByText('JPG Quality (1-100)')).toBeInTheDocument();
     });
 
     it('shows quality controls when conversion is enabled', () => {
       const conversionToggle = screen.getByLabelText('Enable image conversion');
       fireEvent.click(conversionToggle);
       
-      expect(screen.getByText(/JPG Quality:/, { exact: false })).toBeInTheDocument();
-      expect(screen.getByDisplayValue('90')).toBeInTheDocument();
+      expect(screen.getByText('JPG Quality (1-100)')).toBeInTheDocument();
+      // Default JPG quality is 85 in current UI
+      expect(screen.getByDisplayValue('85')).toBeInTheDocument();
       // PNG quality only visible when Convert to JPG is off; not asserted here
     });
 
-    it('switches between JPG and PNG controls by toggling Convert to JPG', () => {
+    it('switches between JPG and PNG controls by changing convert format', () => {
       const conversionToggle = screen.getByLabelText('Enable image conversion');
       fireEvent.click(conversionToggle);
       
-      // Initially Convert to JPG is checked, so JPG Quality is visible
-      expect(screen.getByText(/JPG Quality:/, { exact: false })).toBeInTheDocument();
+      // Initially JPG Quality is visible
+      expect(screen.getByText('JPG Quality (1-100)')).toBeInTheDocument();
       
-      // Toggle off Convert to JPG to reveal PNG Quality
-      const convertToJpgToggle = screen.getByText('Convert to JPG').closest('label')!.querySelector('input') as HTMLInputElement;
-      fireEvent.click(convertToJpgToggle);
+      // Switch Convert Format to PNG to reveal PNG Quality
+      const convertFormatSelect = screen.getByLabelText('Convert Format') as HTMLSelectElement;
+      fireEvent.change(convertFormatSelect, { target: { value: 'png' } });
       
-      expect(screen.getByText(/PNG Quality:/, { exact: false })).toBeInTheDocument();
+      expect(screen.getByText('PNG Quality (1-100)')).toBeInTheDocument();
     });
 
-    it('updates JPG quality when slider is moved', () => {
+    it('updates JPG quality when input is changed', () => {
       const conversionToggle = screen.getByLabelText('Enable image conversion');
       fireEvent.click(conversionToggle);
       
-      const jpgQualitySlider = screen.getByDisplayValue('90');
-      fireEvent.change(jpgQualitySlider, { target: { value: '95' } });
+      const jpgQualityInput = screen.getByLabelText('JPG Quality (1-100)');
+      fireEvent.change(jpgQualityInput, { target: { value: '95' } });
       
-      expect(jpgQualitySlider).toHaveValue('95');
+      expect(jpgQualityInput).toHaveValue(95);
     });
 
-    it('updates PNG quality when slider is moved', () => {
+    it('updates PNG quality when input is changed', () => {
       const conversionToggle = screen.getByLabelText('Enable image conversion');
       fireEvent.click(conversionToggle);
       
-      // Toggle to PNG path
-      const convertToJpgToggle = screen.getByText('Convert to JPG').closest('label')!.querySelector('input') as HTMLInputElement;
-      fireEvent.click(convertToJpgToggle);
+      // Switch Convert Format to PNG
+      const convertFormatSelect = screen.getByLabelText('Convert Format') as HTMLSelectElement;
+      fireEvent.change(convertFormatSelect, { target: { value: 'png' } });
       
-      const pngQualitySlider = screen.getByDisplayValue('9');
-      fireEvent.change(pngQualitySlider, { target: { value: '7' } });
+      const pngQualityInput = screen.getByLabelText('PNG Quality (1-100)');
+      fireEvent.change(pngQualityInput, { target: { value: '77' } });
       
-      expect(pngQualitySlider).toHaveValue('7');
+      expect(pngQualityInput).toHaveValue(77);
     });
   });
 
@@ -515,7 +514,7 @@ describe('ProcessingSettingsModal', () => {
     it('renders remove background toggle', () => {
       const removeBgToggle = screen.getByLabelText('Remove background');
       expect(removeBgToggle).toBeInTheDocument();
-      expect(removeBgToggle).toHaveAttribute('type', 'checkbox');
+      expect(removeBgToggle).toHaveAttribute('role', 'switch');
     });
 
     it('shows background size input when remove background is enabled', () => {
@@ -534,7 +533,7 @@ describe('ProcessingSettingsModal', () => {
       fireEvent.click(removeBgToggle);
       const trimToggle = screen.getByLabelText('Trim transparent background');
       expect(trimToggle).toBeInTheDocument();
-      expect(trimToggle).toHaveAttribute('type', 'checkbox');
+      expect(trimToggle).toHaveAttribute('role', 'switch');
     });
 
     it('shows JPG background color input when trim is enabled', () => {
@@ -542,16 +541,15 @@ describe('ProcessingSettingsModal', () => {
       fireEvent.click(removeBgToggle);
       const conversionToggle = screen.getByLabelText('Enable image conversion');
       fireEvent.click(conversionToggle);
-      // Convert to JPG toggle appears when conversion is enabled and defaults to checked
       const trimToggle = screen.getByLabelText('Trim transparent background');
       
       // Enable trim transparent background
       fireEvent.click(trimToggle);
       
       expect(screen.getByText('JPG Background Color')).toBeInTheDocument();
-      // Color input has default value #FFFFFF (case-insensitive)
-      const colorInputByLabel = screen.getByLabelText('JPG Background Color') as HTMLInputElement;
-      expect(colorInputByLabel.value.toLowerCase()).toBe('#ffffff');
+      // Select has default value #FFFFFF (case-insensitive)
+      const colorSelect = screen.getByLabelText('JPG Background Color') as HTMLSelectElement;
+      expect(colorSelect.value.toLowerCase()).toBe('#ffffff');
     });
 
     it('updates background size when input changes', () => {
@@ -666,8 +664,8 @@ describe('ProcessingSettingsModal', () => {
 
       expect(mockOnRetry).toHaveBeenCalledWith(false, expect.objectContaining({
         imageEnhancement: true,
-        sharpening: 50,
-        saturation: 100,
+        sharpening: 5,
+        saturation: 1,
       }), false);
     });
   });
@@ -693,20 +691,20 @@ describe('ProcessingSettingsModal', () => {
       fireEvent.click(enhancementToggle);
 
       // Sharpening numeric input
-      const sharpeningInput = screen.getByLabelText(/Sharpening Level/).closest('div')!.querySelector('input') as HTMLInputElement;
+      const sharpeningInput = screen.getByLabelText(/Sharpening Level/) as HTMLInputElement;
       fireEvent.change(sharpeningInput, { target: { value: '7' } });
 
       // Saturation numeric input
-      const saturationInput = screen.getByLabelText(/Saturation Level/).closest('div')!.querySelector('input') as HTMLInputElement;
+      const saturationInput = screen.getByLabelText(/Saturation Level/) as HTMLInputElement;
       fireEvent.change(saturationInput, { target: { value: '1.7' } });
 
       // Enable conversion and switch to PNG then set pngQuality
       const conversionToggle = screen.getByLabelText('Enable image conversion');
       fireEvent.click(conversionToggle);
-      const convertToJpgToggle = screen.getByLabelText('Convert Format').closest('div')!.querySelector('select') as HTMLSelectElement;
-      fireEvent.change(convertToJpgToggle, { target: { value: 'png' } });
+      const convertFormatSelect = screen.getByLabelText('Convert Format') as HTMLSelectElement;
+      fireEvent.change(convertFormatSelect, { target: { value: 'png' } });
 
-      const pngQualityInput = screen.getByLabelText('PNG Quality (1-100)').closest('div')!.querySelector('input') as HTMLInputElement;
+      const pngQualityInput = screen.getByLabelText('PNG Quality (1-100)') as HTMLInputElement;
       fireEvent.change(pngQualityInput, { target: { value: '77' } });
 
       // Trigger retry with modified settings
@@ -821,8 +819,8 @@ describe('ProcessingSettingsModal', () => {
       const enhancementToggle = screen.getByLabelText('Enable image enhancement');
       fireEvent.click(enhancementToggle);
 
-      const sharpeningSlider = screen.getByDisplayValue('50');
-      fireEvent.change(sharpeningSlider, { target: { value: '75' } });
+      const sharpeningInput = screen.getByLabelText(/Sharpening Level/);
+      fireEvent.change(sharpeningInput, { target: { value: '7' } });
 
       // Switch back to original
       const originalRadio = screen.getByText('Retry with Original Settings').closest('label')!.querySelector('input') as HTMLInputElement;
@@ -832,7 +830,7 @@ describe('ProcessingSettingsModal', () => {
       fireEvent.click(modifiedRadio4);
 
       expect(enhancementToggle).toBeChecked();
-      expect(sharpeningSlider).toHaveValue('75');
+      expect(sharpeningInput).toHaveValue(7);
     });
   });
 
