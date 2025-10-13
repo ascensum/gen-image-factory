@@ -68,7 +68,7 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
         {getStatusBadge()}
 
         {/* Overlay actions (icon-only) */}
-        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-40 transition-all duration-200 flex items-center justify-start pl-3 opacity-0 hover:opacity-100">
+        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-40 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
           <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
             {/* View */}
             <button
