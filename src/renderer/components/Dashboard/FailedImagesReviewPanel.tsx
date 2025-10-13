@@ -848,22 +848,22 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
               </div>
             ) : (
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="min-w-full table-fixed divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Status</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Name/Label</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="w-12 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
+                      <th className="w-20 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                      <th className="w-28 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">QC Status</th>
+                      <th className="w-[40%] px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                      <th className="w-[18%] px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Name/Label</th>
+                      <th className="w-28 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="w-28 px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredAndSortedImages.map((image) => (
                       <tr key={image.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-2">
+                        <td className="w-12 px-4 py-2 align-top">
                           <input
                             type="checkbox"
                             checked={selectedImages.has(String(image.id))}
@@ -871,7 +871,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="w-20 px-4 py-2 align-top">
                           <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
                             {(image.finalImagePath || image.tempImagePath) ? (
                               <img
@@ -889,15 +889,15 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="w-28 px-4 py-2 align-top">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200">
                             {String(image.qcStatus) === 'qc_failed' ? 'QC failed' : String(image.qcStatus) === 'retry_failed' ? 'Retry failed' : String(image.qcStatus) === 'retry_pending' ? 'Pending retry' : String(image.qcStatus) === 'processing' ? 'Processing' : String(image.qcStatus)}
                           </span>
                         </td>
-                        <td className="px-4 py-2 text-sm text-gray-700">{image.qcReason || '-'}</td>
-                        <td className="px-4 py-2 text-sm text-gray-700">{jobIdToLabel[String(image.executionId)] || `Job ${image.executionId}`}</td>
-                        <td className="px-4 py-2 text-sm text-gray-700">{image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : '-'}</td>
-                        <td className="px-4 py-2">
+                        <td className="w-[40%] px-4 py-2 text-sm text-gray-700 whitespace-normal break-words align-top">{image.qcReason || '-'}</td>
+                        <td className="w-[18%] px-4 py-2 text-sm text-gray-700 align-top">{jobIdToLabel[String(image.executionId)] || `Job ${image.executionId}`}</td>
+                        <td className="w-28 px-4 py-2 text-sm text-gray-700 align-top">{image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : '-'}</td>
+                        <td className="w-28 px-4 py-2 align-top">
                           <div className="flex items-center gap-3 justify-start flex-wrap">
                             <button onClick={() => handleImageAction('view', String(image.id))} className="text-gray-600 hover:text-gray-900" title="View" aria-label="View">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -907,10 +907,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                             </button>
                             <button onClick={() => handleImageAction('retry', String(image.id))} className="text-blue-600 hover:text-blue-700" title="Add to Retry" aria-label="Add to Retry">
                               {/* lucide redo-2 */}
-                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="m15 14 5-5-5-5" />
-                                <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5 5.5 5.5 0 0 0 9.5 20H13" />
-                              </svg>
+                              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5 5.5 5.5 0 0 0 9.5 20H13"/></svg>
                             </button>
                             <button onClick={() => handleImageAction('delete', String(image.id))} className="text-red-600 hover:text-red-700" title="Delete" aria-label="Delete">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
