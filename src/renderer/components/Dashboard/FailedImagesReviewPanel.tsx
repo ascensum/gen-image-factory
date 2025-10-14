@@ -872,7 +872,15 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                           />
                         </td>
                         <td className="w-20 px-4 py-2 align-top">
-                          <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex items-center justify-center">
+                          <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex items-center justify-center" title={(function(){
+                            const raw = (image as any)?.metadata;
+                            try {
+                              const meta = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+                              const t = typeof meta?.title === 'object' ? (meta.title.en || '') : (meta?.title || '');
+                              const v = (t && String(t).trim()) || String(image.generationPrompt || '');
+                              return v;
+                            } catch { return String(image.generationPrompt || ''); }
+                          })()}>
                             {(image.finalImagePath || image.tempImagePath) ? (
                               <img
                                 src={`local-file://${image.finalImagePath || image.tempImagePath}`}

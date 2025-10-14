@@ -19,6 +19,18 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
     return date ? new Date(date).toLocaleDateString() : '';
   };
 
+  // Prefer AI-generated Title when available, otherwise fallback to prompt
+  const getTitleOrPrompt = (): string => {
+    const raw = (image as any)?.metadata;
+    try {
+      const meta = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
+      const title = typeof meta?.title === 'object' ? (meta.title.en || '') : (meta?.title || '');
+      return (title && String(title).trim()) || String(image.generationPrompt || '');
+    } catch {
+      return String(image.generationPrompt || '');
+    }
+  };
+
   const getStatusBadge = () => (
     <div className="absolute top-2 left-2">
       <StatusBadge 
@@ -121,9 +133,9 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
 
       {/* Image Info */}
       <div className="p-3">
-        {/* Generation Prompt */}
-        <div className="text-xs text-gray-600 truncate mb-2" title={image.generationPrompt}>
-          {image.generationPrompt}
+        {/* Title or Prompt (prefer AI Title) */}
+        <div className="text-xs text-gray-600 truncate mb-2" title={getTitleOrPrompt()}>
+          {getTitleOrPrompt()}
         </div>
 
         {/* Failure Reason */}
