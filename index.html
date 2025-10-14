@@ -13,7 +13,19 @@
   <link rel="icon" type="image/png" sizes="256x256" href="/build/icons/png/256x256.png">
   <link rel="icon" type="image/png" sizes="512x512" href="/build/icons/png/512x512.png">
   <link rel="icon" type="image/svg+xml" href="/src/renderer/assets/favicon/favicon.svg" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:*; style-src 'self' 'unsafe-inline' http://localhost:*; connect-src 'self' http://localhost:* ws://localhost:*; img-src 'self' data: local-file:;">
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    base-uri 'self';
+    frame-ancestors 'none';
+    object-src 'none';
+    script-src 'self' 'unsafe-inline' http://localhost:*;
+    worker-src 'self' blob:;
+    child-src 'self' blob:;
+    style-src 'self' 'unsafe-inline' http://localhost:*;
+    connect-src 'self' http://localhost:* ws://localhost:*;
+    img-src 'self' data: blob: local-file:;
+    font-src 'self' data:;
+  ">
 </head>
 <body>
   <div id="root"></div>
