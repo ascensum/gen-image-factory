@@ -874,12 +874,17 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                         <td className="w-20 px-4 py-2 align-top">
                           <div className="w-12 h-12 bg-gray-100 rounded overflow-hidden flex items-center justify-center" title={(function(){
                             const raw = (image as any)?.metadata;
+                            const truncate = (s: string, n = 140) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
                             try {
                               const meta = typeof raw === 'string' ? JSON.parse(raw) : (raw || {});
                               const t = typeof meta?.title === 'object' ? (meta.title.en || '') : (meta?.title || '');
-                              const v = (t && String(t).trim()) || String(image.generationPrompt || '');
-                              return v;
-                            } catch { return String(image.generationPrompt || ''); }
+                              if (t && String(t).trim()) return String(t).trim();
+                              const p = String(image.generationPrompt || '');
+                              return truncate(p);
+                            } catch {
+                              const p = String(image.generationPrompt || '');
+                              return truncate(p);
+                            }
                           })()}>
                             {(image.finalImagePath || image.tempImagePath) ? (
                               <img
