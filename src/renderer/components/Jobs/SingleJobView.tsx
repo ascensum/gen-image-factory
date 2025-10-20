@@ -821,8 +821,10 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       </div>
                       {/* Title and Date below image */}
                       <div className="image-info">
-                        <span className="image-id">{getImageTitle(image)}</span>
-                        <span className="image-date">{(image as any)?.createdAt ? new Date((image as any).createdAt).toLocaleDateString() : ''}</span>
+                        <div className="image-text">
+                          <span className="image-id">{getImageTitle(image)}</span>
+                          <span className="image-date">{(image as any)?.createdAt ? new Date((image as any).createdAt).toLocaleDateString() : ''}</span>
+                        </div>
                       </div>
                     </div>
                   ))

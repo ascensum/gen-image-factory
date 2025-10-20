@@ -592,15 +592,27 @@
 
 .image-info {
   padding: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: block;
 }
 
 .image-id {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--foreground);
+}
+
+.image-text {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.image-date {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.75rem; /* match other grids small date text */
+  color: var(--muted-foreground);
 }
 
 .image-status {
