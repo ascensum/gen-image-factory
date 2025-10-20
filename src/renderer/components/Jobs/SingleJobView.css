@@ -615,6 +615,7 @@
   margin-top: 0.25rem;
   font-size: 0.75rem; /* match other grids small date text */
   color: var(--muted-foreground);
+  text-align: right; /* align to right like other grids */
 }
 
 .image-status {
