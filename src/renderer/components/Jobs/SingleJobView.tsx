@@ -794,7 +794,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   filteredImages.map((image) => (
                     <div key={image.id} className="image-card">
                       {/* Image area with consistent square aspect and top-left badge */}
-                      <div className="relative aspect-square">
+                      <div className="relative aspect-square rounded overflow-hidden">
                         {(image.finalImagePath || image.tempImagePath) ? (
                           <img 
                             src={`local-file://${image.finalImagePath || image.tempImagePath}`} 

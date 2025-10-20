@@ -596,16 +596,18 @@
 }
 
 .image-id {
-  font-size: 0.875rem;
+  font-size: 0.75rem; /* match other grids title text */
   font-weight: 500;
-  color: var(--foreground);
+  color: var(--muted-foreground);
+  display: block;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .image-text {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
+  display: block; /* stack title then date like other grids */
 }
 
 .image-date {
