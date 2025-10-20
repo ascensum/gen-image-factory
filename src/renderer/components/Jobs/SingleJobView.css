@@ -597,13 +597,13 @@
 
 .image-id {
   font-size: 0.75rem; /* match other grids title text */
-  font-weight: 500;
-  color: var(--muted-foreground);
+  font-weight: 700; /* make bold as requested */
+  color: var(--foreground);
   display: block;
   margin-bottom: 0.25rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  word-break: break-word;
+  overflow-wrap: anywhere; /* allow wrapping within small cards */
 }
 
 .image-text {
@@ -612,7 +612,7 @@
 
 .image-date {
   display: block;
-  margin-top: 0.125rem;
+  margin-top: 0.25rem;
   font-size: 0.75rem; /* match other grids small date text */
   color: var(--muted-foreground);
 }
