@@ -405,16 +405,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     handleSettingChange(section, key, checked);
   }, [handleSettingChange]);
 
-  // Match Image Gallery badge colors/styles
-  const getStatusColor = (status: string) => {
-    const s = String(status || '').toLowerCase();
-    // Explicit processing state when present
-    if (s === 'processing') return 'status-processing';
-    // Use UI bucket for all others
-    const ui = getImageUiStatus(status);
-    if (ui === 'approved') return 'status-complete'; // green
-    return 'status-failed'; // red for qc_failed and any other
-  };
+  // (deprecated) getStatusColor removed in favor of StatusBadge for consistency with other interfaces
 
   // Normalize qcStatus to UI filter/status buckets
   const getImageUiStatus = useCallback((qcStatus?: string | null): 'approved' | 'qc_failed' => {
@@ -802,62 +793,35 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 ) : (
                   filteredImages.map((image) => (
                     <div key={image.id} className="image-card">
-                      <div className="image-preview">
+                      {/* Image area with consistent square aspect and top-left badge */}
+                      <div className="relative aspect-square">
                         {(image.finalImagePath || image.tempImagePath) ? (
                           <img 
                             src={`local-file://${image.finalImagePath || image.tempImagePath}`} 
                             alt={`Generated image ${image.id}`}
-                            className="w-full h-32 object-cover rounded"
+                            className="w-full h-full object-cover"
                             onError={(e) => {
                               console.error('Failed to load image:', image.finalImagePath);
                               e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgdmlld0JveD0iMCAwIDEyOCAxMjgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik02NCAzMkM3Ny4yNTQ4IDMyIDg4IDQyLjc0NTIgODggNTZDODggNjkuMjU0OCA3Ny4yNTQ4IDgwIDY0IDgwQzUwLjc0NTIgODAgNDAgNjkuMjU0OCA0MCA1NkM0MCA0Mi43NDUyIDUwLjc0NTIgMzIgNjQgMzJaIiBmaWxsPSIjOUI5QkEwIi8+CjxwYXRoIGQ9Ik0yNCA4OEgxMDRDMTEwLjYyNyA4OCAxMTYgOTMuMzcyNiAxMTYgMTAwVjExMkMxMTYgMTE4LjYyNyAxMTAuNjI3IDEyNCAxMDQgMTI0SDI0QzE3LjM3MjYgMTI0IDEyIDExOC42MjcgMTIgMTEyVjEwMEMxMiA5My4zNzI2IDE3LjM3MjYgODggMjQgODhaIiBmaWxsPSIjOUI5QkEwIi8+Cjwvc3ZnPgo=';
                             }}
                           />
                         ) : (
-                          <div className="w-full h-32 bg-gray-100 rounded flex items-center justify-center">
+                          <div className="w-full h-full bg-gray-100 rounded flex items-center justify-center">
                             <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                           </div>
                         )}
+                        <div className="absolute top-2 left-2">
+                          <StatusBadge
+                            variant="qc"
+                            status={(getImageUiStatus((image as any).qcStatus) === 'approved') ? 'approved' : (String((image as any).qcStatus || '').toLowerCase() === 'processing' ? 'processing' : 'qc_failed')}
+                          />
+                        </div>
                       </div>
+                      {/* Title below image */}
                       <div className="image-info">
-                          <span className="image-id">{getImageTitle(image)}</span>
-                        <span className={`image-status ${getStatusColor(image.qcStatus)}`}>
-                          {(() => {
-                            const s = String((image as any).qcStatus || '').toLowerCase();
-                            const ui = getImageUiStatus((image as any).qcStatus);
-                            if (s === 'processing') {
-                              return (
-                                <>
-                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  Processing
-                                </>
-                              );
-                            }
-                            if (ui === 'approved') {
-                              return (
-                            <>
-                              <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Approved
-                            </>
-                              );
-                            }
-                            // QC Failed bucket for everything else (failed, qc_failed, null, etc.)
-                            return (
-                              <>
-                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                QC Failed
-                              </>
-                            );
-                          })()}
-                        </span>
+                        <span className="image-id">{getImageTitle(image)}</span>
                       </div>
                     </div>
                   ))
@@ -871,7 +835,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 <thead>
                   <tr>
                     <th>Preview</th>
-                    <th>ID</th>
+                    <th>ID/Title</th>
                     <th>Status</th>
                     <th>Generated At</th>
                   </tr>
@@ -901,42 +865,12 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       </td>
                       <td>{getImageTitle(image)}</td>
                       <td>
-                        <span className={`image-status ${getStatusColor(image.qcStatus)}`}>
-                          {(() => {
-                            const s = String((image as any).qcStatus || '').toLowerCase();
-                            const ui = getImageUiStatus((image as any).qcStatus);
-                            if (s === 'processing') {
-                              return (
-                                <>
-                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                  Processing
-                                </>
-                              );
-                            }
-                            if (ui === 'approved') {
-                              return (
-                                <>
-                                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  Approved
-                                </>
-                              );
-                            }
-                            return (
-                              <>
-                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                QC Failed
-                              </>
-                            );
-                          })()}
-                        </span>
+                        <StatusBadge
+                          variant="qc"
+                          status={(getImageUiStatus((image as any).qcStatus) === 'approved') ? 'approved' : (String((image as any).qcStatus || '').toLowerCase() === 'processing' ? 'processing' : 'qc_failed')}
+                        />
                       </td>
-                      <td>{formatDate(job.startedAt || '')}</td>
+                      <td>{(image as any)?.createdAt ? new Date((image as any).createdAt).toLocaleDateString() : ''}</td>
                     </tr>
                   ))}
                 </tbody>
