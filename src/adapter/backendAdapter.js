@@ -2160,8 +2160,9 @@ class BackendAdapter {
       const exportDir = app && typeof app.getPath === 'function'
         ? path.join(app.getPath('userData'), 'exports')
         : path.join(require('os').tmpdir(), 'gen-image-factory-exports');
-      if (!fs.existsSync(exportDir)) {
-        fs.mkdirSync(exportDir, { recursive: true });
+      const fsSync_bulk = require('fs');
+      if (!fsSync_bulk.existsSync(exportDir)) {
+        fsSync_bulk.mkdirSync(exportDir, { recursive: true });
       }
       
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
