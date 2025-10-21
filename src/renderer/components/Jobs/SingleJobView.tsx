@@ -697,20 +697,32 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <div className="setting-group">
                       <h3>Model Configuration</h3>
                       <div className="setting-details">
-                        <div>• Model: {jobConfiguration.settings?.parameters?.mjVersion ? `Midjourney v${jobConfiguration.settings.parameters.mjVersion}` : 'Not specified'}</div>
-                        <div>• Process Mode: {jobConfiguration.settings?.parameters?.processMode || 'Not specified'}</div>
-                        <div>• OpenAI Model: {jobConfiguration.settings?.parameters?.openaiModel || 'Not specified'}</div>
-                        <div>• Random Keywords: {jobConfiguration.settings?.parameters?.keywordRandom ? 'Yes' : 'No'}</div>
+                        <div>• Provider: Runware</div>
+                        <div>• Runware Model: {jobConfiguration.settings?.parameters?.runwareModel || 'Not specified'}</div>
+                        <div>• Generations: {jobConfiguration.settings?.parameters?.count ?? 'Not specified'}</div>
+                        <div>• Variations: {jobConfiguration.settings?.parameters?.variations ?? 'Not specified'}</div>
                       </div>
                     </div>
                     <div className="setting-group">
                       <h3>Image Settings</h3>
                       <div className="setting-details">
-                        <div>• Aspect Ratio: {Array.isArray(jobConfiguration.settings?.parameters?.aspectRatios) ? jobConfiguration.settings.parameters.aspectRatios.join(', ') : jobConfiguration.settings?.parameters?.aspectRatios || 'Not specified'}</div>
-                        <div>• Generations count: {jobConfiguration.settings?.parameters?.count || 'Not specified'}</div>
+                        <div>• Dimensions: {jobConfiguration.settings?.parameters?.runwareDimensionsCsv || 'Not specified'}</div>
+                        <div>• Format: {jobConfiguration.settings?.parameters?.runwareFormat || 'Not specified'}</div>
                         <div>• Convert to JPG: {jobConfiguration.settings?.processing?.convertToJpg ? 'Yes' : 'No'}</div>
                       </div>
                     </div>
+                    {(jobConfiguration.settings?.parameters?.runwareAdvanced) && (
+                      <div className="setting-group">
+                        <h3>Runware Advanced</h3>
+                        <div className="setting-details">
+                          <div>• CFG Scale: {jobConfiguration.settings?.parameters?.runwareAdvanced?.CFGScale ?? 'Not specified'}</div>
+                          <div>• Steps: {jobConfiguration.settings?.parameters?.runwareAdvanced?.steps ?? 'Not specified'}</div>
+                          <div>• Scheduler: {jobConfiguration.settings?.parameters?.runwareAdvanced?.scheduler || 'Not specified'}</div>
+                          <div>• NSFW Check: {jobConfiguration.settings?.parameters?.runwareAdvanced?.checkNSFW ? 'Enabled' : 'Disabled'}</div>
+                          <div>• LoRA: {Array.isArray(jobConfiguration.settings?.parameters?.runwareAdvanced?.lora) ? `${jobConfiguration.settings?.parameters?.runwareAdvanced?.lora?.length} configured` : 'None'}</div>
+                        </div>
+                      </div>
+                    )}
                     <div className="setting-group">
                       <h3>Processing Options</h3>
                       <div className="setting-details">
