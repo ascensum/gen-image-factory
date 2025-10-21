@@ -2628,8 +2628,9 @@ class BackendAdapter {
         : path.join(require('os').tmpdir(), 'gen-image-factory-exports');
       
       // Create export directory if it doesn't exist
-      if (!fs.existsSync(exportDir)) {
-        fs.mkdirSync(exportDir, { recursive: true });
+      const fsSync_open = require('fs');
+      if (!fsSync_open.existsSync(exportDir)) {
+        fsSync_open.mkdirSync(exportDir, { recursive: true });
       }
       
       // Open folder in file explorer
