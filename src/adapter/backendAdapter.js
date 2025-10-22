@@ -1535,7 +1535,7 @@ class BackendAdapter {
         const flattenedSettings = flattenSettings(jobConfig.settings)
           .filter(([key]) => !key.startsWith('apiKeys.'))
           // Drop MJ-only fields from exports when using Runware
-          .filter(([key]) => !['parameters.mjVersion', 'parameters.aspectRatios'].includes(key))
+          .filter(([key]) => !['parameters.mjVersion', 'parameters.aspectRatios', 'parameters.openaiModel'].includes(key))
           // Avoid duplicate header with Job Summary's Label
           .filter(([key]) => key !== 'parameters.label');
         flattenedSettings.forEach(([key, value]) => {
@@ -2295,7 +2295,7 @@ class BackendAdapter {
 
           const flattenedSettings = flattenSettings(jobConfig.settings)
             .filter(([key]) => !key.startsWith('apiKeys.'))
-            .filter(([key]) => !['parameters.mjVersion', 'parameters.aspectRatios'].includes(key))
+            .filter(([key]) => !['parameters.mjVersion', 'parameters.aspectRatios', 'parameters.openaiModel'].includes(key))
             .filter(([key]) => key !== 'parameters.label');
             flattenedSettings.forEach(([key, value]) => {
               jobSummaryData[0].push(formatSettingLabel(key));
