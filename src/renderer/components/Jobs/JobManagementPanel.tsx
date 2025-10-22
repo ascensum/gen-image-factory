@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { AppLogo } from '../Common/AppLogo';
 import { JobExecution, JobFilters } from '../../../types/job';
 import ExportDialog from '../Common/ExportDialog';
 import StatusBadge from '../Common/StatusBadge';
@@ -683,7 +682,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
               <span className="text-[--muted-foreground]">3 active filters</span>
               <button 
                 onClick={() => {
-                  setFilters({ status: 'all', dateRange: 'all', label: '', minImages: 0, maxImages: undefined });
+                  setFilters({ status: 'all', dateRange: 'all', label: '', minImages: 0, maxImages: undefined, dateFrom: undefined, dateTo: undefined });
                   setSearchQuery('');
                 }}
                 className="text-[--primary] hover:underline text-sm"
@@ -693,12 +692,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
             </div>
             <div className="h-4 border-r border-[--border]"></div>
             <div className="flex items-center gap-2">
-              <button className="flex items-center gap-1 text-sm text-[--primary] hover:underline">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
-                Save as preset
-              </button>
+              {/* Save as preset removed per requirements */}
             </div>
           </div>
         </div>
