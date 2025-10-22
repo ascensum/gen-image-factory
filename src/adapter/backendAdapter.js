@@ -1478,7 +1478,6 @@ class BackendAdapter {
       if (jobConfig && jobConfig.settings) {
         const formatSettingLabel = (key) => {
           const mapping = {
-            'parameters.processMode': 'Process Mode',
             // Runware-specific parameters
             'parameters.runwareModel': 'Runware Model',
             'parameters.runwareDimensionsCsv': 'Dimensions (CSV)',
@@ -1535,7 +1534,7 @@ class BackendAdapter {
         const flattenedSettings = flattenSettings(jobConfig.settings)
           .filter(([key]) => !key.startsWith('apiKeys.'))
           // Drop MJ-only fields from exports when using Runware
-          .filter(([key]) => !['parameters.mjVersion', 'parameters.aspectRatios', 'parameters.openaiModel'].includes(key))
+          .filter(([key]) => !['parameters.mjVersion', 'parameters.aspectRatios', 'parameters.openaiModel', 'parameters.processMode'].includes(key))
           // Avoid duplicate header with Job Summary's Label
           .filter(([key]) => key !== 'parameters.label');
         flattenedSettings.forEach(([key, value]) => {
