@@ -1479,8 +1479,15 @@ class BackendAdapter {
         const formatSettingLabel = (key) => {
           const mapping = {
             'parameters.processMode': 'Process Mode',
-            'parameters.aspectRatios': 'Aspect Ratios',
-            'parameters.mjVersion': 'MJ Version',
+            // Runware-specific parameters
+            'parameters.runwareModel': 'Runware Model',
+            'parameters.runwareDimensionsCsv': 'Dimensions (CSV)',
+            'parameters.runwareFormat': 'Format',
+            'parameters.variations': 'Variations',
+            'parameters.runwareAdvanced.CFGScale': 'CFG Scale',
+            'parameters.runwareAdvanced.steps': 'Steps',
+            'parameters.runwareAdvanced.scheduler': 'Scheduler',
+            'parameters.runwareAdvanced.checkNSFW': 'NSFW Check',
             'parameters.openaiModel': 'OpenAI Model',
             'parameters.enablePollingTimeout': 'Enable Polling Timeout',
             'parameters.pollingTimeout': 'Polling Timeout (seconds)',
@@ -1526,7 +1533,9 @@ class BackendAdapter {
         };
 
         const flattenedSettings = flattenSettings(jobConfig.settings)
-          .filter(([key]) => !key.startsWith('apiKeys.'));
+          .filter(([key]) => !key.startsWith('apiKeys.'))
+          // Drop MJ-only fields from exports when using Runware
+          .filter(([key]) => !['parameters.mjVersion', 'parameters.aspectRatios'].includes(key));
         flattenedSettings.forEach(([key, value]) => {
           jobSummaryData[0].push(formatSettingLabel(key));
           jobSummaryData[1].push(value);
@@ -2226,12 +2235,19 @@ class BackendAdapter {
 
           // Merge settings into the same Job Summary sheet (no separate sheet)
           if (jobConfig && jobConfig.settings) {
-            const formatSettingLabel = (key) => {
+          const formatSettingLabel = (key) => {
               const mapping = {
                 'parameters.processMode': 'Process Mode',
-                'parameters.aspectRatios': 'Aspect Ratios',
-                'parameters.mjVersion': 'MJ Version',
-                'parameters.openaiModel': 'OpenAI Model',
+              // Runware-specific parameters
+              'parameters.runwareModel': 'Runware Model',
+              'parameters.runwareDimensionsCsv': 'Dimensions (CSV)',
+              'parameters.runwareFormat': 'Format',
+              'parameters.variations': 'Variations',
+              'parameters.runwareAdvanced.CFGScale': 'CFG Scale',
+              'parameters.runwareAdvanced.steps': 'Steps',
+              'parameters.runwareAdvanced.scheduler': 'Scheduler',
+              'parameters.runwareAdvanced.checkNSFW': 'NSFW Check',
+              'parameters.openaiModel': 'OpenAI Model',
                 'parameters.enablePollingTimeout': 'Enable Polling Timeout',
                 'parameters.pollingTimeout': 'Polling Timeout (seconds)',
                 'parameters.keywordRandom': 'Keyword Random',
@@ -2275,8 +2291,9 @@ class BackendAdapter {
               return result;
             };
 
-            const flattenedSettings = flattenSettings(jobConfig.settings)
-              .filter(([key]) => !key.startsWith('apiKeys.'));
+          const flattenedSettings = flattenSettings(jobConfig.settings)
+            .filter(([key]) => !key.startsWith('apiKeys.'))
+            .filter(([key]) => !['parameters.mjVersion', 'parameters.aspectRatios'].includes(key));
             flattenedSettings.forEach(([key, value]) => {
               jobSummaryData[0].push(formatSettingLabel(key));
               jobSummaryData[1].push(value);

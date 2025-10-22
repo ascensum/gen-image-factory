@@ -146,16 +146,15 @@ describe('Export to Excel - Regression', () => {
     expect(headers.find(h => String(h).toLowerCase().includes('api key'))).toBeUndefined();
     expect(headers.find(h => String(h).startsWith('apiKeys.'))).toBeUndefined();
 
-    // Positive: ensure labeled parameters are present
+    // Positive: ensure labeled parameters are present (provider-agnostic)
     expect(headers).toContain('Process Mode');
-    expect(headers).toContain('Aspect Ratios');
-    expect(headers).toContain('MJ Version');
     expect(headers).toContain('OpenAI Model');
+    // After Runware migration, MJ-only fields should not be exported
+    expect(headers).not.toContain('Aspect Ratios');
+    expect(headers).not.toContain('MJ Version');
 
     // And values reflect mocked config
     expect(dataMap.get('Process Mode')).toBe('relax');
-    expect(dataMap.get('Aspect Ratios')).toBe('1:1');
-    expect(dataMap.get('MJ Version')).toBe('6.1');
     expect(dataMap.get('OpenAI Model')).toBe('gpt-4o-mini');
 
     // Images sheet exists
