@@ -2168,7 +2168,7 @@ class BackendAdapter {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
       const zipFilename = `bulk_export_${timestamp}.zip`;
       const zipPath = path.join(exportDir, zipFilename);
-      const output = fs.createWriteStream(zipPath);
+      const output = fsSync_bulk.createWriteStream(zipPath);
       archive.pipe(output);
       
       const exportedFiles = [];
