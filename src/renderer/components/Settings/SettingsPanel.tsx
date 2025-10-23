@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AppLogo } from '../Common/AppLogo';
 import type { SettingsObject as SharedSettingsObject } from '../../../types/settings';
-import { Eye, EyeOff, Save, RotateCcw, AlertCircle, CheckCircle, X, Key, FolderOpen, Sliders, Cog, Settings } from 'lucide-react';
+import { Eye, EyeOff, Save, RefreshCw, AlertCircle, CheckCircle, X, Key, FolderOpen, Sliders, Cog, Settings } from 'lucide-react';
 import { Toggle } from './Toggle';
 import { FileSelector } from './FileSelector';
 
@@ -1288,7 +1288,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 data-testid="reset-button"
               >
-                <RotateCcw className="w-4 h-4" />
+                <RefreshCw className="w-4 h-4" />
                 Reset to Defaults
               </button>
             </div>
