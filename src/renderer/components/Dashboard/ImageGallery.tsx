@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import StatusBadge from '../common/StatusBadge';
+import StatusBadge from '../Common/StatusBadge';
 import * as XLSX from 'xlsx';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import ImageModal from './ImageModal';
