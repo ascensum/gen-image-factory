@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Settings, Sliders, Zap, Image, CheckCircle, AlertCircle, ChevronDown, RotateCcw, Save } from 'lucide-react';
+import { Settings, Sliders, Zap, Image, CheckCircle, AlertCircle, ChevronDown } from 'lucide-react';
 
 // Types and Interfaces
 interface ParametersSectionProps {
