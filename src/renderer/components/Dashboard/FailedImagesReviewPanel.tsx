@@ -33,7 +33,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   const [retryPendingImages, setRetryPendingImages] = useState<GeneratedImage[]>([]);
   const [processingImages, setProcessingImages] = useState<GeneratedImage[]>([]);
   const [retryFailedImages, setRetryFailedImages] = useState<GeneratedImage[]>([]);
-  const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [selectedImages, setSelectedImages] = new Set());
   const [selectedImageForReview, setSelectedImageForReview] = useState<GeneratedImage | null>(null);
   const [showProcessingSettingsModal, setShowProcessingSettingsModal] = useState(false);
   const [activeTab, setActiveTab] = useState<QCStatus>('qc_failed');
@@ -560,7 +560,10 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-semibold text-blue-900 flex items-center gap-2">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                  <path d="M21 3v5h-5" />
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                  <path d="M8 16H3v5" />
                 </svg>
                 Retry Queue Status
               </h3>
