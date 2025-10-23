@@ -37,6 +37,21 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
   // Refs for performance optimization
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Derived: active filters count for UX summary
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (filters.status && filters.status !== 'all') count++;
+    if (filters.dateFrom) count++;
+    if (filters.dateTo) count++;
+    if (filters.label && filters.label.trim() !== '') count++;
+    if (typeof filters.minImages === 'number' && filters.minImages > 0) count++;
+    if (typeof filters.maxImages === 'number' && typeof filters.maxImages === 'number') count++;
+    if (searchQuery && searchQuery.trim() !== '') count++;
+    return count;
+  }, [filters, searchQuery]);
+
+  const formatDateInput = useCallback((d?: Date) => (d ? new Date(d).toISOString().slice(0, 10) : ''), []);
+
   // Memoized computed values following BMad-Method performance principles
   const filteredJobs = useMemo(() => {
     if (!jobs.length) return [];
@@ -630,6 +645,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 type="date" 
                 className="bg-transparent px-2 h-full focus:outline-none" 
                 placeholder="From"
+                value={formatDateInput(filters.dateFrom)}
                 onChange={(e) => {
                   const v = e.target.value; // yyyy-mm-dd from input
                   const date = v ? new Date(v) : undefined;
@@ -641,6 +657,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 type="date" 
                 className="bg-transparent px-2 h-full focus:outline-none" 
                 placeholder="To"
+                value={formatDateInput(filters.dateTo)}
                 onChange={(e) => {
                   const v = e.target.value; // yyyy-mm-dd from input
                   const date = v ? new Date(v) : undefined;
@@ -679,7 +696,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-[--muted-foreground]">3 active filters</span>
+              <span className="text-[--muted-foreground]">{activeFiltersCount} active filter{activeFiltersCount === 1 ? '' : 's'}</span>
               <button 
                 onClick={() => {
                   setFilters({ status: 'all', dateRange: 'all', label: '', minImages: 0, maxImages: undefined, dateFrom: undefined, dateTo: undefined });
