@@ -454,9 +454,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                           <div className="text-xs text-gray-500 truncate mt-1" title={jobLabel}>
                             {jobLabel}
                           </div>
-                          <div className="text-[11px] text-gray-400 mt-1" title={image.createdAt ? formatDate(image.createdAt as any) : ''}>
-                            {image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : ''}
-                          </div>
+                          {/* Date shown in footer row below; remove duplicate here */}
                         </div>
                       );
                     })()}
