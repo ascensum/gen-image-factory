@@ -133,24 +133,9 @@ const ImageModal: React.FC<ImageModalProps> = ({
     return null;
   }
 
-  const getQCStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return 'bg-green-100 text-green-800 border-green-300';
-      case 'rejected':
-        return 'bg-red-100 text-red-800 border-red-300';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
-    }
-  };
-
   const formatDate = (date: string | Date) => {
     return new Date(date).toLocaleString();
   };
-
-  const processingSettings = image.processingSettings || {} as NonNullable<GeneratedImage['processingSettings']>;
   
   // Handle metadata - it might be a JSON string that needs parsing
   type Meta = NonNullable<GeneratedImage['metadata']> & {
@@ -177,6 +162,9 @@ const ImageModal: React.FC<ImageModalProps> = ({
   if (process.env.NODE_ENV === 'development') {
     try { console.log('ImageModal - Final metadata object:', metadata); } catch {}
   }
+  
+  // Ensure processingSettings is always defined for the Processing tab
+  const processingSettings: any = (image as any)?.processingSettings ?? {};
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -343,7 +331,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                   title="Reset"
                   aria-label="Reset zoom"
                 >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></svg>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582M20 12A8.001 8.001 0 004.582 9m0 0H9"/></svg>
                 </button>
                 <button
                   className="p-1 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded"
@@ -377,7 +365,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
               </div>
 
               {/* Tab Content */}
-              <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
                 
                 {/* Details Tab */}
                 {activeTab === 'details' && (
@@ -406,10 +394,10 @@ const ImageModal: React.FC<ImageModalProps> = ({
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">QC Status</label>
-                      <div className="flex items-center space-x-2 whitespace-nowrap">
+                      <div className="flex flex-wrap items-start gap-2 whitespace-normal">
                         <StatusBadge variant="qc" status={image.qcStatus || 'approved'} />
                         {image.qcReason && (
-                          <span className="text-sm text-gray-600">- {image.qcReason}</span>
+                          <span className="text-sm text-gray-600 break-words whitespace-pre-wrap flex-1 min-w-0">- {image.qcReason}</span>
                         )}
                       </div>
                     </div>
