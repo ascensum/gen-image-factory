@@ -459,6 +459,40 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     }
   };
 
+  // Compute header statistics from local data as a fallback/enhancement
+  const computedStatistics = React.useMemo(() => {
+    const jobs = Array.isArray(jobHistory) ? jobHistory : [];
+    const totalJobsLocal = jobs.length;
+    const completedJobsLocal = jobs.filter(j => String(j.status).toLowerCase() === 'completed').length;
+    const failedJobsLocal = jobs.filter(j => String(j.status).toLowerCase() === 'failed').length;
+    const totalImagesGeneratedLocal = jobs.reduce((sum, j) => sum + (Number((j as any).successfulImages) || 0), 0);
+    const totalImagesLocal = jobs.reduce((sum, j) => sum + (Number((j as any).totalImages) || 0), 0);
+    const avgDurationLocalSec = (() => {
+      const completed = jobs.filter(j => j.completedAt && j.startedAt);
+      if (completed.length === 0) return 0;
+      const totalSec = completed.reduce((acc, j) => {
+        const start = j.startedAt ? new Date(j.startedAt as any).getTime() : 0;
+        const end = j.completedAt ? new Date(j.completedAt as any).getTime() : 0;
+        const dur = end && start && end > start ? (end - start) / 1000 : 0;
+        return acc + dur;
+      }, 0);
+      return Math.round(totalSec / completed.length);
+    })();
+
+    const successRateLocal = totalImagesLocal > 0
+      ? Math.round((totalImagesGeneratedLocal / totalImagesLocal) * 100)
+      : (statistics.successRate || 0);
+
+    return {
+      totalJobs: totalJobsLocal || statistics.totalJobs || 0,
+      completedJobs: completedJobsLocal || statistics.completedJobs || 0,
+      failedJobs: failedJobsLocal || statistics.failedJobs || 0,
+      averageExecutionTime: avgDurationLocalSec || statistics.averageExecutionTime || 0,
+      totalImagesGenerated: totalImagesGeneratedLocal || statistics.totalImagesGenerated || 0,
+      successRate: successRateLocal || 0,
+    } as JobStatistics;
+  }, [jobHistory, statistics]);
+
   const handleStartJob = async () => {
     try {
       console.log('🚀 handleStartJob called - starting job execution...');
@@ -815,10 +849,10 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
           {/* Right: compact stats only */}
           <div className="flex items-center flex-wrap gap-x-6 gap-y-2 justify-end ml-auto">
-            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Total Jobs:</span><span className="ml-1 font-semibold text-blue-600">{statistics.totalJobs}</span></div>
-            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Success Rate:</span><span className="ml-1 font-semibold text-green-600">{statistics.successRate}%</span></div>
-            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Images Generated:</span><span className="ml-1 font-semibold text-purple-600">{statistics.totalImagesGenerated}</span></div>
-            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Avg Duration:</span><span className="ml-1 font-semibold text-orange-600">{statistics.averageExecutionTime}s</span></div>
+            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Total Jobs:</span><span className="ml-1 font-semibold text-blue-600">{computedStatistics.totalJobs}</span></div>
+            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Success Rate:</span><span className="ml-1 font-semibold text-green-600">{computedStatistics.successRate}%</span></div>
+            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Images Generated:</span><span className="ml-1 font-semibold text-purple-600">{computedStatistics.totalImagesGenerated}</span></div>
+            <div className="text-sm whitespace-nowrap"><span className="text-gray-600">Avg Duration:</span><span className="ml-1 font-semibold text-orange-600">{computedStatistics.averageExecutionTime}s</span></div>
           </div>
         </div>
       </div>
