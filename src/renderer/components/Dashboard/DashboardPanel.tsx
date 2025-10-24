@@ -1116,14 +1116,14 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                         aria-expanded={isJobFilterOpen}
                       >
                         {imageJobFilter === 'all' ? 'All Jobs' : (() => {
-                          const job = jobHistory.find(j => j.id === imageJobFilter);
-                          return (job as any)?.label || job?.configurationName || `Job ${String(imageJobFilter).slice(0, 8)}`;
+                          const job = jobHistory.find(j => String(j.id) === String(imageJobFilter));
+                          return (job as any)?.displayLabel || job?.configurationName || `Job ${String(imageJobFilter).slice(0, 8)}`;
                         })()}
                       </button>
                     </div>
 
                     {isJobFilterOpen && (
-                      <div className="absolute z-20 mt-2 w-[18rem] bg-white border border-gray-200 rounded-md shadow-lg">
+                      <div className="absolute z-20 mt-2 w-[18rem] bg-white border border-gray-200 rounded-md shadow-lg overflow-x-hidden">
                         <div className="p-2 border-b border-gray-200">
                           <input
                             type="text"
@@ -1134,12 +1134,12 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                             autoFocus
                           />
                         </div>
-                        <ul role="listbox" className="max-h-72 overflow-y-auto py-1">
+                        <ul role="listbox" className="max-h-72 overflow-y-auto overflow-x-hidden py-1">
                           <li>
                             <button
                               type="button"
                               onClick={() => { setImageJobFilter('all'); setIsJobFilterOpen(false); setJobFilterQuery(''); }}
-                              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${imageJobFilter === 'all' ? 'bg-gray-100' : ''}`}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 whitespace-normal break-words ${imageJobFilter === 'all' ? 'bg-gray-100' : ''}`}
                               role="option"
                               aria-selected={imageJobFilter === 'all'}
                             >
@@ -1150,8 +1150,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                             .map(executionId => ({
                               id: executionId,
                               label: (() => {
-                                const job = jobHistory.find(j => j.id === executionId);
-                                return (job as any)?.label || job?.configurationName || `Job ${String(executionId).slice(0, 8)}`;
+                                const job = jobHistory.find(j => String(j.id) === String(executionId));
+                                return (job as any)?.displayLabel || job?.configurationName || `Job ${String(executionId).slice(0, 8)}`;
                               })()
                             }))
                             .filter(opt => opt.label.toLowerCase().includes(jobFilterQuery.toLowerCase()))
@@ -1160,7 +1160,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                                 <button
                                   type="button"
                                   onClick={() => { setImageJobFilter(String(opt.id)); setIsJobFilterOpen(false); setJobFilterQuery(''); }}
-                                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${String(imageJobFilter) === String(opt.id) ? 'bg-gray-100' : ''}`}
+                                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 whitespace-normal break-words ${String(imageJobFilter) === String(opt.id) ? 'bg-gray-100' : ''}`}
                                   role="option"
                                   aria-selected={String(imageJobFilter) === String(opt.id)}
                                   title={opt.label}
