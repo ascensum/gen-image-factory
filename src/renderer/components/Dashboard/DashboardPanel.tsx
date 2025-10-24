@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppLogo } from '../Common/AppLogo';
 import JobControls from './JobControls';
-import ProgressIndicator from './ProgressIndicator';
 import LogViewer from './LogViewer';
 import JobHistory from './JobHistory';
 import ImageGallery from './ImageGallery';
@@ -197,15 +195,17 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   const [imageDateFrom, setImageDateFrom] = useState<string | null>(null);
   const [imageDateTo, setImageDateTo] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  // Job filter dropdown controls
+  const [isJobFilterOpen, setIsJobFilterOpen] = useState(false);
+  const [jobFilterQuery, setJobFilterQuery] = useState('');
 
   // Helpers to reflect filtered selection data from ImageGallery
   const filteredImageIds = React.useCallback(() => {
     // Build the same filter used in ImageGallery to compute ids quickly
-    const uniqueJobIds = Array.from(new Set((generatedImages || []).map(img => img.executionId)));
     const images = generatedImages || [];
     const parseMetadata = (raw: any) => {
       if (!raw) return {};
-      if (typeof raw === 'string') { try { return JSON.parse(raw); } catch { return {}; } }
+      if (typeof raw === 'string') { try { return JSON.parse(raw); } catch (e) { return {}; } }
       return raw;
     };
     const ids = images.filter(image => {
@@ -342,7 +342,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         console.log('🔄 Delayed refresh of generated images to ensure metadata is complete...');
       loadGeneratedImages();
       }, 500); // 500ms delay to ensure backend metadata generation completes
-    } else if (jobStatus.state === 'failed' || jobStatus.state === 'error') {
+    } else if (jobStatus.state === 'failed') {
       console.log('🔄 Job failed, refreshing data...');
       // Refresh lists so Job History reflects failure without waiting for manual actions
       loadJobHistory();
@@ -430,7 +430,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     try {
       const withinGrace =
         lastCompletionRef.current !== null && Date.now() - lastCompletionRef.current < 60_000;
-      const failedOrError = jobStatus.state === 'failed' || jobStatus.state === 'error';
+      const failedOrError = jobStatus.state === 'failed';
       if (!(jobStatus.state === 'running' || withinGrace || failedOrError)) {
         setLogs([]);
         return;
@@ -438,11 +438,13 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       // Use debug mode if enabled in settings
       let mode = 'standard';
       try {
-        const settingsRes = await window.electronAPI.getSettings?.();
+        const settingsRes: any = await (window as any).electronAPI.getSettings?.();
         if (settingsRes?.settings?.advanced?.debugMode) {
           mode = 'debug';
         }
-      } catch {}
+      } catch (e) {
+        // ignore
+      }
       const jobLogs = await window.electronAPI.jobManagement.getJobLogs(mode);
         console.log('Logs loaded:', jobLogs);
         if (jobLogs && Array.isArray(jobLogs)) {
@@ -614,13 +616,13 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
               console.error('🚨 DEBUG RERUN: Rerun failed:', rerunResult);
               setError(`Failed to rerun job: ${rerunResult?.error || 'Unknown error'}`);
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('🚨 DEBUG RERUN: Exception during rerun:', error);
-            setError(`Failed to rerun job: ${error.message}`);
+            setError(`Failed to rerun job: ${error?.message ?? String(error)}`);
           }
           break;
       }
-    } catch (error) {
+    } catch (error: any) {
       setError(`Failed to ${action} job`);
       console.error(`Failed to ${action} job:`, error);
     }
@@ -675,7 +677,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   // Note: QC status changes are handled in the separate Failed Images Review page
 
   // NEW: Function to get dynamic progress steps based on job configuration
-  const getDynamicProgressSteps = (config) => {
+  const getDynamicProgressSteps = (config: any) => {
     if (!config) return [];
     
     const steps = [
@@ -731,7 +733,6 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         description: subtasks.join(' + '),
         required: true,
         completed: false,
-        current: true,
         weight: 80
       });
     }
@@ -739,19 +740,16 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     return steps;
   };
 
-  // NEW: Function to determine if overall progress should be shown
-  const shouldShowOverallProgress = (config) => {
-    return config?.parameters?.count > 1;
-  };
+  // (removed) shouldShowOverallProgress not needed
 
   // NEW: Smart progress calculation based on backend weights (20% + 80%) and generation counts
-  const getSmartProgressValues = (config, jobStatus) => {
+  const getSmartProgressValues = (config: any, jobStatus: JobStatus) => {
     // Prefer live counts from runner status for reruns/modified configs
-    const statusCount = Math.max(1, Number(jobStatus?.currentJob?.totalGenerations || 0));
+    const statusCount = Math.max(1, Number((jobStatus as any)?.currentJob?.totalGenerations || 0));
     const cfgCount = Math.max(1, Number(config?.parameters?.count || 1));
     const count = statusCount || cfgCount;
 
-    const statusVariations = Math.max(1, Math.min(20, Number(jobStatus?.currentJob?.variations || 0)));
+    const statusVariations = Math.max(1, Math.min(20, Number((jobStatus as any)?.currentJob?.variations || 0)));
     const cfgVariations = Math.max(1, Math.min(20, Number(config?.parameters?.variations || 1)));
     const variations = statusVariations || cfgVariations;
 
@@ -762,7 +760,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     let singleProgress = 0;
     if (jobState === 'completed') {
       singleProgress = 100;
-    } else if (jobState === 'failed' || jobState === 'error' || jobState === 'stopped') {
+    } else if (jobState === 'failed' || jobState === 'stopped') {
       singleProgress = 0;
     } else {
       singleProgress = 0;
@@ -773,10 +771,10 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     let currentGeneration = 1;
     let gensDone = 0;
     try {
-      const execId = jobStatus?.currentJob?.executionId || jobStatus?.currentJob?.id;
-      const runnerGensDone = Number(jobStatus?.currentJob?.gensDone || 0);
+      const execId = (jobStatus as any)?.currentJob?.executionId || (jobStatus as any)?.currentJob?.id;
+      const runnerGensDone = Number((jobStatus as any)?.currentJob?.gensDone || 0);
       if (count > 1) {
-        if (jobStatus?.currentJob) {
+        if ((jobStatus as any)?.currentJob) {
           gensDone = Math.min(runnerGensDone, count);
           overallGenerationProgress = Math.round(Math.min(100, (gensDone / count) * 100));
         } else if (execId && Array.isArray(generatedImages)) {
@@ -926,10 +924,10 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                     {getDynamicProgressSteps(jobConfiguration).map((step, index) => {
                       // Determine step state using backend-reported currentStep
                       const jobState = jobStatus?.state;
-                      const currentStepIdx = Number(jobStatus?.currentStep || jobStatus?.currentJob?.currentStep || 1); // 1-based
+                      const currentStepIdx = Number((jobStatus as any)?.currentStep || (jobStatus as any)?.currentJob?.currentStep || 1); // 1-based
                       let stepState = 'pending'; // pending, active, completed, failed
                       
-                      if (jobState === 'failed' || jobState === 'error') {
+                      if (jobState === 'failed') {
                         stepState = 'failed';
                       } else if (jobState === 'completed') {
                         stepState = 'completed';
@@ -1106,24 +1104,74 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                       </button>
                     </div>
                   </div>
-                  {/* Job Filter */}
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-700">Job:</span>
-                    <select 
-                      value={imageJobFilter}
-                      onChange={(e) => setImageJobFilter(e.target.value)}
-                      className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="all">All Jobs</option>
-                      {Array.from(new Set(generatedImages.map(img => img.executionId))).map(executionId => {
-                        const job = jobHistory.find(j => j.id === executionId);
-                        return (
-                          <option key={executionId} value={executionId}>
-                            {job?.label || job?.configurationName || `Job ${String(executionId).slice(0, 8)}`}
-                          </option>
-                        );
-                      })}
-                    </select>
+                  {/* Job Filter (searchable + scrollable dropdown) */}
+                  <div className="relative">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-medium text-gray-700">Job:</span>
+                      <button
+                        type="button"
+                        onClick={() => setIsJobFilterOpen(v => !v)}
+                        className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[14rem] text-left"
+                        aria-haspopup="listbox"
+                        aria-expanded={isJobFilterOpen}
+                      >
+                        {imageJobFilter === 'all' ? 'All Jobs' : (() => {
+                          const job = jobHistory.find(j => j.id === imageJobFilter);
+                          return (job as any)?.label || job?.configurationName || `Job ${String(imageJobFilter).slice(0, 8)}`;
+                        })()}
+                      </button>
+                    </div>
+
+                    {isJobFilterOpen && (
+                      <div className="absolute z-20 mt-2 w-[18rem] bg-white border border-gray-200 rounded-md shadow-lg">
+                        <div className="p-2 border-b border-gray-200">
+                          <input
+                            type="text"
+                            value={jobFilterQuery}
+                            onChange={(e) => setJobFilterQuery(e.target.value)}
+                            placeholder="Search jobs..."
+                            className="w-full text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            autoFocus
+                          />
+                        </div>
+                        <ul role="listbox" className="max-h-72 overflow-y-auto py-1">
+                          <li>
+                            <button
+                              type="button"
+                              onClick={() => { setImageJobFilter('all'); setIsJobFilterOpen(false); setJobFilterQuery(''); }}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${imageJobFilter === 'all' ? 'bg-gray-100' : ''}`}
+                              role="option"
+                              aria-selected={imageJobFilter === 'all'}
+                            >
+                              All Jobs
+                            </button>
+                          </li>
+                          {Array.from(new Set(generatedImages.map(img => img.executionId)))
+                            .map(executionId => ({
+                              id: executionId,
+                              label: (() => {
+                                const job = jobHistory.find(j => j.id === executionId);
+                                return (job as any)?.label || job?.configurationName || `Job ${String(executionId).slice(0, 8)}`;
+                              })()
+                            }))
+                            .filter(opt => opt.label.toLowerCase().includes(jobFilterQuery.toLowerCase()))
+                            .map(opt => (
+                              <li key={opt.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => { setImageJobFilter(String(opt.id)); setIsJobFilterOpen(false); setJobFilterQuery(''); }}
+                                  className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${String(imageJobFilter) === String(opt.id) ? 'bg-gray-100' : ''}`}
+                                  role="option"
+                                  aria-selected={String(imageJobFilter) === String(opt.id)}
+                                  title={opt.label}
+                                >
+                                  {opt.label}
+                                </button>
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
 
                 {/* Date Range Filter (Dashboard font sizes/styles) */}
