@@ -200,6 +200,55 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     };
   }, [jobs, counts]);
 
+  // UI statistics derived from time windows (real values for subtitles)
+  const uiStats = useMemo(() => {
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const sevenDaysMs = 7 * oneDayMs;
+    const thisWeekStart = now - sevenDaysMs;
+    const prevWeekStart = now - 2 * sevenDaysMs;
+    const prevWeekEnd = thisWeekStart;
+
+    const getTime = (d: any) => {
+      if (!d) return 0;
+      const t = new Date(d as any).getTime();
+      return isNaN(t) ? 0 : t;
+    };
+
+    const thisWeekJobs = jobs.filter(j => {
+      const t = getTime((j as any).startedAt || (j as any).completedAt);
+      return t >= thisWeekStart && t <= now;
+    }).length;
+
+    const prevWeekJobs = jobs.filter(j => {
+      const t = getTime((j as any).startedAt || (j as any).completedAt);
+      return t >= prevWeekStart && t < prevWeekEnd;
+    }).length;
+
+    let weeklyDeltaPct = 0;
+    let weeklyTrend: 'up' | 'down' | 'flat' = 'flat';
+    if (prevWeekJobs > 0) {
+      weeklyDeltaPct = Math.round(((thisWeekJobs - prevWeekJobs) / prevWeekJobs) * 100);
+      if (weeklyDeltaPct > 0) weeklyTrend = 'up';
+      else if (weeklyDeltaPct < 0) weeklyTrend = 'down';
+    } else if (thisWeekJobs > 0) {
+      weeklyDeltaPct = 100;
+      weeklyTrend = 'up';
+    }
+
+    const failedLast24h = jobs.filter(j => {
+      if (String((j as any).status).toLowerCase() !== 'failed') return false;
+      const t = getTime((j as any).completedAt || (j as any).startedAt);
+      return t >= now - oneDayMs && t <= now;
+    }).length;
+
+    const completionRate = statistics.totalJobs > 0
+      ? Math.round(((statistics.completedJobs || 0) / statistics.totalJobs) * 100)
+      : 0;
+
+    return { weeklyDeltaPct, weeklyTrend, failedLast24h, completionRate };
+  }, [jobs, statistics]);
+
   // Debounced search handler following BMad-Method performance principles
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -592,12 +641,16 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
         <div className="stats-card">
           <div className="text-sm text-[--muted-foreground]">Total Jobs</div>
           <div className="text-2xl font-semibold mt-1">{statistics.totalJobs}</div>
-          <div className="text-xs text-[--primary] mt-1">↑ 12% from last week</div>
+          <div className="text-xs text-[--primary] mt-1">
+            {uiStats.weeklyTrend === 'up' && `↑ ${uiStats.weeklyDeltaPct}% from last week`}
+            {uiStats.weeklyTrend === 'down' && `↓ ${Math.abs(uiStats.weeklyDeltaPct)}% from last week`}
+            {uiStats.weeklyTrend === 'flat' && 'No change from last week'}
+          </div>
         </div>
         <div className="stats-card">
           <div className="text-sm text-[--muted-foreground]">Completed</div>
           <div className="text-2xl font-semibold mt-1 text-[--status-completed]">{statistics.completedJobs}</div>
-          <div className="text-xs text-[--muted-foreground] mt-1">Success rate 98%</div>
+          <div className="text-xs text-[--muted-foreground] mt-1">Completion rate {uiStats.completionRate}%</div>
         </div>
         <div className="stats-card">
           <div className="text-sm text-[--muted-foreground]">In Progress</div>
@@ -607,7 +660,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
         <div className="stats-card">
           <div className="text-sm text-[--muted-foreground]">Failed</div>
           <div className="text-2xl font-semibold mt-1 text-[--status-failed]">{statistics.failedJobs}</div>
-          <div className="text-xs text-[--muted-foreground] mt-1">Last 24h</div>
+          <div className="text-xs text-[--muted-foreground] mt-1">{uiStats.failedLast24h} failed in last 24h</div>
         </div>
         <div className="stats-card">
           <div className="text-sm text-[--muted-foreground]">Pending</div>
@@ -877,7 +930,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                         className="p-1 hover:bg-[--secondary] rounded transition-colors"
                         title="Rerun Job"
                       >
-                        <svg className="w-4 h-4 text-[--action-rerun]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-[--action-rerun]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                           <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
                           <path d="M21 3v5h-5" />
                           <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 01-6.74-2.74L3 16" />
