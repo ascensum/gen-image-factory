@@ -45,10 +45,6 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
       setTimeout(() => {
         configSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 0);
-    } else if (useOriginalSettings && contentRef.current) {
-      setTimeout(() => {
-        contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 0);
     }
   }, [useOriginalSettings, isOpen]);
 
@@ -112,7 +108,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
         </div>
 
         {/* Content */}
-        <div data-testid="modal-content" ref={contentRef} className="p-6 overflow-y-auto flex-1 min-h-0">
+        <div data-testid="modal-content" ref={contentRef} className="p-6 overflow-y-auto flex-1 min-h-0 max-h-[calc(90vh-140px)]">
           {/* Batch Processing Info */}
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start">
@@ -130,7 +126,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
           </div>
 
           {/* Settings Choice */}
-          <div className="mb-8">
+          <div className="mb-8 sticky top-0 bg-white z-10 pt-4 pb-3 border-b border-gray-100">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Batch Processing Method</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="flex items-start gap-3 cursor-pointer p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
