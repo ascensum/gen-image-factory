@@ -649,73 +649,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       {/* Selection & Controls Ribbon (unified) */}
       <div className="bg-white border-b border-gray-200 px-6 py-3">
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          {/* Left: selection + bulk actions */}
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={selectedImages.size === filteredAndSortedImages.length && filteredAndSortedImages.length > 0}
-                onChange={handleSelectAll}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700">
-                Select All ({selectedImages.size}/{filteredAndSortedImages.length})
-              </span>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handleBulkAction('approve')}
-                disabled={selectedImages.size === 0}
-                className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                  selectedImages.size === 0 
-                    ? 'bg-green-200 text-green-400 cursor-not-allowed' 
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
-                title={selectedImages.size === 0 ? 'Select images to enable' : 'Approve selected images'}
-              >
-                Approve Selected
-              </button>
-              <button
-                onClick={() => handleBulkAction('retry')}
-                disabled={selectedImages.size === 0 || retryQueueStatus.isProcessing}
-                className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                  selectedImages.size === 0 || retryQueueStatus.isProcessing 
-                    ? 'bg-blue-200 text-blue-400 cursor-not-allowed' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-                title={
-                  selectedImages.size === 0 
-                    ? 'Select images to enable' 
-                    : retryQueueStatus.isProcessing 
-                    ? 'Retry is currently processing. Please wait for completion.'
-                    : 'Retry selected images (batch)'
-                }
-              >
-                Retry Selected
-                {retryQueueStatus.isProcessing && (
-                  <svg className="ml-1 w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V2A10 10 0 002 12h2zm2 5.291A7.962 7.962 0 014 12H2c0 3.042 1.135 5.824 3 7.938l1-0.647z"></path>
-                  </svg>
-                )}
-              </button>
-              <button
-                onClick={() => handleBulkAction('delete')}
-                disabled={selectedImages.size === 0}
-                className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                  selectedImages.size === 0 
-                    ? 'bg-red-200 text-red-400 cursor-not-allowed' 
-                    : 'bg-red-600 text-white hover:bg-red-700'
-                }`}
-                title={selectedImages.size === 0 ? 'Select images to enable' : 'Delete selected images'}
-              >
-                Delete Selected
-              </button>
-            </div>
-          </div>
-
-          {/* Right: controls ordered like Image Gallery: View → Job → Search → Sort → Clear */}
+          {/* Left: controls ordered like Image Gallery: View → Job → Search → Sort → Clear */}
           <div className="flex items-center gap-3 flex-wrap">
             {/* View toggle (match Image Gallery style) */}
             <div className="flex items-center gap-2">
@@ -852,6 +786,72 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
             >
               Clear
             </button>
+          </div>
+
+          {/* Right: selection + bulk actions */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={selectedImages.size === filteredAndSortedImages.length && filteredAndSortedImages.length > 0}
+                onChange={handleSelectAll}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">
+                Select All ({selectedImages.size}/{filteredAndSortedImages.length})
+              </span>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handleBulkAction('approve')}
+                disabled={selectedImages.size === 0}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  selectedImages.size === 0 
+                    ? 'bg-green-200 text-green-400 cursor-not-allowed' 
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+                title={selectedImages.size === 0 ? 'Select images to enable' : 'Approve selected images'}
+              >
+                Approve Selected
+              </button>
+              <button
+                onClick={() => handleBulkAction('retry')}
+                disabled={selectedImages.size === 0 || retryQueueStatus.isProcessing}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  selectedImages.size === 0 || retryQueueStatus.isProcessing 
+                    ? 'bg-blue-200 text-blue-400 cursor-not-allowed' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                title={
+                  selectedImages.size === 0 
+                    ? 'Select images to enable' 
+                    : retryQueueStatus.isProcessing 
+                    ? 'Retry is currently processing. Please wait for completion.'
+                    : 'Retry selected images (batch)'
+                }
+              >
+                Retry Selected
+                {retryQueueStatus.isProcessing && (
+                  <svg className="ml-1 w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V2A10 10 0 002 12h2zm2 5.291A7.962 7.962 0 014 12H2c0 3.042 1.135 5.824 3 7.938l1-0.647z"></path>
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={() => handleBulkAction('delete')}
+                disabled={selectedImages.size === 0}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  selectedImages.size === 0 
+                    ? 'bg-red-200 text-red-400 cursor-not-allowed' 
+                    : 'bg-red-600 text-white hover:bg-red-700'
+                }`}
+                title={selectedImages.size === 0 ? 'Select images to enable' : 'Delete selected images'}
+              >
+                Delete Selected
+              </button>
+            </div>
           </div>
         </div>
       </div>
