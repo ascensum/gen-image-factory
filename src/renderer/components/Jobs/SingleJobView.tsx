@@ -11,7 +11,6 @@ import LogViewer from '../Dashboard/LogViewer';
 interface SingleJobViewProps {
   jobId: string | number;
   onBack: () => void;
-  onExport: (jobId: string | number) => void;
   onRerun: (jobId: string | number) => void;
   onDelete: (jobId: string | number) => void;
 }
@@ -19,7 +18,6 @@ interface SingleJobViewProps {
 const SingleJobView: React.FC<SingleJobViewProps> = ({
   jobId,
   onBack,
-  onExport,
   onRerun,
   onDelete
 }) => {
@@ -38,7 +36,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const [editedLabel, setEditedLabel] = useState('');
   const [isSavingLabel, setIsSavingLabel] = useState(false);
   const [labelSaveError, setLabelSaveError] = useState<string | null>(null);
-  const labelInputRef = useRef<HTMLDivElement>(null);
+  const labelInputRef = useRef<HTMLInputElement>(null);
   
   // Compute display-only fallback label from startedAt timestamp
   const getDisplayLabel = useCallback(() => {
@@ -60,9 +58,10 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  const [showRunwareAdvanced, setShowRunwareAdvanced] = useState(false);
   
   // Job configuration state
-  const [jobConfiguration, setJobConfiguration] = useState(null);
+  const [jobConfiguration, setJobConfiguration] = useState<any>(null);
   
   // Export dialog state
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -105,14 +104,24 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
             if (statsResult.success) {
               console.log('🔄 SingleJobView: Calculated statistics:', statsResult.statistics);
               // Update the job with calculated statistics including QC breakdown
-              setJob(prevJob => ({
-                ...prevJob,
-                totalImages: statsResult.statistics.totalImages,
-                successfulImages: statsResult.statistics.successfulImages,
-                failedImages: statsResult.statistics.failedImages,
-                approvedImages: statsResult.statistics.approvedImages,
-                qcFailedImages: statsResult.statistics.qcFailedImages
-              }));
+              setJob(prevJob => {
+                const base = prevJob ?? ({} as JobExecution);
+                return {
+                  ...(base as any),
+                  id: base?.id ?? jobResult.execution.id,
+                  configurationId: base?.configurationId ?? jobResult.execution.configurationId,
+                  configurationName: (base as any)?.configurationName,
+                  startedAt: base?.startedAt ?? jobResult.execution.startedAt,
+                  completedAt: base?.completedAt ?? jobResult.execution.completedAt,
+                  status: (base as any)?.status ?? jobResult.execution.status,
+                  totalImages: statsResult.statistics.totalImages,
+                  successfulImages: statsResult.statistics.successfulImages,
+                  failedImages: statsResult.statistics.failedImages,
+                  approvedImages: (statsResult.statistics as any).approvedImages,
+                  qcFailedImages: (statsResult.statistics as any).qcFailedImages,
+                  label: base?.label ?? jobResult.execution.label
+                } as JobExecution;
+              });
             }
           } catch (statsError) {
             console.warn('Failed to calculate statistics:', statsError);
@@ -987,36 +996,12 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
               </div>
             ) : editedSettings ? (
               <div className="settings-content">
-                {/* API Keys Section */}
+                {/* API Keys Section (view-only note) */}
                 <div className="setting-group">
                   <h4 className="setting-group-title">API Keys</h4>
-                  <div className="setting-row">
-                    <label>OpenAI API Key</label>
-                    <input
-                      type="password"
-                      value={editedSettings.apiKeys?.openai || ''}
-                      onChange={(e) => handleSettingChange('apiKeys', 'openai', e.target.value)}
-                      placeholder="Enter OpenAI API key"
-                    />
-                  </div>
-                  <div className="setting-row">
-                    <label>Runware API Key</label>
-                    <input
-                      type="password"
-                      value={editedSettings.apiKeys?.runware || ''}
-                      onChange={(e) => handleSettingChange('apiKeys', 'runware', e.target.value)}
-                      placeholder="Enter Runware API key"
-                    />
-                  </div>
-                  <div className="setting-row">
-                    <label>Remove.bg API Key</label>
-                    <input
-                      type="password"
-                      value={editedSettings.apiKeys?.removeBg || ''}
-                      onChange={(e) => handleSettingChange('apiKeys', 'removeBg', e.target.value)}
-                      placeholder="Enter Remove.bg API key"
-                    />
-                  </div>
+                  <p className="setting-hint" style={{ fontSize: '12px', color: '#6b7280', marginTop: '-6px', marginBottom: '8px' }}>
+                    API keys are managed in Settings. For security, edit them there.
+                  </p>
                 </div>
 
                 {/* File Paths Section */}
@@ -1100,44 +1085,59 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     />
                   </div>
 
+                  {/* Ordered generation fields */}
                   <div className="setting-row">
-                    <label>Process Mode</label>
+                    <label>Runware Model</label>
+                    <input
+                      type="text"
+                      value={editedSettings.parameters?.runwareModel || ''}
+                      onChange={(e) => handleSettingChange('parameters', 'runwareModel', e.target.value)}
+                      placeholder="e.g., runware:101@1"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Dimensions (W×H or CSV)</label>
+                    <input
+                      type="text"
+                      value={editedSettings.parameters?.runwareDimensionsCsv || ''}
+                      onChange={(e) => handleSettingChange('parameters', 'runwareDimensionsCsv', e.target.value)}
+                      placeholder="e.g., 1024x1024 or 1024x1024,768x1024"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Output Format</label>
                     <select
-                      value={editedSettings.parameters?.processMode || 'relax'}
-                      onChange={(e) => handleSettingChange('parameters', 'processMode', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={editedSettings.parameters?.runwareFormat || 'png'}
+                      onChange={(e) => handleSettingChange('parameters', 'runwareFormat', e.target.value)}
                     >
-                      <option value="relax">Relax</option>
-                      <option value="fast">Fast</option>
-                      <option value="turbo">Turbo</option>
+                      <option value="png">PNG</option>
+                      <option value="jpg">JPG</option>
+                      <option value="webp">WEBP</option>
                     </select>
                   </div>
                   <div className="setting-row">
-                    <label>Aspect Ratios</label>
+                    <label>Generations count</label>
                     <input
-                      type="text"
-                      value={editedSettings.parameters?.aspectRatios || ['1:1', '16:9', '9:16']}
-                      onChange={(e) => handleSettingChange('parameters', 'aspectRatios', e.target.value)}
-                      placeholder="Comma-separated aspect ratios"
+                      type="number"
+                      value={editedSettings.parameters?.count || 1}
+                      onChange={(e) => handleSettingChange('parameters', 'count', parseInt(e.target.value))}
+                      min="1"
+                      max="2500"
                     />
+                    <p className="setting-description">Number of generations (up to 2500 generations).</p>
                   </div>
                   <div className="setting-row">
-                    <label>MJ Version</label>
+                    <label>Variations</label>
                     <input
-                      type="text"
-                      value={editedSettings.parameters?.mjVersion || '6.1'}
-                      onChange={(e) => handleSettingChange('parameters', 'mjVersion', e.target.value)}
-                      placeholder="e.g., 6.1, niji, etc."
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={Number(editedSettings.parameters?.variations ?? 1)}
+                      onChange={(e) => handleSettingChange('parameters', 'variations', Math.max(1, Math.min(20, Number(e.target.value || 1))))}
                     />
                   </div>
-                  <div className="setting-row">
-                    <label>OpenAI Model</label>
-                    <input
-                      type="text"
-                      value={editedSettings.parameters?.openaiModel || ''}
-                      onChange={(e) => handleSettingChange('parameters', 'openaiModel', e.target.value)}
-                      placeholder="e.g., gpt-4o-mini"
-                    />
-                  </div>
+                  {/* Enable Generation Timeout (moved up per desired order) */}
                   <div className="setting-row">
                     <label>Enable Generation Timeout</label>
                     <Toggle
@@ -1156,35 +1156,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                           min="0"
                         />
                       </div>
-                      <div className="setting-row">
-                        <label>Polling Interval (minutes)</label>
-                        <input
-                          type="number"
-                          value={editedSettings.parameters?.pollingInterval || 1}
-                          onChange={(e) => handleSettingChange('parameters', 'pollingInterval', parseInt(e.target.value))}
-                          min="1"
-                        />
-                      </div>
                     </>
                   )}
-                  <div className="setting-row">
-                    <label>Random Keywords</label>
-                    <Toggle
-                      checked={editedSettings.parameters?.keywordRandom || false}
-                      onChange={(checked) => handleSettingChange('parameters', 'keywordRandom', checked)}
-                    />
-                  </div>
-                  <div className="setting-row">
-                    <label>Generations count</label>
-                    <input
-                      type="number"
-                      value={editedSettings.parameters?.count || 1}
-                      onChange={(e) => handleSettingChange('parameters', 'count', parseInt(e.target.value))}
-                      min="1"
-                      max="2500"
-                    />
-                    <p className="setting-description">Number of generations (up to 2500 generations).</p>
-                  </div>
+                  {/* Generation retry configuration */}
                   <div className="setting-row">
                     <label htmlFor="gen-retry-attempts-modal">Generation Retry Attempts</label>
                     <input
@@ -1206,6 +1180,63 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       min="0"
                       max="60000"
                       step="100"
+                    />
+                  </div>
+
+                  {/* Toggle to reveal Runware Advanced */}
+                  <div className="setting-row toggle-row">
+                    <div>
+                      <label>Runware Advanced Controls</label>
+                      <p className="setting-description">Show advanced Runware generation controls</p>
+                    </div>
+                    <Toggle
+                      checked={showRunwareAdvanced}
+                      onChange={(checked) => setShowRunwareAdvanced(checked)}
+                    />
+                  </div>
+                  {showRunwareAdvanced && (
+                    <>
+                      <div className="setting-row">
+                        <label>Runware Advanced: CFG Scale</label>
+                        <input
+                          type="number"
+                          value={Number(editedSettings.parameters?.runwareAdvanced?.CFGScale ?? '')}
+                          onChange={(e) => handleSettingChange('parameters', 'runwareAdvanced', { ...(editedSettings.parameters?.runwareAdvanced || {}), CFGScale: Number(e.target.value) || undefined })}
+                        />
+                      </div>
+                      <div className="setting-row">
+                        <label>Runware Advanced: Steps</label>
+                        <input
+                          type="number"
+                          value={Number(editedSettings.parameters?.runwareAdvanced?.steps ?? '')}
+                          onChange={(e) => handleSettingChange('parameters', 'runwareAdvanced', { ...(editedSettings.parameters?.runwareAdvanced || {}), steps: Number(e.target.value) || undefined })}
+                        />
+                      </div>
+                      <div className="setting-row">
+                        <label>Runware Advanced: Scheduler</label>
+                        <input
+                          type="text"
+                          value={editedSettings.parameters?.runwareAdvanced?.scheduler || ''}
+                          onChange={(e) => handleSettingChange('parameters', 'runwareAdvanced', { ...(editedSettings.parameters?.runwareAdvanced || {}), scheduler: e.target.value || undefined })}
+                        />
+                      </div>
+                    </>
+                  )}
+                  {/* OpenAI model is used for QC/Metadata generation; keep configurable (after Advanced) */}
+                  <div className="setting-row">
+                    <label>OpenAI Model</label>
+                    <input
+                      type="text"
+                      value={editedSettings.parameters?.openaiModel || ''}
+                      onChange={(e) => handleSettingChange('parameters', 'openaiModel', e.target.value)}
+                      placeholder="e.g., gpt-4o-mini"
+                    />
+                  </div>
+                  <div className="setting-row">
+                    <label>Random Keywords</label>
+                    <Toggle
+                      checked={editedSettings.parameters?.keywordRandom || false}
+                      onChange={(checked) => handleSettingChange('parameters', 'keywordRandom', checked)}
                     />
                   </div>
                 </div>
@@ -1231,6 +1262,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <div className="setting-row">
                       <label>Remove.bg Size</label>
                       <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={editedSettings.processing?.removeBgSize || 'auto'}
                         onChange={(e) => handleSettingChange('processing', 'removeBgSize', e.target.value)}
                       >
@@ -1259,6 +1291,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <div className="setting-row">
                       <label>Convert Format</label>
                       <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={editedSettings.processing?.convertToJpg ? 'jpg' : 'png'}
                         onChange={(e) => handleSettingChange('processing', 'convertToJpg', e.target.value === 'jpg')}
                       >
@@ -1299,6 +1332,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <div className="setting-row">
                       <label>JPG Background Color</label>
                       <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={editedSettings.processing?.jpgBackground || 'white'}
                         onChange={(e) => handleSettingChange('processing', 'jpgBackground', e.target.value)}
                       >
