@@ -285,7 +285,7 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
 
   // Get input styling based on state
   const getInputStyling = () => {
-    const baseClasses = 'flex-1 px-3 py-2 border rounded-l-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors';
+    const baseClasses = 'flex-1 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors';
     const customClasses = className || '';
     
     if (disabled) {
@@ -367,7 +367,7 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
       </label>
       
       {/* Input and Browse Button */}
-      <div className="flex">
+      <div className="flex items-center gap-2">
         <input
           ref={inputRef}
           id={`file-selector-${label.replace(/\s+/g, '-').toLowerCase()}`}
@@ -387,7 +387,7 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
             type="button"
             onClick={clearPath}
             disabled={disabled}
-            className="px-3 py-2 border-t border-b border-gray-300 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 border border-gray-300 rounded-md text-gray-600 hover:text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Clear path"
           >
             <X className="w-4 h-4" />
@@ -398,7 +398,7 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
           type="button"
           onClick={openFileDialog}
           disabled={disabled || isDialogOpen}
-          className="px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
           {isDialogOpen ? (
             <Loader2 className="w-4 h-4 animate-spin" />
