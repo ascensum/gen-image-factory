@@ -676,10 +676,10 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                 {isLoading ? 'Refreshing...' : (
                   <>
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                      <path d="M21 3v5h-5" />
-                      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                      <path d="M8 16H3v5" />
+                      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" strokeWidth="2.5" />
+                      <path d="M21 3v5h-5" strokeWidth="2.5" />
+                      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" strokeWidth="2.5" />
+                      <path d="M8 16H3v5" strokeWidth="2.5" />
                     </svg>
                     Refresh
                   </>
@@ -923,10 +923,10 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
         <div className="footer-actions">
           <button onClick={handleRerun} className="btn-rerun">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
-              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-              <path d="M8 16H3v5" />
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" strokeWidth="2.5" />
+              <path d="M21 3v5h-5" strokeWidth="2.5" />
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" strokeWidth="2.5" />
+              <path d="M8 16H3v5" strokeWidth="2.5" />
             </svg>
             Rerun Job
           </button>
@@ -1139,7 +1139,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     />
                   </div>
                   <div className="setting-row">
-                    <label>Enable Polling Timeout</label>
+                    <label>Enable Generation Timeout</label>
                     <Toggle
                       checked={editedSettings.parameters?.enablePollingTimeout || false}
                       onChange={(checked) => handleSettingChange('parameters', 'enablePollingTimeout', checked)}
@@ -1148,7 +1148,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   {editedSettings.parameters?.enablePollingTimeout && (
                     <>
                       <div className="setting-row">
-                        <label>Polling Timeout (minutes)</label>
+                        <label>Generation Timeout (minutes)</label>
                         <input
                           type="number"
                           value={editedSettings.parameters?.pollingTimeout || 0}

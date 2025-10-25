@@ -526,9 +526,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enable Polling Timeout
+                Enable Generation Timeout
               </label>
-              <p className="text-xs text-gray-500">Use custom polling timeout instead of default (30 seconds)</p>
+              <p className="text-xs text-gray-500">Use custom generation timeout instead of default (30 seconds)</p>
             </div>
             <Toggle
               checked={form.parameters.enablePollingTimeout}
@@ -540,7 +540,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           {form.parameters.enablePollingTimeout && (
             <div>
               <label htmlFor="polling-timeout" className="block text-sm font-medium text-gray-700 mb-2">
-                Polling Timeout (minutes)
+                Generation Timeout (minutes)
               </label>
               <input
                 id="polling-timeout"
@@ -558,7 +558,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 min="1"
                 max="60"
               />
-              <p className="text-xs text-gray-500 mt-1">Used as HTTP timeout for Runware (minutes). For Runware, we ignore polling interval.</p>
+              <p className="text-xs text-gray-500 mt-1">Used as HTTP timeout for Runware (minutes)</p>
             </div>
           )}
         </div>

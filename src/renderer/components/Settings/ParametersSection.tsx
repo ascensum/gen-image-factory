@@ -9,6 +9,7 @@ interface ParametersSectionProps {
   mjVersion: string;
   openaiModel: string;
   pollingTimeout: number;
+  pollingInterval?: number;
   keywordRandom: boolean;
   removeBg: boolean;
   imageConvert: boolean;
@@ -28,6 +29,7 @@ interface ParametersSectionProps {
   onMjVersionChange?: (version: string) => void;
   onOpenaiModelChange?: (model: string) => void;
   onPollingTimeoutChange?: (timeout: number) => void;
+  onPollingIntervalChange?: (interval: number) => void;
   onKeywordRandomChange?: (random: boolean) => void;
   onRemoveBgChange?: (enabled: boolean) => void;
   onImageConvertChange?: (enabled: boolean) => void;
@@ -473,10 +475,10 @@ export const ParametersSection: React.FC<ParametersSectionProps> = ({
         </div>
       </div>
 
-      {/* Polling Timeout */}
+      {/* Generation Timeout */}
       <div className="space-y-2">
         <label className="block text-sm font-medium text-gray-700">
-          Polling Timeout (minutes)
+          Generation Timeout (minutes)
         </label>
         <input
           type="number"
@@ -486,7 +488,7 @@ export const ParametersSection: React.FC<ParametersSectionProps> = ({
           onChange={(e) => onPollingTimeoutChange?.(Number(e.target.value))}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <p className="text-xs text-gray-500">Polling timeout in minutes</p>
+        <p className="text-xs text-gray-500">Used as HTTP timeout for Runware (minutes)</p>
       </div>
 
       {/* Polling Interval */}
