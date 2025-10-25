@@ -618,9 +618,25 @@ class BackendAdapter {
           }
           
           // Create a new job execution record FIRST (before starting the job)
+          // Prefer the CURRENT configuration's label (edited in Single Job View) over the old execution label
+          let baseLabel = '';
+          try {
+            const cfgLabel = String(
+              (configResult?.configuration?.settings?.parameters && configResult.configuration.settings.parameters.label) || ''
+            ).trim();
+            if (cfgLabel) baseLabel = cfgLabel;
+          } catch (_) {}
+
+          if (!baseLabel) {
+            const prior = String(jobData?.execution?.label || '').trim();
+            if (prior) baseLabel = prior.replace(/\s*\(Rerun\)$/,'');
+          }
+
+          const rerunLabel = baseLabel ? `${baseLabel} (Rerun)` : 'Rerun Job';
+
           const newExecutionData = {
             configurationId: jobData.execution.configurationId,
-            label: jobData.execution.label ? `${jobData.execution.label} (Rerun)` : 'Rerun Job',
+            label: rerunLabel,
             status: 'running'
           };
           
