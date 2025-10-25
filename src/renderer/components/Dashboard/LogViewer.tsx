@@ -205,18 +205,55 @@ const LogViewer: React.FC<LogViewerProps> = ({
             {/* Level Filter */}
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-700">Level:</span>
-              <select
-                className="ui-select h-8"
-                value={filterLevel}
-                onChange={(e) => setFilterLevel(e.target.value as any)}
-                aria-label="Filter logs by level"
-              >
-                <option value="all">All Levels</option>
-                <option value="info">Info</option>
-                <option value="warn">Warning</option>
-                <option value="error">Error</option>
-                <option value="debug">Debug Level</option>
-              </select>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setFilterLevel(prev => prev)}
+                  className="hidden"
+                  aria-hidden
+                />
+                {/* Custom menu-style dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => (document.getElementById('log-level-menu')!.classList.toggle('hidden'))}
+                    className="relative text-sm border border-gray-300 rounded-md px-3 py-1 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[10rem] text-left pr-8"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                  >
+                    {filterLevel === 'all' ? 'All Levels' :
+                      filterLevel === 'info' ? 'Info' :
+                      filterLevel === 'warn' ? 'Warning' :
+                      filterLevel === 'error' ? 'Error' : 'Debug Level'}
+                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-700">
+                      <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" />
+                      </svg>
+                    </span>
+                  </button>
+                  <div id="log-level-menu" className="absolute z-20 mt-2 w-[12rem] bg-white border border-gray-200 rounded-md shadow-lg overflow-x-hidden hidden">
+                    <ul role="listbox" className="py-1">
+                      {[
+                        { v: 'all', l: 'All Levels' },
+                        { v: 'info', l: 'Info' },
+                        { v: 'warn', l: 'Warning' },
+                        { v: 'error', l: 'Error' },
+                        { v: 'debug', l: 'Debug Level' },
+                      ].map(o => (
+                        <li key={o.v}>
+                          <button
+                            type="button"
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${filterLevel === (o.v as any) ? 'bg-gray-100' : ''}`}
+                            onClick={() => { setFilterLevel(o.v as any); (document.getElementById('log-level-menu')!.classList.add('hidden')); }}
+                          >
+                            {o.l}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
 
 

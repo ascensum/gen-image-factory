@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import SimpleDropdown, { DropdownOption } from '../Common/SimpleDropdown';
 import { JobFilters as JobFiltersType } from '../../../types/job';
 
 interface JobFiltersProps {
@@ -165,19 +166,19 @@ const JobFilters: React.FC<JobFiltersProps> = ({
             <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
               Status
             </label>
-            <select
-              className="ui-select"
-              id="status-filter"
-              value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              aria-describedby="status-help"
-            >
-              {getStatusOptions().map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            {(() => {
+              const options: DropdownOption<string>[] = getStatusOptions().map(o => ({ value: String(o.value), label: o.label }));
+              return (
+                <SimpleDropdown
+                  options={options}
+                  value={String(filters.status)}
+                  onChange={(val) => handleFilterChange('status', val)}
+                  buttonClassName="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[12rem] text-left"
+                  menuWidthClassName="w-[14rem]"
+                  ariaLabel="Filter by status"
+                />
+              );
+            })()}
             <p id="status-help" className="mt-1 text-sm text-gray-500">
               Filter jobs by their current status
             </p>
@@ -188,19 +189,19 @@ const JobFilters: React.FC<JobFiltersProps> = ({
             <label htmlFor="date-range-filter" className="block text-sm font-medium text-gray-700 mb-2">
               Date Range
             </label>
-            <select
-              className="ui-select"
-              id="date-range-filter"
-              value={filters.dateRange}
-              onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-              aria-describedby="date-range-help"
-            >
-              {getDateRangeOptions().map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            {(() => {
+              const options: DropdownOption<string>[] = getDateRangeOptions().map(o => ({ value: String(o.value), label: o.label }));
+              return (
+                <SimpleDropdown
+                  options={options}
+                  value={String(filters.dateRange)}
+                  onChange={(val) => handleFilterChange('dateRange', val)}
+                  buttonClassName="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[12rem] text-left"
+                  menuWidthClassName="w-[14rem]"
+                  ariaLabel="Filter by date range"
+                />
+              );
+            })()}
             <p id="date-range-help" className="mt-1 text-sm text-gray-500">
               Filter jobs by when they were created
             </p>
