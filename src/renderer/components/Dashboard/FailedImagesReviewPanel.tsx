@@ -715,8 +715,41 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
             </div>
           </div>
 
-          {/* Right: filters + view toggle + clear */}
+          {/* Right: controls ordered like Image Gallery: View → Job → Search → Sort → Clear */}
           <div className="flex items-center gap-3 flex-wrap">
+            {/* View toggle (match Image Gallery style) */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">View:</span>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-md transition-all duration-200 ${
+                  viewMode === 'grid'
+                    ? 'bg-gray-200 text-gray-900 border border-gray-300'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent'
+                }`}
+                aria-label="Grid View"
+                title="Grid View"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md transition-all duration-200 ${
+                  viewMode === 'list'
+                    ? 'bg-gray-200 text-gray-900 border border-gray-300'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent'
+                }`}
+                aria-label="List View"
+                title="List View"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+
             {/* Job Filter (searchable + scrollable dropdown) */}
             <div className="relative">
               <div className="flex items-center gap-2">
@@ -760,10 +793,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                       </button>
                     </li>
                     {uniqueJobIds
-                      .map(id => ({
-                        id,
-                        label: jobIdToLabel[String(id)] || `Job ${String(id).slice(0, 8)}`
-                      }))
+                      .map(id => ({ id, label: jobIdToLabel[String(id)] || `Job ${String(id).slice(0, 8)}` }))
                       .filter(opt => opt.label.toLowerCase().includes(jobFilterQuery.toLowerCase()))
                       .map(opt => (
                         <li key={opt.id}>
@@ -808,39 +838,6 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                 <option value="oldest">Oldest First</option>
                 <option value="name">By Name</option>
               </select>
-            </div>
-
-            {/* View toggle (match Image Gallery style) */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">View:</span>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-md transition-all duration-200 ${
-                  viewMode === 'grid'
-                    ? 'bg-gray-200 text-gray-900 border border-gray-300'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent'
-                }`}
-                aria-label="Grid View"
-                title="Grid View"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-md transition-all duration-200 ${
-                  viewMode === 'list'
-                    ? 'bg-gray-200 text-gray-900 border border-gray-300'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-transparent'
-                }`}
-                aria-label="List View"
-                title="List View"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-              </button>
             </div>
 
             {/* Clear */}
