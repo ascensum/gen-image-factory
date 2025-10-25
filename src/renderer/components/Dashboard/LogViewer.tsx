@@ -203,10 +203,10 @@ const LogViewer: React.FC<LogViewerProps> = ({
             </div>
 
             {/* Level Filter */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-700">Level:</span>
               <select
-                className="ui-select"
+                className="ui-select h-8"
                 value={filterLevel}
                 onChange={(e) => setFilterLevel(e.target.value as any)}
                 aria-label="Filter logs by level"
