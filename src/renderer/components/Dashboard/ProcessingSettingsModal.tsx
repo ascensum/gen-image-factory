@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Toggle } from '../Settings/Toggle';
 import type { ProcessingSettings } from '../../../types/processing';
 
@@ -31,6 +31,19 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
     jpgBackground: '#FFFFFF'
   });
 
+  // Ref to scroll Batch Processing Configuration into view when enabling modified mode
+  const configSectionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!useOriginalSettings && configSectionRef.current) {
+      // Defer to next tick to ensure section is rendered
+      setTimeout(() => {
+        configSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 0);
+    }
+  }, [useOriginalSettings, isOpen]);
+
   if (!isOpen) return null;
 
   const handleRetry = () => {
@@ -48,11 +61,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
     }
   };
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
+  // Backdrop click handler (not used because modal closes via header/footer controls)
 
   const updateSetting = (key: keyof ProcessingSettings, value: any) => {
     setBatchSettings(prev => ({
@@ -188,7 +197,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
 
           {/* Modified Settings Configuration */}
           {!useOriginalSettings && (
-            <div className="space-y-8">
+            <div ref={configSectionRef} className="space-y-8 scroll-mt-4">
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-start">
                   <svg className="w-5 h-5 text-yellow-400 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
