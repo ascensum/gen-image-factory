@@ -711,6 +711,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 type="checkbox"
                 checked={!!filters.hasPendingRetries}
                 onChange={(e) => handleFiltersChange({ ...filters, hasPendingRetries: e.target.checked })}
+                className="outline-none focus:outline-none ring-0 focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
               />
               Has pending retries
             </label>
