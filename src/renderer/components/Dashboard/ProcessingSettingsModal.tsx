@@ -73,7 +73,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
 
   return (
     <div data-testid="processing-settings-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg max-w-4xl w-full h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div data-testid="modal-header" className="flex items-center justify-between p-6 border-b border-gray-200">
           <div>
@@ -95,7 +95,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
         </div>
 
         {/* Content */}
-        <div data-testid="modal-content" className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div data-testid="modal-content" className="p-6 overflow-y-auto flex-1 min-h-0">
           {/* Batch Processing Info */}
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start">
@@ -115,8 +115,8 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
           {/* Settings Choice */}
           <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Batch Processing Method</h3>
-            <div className="space-y-4">
-              <label className="flex items-center space-x-3 cursor-pointer">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <label className="flex items-start gap-3 cursor-pointer p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                 <input
                   type="radio"
                   name="processingMethod"
@@ -124,17 +124,17 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                   aria-label="Retry with Original Settings"
                   checked={useOriginalSettings}
                   onChange={() => setUseOriginalSettings(true)}
-                  className="text-blue-600 focus:ring-blue-500"
+                  className="text-blue-600 focus:ring-blue-500 mt-1.5"
                 />
                 <div>
                   <div className="text-sm font-medium text-gray-900">Retry with Original Settings</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-gray-500 mt-1">
                     Process all images with their original job settings (QC, metadata, processing)
                   </div>
                 </div>
               </label>
               
-              <label className="flex items-center space-x-3 cursor-pointer">
+              <label className="flex items-start gap-3 cursor-pointer p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                 <input
                   type="radio"
                   name="processingMethod"
@@ -142,12 +142,12 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                   aria-label="Retry with Modified Settings"
                   checked={!useOriginalSettings}
                   onChange={() => setUseOriginalSettings(false)}
-                  className="text-blue-600 focus:ring-blue-500"
+                  className="text-blue-600 focus:ring-blue-500 mt-1.5"
                 />
                 <div>
                   <div className="text-sm font-medium text-gray-900">Retry with Modified Settings</div>
-                  <div className="text-xs text-gray-500">
-                    Process all images with new settings (QC, metadata, processing) - no image regeneration
+                  <div className="text-xs text-gray-500 mt-1">
+                    Process all images with new settings (QC, metadata, processing) — no image regeneration
                   </div>
                 </div>
               </label>
