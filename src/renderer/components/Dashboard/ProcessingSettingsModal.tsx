@@ -33,6 +33,10 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
 
   // Ref to scroll Batch Processing Configuration into view when enabling modified mode
   const configSectionRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const sharpeningRef = useRef<HTMLDivElement | null>(null);
+  const convertFormatRef = useRef<HTMLDivElement | null>(null);
+  const removeBgSizeRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -40,6 +44,10 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
       // Defer to next tick to ensure section is rendered
       setTimeout(() => {
         configSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 0);
+    } else if (useOriginalSettings && contentRef.current) {
+      setTimeout(() => {
+        contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       }, 0);
     }
   }, [useOriginalSettings, isOpen]);
@@ -104,7 +112,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
         </div>
 
         {/* Content */}
-        <div data-testid="modal-content" className="p-6 overflow-y-auto flex-1 min-h-0">
+        <div data-testid="modal-content" ref={contentRef} className="p-6 overflow-y-auto flex-1 min-h-0">
           {/* Batch Processing Info */}
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start">
@@ -232,13 +240,20 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                   <Toggle
                     ariaLabel="Enable image enhancement"
                     checked={batchSettings.imageEnhancement}
-                    onChange={(checked) => updateSetting('imageEnhancement', checked)}
+                    onChange={(checked) => {
+                      updateSetting('imageEnhancement', checked);
+                      if (checked) {
+                        setTimeout(() => {
+                          sharpeningRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 0);
+                      }
+                    }}
                   />
                 </div>
 
                 {/* Sharpening - only show when Image Enhancement is enabled */}
                 {showSharpening && (
-                  <div>
+                  <div ref={sharpeningRef} className="scroll-mt-4">
                     <label htmlFor="sharpening" className="block text-sm font-medium text-gray-700 mb-2">
                       Sharpening Level (0-10)
                     </label>
@@ -290,13 +305,20 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                   <Toggle
                     ariaLabel="Enable image conversion"
                     checked={batchSettings.imageConvert}
-                    onChange={(checked) => updateSetting('imageConvert', checked)}
+                    onChange={(checked) => {
+                      updateSetting('imageConvert', checked);
+                      if (checked) {
+                        setTimeout(() => {
+                          convertFormatRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 0);
+                      }
+                    }}
                   />
                 </div>
 
                 {/* Convert Format - only show when Image Convert is enabled */}
                 {showConvertFormat && (
-                  <div>
+                  <div ref={convertFormatRef} className="scroll-mt-4">
                     <label htmlFor="convert-format" className="block text-sm font-medium text-gray-700 mb-2">
                       Convert Format
                     </label>
@@ -375,13 +397,20 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                   <Toggle
                     ariaLabel="Remove background"
                     checked={batchSettings.removeBg}
-                    onChange={(checked) => updateSetting('removeBg', checked)}
+                    onChange={(checked) => {
+                      updateSetting('removeBg', checked);
+                      if (checked) {
+                        setTimeout(() => {
+                          removeBgSizeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 0);
+                      }
+                    }}
                   />
                 </div>
 
                 {/* Remove BG Size - only show when Remove Background is enabled */}
                 {batchSettings.removeBg && (
-                  <div>
+                  <div ref={removeBgSizeRef} className="scroll-mt-4">
                     <label htmlFor="remove-bg-size" className="block text-sm font-medium text-gray-700 mb-2">
                       Remove BG Size
                     </label>
