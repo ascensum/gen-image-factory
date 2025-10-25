@@ -164,6 +164,8 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const [settings, setSettings] = useState<SettingsObject>(defaultSettings);
   const [form, setForm] = useState<SettingsObject>(defaultSettings);
+  // Force remount of uncontrolled inputs when resetting to defaults
+  const [formVersion, setFormVersion] = useState<number>(0);
   // Draft inputs removed; using uncontrolled inputs with blur commit for stability
   const [activeTab, setActiveTab] = useState<TabId>('api-keys');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -267,7 +269,10 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   // Handle reset
   const handleReset = () => {
     setSettings(defaultSettings);
+    setForm(defaultSettings);
     setHasUnsavedChanges(true);
+    // Remount the tab content so defaultValue props are re-applied
+    setFormVersion((v) => v + 1);
     if (onReset) {
       onReset();
     }
@@ -1250,7 +1255,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         {/* Content Area */}
         <div className="flex-1 p-6 overflow-y-auto">
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-4xl mx-auto" key={formVersion}>
             {/* Removed redundant logo at top of tab content */}
             {renderTabContent()}
           </div>
