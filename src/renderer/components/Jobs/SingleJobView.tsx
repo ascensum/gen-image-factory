@@ -1304,7 +1304,6 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       >
                         <option value="white">White</option>
                         <option value="black">Black</option>
-                        <option value="transparent">Transparent</option>
                       </select>
                     </div>
                   )}

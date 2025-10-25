@@ -455,8 +455,6 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                     >
                       <option value="#FFFFFF">White</option>
                       <option value="#000000">Black</option>
-                      <option value="#F0F0F0">Light Gray</option>
-                      <option value="#808080">Gray</option>
                     </select>
                     <p className="text-xs text-gray-500 mt-1">Background color for JPG images (required when removing background)</p>
                   </div>
