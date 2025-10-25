@@ -10,16 +10,20 @@ interface JobManagementPanelProps {
   onBack: () => void;
 }
 
+type UIJobFilters = JobFilters & { hasPendingRetries?: boolean };
+
 const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob, onBack }) => {
   // State management following BMad-Method structured approach
   const [jobs, setJobs] = useState<JobExecution[]>([]);
   const [selectedJobs, setSelectedJobs] = useState<Set<string | number>>(new Set());
-  const [filters, setFilters] = useState<JobFilters>({
+  const [filters, setFilters] = useState<UIJobFilters>({
     status: 'all',
     dateRange: 'all',
     label: '',
     minImages: 0,
-    maxImages: undefined
+    maxImages: undefined,
+    // Extended: show only jobs that have items queued in retry pipeline
+    hasPendingRetries: false
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField] = useState<keyof JobExecution>('startedAt');
@@ -48,6 +52,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     if (typeof filters.minImages === 'number' && filters.minImages > 0) count++;
     if (typeof filters.maxImages === 'number' && typeof filters.maxImages === 'number') count++;
     if (searchQuery && searchQuery.trim() !== '') count++;
+    if (filters.hasPendingRetries) count++;
     return count;
   }, [filters, searchQuery]);
 
@@ -87,6 +92,14 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       } else {
         filtered = filtered.filter(job => String((job as any).status) === sFilter);
       }
+    }
+
+    // Apply "Has pending retries" filter using available counters
+    if (filters.hasPendingRetries) {
+      filtered = filtered.filter((job: any) => {
+        const fromList = typeof (job as any).pendingJobs === 'number' && (job as any).pendingJobs > 0;
+        return fromList || false;
+      });
     }
 
     // Apply date range filter
@@ -271,7 +284,9 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       if (!silent) setIsLoading(true);
       setError(null);
 
-      const result = await window.electronAPI.jobManagement.getJobExecutionsWithFilters(filters, currentPage, pageSize);
+      // Do not send UI-only fields to backend
+      const { hasPendingRetries, ...backendFilters } = (filters as UIJobFilters);
+      const result = await window.electronAPI.jobManagement.getJobExecutionsWithFilters(backendFilters as JobFilters, currentPage, pageSize);
       
       if (result.success) {
         // Accept multiple possible response shapes
@@ -424,7 +439,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
   }, [filters]);
 
   // Handle filter changes
-  const handleFiltersChange = useCallback((newFilters: JobFilters) => {
+  const handleFiltersChange = useCallback((newFilters: UIJobFilters) => {
     setFilters(newFilters);
   }, []);
 
@@ -683,11 +698,22 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
               <option value="completed">Completed</option>
               <option value="processing">In Progress</option>
               <option value="failed">Failed</option>
-              <option value="pending">Pending</option>
             </select>
             <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none text-[--muted-foreground]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
+          </div>
+
+          {/* Has Pending Retries toggle */}
+          <div className="flex items-center gap-2 flex-none">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={!!filters.hasPendingRetries}
+                onChange={(e) => handleFiltersChange({ ...filters, hasPendingRetries: e.target.checked })}
+              />
+              Has pending retries
+            </label>
           </div>
 
           {/* Date Range Filter */}

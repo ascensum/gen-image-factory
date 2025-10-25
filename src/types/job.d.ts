@@ -124,6 +124,8 @@ export interface JobFilters {
   label?: string;
   minImages?: number;
   maxImages?: number;
+  /** When true, only show jobs that have items queued for retry (pending retries) */
+  hasPendingRetries?: boolean;
 }
 
 export interface JobHistoryResult {
