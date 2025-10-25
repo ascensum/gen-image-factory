@@ -55,6 +55,9 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   const [filterJob, setFilterJob] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
+  // Job filter dropdown controls
+  const [isJobFilterOpen, setIsJobFilterOpen] = useState(false);
+  const [jobFilterQuery, setJobFilterQuery] = useState('');
   const [retryQueueStatus, setRetryQueueStatus] = useState<{
     isProcessing: boolean;
     queueLength: number;
@@ -714,23 +717,71 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
 
           {/* Right: filters + view toggle + clear */}
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Job Filter */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">Job:</span>
-              <select
-                value={filterJob}
-                onChange={(e) => setFilterJob(e.target.value)}
-                className="text-sm border border-gray-300 rounded-md px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Jobs</option>
-                {uniqueJobIds.length > 0 ? uniqueJobIds.map(jobId => (
-                  <option key={jobId} value={jobId}>
-                    Job {String(jobId).slice(0, 8)}...
-                  </option>
-                )) : (
-                  <option value="all" disabled>No jobs available</option>
-                )}
-              </select>
+            {/* Job Filter (searchable + scrollable dropdown) */}
+            <div className="relative">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">Job:</span>
+                <button
+                  type="button"
+                  onClick={() => setIsJobFilterOpen(v => !v)}
+                  className="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[14rem] text-left"
+                  aria-haspopup="listbox"
+                  aria-expanded={isJobFilterOpen}
+                >
+                  {filterJob === 'all' ? 'All Jobs' : (() => {
+                    const label = jobIdToLabel[String(filterJob)];
+                    return label || `Job ${String(filterJob).slice(0, 8)}`;
+                  })()}
+                </button>
+              </div>
+
+              {isJobFilterOpen && (
+                <div className="absolute z-20 mt-2 w-[18rem] bg-white border border-gray-200 rounded-md shadow-lg overflow-x-hidden">
+                  <div className="p-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      value={jobFilterQuery}
+                      onChange={(e) => setJobFilterQuery(e.target.value)}
+                      placeholder="Search jobs..."
+                      className="w-full text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      autoFocus
+                    />
+                  </div>
+                  <ul role="listbox" className="max-h-72 overflow-y-auto overflow-x-hidden py-1">
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => { setFilterJob('all'); setIsJobFilterOpen(false); setJobFilterQuery(''); }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 whitespace-normal break-words ${filterJob === 'all' ? 'bg-gray-100' : ''}`}
+                        role="option"
+                        aria-selected={filterJob === 'all'}
+                      >
+                        All Jobs
+                      </button>
+                    </li>
+                    {uniqueJobIds
+                      .map(id => ({
+                        id,
+                        label: jobIdToLabel[String(id)] || `Job ${String(id).slice(0, 8)}`
+                      }))
+                      .filter(opt => opt.label.toLowerCase().includes(jobFilterQuery.toLowerCase()))
+                      .map(opt => (
+                        <li key={opt.id}>
+                          <button
+                            type="button"
+                            onClick={() => { setFilterJob(String(opt.id)); setIsJobFilterOpen(false); setJobFilterQuery(''); }}
+                            className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 whitespace-normal break-words ${String(filterJob) === String(opt.id) ? 'bg-gray-100' : ''}`}
+                            role="option"
+                            aria-selected={String(filterJob) === String(opt.id)}
+                            title={opt.label}
+                          >
+                            {opt.label}
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             {/* Search */}
