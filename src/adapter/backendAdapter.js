@@ -627,6 +627,14 @@ class BackendAdapter {
             if (cfgLabel) baseLabel = cfgLabel;
           } catch (_) {}
 
+          // Fallback to configuration name if provided
+          if (!baseLabel) {
+            try {
+              const cfgName = String(configResult?.configuration?.name || '').trim();
+              if (cfgName) baseLabel = cfgName;
+            } catch (_) {}
+          }
+
           if (!baseLabel) {
             const prior = String(jobData?.execution?.label || '').trim();
             if (prior) baseLabel = prior.replace(/\s*\(Rerun\)$/,'');
