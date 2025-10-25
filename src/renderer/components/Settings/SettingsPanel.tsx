@@ -266,12 +266,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     }
   };
 
-  // Handle reset
+  // Handle reset with dialog offering two options
   const handleReset = () => {
-    setSettings(defaultSettings);
-    setForm(defaultSettings);
+    // Simple confirm dialog with two-step choice via native confirms
+    // First ask if we should keep API keys
+    const fullReset = window.confirm('Full Reset: This will also clear API keys. Click OK for Full Reset, or Cancel to keep API keys.');
+    const preservedApiKeys = fullReset ? defaultSettings.apiKeys : form.apiKeys;
+    const nextDefaults: SettingsObject = { ...defaultSettings, apiKeys: preservedApiKeys } as SettingsObject;
+    setSettings(nextDefaults);
+    setForm(nextDefaults);
     setHasUnsavedChanges(true);
-    // Remount the tab content so defaultValue props are re-applied
     setFormVersion((v) => v + 1);
     if (onReset) {
       onReset();
