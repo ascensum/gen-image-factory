@@ -4,6 +4,7 @@ import type { SettingsObject as SharedSettingsObject } from '../../../types/sett
 import { Eye, EyeOff, Save, RefreshCw, AlertCircle, CheckCircle, X, Key, FolderOpen, Sliders, Cog, Settings } from 'lucide-react';
 import { Toggle } from './Toggle';
 import { FileSelector } from './FileSelector';
+import ConfirmResetDialog from '../Common/ConfirmResetDialog';
 
 // Types and Interfaces
 interface SettingsObject extends SharedSettingsObject {
@@ -178,6 +179,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   const [showError, setShowError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showRunwareAdvanced, setShowRunwareAdvanced] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
   
   // Refs to maintain focus
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -266,17 +268,19 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
     }
   };
 
-  // Handle reset with dialog offering two options
+  // Handle reset - open styled dialog
   const handleReset = () => {
-    // Simple confirm dialog with two-step choice via native confirms
-    // First ask if we should keep API keys
-    const fullReset = window.confirm('Full Reset: This will also clear API keys. Click OK for Full Reset, or Cancel to keep API keys.');
-    const preservedApiKeys = fullReset ? defaultSettings.apiKeys : form.apiKeys;
+    setShowResetDialog(true);
+  };
+
+  const executeReset = (clearApiKeys: boolean) => {
+    const preservedApiKeys = clearApiKeys ? defaultSettings.apiKeys : form.apiKeys;
     const nextDefaults: SettingsObject = { ...defaultSettings, apiKeys: preservedApiKeys } as SettingsObject;
     setSettings(nextDefaults);
     setForm(nextDefaults);
     setHasUnsavedChanges(true);
     setFormVersion((v) => v + 1);
+    setShowResetDialog(false);
     if (onReset) {
       onReset();
     }
@@ -1303,6 +1307,15 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </div>
         </div>
       </main>
-    </div>
+    {/* Reset confirmation dialog */}
+    <ConfirmResetDialog
+      isOpen={showResetDialog}
+      onClose={() => setShowResetDialog(false)}
+      onFullReset={() => executeReset(true)}
+      onSoftReset={() => executeReset(false)}
+      title="Reset Settings"
+      description="Reset all settings to defaults. Choose Full Reset to also clear API keys, or Reset to keep your API keys."
+    />
+  </div>
   );
 };
