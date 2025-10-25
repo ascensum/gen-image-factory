@@ -106,7 +106,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
         <div
           data-testid="modal-content"
           ref={contentRef}
-          className="p-6 overflow-y-auto flex-1 min-h-0"
+          className="p-6 overflow-y-auto flex-1 min-h-0 retry-modal-scroll"
           style={{ scrollbarGutter: 'stable both-edges' }}
         >
           {/* Batch Processing Info */}
