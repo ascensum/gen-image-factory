@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AppLogo } from '../Common/AppLogo';
+// import { AppLogo } from '../Common/AppLogo';
 import type { SettingsObject as SharedSettingsObject } from '../../../types/settings';
 import { Eye, EyeOff, Save, RefreshCw, AlertCircle, CheckCircle, X, Key, FolderOpen, Sliders, Cog, Settings } from 'lucide-react';
 import { Toggle } from './Toggle';
@@ -298,7 +298,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
         {Object.entries({
           openai: 'OpenAI API Key',
           runware: 'Runware API Key',
-          piapi: 'PiAPI (Midjourney) API Key',
           removeBg: 'Remove.bg API Key'
         }).map(([key, label]) => {
           const inputId = `apiKeys-${key}`;
