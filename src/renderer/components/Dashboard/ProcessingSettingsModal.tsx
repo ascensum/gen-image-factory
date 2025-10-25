@@ -39,13 +39,8 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
   const removeBgSizeRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!isOpen) return;
-    if (!useOriginalSettings && configSectionRef.current) {
-      // Defer to next tick to ensure section is rendered
-      setTimeout(() => {
-        configSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 0);
-    }
+    // Keep user in control of scroll position; no programmatic scroll on mode change
+    return;
   }, [useOriginalSettings, isOpen]);
 
   if (!isOpen) return null;
@@ -131,7 +126,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
           </div>
 
           {/* Settings Choice */}
-          <div className="mb-8 sticky top-0 bg-white z-10 pt-4 pb-3 border-b border-gray-100">
+          <div className="mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Batch Processing Method</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <label className="flex items-start gap-3 cursor-pointer p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
