@@ -348,7 +348,7 @@ const JobTable: React.FC<JobTableProps> = ({
               id="page-size"
               value={pageSize}
               onChange={handlePageSizeChange}
-              className="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
+              className="ui-select h-8 text-sm"
               aria-label="Items per page"
             >
               <option value={10}>10</option>

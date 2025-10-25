@@ -85,39 +85,40 @@ input:focus {
 
 
 
-/* Select styles */
-select {
-  all: unset;
-  width: 100%;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  cursor: pointer;
-}
-
-select:focus {
-  outline: 2px solid transparent;
-  outline-offset: 2px;
-}
-
-/* Unified select styling to match Image Gallery job filter aesthetics */
+/* Select styles (default to custom look; opt-out with .native-select) */
+select:not(.native-select),
 .ui-select {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0;
   width: 100%;
-  height: 40px;
+  height: 36px;
   padding: 0 12px;
   background-color: #ffffff;
   border: 1px solid #e5e7eb; /* gray-200 */
   border-radius: 8px;
   font-size: 14px;
+  line-height: 1;
   color: #111827;
   transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   box-sizing: border-box;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%20viewBox%3D%220%200%20292.4%20292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%20197.2l-11.4-11.4c-3.2-3.2-8.4-3.2-11.6%200L146.2%20268.8%2030.4%20153c-3.2-3.2-8.4-3.2-11.6%200L7.4%20164.4c-3.2%203.2-3.2%208.4%200%2011.6l138.8%20138.8c3.2%203.2%208.4%203.2%2011.6%200l138.8-138.8c3.2-3.2%203.2-8.4%200-11.6z%22%2F%3E%3C%2Fsvg%3E');
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.625rem;
+  padding-right: 2rem; /* space for arrow */
+  cursor: pointer;
 }
 
+select:not(.native-select):hover,
 .ui-select:hover {
   background-color: #f9fafb;
 }
 
+select:not(.native-select):focus,
 .ui-select:focus {
   outline: none;
   border-color: #3b82f6;

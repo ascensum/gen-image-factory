@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { JobExecution, JobFilters } from '../../../types/job';
+import SimpleDropdown, { DropdownOption } from '../Common/SimpleDropdown';
 import ExportDialog from '../Common/ExportDialog';
 import StatusBadge from '../Common/StatusBadge';
 import './JobManagementPanel.css';
@@ -688,20 +689,25 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       <div className="px-6 py-4 space-y-4 border-b border-[--border] shrink-0">
         <div className="job-filters-row flex flex-wrap items-center gap-x-8 gap-y-4">
           {/* Status Filter */}
-          <div className="relative w-48 flex-none z-10 mr-4">
-            <select 
-              className="ui-select"
-              value={filters.status}
-              onChange={(e) => handleFiltersChange({ ...filters, status: e.target.value as any })}
-            >
-              <option value="all">All Status</option>
-              <option value="completed">Completed</option>
-              <option value="processing">In Progress</option>
-              <option value="failed">Failed</option>
-            </select>
-            <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 pointer-events-none text-[--muted-foreground]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
+          <div className="relative flex-none mr-4">
+            {(() => {
+              const options: DropdownOption<string>[] = [
+                { value: 'all', label: 'All Status' },
+                { value: 'completed', label: 'Completed' },
+                { value: 'processing', label: 'In Progress' },
+                { value: 'failed', label: 'Failed' },
+              ];
+              return (
+                <SimpleDropdown
+                  options={options}
+                  value={filters.status || 'all'}
+                  onChange={(val) => handleFiltersChange({ ...filters, status: val })}
+                  buttonClassName="text-sm border border-gray-300 rounded-md px-3 py-1 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[12rem] text-left"
+                  menuWidthClassName="w-[14rem]"
+                  ariaLabel="Filter jobs by status"
+                />
+              );
+            })()}
           </div>
 
           {/* Has Pending Retries toggle */}
