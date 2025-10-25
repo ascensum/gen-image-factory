@@ -414,7 +414,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                       id="remove-bg-size"
                       value={batchSettings.removeBgSize}
                       onChange={(e) => updateSetting('removeBgSize', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="ui-select"
                     >
                       <option value="auto">Auto</option>
                       <option value="preview">Preview</option>
@@ -451,7 +451,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                       id="jpg-background"
                       value={batchSettings.jpgBackground}
                       onChange={(e) => updateSetting('jpgBackground', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="ui-select"
                     >
                       <option value="#FFFFFF">White</option>
                       <option value="#000000">Black</option>

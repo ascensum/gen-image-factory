@@ -1120,7 +1120,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   <div className="setting-row">
                     <label>Output Format</label>
                     <select
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="ui-select"
                       value={editedSettings.parameters?.runwareFormat || 'png'}
                       onChange={(e) => handleSettingChange('parameters', 'runwareFormat', e.target.value)}
                     >
@@ -1275,9 +1275,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <div className="setting-row">
                       <label>Remove.bg Size</label>
                       <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={editedSettings.processing?.removeBgSize || 'auto'}
                         onChange={(e) => handleSettingChange('processing', 'removeBgSize', e.target.value)}
+                        className="ui-select"
                       >
                         <option value="auto">Auto</option>
                         <option value="preview">Preview</option>
@@ -1304,9 +1304,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <div className="setting-row">
                       <label>Convert Format</label>
                       <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={editedSettings.processing?.convertToJpg ? 'jpg' : 'png'}
                         onChange={(e) => handleSettingChange('processing', 'convertToJpg', e.target.value === 'jpg')}
+                        className="ui-select"
                       >
                         <option value="png">PNG</option>
                         <option value="jpg">JPG</option>
@@ -1345,9 +1345,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <div className="setting-row">
                       <label>JPG Background Color</label>
                       <select
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={editedSettings.processing?.jpgBackground || 'white'}
                         onChange={(e) => handleSettingChange('processing', 'jpgBackground', e.target.value)}
+                        className="ui-select"
                       >
                         <option value="white">White</option>
                         <option value="black">Black</option>

@@ -206,10 +206,10 @@ const LogViewer: React.FC<LogViewerProps> = ({
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-700">Level:</span>
               <select
+                className="ui-select"
                 value={filterLevel}
                 onChange={(e) => setFilterLevel(e.target.value as any)}
                 aria-label="Filter logs by level"
-                className="text-xs border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Levels</option>
                 <option value="info">Info</option>
@@ -242,7 +242,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
               className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <span className="w-3 h-3 mr-1 inline-flex items-center justify-center">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
                   <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
                   <path d="M21 3v5h-5" />
                   <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />

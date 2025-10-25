@@ -100,6 +100,30 @@ select:focus {
   outline-offset: 2px;
 }
 
+/* Unified select styling to match Image Gallery job filter aesthetics */
+.ui-select {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb; /* gray-200 */
+  border-radius: 8px;
+  font-size: 14px;
+  color: #111827;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.ui-select:hover {
+  background-color: #f9fafb;
+}
+
+.ui-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
 /* Custom scrollbar styles for better UX */
 .overflow-y-auto::-webkit-scrollbar {
   width: 8px;

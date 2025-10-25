@@ -690,9 +690,9 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           {/* Status Filter */}
           <div className="relative w-48 flex-none z-10 mr-4">
             <select 
+              className="ui-select"
               value={filters.status}
               onChange={(e) => handleFiltersChange({ ...filters, status: e.target.value as any })}
-              className="w-full h-10 appearance-none bg-[--background] border border-[--border] rounded-lg px-4 pr-8 focus:outline-none focus:ring-2 focus:ring-[--ring]"
             >
               <option value="all">All Status</option>
               <option value="completed">Completed</option>
