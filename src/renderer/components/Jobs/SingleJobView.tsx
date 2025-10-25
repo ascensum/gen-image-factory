@@ -379,9 +379,22 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       const result = await window.electronAPI.updateJobConfiguration(job.configurationId, editedSettings);
       
       if (result.success) {
+        // Refresh local configuration so subsequent edits show latest values
+        try {
+          const refreshed = await window.electronAPI.getJobConfigurationById(job.configurationId);
+          if ((refreshed as any)?.success && (refreshed as any)?.configuration?.settings) {
+            setJobConfiguration((refreshed as any).configuration);
+          } else {
+            // Fallback: update local state optimistically
+            setJobConfiguration((prev: any) => prev ? { ...prev, settings: editedSettings } : { settings: editedSettings });
+          }
+        } catch (e) {
+          // Fallback if refresh fails
+          setJobConfiguration((prev: any) => prev ? { ...prev, settings: editedSettings } : { settings: editedSettings });
+        }
+
         setIsEditingSettings(false);
         console.log('Job settings updated successfully');
-        // TODO: Refresh job data to show updated settings
       } else {
         setSettingsSaveError(result.error || 'Failed to save job settings');
       }
