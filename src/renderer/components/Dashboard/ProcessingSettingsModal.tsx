@@ -106,8 +106,8 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
         <div
           data-testid="modal-content"
           ref={contentRef}
-          className="p-6 overflow-y-scroll flex-1 min-h-0 max-h-[calc(90vh-140px)]"
-          style={{ scrollbarGutter: 'stable' }}
+          className="p-6 overflow-y-auto flex-1 min-h-0"
+          style={{ scrollbarGutter: 'stable both-edges' }}
         >
           {/* Batch Processing Info */}
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -137,7 +137,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                   aria-label="Retry with Original Settings"
                   checked={useOriginalSettings}
                   onChange={() => setUseOriginalSettings(true)}
-                  className="text-blue-600 focus:ring-blue-500 mt-1.5"
+                  className="text-blue-600 focus:ring-0 focus:outline-none focus-visible:outline-none mt-1.5"
                 />
                 <div>
                   <div className="text-sm font-medium text-gray-900">Retry with Original Settings</div>
@@ -155,7 +155,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                   aria-label="Retry with Modified Settings"
                   checked={!useOriginalSettings}
                   onChange={() => setUseOriginalSettings(false)}
-                  className="text-blue-600 focus:ring-blue-500 mt-1.5"
+                  className="text-blue-600 focus:ring-0 focus:outline-none focus-visible:outline-none mt-1.5"
                 />
                 <div>
                   <div className="text-sm font-medium text-gray-900">Retry with Modified Settings</div>
