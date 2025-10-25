@@ -108,7 +108,12 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
         </div>
 
         {/* Content */}
-        <div data-testid="modal-content" ref={contentRef} className="p-6 overflow-y-auto flex-1 min-h-0 max-h-[calc(90vh-140px)]">
+        <div
+          data-testid="modal-content"
+          ref={contentRef}
+          className="p-6 overflow-y-scroll flex-1 min-h-0 max-h-[calc(90vh-140px)]"
+          style={{ scrollbarGutter: 'stable' }}
+        >
           {/* Batch Processing Info */}
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start">
