@@ -277,7 +277,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
           </div>
 
           {/* Right Panel - Tabs and Actions */}
-          <div className="w-full lg:w-1/3 p-6 overflow-y-auto border-l border-gray-200">
+          <div className="w-full lg:w-1/3 p-6 overflow-hidden border-l border-gray-200 flex flex-col min-h-0">
             {/* Tabs */}
             <div className="flex border-b border-gray-200 mb-4">
               {(['details','metadata','processing'] as TabType[]).map(tab => (
@@ -294,7 +294,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
             </div>
 
             {/* Tab Content */}
-            <div className="flex-1">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               {activeTab === 'details' && (
                 <div className="space-y-6">
                   {/* Details: Job Id, Image Id */}
