@@ -105,11 +105,11 @@ select:not(.native-select),
   color: #111827;
   transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   box-sizing: border-box;
-  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%20viewBox%3D%220%200%20292.4%20292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%20197.2l-11.4-11.4c-3.2-3.2-8.4-3.2-11.6%200L146.2%20268.8%2030.4%20153c-3.2-3.2-8.4-3.2-11.6%200L7.4%20164.4c-3.2%203.2-3.2%208.4%200%2011.6l138.8%20138.8c3.2%203.2%208.4%203.2%2011.6%200l138.8-138.8c3.2-3.2%203.2-8.4%200-11.6z%22%2F%3E%3C%2Fsvg%3E');
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22%3E%3Cpath fill=%22%23374151%22 d=%22M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z%22/%3E%3C/svg%3E');
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
-  background-size: 0.625rem;
-  padding-right: 2rem; /* space for arrow */
+  background-size: 0.85rem; /* bolder chevron */
+  padding-right: 2.2rem; /* space for arrow */
   cursor: pointer;
 }
 
