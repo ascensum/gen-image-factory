@@ -479,7 +479,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
 
   // Compute a consistent display-only fallback label without persisting it
   const getDisplayLabel = useCallback((job: JobExecution) => {
-    if (job.label && job.label.trim() !== '') return job.label;
+    const prefer = (job as any).displayLabel || job.label || (job as any).configurationName;
+    if (prefer && String(prefer).trim() !== '') return String(prefer);
     const started = job.startedAt ? new Date(job.startedAt as any) : null;
     if (started && !isNaN(started.getTime())) {
       const pad = (n: number) => n.toString().padStart(2, '0');
