@@ -40,7 +40,10 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   // Compute display-only fallback label from startedAt timestamp
   const getDisplayLabel = useCallback(() => {
     const jobLabel = job?.label;
-    if (jobLabel && jobLabel.trim() !== '') return jobLabel;
+    if (jobLabel && jobLabel.trim() !== '') {
+      const isRerun = jobLabel.endsWith('(Rerun)');
+      return isRerun ? jobLabel.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(job?.id).slice(-6)})` : jobLabel;
+    }
     const started = job?.startedAt ? new Date(job.startedAt as any) : null;
     if (started && !isNaN(started.getTime())) {
       const pad = (n: number) => n.toString().padStart(2, '0');

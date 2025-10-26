@@ -1396,7 +1396,12 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                 jobFilter={imageJobFilter}
                 searchQuery={imageSearchQuery}
                 sortBy={imageSortBy}
-                jobIdToLabel={Object.fromEntries(jobHistory.map(j => [j.id, (j as any).label || j.configurationName || `Job ${j.id}`]))}
+                jobIdToLabel={Object.fromEntries(jobHistory.map(j => {
+                  const base = (((j as any).label || (j as any).displayLabel || (j as any).configurationName || `Job ${j.id}`) as string);
+                  const isRerun = base.endsWith('(Rerun)');
+                  const name = isRerun ? base.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(j.id).slice(-6)})` : base;
+                  return [j.id, name];
+                }))}
                 dateFrom={imageDateFrom}
                 dateTo={imageDateTo}
                 selectedIds={selectedImages}
