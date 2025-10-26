@@ -374,7 +374,15 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
           const idx = jobsArray.findIndex(job => String(job?.id) === String(idVal));
           // Prefer current configuration Label/Name; then existing DB label; then technical fallback
           const cfg: any = jobConfiguration || {};
-          const cfgLabel = (cfg?.parameters?.label || cfg?.name || '').toString().trim();
+          let cfgLabel = (cfg?.parameters?.label || cfg?.name || '').toString().trim();
+          // If missing, try fetching current configuration by id to pick up latest edits
+          if (!cfgLabel && (runningFromStatus as any)?.configurationId && (window as any).electronAPI?.getJobConfigurationById) {
+            try {
+              const cfgRes = await (window as any).electronAPI.getJobConfigurationById((runningFromStatus as any).configurationId);
+              const cfgSettings = (cfgRes as any)?.configuration?.settings || {};
+              cfgLabel = String((cfgSettings as any)?.parameters?.label || (cfgRes as any)?.configuration?.name || '').trim();
+            } catch {}
+          }
           const fromDb = idx >= 0 ? (jobsArray[idx] as any) : null;
           const safeLabel = cfgLabel || fromDb?.displayLabel || fromDb?.label || (runningFromStatus as any)?.displayLabel || (runningFromStatus as any)?.configurationName || `job_${new Date().toISOString().replace(/[-:T.Z]/g,'').slice(0,14)}`;
           const startedAt = (fromDb?.startedAt as any) || (runningFromStatus as any)?.startedAt || new Date();
