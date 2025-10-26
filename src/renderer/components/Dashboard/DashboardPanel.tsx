@@ -300,6 +300,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     }
     if (jobStatus.state === 'running') {
       lastCompletionRef.current = null;
+      // Ensure in-progress job appears immediately in Job History
+      loadJobHistory();
     }
     // Attempt an immediate refresh when state changes
       loadLogs();
