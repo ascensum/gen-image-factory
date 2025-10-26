@@ -2480,14 +2480,15 @@ class BackendAdapter {
       
       // Start the first job in the queue
       const firstJob = queuedJobs[0];
-      
-      // Create a new job execution record FIRST (before starting the job) - SAME AS SINGLE RERUN
+
+      // Create a new job execution record FIRST (before starting the job) with the CORRECT label for this job
+      const firstLabelBase = (firstJob?.configuration?.parameters?.label || firstJob?.label || '').toString().trim() || (firstJob?.configuration?.name || '').toString().trim();
       const newExecutionData = {
         configurationId: firstJob.configurationId,
-        label: firstJob.label ? `${firstJob.label} (Rerun)` : 'Rerun Job',
+        label: firstLabelBase ? `${firstLabelBase} (Rerun)` : 'Rerun Job',
         status: 'running'
       };
-      
+
       const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
       
       if (!newExecution.success) {
@@ -2514,6 +2515,7 @@ class BackendAdapter {
       this.jobRunner.configurationId = firstJob.configurationId;
       this.jobRunner.databaseExecutionId = newExecution.id; // Set the execution ID for database operations
       this.jobRunner.isRerun = true; // Set rerun flag to prevent duplicate database saves
+      this.jobRunner.persistedLabel = newExecutionData.label; // ensure completion keeps the right label
       
       const jobResult = await this.jobRunner.startJob(firstJob.configuration);
       
@@ -2611,9 +2613,10 @@ class BackendAdapter {
       console.log(`📋 Bulk rerun: Processing next job: ${nextJob.label || nextJob.jobId}`);
 
       // Create a new job execution record FIRST (before starting the job)
+      const nextLabelBase = (nextJob?.configuration?.parameters?.label || nextJob?.label || '').toString().trim() || (nextJob?.configuration?.name || '').toString().trim();
       const newExecutionData = {
         configurationId: nextJob.configurationId,
-        label: nextJob.label ? `${nextJob.label} (Rerun)` : 'Rerun Job',
+        label: nextLabelBase ? `${nextLabelBase} (Rerun)` : 'Rerun Job',
         status: 'running'
       };
 
@@ -2636,6 +2639,7 @@ class BackendAdapter {
       this.jobRunner.configurationId = nextJob.configurationId;
       this.jobRunner.databaseExecutionId = newExecution.id;
       this.jobRunner.isRerun = true;
+      this.jobRunner.persistedLabel = newExecutionData.label; // keep label through completion
 
       // Start the job
       const jobResult = await this.jobRunner.startJob(nextJob.configuration);
