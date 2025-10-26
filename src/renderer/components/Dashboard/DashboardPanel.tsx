@@ -368,19 +368,29 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       }
       const runningFromStatus = (jobStatus as any)?.currentJob;
       if (runningFromStatus) {
-        const idVal = (runningFromStatus as any)?.id;
+        const idVal = (runningFromStatus as any)?.executionId || (runningFromStatus as any)?.id;
         const statusStr = String((runningFromStatus as any)?.status || (jobStatus as any)?.state || '').toLowerCase();
         if (idVal && (statusStr === 'running' || statusStr === 'processing')) {
           const idx = jobsArray.findIndex(job => String(job?.id) === String(idVal));
-          const safeLabel = (runningFromStatus as any)?.displayLabel || (runningFromStatus as any)?.configurationName || `Job ${idVal}`;
+          // Prefer current configuration Label/Name; then existing DB label; then technical fallback
+          const cfg: any = jobConfiguration || {};
+          const cfgLabel = (cfg?.parameters?.label || cfg?.name || '').toString().trim();
+          const fromDb = idx >= 0 ? (jobsArray[idx] as any) : null;
+          const safeLabel = cfgLabel || fromDb?.displayLabel || fromDb?.label || (runningFromStatus as any)?.displayLabel || (runningFromStatus as any)?.configurationName || `job_${new Date().toISOString().replace(/[-:T.Z]/g,'').slice(0,14)}`;
+          const startedAt = (fromDb?.startedAt as any) || (runningFromStatus as any)?.startedAt || new Date();
           const normalized = {
             ...(idx >= 0 ? jobsArray[idx] : {}),
             ...runningFromStatus,
             status: 'running',
+            id: fromDb?.id || idVal,
             displayLabel: safeLabel,
+            configurationName: safeLabel,
+            startedAt,
           } as any;
           if (idx >= 0) {
-            jobsArray[idx] = normalized;
+            // Replace existing and move to top to ensure visibility
+            jobsArray.splice(idx, 1);
+            jobsArray = [normalized, ...jobsArray];
       } else {
             jobsArray = [normalized, ...jobsArray];
       }
