@@ -373,9 +373,9 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         if (idVal && (statusStr === 'running' || statusStr === 'processing')) {
           const idx = jobsArray.findIndex(job => String(job?.id) === String(idVal));
           // Prefer current configuration Label/Name; then existing DB label; then technical fallback
-          const cfg: any = jobConfiguration || {};
-          let cfgLabel = (cfg?.parameters?.label || cfg?.name || '').toString().trim();
-          // If missing, try fetching current configuration by id to pick up latest edits
+          // Do NOT use cached jobConfiguration here; it may belong to a prior job (e.g., previous item in a batch rerun)
+          let cfgLabel = '';
+          // First: fetch current configuration by configurationId to pick up exact parent label
           if (!cfgLabel && (runningFromStatus as any)?.configurationId && (window as any).electronAPI?.getJobConfigurationById) {
             try {
               const cfgRes = await (window as any).electronAPI.getJobConfigurationById((runningFromStatus as any).configurationId);
@@ -383,13 +383,22 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
               cfgLabel = String((cfgSettings as any)?.parameters?.label || (cfgRes as any)?.configuration?.name || '').trim();
             } catch {}
           }
-          // As a final fallback during batch reruns, read the execution by executionId to use its persisted label
+          // Second: read the execution by executionId to use its persisted label
           if (!cfgLabel && (runningFromStatus as any)?.executionId && (window as any).electronAPI?.jobManagement?.getJobExecution) {
             try {
               const execRes = await (window as any).electronAPI.jobManagement.getJobExecution((runningFromStatus as any).executionId);
               const exec = (execRes as any)?.execution || execRes;
               const persisted = String((exec && (exec.label || exec.displayLabel)) || '').trim();
               if (persisted) cfgLabel = persisted;
+            } catch {}
+          }
+          // Third: ask backend for the original (parent) job for this rerun execution and use its label
+          if (!cfgLabel && (runningFromStatus as any)?.executionId && (window as any).electronAPI?.jobManagement?.getParentJobForRerun) {
+            try {
+              const parentRes = await (window as any).electronAPI.jobManagement.getParentJobForRerun((runningFromStatus as any).executionId);
+              const parent = (parentRes as any)?.job || parentRes;
+              const parentLabel = String((parent && (parent.label || parent.configurationName)) || '').trim();
+              if (parentLabel) cfgLabel = parentLabel + ' (Rerun)';
             } catch {}
           }
           const fromDb = idx >= 0 ? (jobsArray[idx] as any) : null;
