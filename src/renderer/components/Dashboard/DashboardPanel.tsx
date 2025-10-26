@@ -383,6 +383,15 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
               cfgLabel = String((cfgSettings as any)?.parameters?.label || (cfgRes as any)?.configuration?.name || '').trim();
             } catch {}
           }
+          // As a final fallback during batch reruns, read the execution by executionId to use its persisted label
+          if (!cfgLabel && (runningFromStatus as any)?.executionId && (window as any).electronAPI?.jobManagement?.getJobExecution) {
+            try {
+              const execRes = await (window as any).electronAPI.jobManagement.getJobExecution((runningFromStatus as any).executionId);
+              const exec = (execRes as any)?.execution || execRes;
+              const persisted = String((exec && (exec.label || exec.displayLabel)) || '').trim();
+              if (persisted) cfgLabel = persisted;
+            } catch {}
+          }
           const fromDb = idx >= 0 ? (jobsArray[idx] as any) : null;
           const safeLabel = cfgLabel || fromDb?.displayLabel || fromDb?.label || (runningFromStatus as any)?.displayLabel || (runningFromStatus as any)?.configurationName || `job_${new Date().toISOString().replace(/[-:T.Z]/g,'').slice(0,14)}`;
           const startedAt = (fromDb?.startedAt as any) || (runningFromStatus as any)?.startedAt || new Date();
