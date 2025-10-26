@@ -510,23 +510,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     return `Job ${job.id}`;
   }, []);
 
+  // Inline rename removed — labels are edited via Settings or Single Job View modal only
   // Handle job actions following BMad-Method structured approach
-  const handleJobRename = useCallback(async (jobId: string | number, newLabel: string) => {
-    try {
-      const result = await window.electronAPI.jobManagement.renameJobExecution(jobId, newLabel);
-      if (result.success) {
-        // Update local state
-        setJobs(prev => prev.map(job => 
-          job.id === jobId ? { ...job, label: newLabel } : job
-        ));
-      } else {
-        throw new Error(result.error || 'Failed to rename job');
-      }
-    } catch (err) {
-      console.error('Error renaming job:', err);
-    }
-  }, []);
-
   const handleBulkRerun = useCallback(async () => {
     if (selectedJobs.size === 0) return;
     
@@ -892,31 +877,13 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                     <span className="job-id">#{job.id}</span>
                   </td>
                   <td>
-                    <span 
-                      className="job-label"
-                      contentEditable
-                      suppressContentEditableWarning
-                      onBlur={(e) => {
-                        const text = (e.currentTarget.textContent || '').trim();
-                        const current = (job.label || '').trim();
-                        const fallback = getDisplayLabel(job).trim();
-                        // Do not persist fallback; only persist if user actually changed it
-                        if (text === current || (current === '' && text === fallback)) {
-                          e.currentTarget.textContent = getDisplayLabel(job);
-                          return;
-                        }
-                        handleJobRename(job.id, text);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.currentTarget.blur();
-                        } else if (e.key === 'Escape') {
-                          e.currentTarget.textContent = getDisplayLabel(job);
-                          e.currentTarget.blur();
-                        }
-                      }}
-                    >
-                      {getDisplayLabel(job)}
+                    <span className="job-label">
+                      {(() => {
+                        const label = getDisplayLabel(job);
+                        const isRerun = String(job.label || '').endsWith('(Rerun)');
+                        const idSuffix = isRerun ? ` • #${String(job.id).slice(-6)}` : '';
+                        return label + idSuffix;
+                      })()}
                     </span>
                   </td>
                   <td>

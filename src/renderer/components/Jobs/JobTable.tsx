@@ -30,36 +30,7 @@ const JobTable: React.FC<JobTableProps> = ({
   pageSize,
   onPageSizeChange
 }) => {
-  const [editingJobId, setEditingJobId] = useState<string | number | null>(null);
-  const [editValue, setEditValue] = useState('');
-
-  const handleEditStart = useCallback((job: JobExecution) => {
-    setEditingJobId(job.id);
-    setEditValue(job.label || '');
-  }, []);
-
-  const handleEditSave = useCallback((jobId: string | number) => {
-    if (editValue.trim()) {
-      onJobRename(jobId, editValue.trim());
-    }
-    setEditingJobId(null);
-    setEditValue('');
-  }, [editValue, onJobRename]);
-
-  const handleEditCancel = useCallback(() => {
-    setEditingJobId(null);
-    setEditValue('');
-  }, []);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent, jobId: string | number) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleEditSave(jobId);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      handleEditCancel();
-    }
-  }, [handleEditSave, handleEditCancel]);
+  // Inline rename removed
 
   const handleSelectAll = useCallback((checked: boolean) => {
     jobs.forEach(job => onJobSelect(job.id, checked));
@@ -246,47 +217,19 @@ const JobTable: React.FC<JobTableProps> = ({
 
                 {/* Label Column with Inline Editing */}
                 <td className="px-6 py-4 whitespace-nowrap">
-                  {editingJobId === job.id ? (
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, job.id)}
-                        onBlur={() => handleEditSave(job.id)}
-                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                        aria-label="Edit job label"
-                        autoFocus
-                      />
-                      <button
-                        onClick={() => handleEditSave(job.id)}
-                        className="text-green-600 hover:text-green-800"
-                        aria-label="Save label"
-                      >
-                        ✓
-                      </button>
-                      <button
-                        onClick={handleEditCancel}
-                        className="text-red-600 hover:text-red-800"
-                        aria-label="Cancel editing"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-medium text-gray-900">
-                        {getDisplayLabel(job)}
-                      </span>
-                      <button
-                        onClick={() => handleEditStart(job)}
-                        className="text-gray-400 hover:text-gray-600"
-                        aria-label={`Edit label for job ${getDisplayLabel(job)}`}
-                      >
-                        ✏️
-                      </button>
-                    </div>
-                  )}
+                  {/* Inline rename removed */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-gray-900">
+                      {getDisplayLabel(job)}
+                    </span>
+                    <button
+                      onClick={() => {/* TODO: Implement view details */}}
+                      className="text-gray-400 hover:text-gray-600"
+                      aria-label={`Edit label for job ${getDisplayLabel(job)}`}
+                    >
+                      ✏️
+                    </button>
+                  </div>
                 </td>
 
                 {/* Status Column */}

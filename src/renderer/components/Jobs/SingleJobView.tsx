@@ -31,8 +31,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [imageFilter, setImageFilter] = useState('all');
   
-  // Job label editing state
-  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  // Inline label editing removed — edit via Edit Settings modal only
   const [editedLabel, setEditedLabel] = useState('');
   const [isSavingLabel, setIsSavingLabel] = useState(false);
   const [labelSaveError, setLabelSaveError] = useState<string | null>(null);
@@ -248,7 +247,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   // Job label editing handlers
   const handleLabelEdit = useCallback(() => {
-    setIsEditingLabel(true);
+    // setIsEditingLabel(true); // Removed
     setLabelSaveError(null);
     // Focus the input after a brief delay to ensure DOM is ready
     setTimeout(() => {
@@ -279,7 +278,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       if (result.success) {
         // Update local state
         setJob(prevJob => prevJob ? { ...prevJob, label: labelToSave } : null);
-        setIsEditingLabel(false);
+        // setIsEditingLabel(false); // Removed
         console.log('Job label updated successfully');
       } else {
         setLabelSaveError(result.error || 'Failed to save label');
@@ -293,7 +292,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   }, [job, editedLabel]);
 
   const handleLabelCancel = useCallback(() => {
-    setIsEditingLabel(false);
+    // setIsEditingLabel(false); // Removed
     const jobLabel = job?.label;
     if (!jobLabel || jobLabel.trim() === '') {
       setEditedLabel('No label');
@@ -534,50 +533,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
           </div>
         </div>
         <div className="job-title-section">
-          <div className="job-title-editable" onClick={!isEditingLabel ? handleLabelEdit : undefined} title={!isEditingLabel ? "Click to edit job label" : "Press Enter to save, Escape to cancel"}>
-            {isEditingLabel ? (
-              <input
-                type="text"
-                value={editedLabel}
-                onChange={(e) => setEditedLabel(e.target.value)}
-                onKeyDown={handleLabelKeyDown}
-                onBlur={handleLabelBlur}
-                ref={labelInputRef}
-                className="label-input"
-                autoFocus
-              />
-            ) : (
-              <>
-                <span className="job-title-text">
-                  {getDisplayLabel()}
-                </span>
-                <svg className="edit-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="m18.5 2.5 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-              </>
-            )}
+          <div className="job-title-static">
+            <span className="job-title-text">{getDisplayLabel()}</span>
           </div>
-          {isEditingLabel && (
-            <div className="label-edit-controls">
-              <button onClick={handleLabelSave} disabled={isSavingLabel} className="label-save-btn" title="Save label">
-                {isSavingLabel ? 'Saving...' : 'Save'}
-              </button>
-              <button onClick={handleLabelCancel} disabled={isSavingLabel} className="label-cancel-btn" title="Cancel editing">
-                Cancel
-              </button>
-            </div>
-          )}
-          {labelSaveError && (
-            <div className="label-error">
-              <span className="error-icon">
-                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </span>
-              {labelSaveError}
-            </div>
-          )}
         </div>
       </header>
 
