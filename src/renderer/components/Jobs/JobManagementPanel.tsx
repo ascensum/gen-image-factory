@@ -308,16 +308,36 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           const status = await (window as any).electronAPI?.jobManagement?.getJobStatus?.();
           const current = (status as any)?.currentJob;
           const stateStr = String((status as any)?.state || (current as any)?.status || '').toLowerCase();
-          const idVal = (current as any)?.id;
-          if (current && idVal && (stateStr === 'running' || stateStr === 'processing')) {
-            const idx = list.findIndex(j => String((j as any).id) === String(idVal));
+          // Prefer persisted execution id to avoid broken deep-linking
+          const execId = (current as any)?.executionId || (status as any)?.executionId;
+          if (current && execId && (stateStr === 'running' || stateStr === 'processing')) {
+            const idx = list.findIndex(j => String((j as any).id) === String(execId));
             const hasRunningInList = list.some(j => String((j as any).status).toLowerCase() === 'running');
-            const safeLabel = (current as any)?.label || (current as any)?.configurationName || `Job ${idVal}`;
+            // Prefer Settings label/name using configuration when available
+            let safeLabel = (current as any)?.label || (current as any)?.configurationName || '';
+            try {
+              const cfgId = (current as any)?.configurationId;
+              if (cfgId && (window as any).electronAPI?.getJobConfigurationById) {
+                const cfgRes = await (window as any).electronAPI.getJobConfigurationById(cfgId);
+                const cfg = (cfgRes as any)?.configuration?.settings || {};
+                const cfgName = (cfg as any)?.parameters?.label || (cfgRes as any)?.configuration?.name || '';
+                if (String(cfgName).trim() !== '') safeLabel = String(cfgName);
+              }
+            } catch {}
+            if (!safeLabel || String(safeLabel).trim() === '') {
+              // Timestamp fallback
+              const now = new Date();
+              const pad = (n: number) => n.toString().padStart(2, '0');
+              const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+              safeLabel = `job_${ts}`;
+            }
             const normalized: any = {
               ...(idx >= 0 ? (list[idx] as any) : {}),
               ...(current as any),
               status: 'running',
+              id: execId,
               label: safeLabel,
+              displayLabel: safeLabel,
             };
             // Normalize startedAt from possible startTime fields to avoid 'Unknown'
             if (!normalized.startedAt) {
