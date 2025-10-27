@@ -485,10 +485,14 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
     }
   }, [paginatedJobs]);
 
-  // Compute a consistent display-only fallback label without persisting it
+  // Compute a consistent display-only label; show reruns as "Label (Rerun id)"
   const getDisplayLabel = useCallback((job: JobExecution) => {
     const prefer = (job as any).displayLabel || job.label || (job as any).configurationName;
-    if (prefer && String(prefer).trim() !== '') return String(prefer);
+    if (prefer && String(prefer).trim() !== '') {
+      const base = String(prefer).trim();
+      const isRerun = base.endsWith('(Rerun)');
+      return isRerun ? base.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(job.id).slice(-6)})` : base;
+    }
     const started = job.startedAt ? new Date(job.startedAt as any) : null;
     if (started && !isNaN(started.getTime())) {
       const pad = (n: number) => n.toString().padStart(2, '0');
@@ -865,14 +869,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                     <span className="job-id">#{job.id}</span>
                   </td>
                   <td>
-                    <span className="job-label">
-                      {(() => {
-                        const label = getDisplayLabel(job);
-                        const isRerun = String(job.label || '').endsWith('(Rerun)');
-                        const idSuffix = isRerun ? ` • #${String(job.id).slice(-6)}` : '';
-                        return label + idSuffix;
-                      })()}
-                    </span>
+                    <span className="job-label">{getDisplayLabel(job)}</span>
                   </td>
                   <td>
                     <StatusBadge 
