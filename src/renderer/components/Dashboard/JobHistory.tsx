@@ -115,9 +115,15 @@ const JobHistory: React.FC<JobHistoryProps> = ({
     setShowDeleteConfirm(null);
   };
 
-  // Helper to safely read optional label merged from other views
+  // Helper: format label; show reruns as "Label (Rerun execIdShort)"
   const getJobLabel = (job: JobExecution & any): string => {
-    return job.displayLabel || job.configurationName || 'Unknown';
+    const prefer = (job as any).displayLabel || (job as any).label || (job as any).configurationName;
+    if (prefer && String(prefer).trim() !== '') {
+      const base = String(prefer).trim();
+      const isRerun = base.endsWith('(Rerun)');
+      return isRerun ? base.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(job.id).slice(-6)})` : base;
+    }
+    return 'Unknown';
   };
 
   const cancelDeleteJob = () => {
