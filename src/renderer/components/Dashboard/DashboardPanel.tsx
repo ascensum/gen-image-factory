@@ -404,13 +404,17 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
           const fromDb = idx >= 0 ? (jobsArray[idx] as any) : null;
           const safeLabel = cfgLabel || fromDb?.displayLabel || fromDb?.label || (runningFromStatus as any)?.displayLabel || (runningFromStatus as any)?.configurationName || `job_${new Date().toISOString().replace(/[-:T.Z]/g,'').slice(0,14)}`;
           const startedAt = (fromDb?.startedAt as any) || (runningFromStatus as any)?.startedAt || new Date();
+          const base = String((fromDb?.label || (runningFromStatus as any)?.label || cfgLabel || (runningFromStatus as any)?.configurationName || `Job ${idVal}`)).trim();
+          const isRerun = base.endsWith('(Rerun)');
+          const display = isRerun ? base.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(idVal).slice(-6)})` : base;
           const normalized = {
             ...(idx >= 0 ? jobsArray[idx] : {}),
             ...runningFromStatus,
             status: 'running',
             id: fromDb?.id || idVal,
-            displayLabel: safeLabel,
-            configurationName: safeLabel,
+            label: base,
+            displayLabel: display,
+            configurationName: display,
             startedAt,
           } as any;
           if (idx >= 0) {

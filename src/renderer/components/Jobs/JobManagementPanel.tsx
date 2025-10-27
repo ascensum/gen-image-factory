@@ -313,31 +313,19 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           if (current && execId && (stateStr === 'running' || stateStr === 'processing')) {
             const idx = list.findIndex(j => String((j as any).id) === String(execId));
             const hasRunningInList = list.some(j => String((j as any).status).toLowerCase() === 'running');
-            // Prefer Settings label/name using configuration when available
-            let safeLabel = (current as any)?.label || (current as any)?.configurationName || '';
-            try {
-              const cfgId = (current as any)?.configurationId;
-              if (cfgId && (window as any).electronAPI?.getJobConfigurationById) {
-                const cfgRes = await (window as any).electronAPI.getJobConfigurationById(cfgId);
-                const cfg = (cfgRes as any)?.configuration?.settings || {};
-                const cfgName = (cfg as any)?.parameters?.label || (cfgRes as any)?.configuration?.name || '';
-                if (String(cfgName).trim() !== '') safeLabel = String(cfgName);
-              }
-            } catch {}
-            if (!safeLabel || String(safeLabel).trim() === '') {
-              // Timestamp fallback
-              const now = new Date();
-              const pad = (n: number) => n.toString().padStart(2, '0');
-              const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-              safeLabel = `job_${ts}`;
-            }
+            const fromDb: any = idx >= 0 ? (list[idx] as any) : null;
+            // Prefer existing DB label (already persisted with (Rerun))
+            let base = String(fromDb?.label || fromDb?.displayLabel || (current as any)?.label || (current as any)?.configurationName || `Job ${execId}`).trim();
+            // Format rerun as "Label (Rerun id)"
+            const isRerun = base.endsWith('(Rerun)');
+            const display = isRerun ? base.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(execId).slice(-6)})` : base;
             const normalized: any = {
               ...(idx >= 0 ? (list[idx] as any) : {}),
               ...(current as any),
               status: 'running',
               id: execId,
-              label: safeLabel,
-              displayLabel: safeLabel,
+              label: base,
+              displayLabel: display,
             };
             // Normalize startedAt from possible startTime fields to avoid 'Unknown'
             if (!normalized.startedAt) {
