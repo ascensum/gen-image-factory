@@ -1159,7 +1159,13 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                       >
                         {imageJobFilter === 'all' ? 'All Jobs' : (() => {
                           const job = jobHistory.find(j => String(j.id) === String(imageJobFilter));
-                          return (job as any)?.displayLabel || job?.configurationName || `Job ${String(imageJobFilter).slice(0, 8)}`;
+                          const prefer = (job as any)?.displayLabel || (job as any)?.label || job?.configurationName;
+                          if (prefer && String(prefer).trim() !== '') {
+                            const base = String(prefer).trim();
+                            const isRerun = base.endsWith('(Rerun)');
+                            return isRerun ? base.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(job?.id).slice(-3)})` : base;
+                          }
+                          return `Job ${String(imageJobFilter).slice(0, 8)}`;
                         })()}
                         {/* bold chevron to match selects */}
                         <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-700">
@@ -1199,7 +1205,13 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                               id: executionId,
                               label: (() => {
                                 const job = jobHistory.find(j => String(j.id) === String(executionId));
-                                return (job as any)?.displayLabel || job?.configurationName || `Job ${String(executionId).slice(0, 8)}`;
+                                const prefer = (job as any)?.displayLabel || (job as any)?.label || job?.configurationName;
+                                if (prefer && String(prefer).trim() !== '') {
+                                  const base = String(prefer).trim();
+                                  const isRerun = base.endsWith('(Rerun)');
+                                  return isRerun ? base.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(executionId).slice(-3)})` : base;
+                                }
+                                return `Job ${String(executionId).slice(0, 8)}`;
                               })()
                             }))
                             .filter(opt => opt.label.toLowerCase().includes(jobFilterQuery.toLowerCase()))

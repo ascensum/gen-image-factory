@@ -697,7 +697,14 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                 >
                   {filterJob === 'all' ? 'All Jobs' : (() => {
                     const label = jobIdToLabel[String(filterJob)];
-                    return label || `Job ${String(filterJob).slice(0, 8)}`;
+                    if (label && label.trim() !== '') {
+                      const base = label.trim();
+                      const isRerun = base.endsWith('(Rerun)');
+                      return isRerun
+                        ? base.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(filterJob).slice(-3)})`
+                        : base;
+                    }
+                    return `Job ${String(filterJob).slice(0, 8)}`;
                   })()}
                   <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-700">
                     <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -742,9 +749,19 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                             className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 whitespace-normal break-words ${String(filterJob) === String(opt.id) ? 'bg-gray-100' : ''}`}
                             role="option"
                             aria-selected={String(filterJob) === String(opt.id)}
-                            title={opt.label}
+                            title={(() => {
+                              const lbl = opt.label.trim();
+                              return lbl.endsWith('(Rerun)')
+                                ? lbl.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(opt.id).slice(-3)})`
+                                : lbl;
+                            })()}
                           >
-                            {opt.label}
+                            {(() => {
+                              const lbl = opt.label.trim();
+                              return lbl.endsWith('(Rerun)')
+                                ? lbl.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(opt.id).slice(-3)})`
+                                : lbl;
+                            })()}
                           </button>
                         </li>
                       ))}
