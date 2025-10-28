@@ -56,6 +56,17 @@ else
     exit 1
 fi
 
+# 1b. Run label/formatting regression tests (CRITICAL UI CONTRACT)
+echo "🏷️  Testing Label formatting (CRITICAL UI CONTRACT)..."
+if npm run test:labels > /dev/null 2>&1; then
+    print_status "SUCCESS" "Label formatting tests passed"
+else
+    print_status "ERROR" "Label formatting tests failed - prevents inconsistent rerun labels!"
+    echo "Running tests with output to see failures:"
+    npm run test:labels
+    exit 1
+fi
+
 # 2. Run security tests
 echo "🔒 Testing Security (API Key Exposure Prevention)..."
 if npm run test:security > /dev/null 2>&1; then

@@ -34,7 +34,9 @@
     "test:retry": "vitest run tests/unit/services/RetryExecutor.test.ts tests/integration/backend/RetryFunctionality.integration.test.ts",
     "test:retry:watch": "vitest tests/unit/services/RetryExecutor.test.ts tests/integration/backend/RetryFunctionality.integration.test.ts",
     "test:security": "vitest run tests/unit/services/RetryExecutor.test.ts --reporter=verbose",
-    "test:regression:retry": "npm run test:retry && npm run test:job-management"
+    "test:regression:retry": "npm run test:retry && npm run test:job-management",
+    "test:labels": "vitest run tests/unit/ui/JobHistoryLabelFormatting.test.tsx",
+    "test:labels:all": "vitest run tests/unit/ui/JobHistoryLabelFormatting.test.tsx tests/unit/ui/DashboardFiltersLabelFormatting.test.tsx tests/unit/ui/FailedImagesReviewFiltersLabelFormatting.test.tsx"
   },
   "author": "Gen Image Factory Team",
   "license": "MIT",

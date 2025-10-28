@@ -121,7 +121,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
     if (prefer && String(prefer).trim() !== '') {
       const base = String(prefer).trim();
       const isRerun = base.endsWith('(Rerun)');
-      return isRerun ? base.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(job.id).slice(-6)})` : base;
+      return isRerun ? base.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(job.id).slice(-3)})` : base;
     }
     return 'Unknown';
   };
