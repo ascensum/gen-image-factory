@@ -54,11 +54,17 @@ const SimpleDropdown = <T extends string | number = string>({
         aria-expanded={open}
         aria-label={ariaLabel}
         disabled={disabled}
-        className={
+        className={`${
           buttonClassName || 'text-sm border border-gray-300 rounded-md px-3 py-1 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[10rem] text-left'
-        }
+        } relative pr-8`}
       >
         {selected?.label}
+        {/* bold chevron to match other filters */}
+        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-700">
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" />
+          </svg>
+        </span>
       </button>
       {open && (
         <div className={`absolute z-30 mt-2 ${menuWidthClassName || 'w-[12rem]'} bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden`}>
