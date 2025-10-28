@@ -1464,7 +1464,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
       {/* Single Job Constraint Message */}
       {jobStatus.state === 'running' && (
-        <div className="fixed bottom-4 left-4 bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md">
+        <div className="fixed bottom-4 left-4 z-50 bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md shadow-lg">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
