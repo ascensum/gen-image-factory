@@ -234,6 +234,42 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     }
   };
 
+  // Post-retry safeguard: for original-settings flow that may not emit events,
+  // poll briefly until tracked images leave retry_pending/processing, then stop.
+  const waitAndRefreshUntilDone = async (imageIds: string[], timeoutMs = 60000, intervalMs = 2000) => {
+    try {
+      const normalize = (resp: any) => (resp && typeof resp === 'object' && resp.success !== undefined)
+        ? (resp.images || [])
+        : (Array.isArray(resp) ? resp : []);
+      const includesTracked = (arr: any[]) => arr.some((img: any) => imageIds.includes(String(img.id)));
+
+      const startedAt = Date.now();
+      // Initial refresh so UI updates immediately after enqueue
+      await loadAllImageStatuses();
+      await loadRetryQueueStatus();
+
+      while (Date.now() - startedAt < timeoutMs) {
+        // Fetch current pending/processing directly
+        const [pendingResp, processingResp] = await Promise.all([
+          window.electronAPI.generatedImages.getImagesByQCStatus('retry_pending'),
+          window.electronAPI.generatedImages.getImagesByQCStatus('processing')
+        ]);
+        const pending = normalize(pendingResp);
+        const processing = normalize(processingResp);
+
+        // Refresh UI state each tick
+        await loadAllImageStatuses();
+        await loadRetryQueueStatus();
+
+        const stillTracked = includesTracked(pending) || includesTracked(processing);
+        if (!stillTracked) break;
+        await new Promise((r) => setTimeout(r, intervalMs));
+      }
+    } catch (_) {
+      // Non-fatal; UI will still have baseline refreshes and event listeners
+    }
+  };
+
   // Get current tab images
   const getCurrentTabImages = () => {
     switch (activeTab) {
@@ -391,6 +427,12 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         setSelectedImages(new Set());
         setShowProcessingSettingsModal(false);
         console.log('🔍 FailedImagesReviewPanel: Retry processing complete');
+        // Ensure counters settle for original-settings flow by polling briefly
+        try {
+          const ids = imageIds.map((id) => String(id));
+          // Fire-and-forget; do not block UI
+          waitAndRefreshUntilDone(ids).catch(() => {});
+        } catch {}
       } else {
         console.error('🔍 FailedImagesReviewPanel: Retry failed:', result.error);
         setError(result.error || 'Failed to process retry operations');
