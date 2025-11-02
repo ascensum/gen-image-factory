@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Modal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="main_dashboard_theme.css">
+    <style>
+        body {
+            /* Force Light Theme for Electron App */
+            --background: oklch(0.98 0 0);
+            --foreground: oklch(0.2 0 0);
+            --card: oklch(1 0 0);
+            --card-foreground: oklch(0.2 0 0);
+            --popover: oklch(1 0 0);
+            --popover-foreground: oklch(0.2 0 0);
+            --secondary: oklch(0.96 0 0);
+            --secondary-foreground: oklch(0.3 0 0);
+            --muted: oklch(0.96 0 0);
+            --muted-foreground: oklch(0.45 0 0);
+            --accent: oklch(0.95 0.03 250);
+            --accent-foreground: oklch(0.2 0 0);
+            --border: oklch(0.9 0 0);
+            --input: oklch(0.9 0 0);
+
+            background-color: var(--background);
+            color: var(--foreground);
+            font-family: var(--font-sans);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .modal-container {
+            background-color: var(--card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 768px;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 0.75rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-content {
+            padding: 1.25rem;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            padding: 0.75rem 1.25rem;
+            border-top: 1px solid var(--border);
+            background-color: var(--secondary);
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--muted-foreground);
+            margin-bottom: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn {
+            padding: 0.25rem 0.75rem; /* Slimmer buttons */
+            font-size: 0.8rem;
+            border-radius: var(--radius);
+            font-weight: 500;
+            transition: var(--transition-fast);
+            border: 1px solid var(--border);
+        }
+
+        .btn-default {
+            background-color: var(--card);
+            color: var(--foreground);
+        }
+
+        .btn-default:hover {
+            background-color: var(--muted);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+            border-color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-cancel {
+            background-color: #E5E7EB; /* gray-200 */
+            color: #374151; /* gray-700 */
+            border-color: #D1D5DB; /* gray-300 */
+        }
+        .btn-cancel:hover {
+            background-color: #D1D5DB; /* gray-300 */
+        }
+
+        .btn-export {
+            background-color: #22C55E; /* A more vibrant green */
+            color: #FFFFFF;
+            border-color: #22C55E;
+        }
+        .btn-export:hover {
+            background-color: #16A34A; /* Darker vibrant green */
+            border-color: #16A34A;
+        }
+
+        .btn-save-as {
+            background-color: #007BFF; /* A more vibrant blue */
+            color: #FFFFFF;
+            border-color: #007BFF;
+        }
+        .btn-save-as:hover {
+            background-color: #0056b3; /* Darker vibrant blue */
+            border-color: #0056b3;
+        }
+
+        .text-input {
+            background-color: var(--input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.25rem 0.75rem; /* Slimmer inputs */
+            width: 100%;
+            color: var(--foreground);
+        }
+        
+        .text-input:focus {
+            outline: 2px solid var(--ring);
+            outline-offset: 2px;
+            border-color: var(--primary);
+        }
+
+        .path-display {
+            background: var(--muted);
+            padding: 0.5rem 0.75rem; /* Slimmer path display */
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            border-radius: var(--radius);
+            color: var(--muted-foreground);
+            word-break: break-all;
+        }
+        
+        .progress-stepper {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem; /* Tighter gap */
+            font-size: 0.8rem; /* Smaller font */
+            color: var(--muted-foreground);
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem; /* Tighter gap */
+        }
+
+        .step.active {
+            color: var(--foreground);
+            font-weight: 600;
+        }
+
+        .step-icon {
+            width: 16px; /* Smaller icon */
+            height: 16px; /* Smaller icon */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--muted);
+            border: 1px solid var(--border);
+        }
+        
+        .step.active .step-icon {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            color: var(--primary-foreground);
+        }
+        
+        .step-icon-inner {
+            width: 6px; /* Smaller inner dot */
+            height: 6px; /* Smaller inner dot */
+            border-radius: 50%;
+            background-color: var(--muted-foreground);
+        }
+        
+        .step.active .step-icon-inner {
+             background-color: var(--primary-foreground);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="modal-container">
+        <div class="modal-header flex justify-between items-center">
+            <h1 class="text-sm font-semibold text-foreground">Export Selected Images (3)</h1>
+            <button class="text-muted-foreground hover:text-foreground">&times;</button>
+        </div>
+
+        <div class="modal-content custom-scrollbar space-y-3">
+            
+            <div>
+                <div class="section-title">Destination</div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="flex items-center space-x-2">
+                            <input type="radio" name="destination" class="h-3 w-3 text-primary focus:ring-primary" checked>
+                            <span class="text-sm font-medium text-foreground">Default app Exports folder</span>
+                        </label>
+                        <div class="pl-7 mt-1 space-y-1">
+                            <div class="path-display">/Users/&lt;you&gt;/Library/Application Support/Gen Image Factory/exports</div>
+                            <button class="btn btn-default text-sm">Open Exports Folder</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="flex items-center space-x-2">
+                            <input type="radio" name="destination" class="h-3 w-3 text-primary focus:ring-primary">
+                            <span class="text-sm font-medium text-foreground">Save to another location</span>
+                        </label>
+                        <div class="pl-7 mt-1 space-y-2">
+                            <div class="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+                                <label class="text-xs text-muted-foreground">Location:</label>
+                                <input type="text" class="text-input" value="/Users/<you>/Desktop/client-drop/">
+                                <button class="btn btn-save-as">Browse…</button>
+                            </div>
+                            <div class="grid grid-cols-[auto_1fr] items-center gap-2">
+                                <label class="text-xs text-muted-foreground">Filename:</label>
+                                <input type="text" class="text-input" value="exported-images-2025-10-31-142533.zip">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">Package options</div>
+                <div class="space-y-2">
+                    <label class="flex items-center space-x-2">
+                        <input type="checkbox" class="h-3 w-3 rounded text-primary focus:ring-primary" checked>
+                        <span class="text-sm font-medium text-foreground">Include Excel metadata (metadata.xlsx)</span>
+                    </label>
+                    <div class="pl-7 text-sm text-muted-foreground font-mono">
+                        <p>Folder layout inside ZIP:</p>
+                        <div class="pl-4 opacity-75">
+                            <p>images/ (image files)</p>
+                            <p>metadata.xlsx</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">Conflicts & naming</div>
+                <div class="flex items-center space-x-6">
+                     <label class="flex items-center space-x-2">
+                        <input type="radio" name="conflict" class="h-3 w-3 text-primary focus:ring-primary" checked>
+                        <span class="text-xs text-foreground">Auto-append number</span>
+                    </label>
+                    <label class="flex items-center space-x-2">
+                        <input type="radio" name="conflict" class="h-3 w-3 text-primary focus:ring-primary">
+                        <span class="text-xs text-foreground">Overwrite (confirm)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-title">Status</div>
+                <div class="progress-stepper">
+                    <div class="step active">
+                        <div class="step-icon"><div class="step-icon-inner"></div></div>
+                        <span>Gathering files…</span>
+                    </div>
+                    <div class="step">
+                        <div class="step-icon"><div class="step-icon-inner"></div></div>
+                        <span>Creating Excel…</span>
+                    </div>
+                    <div class="step">
+                        <div class="step-icon"><div class="step-icon-inner"></div></div>
+                        <span>Zipping…</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="modal-footer flex justify-between items-center">
+            <button class="btn btn-cancel">Cancel</button>
+            <div class="flex items-center gap-2">
+                <button class="btn btn-save-as">Save to another location…</button>
+                <button class="btn btn-export">Export</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

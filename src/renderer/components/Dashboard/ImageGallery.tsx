@@ -1,36 +1,8 @@
 import React, { useState } from 'react';
 import StatusBadge from '../Common/StatusBadge';
-import * as XLSX from 'xlsx';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import ImageModal from './ImageModal';
 
-// Excel export configuration
-const EXCEL_COLUMN_WIDTHS = [
-  { wch: 5 },   // Row
-  { wch: 15 },  // Image ID
-  { wch: 15 },  // Job Execution ID
-  { wch: 25 },  // File Name
-  { wch: 40 },  // File Path
-  { wch: 12 },  // QC Status
-  { wch: 30 },  // QC Reason
-  { wch: 50 },  // Generation Prompt
-  { wch: 12 },  // Seed
-  { wch: 20 },  // Created At
-  { wch: 30 },  // AI Title
-  { wch: 50 },  // AI Description
-  { wch: 40 },  // AI Tags
-  { wch: 15 },  // Image Enhancement
-  { wch: 15 },  // Sharpening Level
-  { wch: 15 },  // Saturation Level
-  { wch: 12 },  // Image Convert
-  { wch: 12 },  // Convert to JPG
-  { wch: 12 },  // JPG Quality
-  { wch: 12 },  // PNG Quality
-  { wch: 15 },  // Remove Background
-  { wch: 15 },  // Remove BG Size
-  { wch: 15 },  // Trim Transparent
-  { wch: 15 }   // JPG Background
-];
 
 interface ImageGalleryProps {
   images: GeneratedImage[];
@@ -86,8 +58,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     else setInternalSelected(next);
   };
   const [showImageModal, setShowImageModal] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState<boolean>(false);
-  const [exportError, setExportError] = useState<string | null>(null);
+  
 
   // Safely parse metadata which may be stored as a JSON string
   const parseMetadata = (raw: any): any => {
@@ -107,8 +78,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     updateSelected(new Set());
   }, [jobFilter]);
 
-  // Get unique job IDs for filtering
-  const uniqueJobIds = Array.from(new Set((images || []).map(img => img.executionId)));
+  
 
   const filteredAndSortedImages = React.useMemo(() => {
     if (!images || !Array.isArray(images)) {
@@ -195,117 +165,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     updateSelected(newSelected);
   };
 
-  const handleSelectAll = () => {
-    if (selectedImages.size === filteredAndSortedImages.length) {
-      updateSelected(new Set());
-    } else {
-      updateSelected(new Set(filteredAndSortedImages.map(img => img.id)));
-    }
-  };
+  
 
-  const handleBulkAction = (action: string) => {
-    if (selectedImages.size === 0) return;
-    
-    // Handle actions for success images (only delete supported)
-    selectedImages.forEach(imageId => {
-      onImageAction(action, imageId);
-    });
-    updateSelected(new Set());
-  };
-
-  // Note: QC status changes are handled in the separate Failed Images Review page
-
-  // Handle QC status changes for individual images
-  const handleQCStatusChange = (imageId: string, newStatus: string) => {
-    onImageAction('update-qc-status', imageId, newStatus);
-  };
-
-  // Helper function to transform image data for Excel export
-  const transformImageForExport = (image: GeneratedImage, index: number) => {
-    const processingSettings = image.processingSettings || {};
-    const metadata = image.metadata || {};
-    
-    return {
-      'Row': index + 1,
-      'Image ID': image.id,
-      'Job Execution ID': image.executionId,
-      'File Name': image.finalImagePath ? image.finalImagePath.split('/').pop() : 'N/A',
-      'File Path': image.finalImagePath || 'N/A',
-      'QC Status': image.qcStatus || 'pending',
-      'QC Reason': image.qcReason || '',
-      'Generation Prompt': image.generationPrompt || '',
-      'Seed': image.seed || 'N/A',
-      'Created At': image.createdAt ? new Date(image.createdAt).toLocaleString() : 'N/A',
-      
-      // AI-Generated Metadata
-      'AI Title': metadata.title || '',
-      'AI Description': metadata.description || '',
-      'AI Tags': Array.isArray(metadata.tags) ? metadata.tags.join(', ') : (metadata.tags || ''),
-      
-      // Processing Settings
-      'Image Enhancement': processingSettings.imageEnhancement ? 'Yes' : 'No',
-      'Sharpening Level': processingSettings.sharpening || 0,
-      'Saturation Level': processingSettings.saturation || 1,
-      'Image Convert': processingSettings.imageConvert ? 'Yes' : 'No',
-      'Convert to JPG': processingSettings.convertToJpg ? 'Yes' : 'No',
-      'JPG Quality': processingSettings.jpgQuality || 'N/A',
-      'PNG Quality': processingSettings.pngQuality || 'N/A',
-      'Remove Background': processingSettings.removeBg ? 'Yes' : 'No',
-      'Remove BG Size': processingSettings.removeBgSize || 'N/A',
-      'Trim Transparent': processingSettings.trimTransparentBackground ? 'Yes' : 'No',
-      'JPG Background': processingSettings.jpgBackground || 'N/A'
-    };
-  };
-
-  const handleExcelExport = async () => {
-    try {
-      setIsExporting(true);
-      setExportError(null);
-
-      // Determine which images to export
-      const imagesToExport = selectedImages.size === 0 
-        ? filteredAndSortedImages 
-        : Array.from(selectedImages)
-            .map(id => images.find(img => img.id === id))
-            .filter((img): img is GeneratedImage => img !== undefined);
-
-      if (imagesToExport.length === 0) {
-        setExportError('No images to export');
-        return;
-      }
-
-      // Prepare Excel data with comprehensive metadata
-      const excelData = imagesToExport.map(transformImageForExport);
-
-      // Create workbook and worksheet
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(excelData);
-
-      // Set column widths for better readability
-      const columnWidths = EXCEL_COLUMN_WIDTHS;
-      ws['!cols'] = columnWidths;
-
-      // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, 'Generated Images');
-
-      // Generate filename with timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-      const filename = `generated-images-export-${timestamp}.xlsx`;
-
-      // Write and download file
-      XLSX.writeFile(wb, filename);
-
-      // Show success feedback (following the pattern from other components)
-      console.log(`Excel export completed: ${imagesToExport.length} images exported to ${filename}`);
-      
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Excel export failed:', error);
-      setExportError(`Export failed: ${errorMessage}`);
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString() + ' ' + new Date(date).toLocaleTimeString();

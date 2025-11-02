@@ -36,7 +36,8 @@
     "test:security": "vitest run tests/unit/services/RetryExecutor.test.ts --reporter=verbose",
     "test:regression:retry": "npm run test:retry && npm run test:job-management",
     "test:labels": "vitest run tests/unit/ui/JobHistoryLabelFormatting.test.tsx",
-    "test:labels:all": "vitest run tests/unit/ui/JobHistoryLabelFormatting.test.tsx tests/unit/ui/DashboardFiltersLabelFormatting.test.tsx tests/unit/ui/FailedImagesReviewFiltersLabelFormatting.test.tsx"
+    "test:labels:all": "vitest run tests/unit/ui/JobHistoryLabelFormatting.test.tsx tests/unit/ui/DashboardFiltersLabelFormatting.test.tsx tests/unit/ui/FailedImagesReviewFiltersLabelFormatting.test.tsx",
+    "test:exports": "vitest run tests/integration/backend/ExportZip.integration.test.ts tests/integration/backend/ExportJobExcel.integration.test.ts tests/integration/backend/BulkExportJobs.integration.test.ts"
   },
   "author": "Gen Image Factory Team",
   "license": "MIT",
@@ -62,6 +63,7 @@
     "csv-parser": "^3.2.0",
     "dotenv": "^16.0.3",
     "exceljs": "^4.4.0",
+    "archiver": "^5.3.1",
     "form-data": "^4.0.0",
     "keytar": "^7.9.0",
     "lucide-react": "^0.536.0",
@@ -71,7 +73,6 @@
     "sharp": "^0.32.0",
     "sqlite3": "^5.1.7",
     "uuid": "^9.0.1",
-    "xlsx": "^0.18.5",
     "yargs": "^17.0.0"
   },
   "devDependencies": {

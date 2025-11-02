@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 // Ensure no stray fs mock from other suites
 vi.unmock('fs');
@@ -129,11 +129,16 @@ describe('Export to Excel - Regression', () => {
     expect(res.filePath).toBeTruthy();
     expect(fs.existsSync(res.filePath)).toBe(true);
 
-    const wb = XLSX.readFile(res.filePath);
-    const summary = wb.Sheets['Job Summary'];
-    expect(summary).toBeTruthy();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.readFile(res.filePath);
+    const summaryWs = wb.getWorksheet('Job Summary');
+    expect(summaryWs).toBeTruthy();
 
-    const rows: any[] = XLSX.utils.sheet_to_json(summary, { header: 1 });
+    const rows: any[][] = [];
+    summaryWs!.eachRow((row) => {
+      const vals = (row.values as unknown as any[]);
+      rows.push(vals.slice(1));
+    });
     expect(rows.length).toBeGreaterThanOrEqual(2);
     const headers: string[] = rows[0] as string[];
     const values: any[] = rows[1] as any[];
@@ -160,7 +165,7 @@ describe('Export to Excel - Regression', () => {
     }
 
     // Images sheet exists
-    expect(wb.Sheets['Images']).toBeTruthy();
+    expect(wb.getWorksheet('Images')).toBeTruthy();
   });
 });
 

@@ -1,14 +1,14 @@
 require("dotenv").config();
 const fs = require("fs").promises;
 const path = require("path");
-// const ExcelJS = require('exceljs'); // Re-enabled ExcelJS
+const ExcelJS = require('exceljs'); // Use secure exceljs
 // const { pause } = require("./utils");
 const { paramsGeneratorModule } = require("./paramsGeneratorModule");
 const { producePictureModule } = require("./producePictureModule");
 const yargs = require('yargs');
 const { hideBin } = require('yargs/helpers');
 const csv = require('csv-parser'); // Import csv-parser
-const xlsx = require('xlsx'); // Import xlsx
+// Removed vulnerable xlsx dependency in favor of exceljs
 
 const { logDebug } = require('./utils/logDebug'); // Import centralized logDebug
 
@@ -390,9 +390,20 @@ function readCsvFile(filePath) {
             'Tags': item.settings.uploadTags?.en || '',
           }));
 
-          const worksheet = xlsx.utils.json_to_sheet(worksheetData);
-          const workbook = xlsx.utils.book_new();
-          xlsx.utils.book_append_sheet(workbook, worksheet, 'Upload Data');
+          const workbook = new ExcelJS.Workbook();
+          const worksheet = workbook.addWorksheet('Upload Data');
+          worksheet.columns = [
+            { header: 'Image Path', key: 'imagePath', width: 30 },
+            { header: 'Title', key: 'title', width: 40 },
+            { header: 'Description', key: 'description', width: 60 },
+            { header: 'Tags', key: 'tags', width: 40 }
+          ];
+          worksheet.addRows(worksheetData.map(item => ({
+            imagePath: item['Image Path'],
+            title: item['Title'],
+            description: item['Description'],
+            tags: item['Tags']
+          })));
 
           const date = new Date().toISOString().split('T')[0].replace(/-/g, '_');
           const excelFileName = `redbubble_upload_data_${date}.xlsx`;
@@ -402,7 +413,7 @@ function readCsvFile(filePath) {
           
           try {
             await fs.mkdir(path.dirname(excelFilePath), { recursive: true });
-            await fs.writeFile(excelFilePath, xlsx.write(workbook, { bookType: 'xlsx', type: 'buffer' }));
+            await workbook.xlsx.writeFile(excelFilePath);
             console.log(`Excel file with metadata created at ${excelFilePath}`);
           } catch (error) {
             console.error('Failed to create Excel file:', error.message);

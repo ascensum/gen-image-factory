@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { RefreshCw } from 'lucide-react';
 import { JobExecution, JobFilters } from '../../../types/job';
 import SimpleDropdown, { DropdownOption } from '../Common/SimpleDropdown';
-import ExportDialog from '../Common/ExportDialog';
+import ExportFileModal from '../Common/ExportFileModal';
 import StatusBadge from '../Common/StatusBadge';
 import './JobManagementPanel.css';
 
@@ -1096,29 +1096,78 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
         </div>
       )}
 
-      {/* Export Dialog */}
-      <ExportDialog
-        isOpen={showExportDialog}
-        onClose={() => {
-          setShowExportDialog(false);
-          setExportType('single');
-          setExportJobId(null);
-        }}
-        onExport={async () => {
-          if (exportType === 'single' && exportJobId) {
-            return await window.electronAPI.exportJobToExcel(exportJobId);
-          } else if (exportType === 'bulk') {
-            const jobIds = Array.from(selectedJobs);
-            return await window.electronAPI.jobManagement.bulkExportJobExecutions(jobIds);
-          }
-          return { success: false, error: 'Invalid export type' };
-        }}
-        title={exportType === 'single' ? 'Export Job' : `Export ${selectedJobs.size} Jobs`}
-        description={exportType === 'single' 
-          ? 'Export this job to Excel format with all details and settings.'
-          : `Export ${selectedJobs.size} selected jobs to Excel format.`
-        }
-      />
+      {/* Export Modal - single (xlsx) or bulk (zip) */}
+      {showExportDialog && (
+        exportType === 'single' ? (
+          <ExportFileModal
+            isOpen={true}
+            title="Export Job"
+            fileKind="xlsx"
+            defaultFilename={(() => {
+              const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+              const job = jobs.find((j: any) => String(j.id) === String(exportJobId));
+              const shortId = exportJobId ? String(exportJobId).slice(-6) : '';
+              const base = (job && ((job as any).displayLabel || (job as any).label || (job as any).configurationName)) || shortId || 'Job';
+              const safe = String(base).replace(/[^a-zA-Z0-9-_]/g, '_');
+              return `${safe}_${ts}.xlsx`;
+            })()}
+            onClose={() => { setShowExportDialog(false); setExportType('single'); setExportJobId(null); }}
+            onExport={async ({ mode, outputPath, filename, duplicatePolicy }: { mode: 'default' | 'custom'; outputPath?: string; filename: string; duplicatePolicy: 'append' | 'overwrite'; }) => {
+              try {
+                if (!exportJobId) return;
+                let resolvedOutputPath: string | undefined = undefined;
+                if (mode === 'custom') {
+                  if (outputPath && !/\.xlsx$/i.test(outputPath)) {
+                    const base = outputPath.replace(/[\\/]+$/, '');
+                    resolvedOutputPath = `${base}/${filename}`;
+                  } else {
+                    resolvedOutputPath = outputPath || filename;
+                  }
+                }
+                const options = mode === 'custom' ? { outputPath: resolvedOutputPath || filename, duplicatePolicy } : undefined;
+                const result = await (window as any).electronAPI.jobManagement.exportJobToExcel(exportJobId, options);
+                if (result && result.success && result.filePath) {
+                  try { await (window as any).electronAPI.revealInFolder(result.filePath); } catch {}
+                }
+              } finally {
+                setShowExportDialog(false);
+                setExportType('single');
+                setExportJobId(null);
+              }
+            }}
+          />
+        ) : (
+          <ExportFileModal
+            isOpen={true}
+            title={`Export ${selectedJobs.size} Jobs`}
+            fileKind="zip"
+            defaultFilename={`bulk_export_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.zip`}
+            onClose={() => { setShowExportDialog(false); setExportType('single'); }}
+            onExport={async ({ mode, outputPath, filename, duplicatePolicy }: { mode: 'default' | 'custom'; outputPath?: string; filename: string; duplicatePolicy: 'append' | 'overwrite'; }) => {
+              try {
+                const jobIds = Array.from(selectedJobs);
+                let resolvedOutputPath: string | undefined = undefined;
+                if (mode === 'custom') {
+                  if (outputPath && !/\.zip$/i.test(outputPath)) {
+                    const base = outputPath.replace(/[\\/]+$/, '');
+                    resolvedOutputPath = `${base}/${filename}`;
+                  } else {
+                    resolvedOutputPath = outputPath || filename;
+                  }
+                }
+                const options = mode === 'custom' ? { outputPath: resolvedOutputPath || filename, duplicatePolicy } : undefined;
+                const result = await (window as any).electronAPI.jobManagement.bulkExportJobExecutions(jobIds, options);
+                if (result && result.success && result.zipPath) {
+                  try { await (window as any).electronAPI.revealInFolder(result.zipPath); } catch {}
+                }
+              } finally {
+                setShowExportDialog(false);
+                setExportType('single');
+              }
+            }}
+          />
+        )
+      )}
     </div>
   );
 };

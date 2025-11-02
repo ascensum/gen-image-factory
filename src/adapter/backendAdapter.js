@@ -1,6 +1,6 @@
 const keytar = require('keytar');
 const { ipcMain } = require('electron');
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs').promises;
 const { JobConfiguration } = require('../database/models/JobConfiguration');
@@ -269,7 +269,7 @@ class BackendAdapter {
         'get-job-history', 'get-job-results', 'delete-job-execution', 'export-job-to-excel',
         'job-execution:rename', 'job-execution:bulk-delete', 'job-execution:bulk-export', 'job-execution:bulk-rerun',
         'job-execution:calculate-statistics', 'job-execution:update-statistics',
-        'get-job-executions-with-filters', 'get-job-executions-count'
+        'get-job-executions-with-filters', 'get-job-executions-count', 'get-exports-folder-path'
       ];
       
       handlers.forEach(handler => {
@@ -315,6 +315,21 @@ class BackendAdapter {
 
       _ipc.handle('open-exports-folder', async () => {
         return await this.openExportsFolder();
+      });
+
+      // Reveal an item in system file manager
+      _ipc.handle('reveal-in-folder', async (event, fullPath) => {
+        try {
+          const { shell } = require('electron');
+          if (fullPath && typeof fullPath === 'string') {
+            // showItemInFolder highlights the file if it exists; if not, open its directory
+            try { await shell.showItemInFolder(fullPath); } catch {}
+            return { success: true };
+          }
+          return { success: false, error: 'Invalid path' };
+        } catch (error) {
+          return { success: false, error: error.message };
+        }
       });
 
       // File Selection
@@ -398,8 +413,8 @@ class BackendAdapter {
         return await this.getJobStatistics();
       });
 
-      _ipc.handle('job-execution:export-to-excel', async (event, { jobId }) => {
-        return await this.exportJobToExcel(jobId);
+      _ipc.handle('job-execution:export-to-excel', async (event, { jobId, options }) => {
+        return await this.exportJobToExcel(jobId, options);
       });
 
       _ipc.handle('job-execution:history', async (event, limit) => {
@@ -448,6 +463,11 @@ class BackendAdapter {
 
       _ipc.handle('generated-image:bulk-delete', async (event, { imageIds }) => {
         return await this.bulkDeleteGeneratedImages(imageIds);
+      });
+
+      // ZIP export of selected generated images with Excel metadata
+      _ipc.handle('generated-image:export-zip', async (event, { imageIds, includeExcel, options }) => {
+        return await this.createZipExport(imageIds, includeExcel, options);
       });
 
       _ipc.handle('generated-image:get-by-qc-status', async (event, { qcStatus }) => {
@@ -521,8 +541,24 @@ class BackendAdapter {
         return await this.bulkDeleteJobExecutions(ids);
       });
 
-      _ipc.handle('job-execution:bulk-export', async (event, ids) => {
-        return await this.bulkExportJobExecutions(ids);
+      _ipc.handle('job-execution:bulk-export', async (event, { ids, options }) => {
+        return await this.bulkExportJobExecutions(ids, options);
+      });
+
+      // Exports folder path helper
+      _ipc.handle('get-exports-folder-path', async () => {
+        try {
+          const electronMod = require('electron');
+          const app = electronMod && electronMod.app ? electronMod.app : undefined;
+          const exportDir = app && typeof app.getPath === 'function'
+            ? path.join(app.getPath('userData'), 'exports')
+            : path.join(require('os').tmpdir(), 'gen-image-factory-exports');
+          const fsSync = require('fs');
+          if (!fsSync.existsSync(exportDir)) fsSync.mkdirSync(exportDir, { recursive: true });
+          return { success: true, path: exportDir };
+        } catch (e) {
+          return { success: false, error: e.message };
+        }
       });
 
       _ipc.handle('job-execution:bulk-rerun', async (event, ids) => {
@@ -961,20 +997,29 @@ class BackendAdapter {
   async selectFile(options = {}) {
     try {
       const { dialog } = require('electron');
-      
-      // Support both file and directory selection
-      const properties = options.type === 'directory' 
-        ? ['openDirectory'] 
-        : ['openFile'];
-      
-      // Set up filters for file selection only
+
+      // Save dialog mode (for choosing a filename and path)
+      if (options.mode === 'save' || options.type === 'save') {
+        const filters = options.filters || (options.fileTypes
+          ? [{ name: 'ZIP Archive', extensions: ['zip'] }]
+          : [{ name: 'All Files', extensions: ['*'] }]);
+        const saveRes = await dialog.showSaveDialog({
+          title: options.title || 'Save As',
+          defaultPath: options.defaultPath,
+          filters
+        });
+        if (!saveRes.canceled && saveRes.filePath) {
+          return { success: true, filePath: saveRes.filePath };
+        }
+        return { success: false, canceled: true };
+      }
+
+      // Open dialog (file or directory)
+      const properties = options.type === 'directory' ? ['openDirectory'] : ['openFile'];
       let filters = [];
       if (options.type !== 'directory') {
         if (options.fileTypes && options.fileTypes.length > 0) {
-          // Convert fileTypes array to filters format
-          const extensions = options.fileTypes.map(ext => 
-            ext.startsWith('.') ? ext.substring(1) : ext
-          );
+          const extensions = options.fileTypes.map((ext) => (ext.startsWith('.') ? ext.substring(1) : ext));
           filters = [
             { name: 'Supported Files', extensions },
             { name: 'All Files', extensions: ['*'] }
@@ -987,18 +1032,10 @@ class BackendAdapter {
           ];
         }
       }
-      
-      const result = await dialog.showOpenDialog({
-        properties,
-        filters,
-        title: options.title || `Select ${options.type === 'directory' ? 'Directory' : 'File'}`
-      });
 
-      if (!result.canceled && result.filePaths.length > 0) {
-        return { success: true, filePath: result.filePaths[0] };
-      } else {
-        return { success: false, canceled: true };
-      }
+      const result = await dialog.showOpenDialog({ properties, filters, title: options.title || `Select ${options.type === 'directory' ? 'Directory' : 'File'}` });
+      if (!result.canceled && result.filePaths.length > 0) return { success: true, filePath: result.filePaths[0] };
+      return { success: false, canceled: true };
     } catch (error) {
       console.error('Error selecting file:', error);
       return { success: false, error: error.message };
@@ -1439,7 +1476,7 @@ class BackendAdapter {
     }
   }
 
-  async exportJobToExcel(jobId) {
+  async exportJobToExcel(jobId, options = {}) {
     try {
       await this.ensureInitialized();
       
@@ -1468,8 +1505,8 @@ class BackendAdapter {
         }
       }
       
-      // Create Excel workbook
-      const workbook = XLSX.utils.book_new();
+      // Create Excel workbook (exceljs)
+      const workbook = new ExcelJS.Workbook();
       
       // Job Summary Sheet - Use classic table format (fields as headers, values below)
       const jobSummaryData = [
@@ -1567,8 +1604,8 @@ class BackendAdapter {
         });
       }
       
-      const jobSummarySheet = XLSX.utils.aoa_to_sheet(jobSummaryData);
-      XLSX.utils.book_append_sheet(workbook, jobSummarySheet, 'Job Summary');
+      const jobSummarySheet = workbook.addWorksheet('Job Summary');
+      jobSummarySheet.addRows(jobSummaryData);
       
       // Images Sheet
       if (images.length > 0) {
@@ -1589,31 +1626,59 @@ class BackendAdapter {
           ]);
         });
         
-        const imagesSheet = XLSX.utils.aoa_to_sheet(imagesData);
-        XLSX.utils.book_append_sheet(workbook, imagesSheet, 'Images');
+        const imagesSheet = workbook.addWorksheet('Images');
+        imagesSheet.addRows(imagesData);
       }
       
-      // Generate filename
+      // Resolve output path (default exports folder or custom)
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const jobLabel = job.label && job.label.trim() !== '' ? job.label.replace(/[^a-zA-Z0-9]/g, '_') : 'Job';
-      const filename = `${jobLabel}_${job.id}_${timestamp}.xlsx`;
-      
-      // Create export directory in user's app data folder (works in both dev and production)
+      const shortId = (job && job.id) ? String(job.id).slice(-6) : '';
+      const baseLabel = (job && job.label && String(job.label).trim() !== '')
+        ? String(job.label)
+        : (shortId || (job && job.configurationName) || 'Job');
+      const jobLabel = baseLabel.replace(/[^a-zA-Z0-9-_]/g, '_');
+      const defaultFilename = `${jobLabel}_${job.id}_${timestamp}.xlsx`;
+      const ensureXlsxExt = (name) => name.toLowerCase().endsWith('.xlsx') ? name : `${name}.xlsx`;
+      const sanitize = (name) => String(name || '').replace(/[\\/:*?"<>|]/g, '_');
+
       const electronMod = require('electron');
       const app = electronMod && electronMod.app ? electronMod.app : undefined;
-      const exportDir = app && typeof app.getPath === 'function'
-        ? path.join(app.getPath('userData'), 'exports')
-        : path.join(require('os').tmpdir(), 'gen-image-factory-exports');
-      // Use sync fs API for existence checks to avoid mixing promise/sync APIs
       const fsSync = require('fs');
-      if (!fsSync.existsSync(exportDir)) {
-        fsSync.mkdirSync(exportDir, { recursive: true });
+
+      let filePath;
+      if (options && options.outputPath) {
+        const dir = path.dirname(options.outputPath);
+        const base = ensureXlsxExt(sanitize(path.basename(options.outputPath)));
+        if (!fsSync.existsSync(dir)) fsSync.mkdirSync(dir, { recursive: true });
+        const full = path.join(dir, base);
+        const policy = options.duplicatePolicy || 'append';
+        if (fsSync.existsSync(full)) {
+          if (policy === 'overwrite') {
+            try { fsSync.unlinkSync(full); } catch {}
+            filePath = full;
+          } else {
+            const nameNoExt = base.replace(/\.xlsx$/i, '');
+            let n = 1;
+            let candidate = path.join(dir, `${nameNoExt} (${n}).xlsx`);
+            while (fsSync.existsSync(candidate) && n < 1000) {
+              n += 1;
+              candidate = path.join(dir, `${nameNoExt} (${n}).xlsx`);
+            }
+            filePath = candidate;
+          }
+        } else {
+          filePath = full;
+        }
+      } else {
+        const exportDir = app && typeof app.getPath === 'function'
+          ? path.join(app.getPath('userData'), 'exports')
+          : path.join(require('os').tmpdir(), 'gen-image-factory-exports');
+        if (!fsSync.existsSync(exportDir)) fsSync.mkdirSync(exportDir, { recursive: true });
+        filePath = path.join(exportDir, defaultFilename);
       }
       
-      const filePath = path.join(exportDir, filename);
-      
-      // Write Excel file
-      XLSX.writeFile(workbook, filePath);
+      // Write Excel file (exceljs)
+      await workbook.xlsx.writeFile(filePath);
       
       // Ensure file is fully written to disk
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -1630,12 +1695,7 @@ class BackendAdapter {
       
       console.log('Excel export created successfully:', filePath);
       
-      return { 
-        success: true, 
-        filePath: filePath,
-        filename: filename,
-        message: `Export created successfully: ${filename}`
-      };
+      return { success: true, filePath, filename: path.basename(filePath), message: `Export created successfully: ${path.basename(filePath)}` };
       
     } catch (error) {
       console.error('Error exporting job to Excel:', error);
@@ -2172,7 +2232,7 @@ class BackendAdapter {
     }
   }
 
-  async bulkExportJobExecutions(ids) {
+  async bulkExportJobExecutions(ids, options = {}) {
     try {
       await this.ensureInitialized();
       
@@ -2200,8 +2260,37 @@ class BackendAdapter {
       }
       
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-      const zipFilename = `bulk_export_${timestamp}.zip`;
-      const zipPath = path.join(exportDir, zipFilename);
+      const sanitize = (name) => String(name || '').replace(/[\\/:*?"<>|]/g, '_');
+      const ensureZipExt = (name) => name.toLowerCase().endsWith('.zip') ? name : `${name}.zip`;
+
+      let zipPath;
+      if (options && options.outputPath) {
+        const dir = path.dirname(options.outputPath);
+        const base = ensureZipExt(sanitize(path.basename(options.outputPath)));
+        if (!fsSync_bulk.existsSync(dir)) fsSync_bulk.mkdirSync(dir, { recursive: true });
+        const full = path.join(dir, base);
+        const policy = options.duplicatePolicy || 'append';
+        if (fsSync_bulk.existsSync(full)) {
+          if (policy === 'overwrite') {
+            try { fsSync_bulk.unlinkSync(full); } catch {}
+            zipPath = full;
+          } else {
+            const nameNoExt = base.replace(/\.zip$/i, '');
+            let n = 1;
+            let candidate = path.join(dir, `${nameNoExt} (${n}).zip`);
+            while (fsSync_bulk.existsSync(candidate) && n < 1000) {
+              n += 1;
+              candidate = path.join(dir, `${nameNoExt} (${n}).zip`);
+            }
+            zipPath = candidate;
+          }
+        } else {
+          zipPath = full;
+        }
+      } else {
+        const zipFilename = `bulk_export_${timestamp}.zip`;
+        zipPath = path.join(exportDir, zipFilename);
+      }
       const output = fsSync_bulk.createWriteStream(zipPath);
       archive.pipe(output);
       
@@ -2229,8 +2318,8 @@ class BackendAdapter {
             }
           }
           
-          // Create Excel workbook
-          const workbook = XLSX.utils.book_new();
+          // Create Excel workbook (exceljs)
+          const workbook = new ExcelJS.Workbook();
           
           // Job Summary Sheet - Use classic table format
           const jobSummaryData = [
@@ -2326,8 +2415,8 @@ class BackendAdapter {
             });
           }
           
-          const jobSummarySheet = XLSX.utils.aoa_to_sheet(jobSummaryData);
-          XLSX.utils.book_append_sheet(workbook, jobSummarySheet, 'Job Summary');
+          const jobSummarySheet = workbook.addWorksheet('Job Summary');
+          jobSummarySheet.addRows(jobSummaryData);
           
           // Images Sheet
           if (images.length > 0) {
@@ -2348,16 +2437,16 @@ class BackendAdapter {
               ]);
             });
             
-            const imagesSheet = XLSX.utils.aoa_to_sheet(imagesData);
-            XLSX.utils.book_append_sheet(workbook, imagesSheet, 'Images');
+            const imagesSheet = workbook.addWorksheet('Images');
+            imagesSheet.addRows(imagesData);
           }
           
           // Generate filename for this job
           const jobLabel = jobData.label && jobData.label.trim() !== '' ? jobData.label.replace(/[^a-zA-Z0-9]/g, '_') : 'Job';
           const filename = `${jobLabel}_${jobData.id}_${timestamp}.xlsx`;
           
-          // Convert workbook to buffer and add to ZIP
-          const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+          // Convert workbook to buffer and add to ZIP (exceljs)
+          const excelBuffer = await workbook.xlsx.writeBuffer();
           archive.append(excelBuffer, { name: filename });
           
           exportedFiles.push({
@@ -2384,7 +2473,7 @@ class BackendAdapter {
       return { 
         success: true, 
         exportedFiles: exportedFiles,
-        zipFile: zipFilename,
+        zipPath,
         totalJobs: jobs.executions.length,
         successfulExports: exportedFiles.length,
         message: `Successfully exported ${exportedFiles.length} out of ${jobs.executions.length} jobs to ZIP file`
@@ -2687,6 +2776,177 @@ class BackendAdapter {
       return { success: true, message: 'Exports folder opened' };
     } catch (error) {
       console.error('Error opening exports folder:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Create ZIP export of selected generated images with optional Excel metadata
+   * @param {string[]} imageIds
+   * @param {boolean} includeExcel
+   * @returns {Promise<{success: boolean, zipPath?: string, message?: string, error?: string}>}
+   */
+  async createZipExport(imageIds, includeExcel = true, options = {}) {
+    try {
+      await this.ensureInitialized();
+      if (!Array.isArray(imageIds) || imageIds.length === 0) {
+        return { success: false, error: 'No image IDs provided' };
+      }
+
+      const archiver = require('archiver');
+      const fsSync = require('fs');
+
+      // Prepare export directory
+      const electronMod = require('electron');
+      const app = electronMod && electronMod.app ? electronMod.app : undefined;
+      const exportDir = app && typeof app.getPath === 'function'
+        ? path.join(app.getPath('userData'), 'exports')
+        : path.join(require('os').tmpdir(), 'gen-image-factory-exports');
+      if (!fsSync.existsSync(exportDir)) {
+        fsSync.mkdirSync(exportDir, { recursive: true });
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const sanitize = (name) => String(name || '').replace(/[\\/:*?"<>|]/g, '_');
+      const ensureZipExt = (name) => name.toLowerCase().endsWith('.zip') ? name : `${name}.zip`;
+
+      let zipPath;
+      if (options && options.outputPath) {
+        // Use caller-provided path and filename
+        const dir = path.dirname(options.outputPath);
+        const base = ensureZipExt(sanitize(path.basename(options.outputPath)));
+        const fsSync = require('fs');
+        if (!fsSync.existsSync(dir)) fsSync.mkdirSync(dir, { recursive: true });
+        const full = path.join(dir, base);
+        const policy = options.duplicatePolicy || 'append';
+        if (fsSync.existsSync(full)) {
+          if (policy === 'overwrite') {
+            try { fsSync.unlinkSync(full); } catch {}
+            zipPath = full;
+          } else {
+            // append (1), (2), ...
+            const nameNoExt = base.replace(/\.zip$/i, '');
+            let n = 1;
+            let candidate = path.join(dir, `${nameNoExt} (${n}).zip`);
+            while (fsSync.existsSync(candidate) && n < 1000) {
+              n += 1;
+              candidate = path.join(dir, `${nameNoExt} (${n}).zip`);
+            }
+            zipPath = candidate;
+          }
+        } else {
+          zipPath = full;
+        }
+      } else {
+        const zipFilename = `exported-images-${timestamp}.zip`;
+        zipPath = path.join(exportDir, zipFilename);
+      }
+
+      const output = fsSync.createWriteStream(zipPath);
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      archive.pipe(output);
+
+      // Progress: gathering files
+      try { this.mainWindow?.webContents?.send('zip-export:progress', { step: 'gathering-files' }); } catch {}
+
+      // Collect images and build metadata rows
+      const filenameCounts = new Map();
+      const metadataRows = [];
+
+      for (const id of imageIds) {
+        const res = await this.generatedImage.getGeneratedImage(id);
+        if (!res.success || !res.image) {
+          continue;
+        }
+        const img = res.image;
+        const filePath = img.finalImagePath || img.tempImagePath;
+        if (!filePath) {
+          continue;
+        }
+        try {
+          await fs.access(filePath);
+        } catch (_) {
+          // Skip missing files
+          continue;
+        }
+
+        const baseName = path.basename(filePath || '') || `image_${id}`;
+        const count = (filenameCounts.get(baseName) || 0) + 1;
+        filenameCounts.set(baseName, count);
+        const uniqueName = count === 1 ? baseName : `${baseName.replace(/(\.[^.]*)$/, '')}_${count}$1`;
+
+        archive.file(filePath, { name: `images/${uniqueName}` });
+
+        // Prepare minimal metadata
+        const rawMeta = img.metadata;
+        let meta = {};
+        if (typeof rawMeta === 'string') {
+          try { meta = JSON.parse(rawMeta); } catch { meta = {}; }
+        } else {
+          meta = rawMeta || {};
+        }
+        const title = typeof meta.title === 'object' ? (meta.title?.en || '') : (meta.title || '');
+        const description = typeof meta.description === 'object' ? (meta.description?.en || '') : (meta.description || '');
+        let tags = '';
+        if (meta && typeof meta === 'object') {
+          if (meta.uploadTags && typeof meta.uploadTags === 'object' && meta.uploadTags.en) {
+            tags = String(meta.uploadTags.en);
+          } else if (typeof meta.uploadTags === 'string') {
+            tags = meta.uploadTags;
+          } else if (meta.upload_tags && typeof meta.upload_tags === 'object' && meta.upload_tags.en) {
+            tags = String(meta.upload_tags.en);
+          } else if (typeof meta.upload_tags === 'string') {
+            tags = meta.upload_tags;
+          } else if (Array.isArray(meta.tags)) {
+            tags = meta.tags.join(', ');
+          } else if (typeof meta.tags === 'string') {
+            tags = meta.tags;
+          }
+        }
+        // Normalize comma-separated string (trim items, remove empties)
+        if (typeof tags === 'string' && tags.includes(',')) {
+          tags = tags.split(',').map((t) => t.trim()).filter(Boolean).join(', ');
+        }
+        metadataRows.push({
+          ImageName: baseName,
+          Title: title || '',
+          Description: description || '',
+          Tags: tags || '',
+          Date: img.createdAt ? new Date(img.createdAt).toISOString() : ''
+        });
+      }
+
+      // Add Excel metadata
+      if (includeExcel) {
+        try { this.mainWindow?.webContents?.send('zip-export:progress', { step: 'creating-excel' }); } catch {}
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Metadata');
+        worksheet.columns = [
+          { header: 'Image Name', key: 'ImageName', width: 30 },
+          { header: 'Title', key: 'Title', width: 40 },
+          { header: 'Description', key: 'Description', width: 60 },
+          { header: 'Tags', key: 'Tags', width: 40 },
+          { header: 'Date', key: 'Date', width: 24 }
+        ];
+        worksheet.addRows(metadataRows);
+        const buffer = await workbook.xlsx.writeBuffer();
+        archive.append(Buffer.from(buffer), { name: 'metadata.xlsx' });
+      }
+
+      try { this.mainWindow?.webContents?.send('zip-export:progress', { step: 'zipping' }); } catch {}
+      await archive.finalize();
+
+      // Wait for stream to close
+      await new Promise((resolve, reject) => {
+        output.on('close', resolve);
+        output.on('error', reject);
+      });
+
+      try { this.mainWindow?.webContents?.send('zip-export:completed', { zipPath }); } catch {}
+      return { success: true, zipPath, message: 'ZIP export created successfully' };
+    } catch (error) {
+      console.error('Error creating ZIP export:', error);
+      try { this.mainWindow?.webContents?.send('zip-export:error', { error: error.message || String(error) }); } catch {}
       return { success: false, error: error.message };
     }
   }

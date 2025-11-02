@@ -3,8 +3,9 @@ import JobControls from './JobControls';
 import LogViewer from './LogViewer';
 import JobHistory from './JobHistory';
 import ImageGallery from './ImageGallery';
+import ExportZipModal from './ExportZipModal';
 import ForceStopButton from './ForceStopButton';
-import ExportDialog from '../Common/ExportDialog';
+import ExportFileModal from '../Common/ExportFileModal';
 import './DashboardPanel.css';
 // Failed images review is a separate top-level view now
 
@@ -178,8 +179,9 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showExportDialog, setShowExportDialog] = useState(false);
+  
   const [exportJobId, setExportJobId] = useState<string | null>(null);
+  const [showSingleExportModal, setShowSingleExportModal] = useState(false);
   const [jobConfiguration, setJobConfiguration] = useState<any>(null);
   
   // NEW: Tab state management
@@ -195,11 +197,40 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   const [imageDateFrom, setImageDateFrom] = useState<string | null>(null);
   const [imageDateTo, setImageDateTo] = useState<string | null>(null);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
+  const [isExportingZip, setIsExportingZip] = useState(false);
+  const [zipExportStep, setZipExportStep] = useState<'gathering-files' | 'creating-excel' | 'zipping' | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
   // Job filter dropdown controls
   const [isJobFilterOpen, setIsJobFilterOpen] = useState(false);
   const [jobFilterQuery, setJobFilterQuery] = useState('');
 
   // Helpers to reflect filtered selection data from ImageGallery
+  // ZIP export progress listeners
+  useEffect(() => {
+    const api = (window as any).electronAPI;
+    if (!api?.generatedImages) return;
+    const onProgress = (data: any) => setZipExportStep(data?.step || null);
+    const onCompleted = (_data: any) => {
+      setZipExportStep(null);
+      setIsExportingZip(false);
+    };
+    const onError = (_data: any) => {
+      setZipExportStep(null);
+      setIsExportingZip(false);
+    };
+    try {
+      api.generatedImages.onZipExportProgress(onProgress);
+      api.generatedImages.onZipExportCompleted(onCompleted);
+      api.generatedImages.onZipExportError(onError);
+    } catch {}
+    return () => {
+      try {
+        api.generatedImages.removeZipExportProgress(onProgress);
+        api.generatedImages.removeZipExportCompleted(onCompleted);
+        api.generatedImages.removeZipExportError(onError);
+      } catch {}
+    };
+  }, []);
   const filteredImageIds = React.useCallback(() => {
     // Build the same filter used in ImageGallery to compute ids quickly
     const images = generatedImages || [];
@@ -628,7 +659,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
           break;
         case 'export':
           setExportJobId(jobId);
-          setShowExportDialog(true);
+          setShowSingleExportModal(true);
           break;
         case 'delete':
           await window.electronAPI.jobManagement.deleteJobExecution(jobId);
@@ -1374,13 +1405,22 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                     Clear
                   </button>
 
-                  {/* Excel Export Button */}
-                  <button className="px-3 py-1 text-sm rounded-md transition-colors flex items-center space-x-1 bg-green-600 text-white hover:bg-green-700">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    <span>Export Excel</span>
-                  </button>
+                {/* Export ZIP Button */}
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  disabled={selectedImages.size === 0 || isExportingZip}
+                  className={`px-3 py-1 text-sm rounded-md transition-colors flex items-center space-x-1 ${
+                    selectedImages.size === 0 || isExportingZip
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                  title={selectedImages.size === 0 ? 'Select images to enable export' : 'Export selected images to ZIP'}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  <span>{isExportingZip ? (zipExportStep === 'creating-excel' ? 'Excel…' : zipExportStep === 'zipping' ? 'Zipping…' : 'Exporting…') : 'Export ZIP'}</span>
+                </button>
 
                   {/* Delete Selected Button (visible when there is a selection) */}
                   {selectedImages.size > 0 && (
@@ -1432,6 +1472,50 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                 }}
               />
             </div>
+            <ExportZipModal
+              isOpen={showExportModal}
+              count={selectedImages.size}
+              defaultFilename={`exported-images-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}.zip`}
+              step={zipExportStep}
+              isBusy={isExportingZip}
+              onClose={() => setShowExportModal(false)}
+              onExport={async ({ mode, outputPath, filename, includeExcel, duplicatePolicy }) => {
+                try {
+                  setIsExportingZip(true);
+                  setZipExportStep('gathering-files');
+                  const ids = Array.from(selectedImages);
+                  if (ids.length === 0) return;
+                  let resolvedOutputPath = undefined as undefined | string;
+                  if (mode === 'custom') {
+                    // If outputPath looks like a directory (no .zip at the end), join with filename
+                    if (outputPath && !/\.zip$/i.test(outputPath)) {
+                      const base = outputPath.replace(/[\\/]+$/, '');
+                      resolvedOutputPath = `${base}/${filename}`;
+                    } else {
+                      resolvedOutputPath = outputPath || filename;
+                    }
+                  }
+                  const options = mode === 'custom' ? { outputPath: resolvedOutputPath || filename, duplicatePolicy } : undefined;
+                  const result = await (window as any).electronAPI.generatedImages.exportZip(ids, includeExcel !== false, options);
+                  if (!result || !result.success) {
+                    console.error(result?.error || 'Export failed');
+                  } else {
+                    console.log('ZIP created at', result.zipPath);
+                    try {
+                      if (result.zipPath) {
+                        await (window as any).electronAPI.revealInFolder(result.zipPath);
+                      } else {
+                        await (window as any).electronAPI.openExportsFolder();
+                      }
+                    } catch {}
+                  }
+                } catch (e: any) {
+                  console.error(e?.message || 'Export failed');
+                } finally {
+                  // close handled by progress listeners on completed/error
+                }
+              }}
+            />
           </div>
         )}
       </div>
@@ -1483,20 +1567,42 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       {/* Failed Images Review is now a separate page, navigated from App */}
 
       {/* Export Dialog */}
-      <ExportDialog
-        isOpen={showExportDialog}
-        onClose={() => {
-          setShowExportDialog(false);
-          setExportJobId(null);
-        }}
-        onExport={async () => {
-          if (exportJobId) {
-            return await window.electronAPI.jobManagement.exportJobToExcel(exportJobId);
-          }
-          return { success: false, error: 'No job ID specified' };
-        }}
+      <ExportFileModal
+        isOpen={showSingleExportModal}
         title="Export Job"
-        description="Export this job to Excel format with all details and settings."
+        count={0}
+        fileKind="xlsx"
+        defaultFilename={(() => {
+          const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+          const job = jobHistory.find(j => String(j.id) === String(exportJobId));
+          const shortId = exportJobId ? String(exportJobId).slice(-6) : '';
+          const base = (job && ((job as any).displayLabel || (job as any).label || (job as any).configurationName)) || shortId || 'Job';
+          const safe = String(base).replace(/[^a-zA-Z0-9-_]/g, '_');
+          return `${safe}_${ts}.xlsx`;
+        })()}
+        onClose={() => { setShowSingleExportModal(false); setExportJobId(null); }}
+        onExport={async ({ mode, outputPath, filename, duplicatePolicy }) => {
+          try {
+            if (!exportJobId) return;
+            let resolvedOutputPath: string | undefined = undefined;
+            if (mode === 'custom') {
+              if (outputPath && !/\.xlsx$/i.test(outputPath)) {
+                const base = outputPath.replace(/[\\/]+$/, '');
+                resolvedOutputPath = `${base}/${filename}`;
+              } else {
+                resolvedOutputPath = outputPath || filename;
+              }
+            }
+            const options = mode === 'custom' ? { outputPath: resolvedOutputPath || filename, duplicatePolicy } : undefined;
+            const result = await (window as any).electronAPI.jobManagement.exportJobToExcel(exportJobId, options);
+            if (result && result.success && result.filePath) {
+              try { await (window as any).electronAPI.revealInFolder(result.filePath); } catch {}
+            }
+          } finally {
+            setShowSingleExportModal(false);
+            setExportJobId(null);
+          }
+        }}
       />
     </div>
   );

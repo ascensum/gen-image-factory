@@ -44,6 +44,17 @@ if [ ! -d "node_modules" ]; then
 fi
 
 echo "🧪 Running critical regression tests..."
+# 0. Run export regressions (ZIP + single/bulk Excel)
+echo "📦 Testing Export Regressions (ZIP + Excel)..."
+if npm run test:exports > /dev/null 2>&1; then
+    print_status "SUCCESS" "Export regression tests passed"
+else
+    print_status "ERROR" "Export regression tests failed - blocks regressions in ZIP/Excel exports!"
+    echo "Running tests with output to see failures:"
+    npm run test:exports
+    exit 1
+fi
+
 
 # 1. Run retry functionality tests (CRITICAL - prevent regression)
 echo "🔄 Testing Retry Functionality (CRITICAL)..."
