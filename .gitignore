@@ -98,6 +98,7 @@ exported-images-*.zip
 
 # Backup files
 *.backup
+*.bundle
 
 # Prevent duplicate JobRunner files
 src/services/JobRunner*.js
