@@ -28,6 +28,12 @@ const JUNK_PATTERNS = [
   /(^|\/)yarn-(debug|error)\.log.*$/,
 ];
 
+// Directories to remove entirely when present
+const JUNK_DIRS = [
+  'test-results',
+  'playwright-report',
+];
+
 function parseArgs() {
   const args = process.argv.slice(2);
   return {
@@ -78,13 +84,17 @@ function main() {
   walk(PROJECT_ROOT, files);
   const junk = files.filter(matchJunk);
 
-  if (junk.length === 0) {
+  // Always report junk directories status
+  const existingJunkDirs = JUNK_DIRS.filter((d) => fs.existsSync(path.join(PROJECT_ROOT, d)));
+
+  if (junk.length === 0 && existingJunkDirs.length === 0) {
     console.log('[OK] No junk artifacts found.');
     return;
   }
 
   console.log('[INFO] Junk artifacts detected:');
   junk.forEach(f => console.log(` - ${f}`));
+  existingJunkDirs.forEach(d => console.log(` - ${d}/`));
 
   if (!opts.yes) {
     console.log('\n[DRY-RUN] Pass --yes to actually remove these files.');
@@ -96,7 +106,20 @@ function main() {
     if (removeFile(rel, opts)) removed++;
   }
 
-  console.log(`[OK] Removed ${removed}/${junk.length} artifacts.`);
+  // Remove entire junk directories
+  let removedDirs = 0;
+  for (const d of existingJunkDirs) {
+    const abs = path.join(PROJECT_ROOT, d);
+    try {
+      fs.rmSync(abs, { recursive: true, force: true });
+      removedDirs++;
+      if (opts.verbose) console.log(`[repo-clean] removed directory ${d}/`);
+    } catch (err) {
+      console.error(`[repo-clean] failed to remove directory ${d}/: ${err.message}`);
+    }
+  }
+
+  console.log(`[OK] Removed ${removed}/${junk.length} artifacts and ${removedDirs}/${existingJunkDirs.length} directories.`);
 }
 
 main();
