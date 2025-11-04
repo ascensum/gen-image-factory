@@ -6,6 +6,13 @@
 
 **User Stories (in implementation order):**
 
+### Status Notes (2025-11-02)
+
+- Story 10 (UI Visual Cleanup & Consistency): Done; unified progress behavior, counters/filters correctness, and labeling parity applied.
+- Provider swap to Runware: Done; Runware is default; Midjourney‑specific UI actions removed.
+- Export UX: Updated; single‑job Excel via modal (.xlsx) and bulk ZIP export via modal; `exceljs` used end‑to‑end.
+- Distribution policy: Initial releases are manual and unsigned via GitHub Releases; auto‑update is planned for a later phase after signing/notarization.
+
 1.  **Foundation: Setup Basic Electron Shell**
     - Create Electron main process
     - Setup basic window and renderer process
@@ -67,8 +74,8 @@
     - Add data export and cleanup features
     - Style history components with Tailwind CSS
 
-9. **Techical debt: Backend Frontend integration that have no ben done for some reason**
-     
+9.  **Critical Backend Fixes and Technical Debt Resolution**
+    
 
 10.  **UI Visual Cleanup & Consistency**
     - Address visual inconsistencies and responsiveness across Dashboard, Job Management, Single Job View and Settings
@@ -76,14 +83,12 @@
     - Ensure responsive headers and consistent field widths
     - Align Single Job View edit with file pickers and stats layout
 
-11. **Security: Implement Production Security Measures**
-    - Implement encrypted database fallback for API key storage
-    - Add comprehensive memory protection for sensitive data
-    - Create secure logging that masks API keys and sensitive information
-    - Add security health checks and monitoring capabilities
-    - Style security components with Tailwind CSS
+11. **Provider Swap to Runware (Unified Image Inference)**
+    - Replace legacy Midjourney provider with Runware as the default
+    - Hide MJ‑specific UI actions; introduce Runware settings and advanced controls
+    - Keep pipeline intact (download → processing → DB → QC/metadata → final move)
 
-12. **Results Enhancement: ZIP Export with Images and Metadata**
+12. **Results Advanced Export and File Management**
     - Add ZIP export button to ImageGallery for selected images
     - Package selected images with Excel metadata into downloadable ZIP files
     - Implement backend ZIP creation service with progress tracking
@@ -91,7 +96,25 @@
     - Add file validation and error handling for missing images
     - Style ZIP export components with Tailwind CSS
 
-13. **Testing: Implement Comprehensive Testing for Story 1.1**
+13. **Project Housekeeping: Cleanup Junk, Logs, and Emoji Policy**
+    - Remove existing junk artifacts; expand `.gitignore` to prevent future junk
+    - Enforce emoji policy: allowed only in `.md`; reject in code/logs/commits
+    - Clean up logging output (no emojis/glyphs; standardized levels; redaction)
+    - Add repo hygiene scripts (`repo:scan`, `repo:clean`) and update pre-commit hook
+
+14. **UI Cosmetic Polish & Minor Fixes (Ongoing Small PR Lane)**
+    - Incremental non-functional visual polish: spacing, alignment, typography, badges
+    - Consistent hover/focus states; dark/light consistency; microcopy clarity
+    - Small, low-risk PRs with brief change log entries and before/after when helpful
+
+15. **Security: Implement Production Security Measures**
+    - Implement encrypted database fallback for API key storage
+    - Add comprehensive memory protection for sensitive data
+    - Create secure logging that masks API keys and sensitive information
+    - Add security health checks and monitoring capabilities
+    - Style security components with Tailwind CSS
+
+16. **Testing: Implement Comprehensive Testing for Story 1.1**
     - Create unit tests for React components using React Testing Library
     - Implement integration tests for IPC communication
     - Create end-to-end tests for basic app functionality
@@ -100,7 +123,7 @@
     - Implement security tests for IPC and app security
     - Create performance and build optimization tests
 
-14. **Testing Stabilization & Post-1.9 Remediation: Unit & Integration (Story 1.14)**
+17. **Testing Stabilization & Post-1.9 Remediation: Unit & Integration (Story 1.17)**
     - Stabilize database integration tests using in-memory/isolated SQLite and migrations in setup
     - Align settings integration tests with `BackendAdapter` (replace legacy `SettingsAdapter` usage)
     - Centralize Electron and `keytar` mocks; assert IPC handlers and payloads
@@ -108,11 +131,12 @@
     - Provide npm scripts for targeted subsets (DB, settings, story-1.7)
     - Remediate failing tests introduced after Story 1.9 development, excluding unit/integration/E2E already green and covered by the HySky pre-commit script
 
-15.  **Distribution: Implement Application Packaging**
+18. **Distribution: Implement Application Packaging** (Detailed story to be drafted by Scrum Master)
     - Configure Electron Builder for cross-platform packaging (NFR3)
     - Generate distributable installers for Windows, macOS, and Linux
-    - Implement auto-update mechanism
+    - Initial distribution: manual unsigned releases via GitHub Releases (keep history for rollback)
+    - Auto‑update: planned for later after signing/notarization; disabled initially
     - Create deployment documentation
     - Optimize Vite build for production
 
-**Testing Strategy**: Each story includes comprehensive testing tasks covering unit tests, integration tests, and end-to-end validation as appropriate for the story scope. TypeScript will provide additional type safety during development. Story 1.13 specifically addresses the testing requirements for the foundational components from Story 1.1. Story 1.14 stabilizes unit and integration tests to ensure CI reliability and alignment with current architecture.
+**Testing Strategy**: Each story includes comprehensive testing tasks covering unit tests, integration tests, and end-to-end validation as appropriate for the story scope. TypeScript will provide additional type safety during development. Story 1.16 specifically addresses the testing requirements for the foundational components from Story 1.1. Story 1.17 stabilizes unit and integration tests to ensure CI reliability and alignment with current architecture.

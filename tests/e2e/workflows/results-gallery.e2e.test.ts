@@ -117,7 +117,7 @@ test.describe('Results Gallery E2E Tests', () => {
       }
       
       // Check for seed display
-      const seedElement = firstCard.locator('text=/🎲.+/');
+      const seedElement = firstCard.locator('text=/.+/');
       if (await seedElement.isVisible()) {
         await expect(seedElement).toBeVisible();
       }

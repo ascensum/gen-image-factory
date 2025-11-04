@@ -1,6 +1,6 @@
-console.log('🚨 MAIN PROCESS: main.js file is being executed!');
-console.log('🚨 MAIN PROCESS: Node.js version:', process.version);
-console.log('🚨 MAIN PROCESS: Electron version:', process.versions.electron);
+console.log(' MAIN PROCESS: main.js file is being executed!');
+console.log(' MAIN PROCESS: Node.js version:', process.version);
+console.log(' MAIN PROCESS: Electron version:', process.versions.electron);
 
 const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
@@ -50,9 +50,9 @@ async function refreshAllowedRoots(extraPaths = []) {
       pathDirs.forEach((d) => nextRoots.add(d));
     } catch {}
     allowedRoots = Array.from(nextRoots);
-    console.log('🔗 Allowed roots (refreshed):', allowedRoots);
+    console.log(' Allowed roots (refreshed):', allowedRoots);
   } catch (e) {
-    console.warn('🔗 Failed to refresh allowed roots:', e.message);
+    console.warn(' Failed to refresh allowed roots:', e.message);
   }
 }
 
@@ -126,9 +126,9 @@ function createWindow() {
 let backendAdapter;
 
 // This method will be called when Electron has finished initialization
-console.log('🚨 MAIN PROCESS: About to call app.whenReady()...');
+console.log(' MAIN PROCESS: About to call app.whenReady()...');
 app.whenReady().then(async () => {
-  console.log('🚨 MAIN PROCESS: app.whenReady() resolved successfully!');
+  console.log(' MAIN PROCESS: app.whenReady() resolved successfully!');
   // Set macOS Dock icon explicitly in dev/prod; BrowserWindow.icon is ignored on macOS
   if (process.platform === 'darwin') {
     try {
@@ -139,22 +139,22 @@ app.whenReady().then(async () => {
       let img = null;
       if (fs.existsSync(icnsPath)) {
         img = nativeImage.createFromPath(icnsPath);
-        console.log('🖼️ Attempting to set macOS dock icon from ICNS:', icnsPath, 'empty:', img.isEmpty());
+        console.log('️ Attempting to set macOS dock icon from ICNS:', icnsPath, 'empty:', img.isEmpty());
       }
       if (!img || img.isEmpty()) {
         if (fs.existsSync(pngFallbackPath)) {
           img = nativeImage.createFromPath(pngFallbackPath);
-          console.log('🖼️ Fallback: setting macOS dock icon from PNG:', pngFallbackPath, 'empty:', img.isEmpty());
+          console.log('️ Fallback: setting macOS dock icon from PNG:', pngFallbackPath, 'empty:', img.isEmpty());
         } else {
-          console.warn('🖼️ No valid icon found at ICNS or PNG fallback paths');
+          console.warn('️ No valid icon found at ICNS or PNG fallback paths');
         }
       }
       if (img && !img.isEmpty() && app.dock && typeof app.dock.setIcon === 'function') {
         app.dock.setIcon(img);
-        console.log('🖼️ macOS dock icon applied');
+        console.log('️ macOS dock icon applied');
       }
     } catch (e) {
-      console.warn('🖼️ Failed to set macOS dock icon:', e.message);
+      console.warn('️ Failed to set macOS dock icon:', e.message);
     }
   }
   // Precompute dynamic allowed roots from defaults and saved settings
@@ -180,12 +180,12 @@ app.whenReady().then(async () => {
       [saved.outputDirectory, saved.tempDirectory]
         .filter(Boolean)
         .forEach((p) => allowedRoots.push(p));
-      console.log('🔗 Allowed roots (with saved):', allowedRoots);
+      console.log(' Allowed roots (with saved):', allowedRoots);
     } catch (_e) {
-      console.log('🔗 Using default allowed roots only');
+      console.log(' Using default allowed roots only');
     }
 
-    console.log('🔗 Allowed roots (initial):', allowedRoots);
+    console.log(' Allowed roots (initial):', allowedRoots);
 
     // Add dynamic roots from recent generated images (final and temp directories)
     try {
@@ -198,23 +198,23 @@ app.whenReady().then(async () => {
         try { if (img.tempImagePath) dirs.add(path.dirname(img.tempImagePath)); } catch {}
       });
       dirs.forEach((d) => allowedRoots.push(d));
-      console.log('🔗 Allowed roots (with image dirs):', allowedRoots);
+      console.log(' Allowed roots (with image dirs):', allowedRoots);
     } catch (e2) {
-      console.warn('🔗 Could not load dynamic roots from images:', e2.message);
+      console.warn(' Could not load dynamic roots from images:', e2.message);
     }
   } catch (e) {
-    console.warn('🔗 Failed to initialize JobConfiguration for allowed roots:', e.message);
+    console.warn(' Failed to initialize JobConfiguration for allowed roots:', e.message);
   }
 
   // Set up protocol handler for local files AFTER app is ready
   protocol.registerFileProtocol('local-file', (request, callback) => {
     try {
       const rawUrl = request.url || '';
-      console.log('🔗 Protocol handler called for:', rawUrl);
+      console.log(' Protocol handler called for:', rawUrl);
       const stripped = rawUrl.replace('local-file://', '');
       const decodedPath = decodeURI(stripped);
       const filePath = path.normalize(decodedPath);
-      console.log('🔗 Normalized file path:', filePath);
+      console.log(' Normalized file path:', filePath);
 
       const isAllowed = allowedRoots.some((root) => {
         try {
@@ -225,32 +225,32 @@ app.whenReady().then(async () => {
       });
 
       if (isAllowed && fs.existsSync(filePath)) {
-        console.log('🔗 File exists and allowed, serving:', filePath);
+        console.log(' File exists and allowed, serving:', filePath);
         callback(filePath);
       } else {
-        console.warn('🔗 Blocked access to file:', filePath, 'exists:', fs.existsSync(filePath), 'allowed:', isAllowed, 'roots:', allowedRoots);
+        console.warn(' Blocked access to file:', filePath, 'exists:', fs.existsSync(filePath), 'allowed:', isAllowed, 'roots:', allowedRoots);
         callback(404);
       }
     } catch (err) {
-      console.error('🔗 Protocol handler error:', err);
+      console.error(' Protocol handler error:', err);
       callback(500);
     }
   });
   
   // Initialize Backend Adapter only once
-  console.log('🚨 MAIN PROCESS: About to create BackendAdapter...');
-  console.log('🔧 About to create BackendAdapter with ipcMain...');
-  console.log('🔧 ipcMain type:', typeof ipcMain);
-  console.log('🔧 ipcMain available:', ipcMain !== undefined);
+  console.log(' MAIN PROCESS: About to create BackendAdapter...');
+  console.log(' About to create BackendAdapter with ipcMain...');
+  console.log(' ipcMain type:', typeof ipcMain);
+  console.log(' ipcMain available:', ipcMain !== undefined);
   
   try {
-    console.log('🚨 MAIN PROCESS: Calling BackendAdapter constructor...');
+    console.log(' MAIN PROCESS: Calling BackendAdapter constructor...');
     backendAdapter = new BackendAdapter({ ipc: ipcMain, mainWindow: null, skipIpcSetup: true });
-    console.log('✅ BackendAdapter created successfully');
-    console.log('🔧 backendAdapter object:', backendAdapter);
+    console.log(' BackendAdapter created successfully');
+    console.log(' backendAdapter object:', backendAdapter);
   } catch (error) {
-    console.error('❌ Failed to create BackendAdapter:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error(' Failed to create BackendAdapter:', error);
+    console.error(' Error stack:', error.stack);
     throw error;
   }
   
@@ -258,16 +258,16 @@ app.whenReady().then(async () => {
   global.backendAdapter = backendAdapter;
   
   // Register all IPC handlers from the backend adapter
-  console.log('🔧 Setting up IPC handlers from BackendAdapter...');
-  console.log('🔧 backendAdapter type:', typeof backendAdapter);
-  console.log('🔧 backendAdapter.setupIpcHandlers type:', typeof backendAdapter.setupIpcHandlers);
+  console.log(' Setting up IPC handlers from BackendAdapter...');
+  console.log(' backendAdapter type:', typeof backendAdapter);
+  console.log(' backendAdapter.setupIpcHandlers type:', typeof backendAdapter.setupIpcHandlers);
   
   try {
     backendAdapter.setupIpcHandlers();
-    console.log('✅ IPC handlers registered successfully');
+    console.log(' IPC handlers registered successfully');
   } catch (error) {
-    console.error('❌ Failed to setup IPC handlers:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error(' Failed to setup IPC handlers:', error);
+    console.error(' Error stack:', error.stack);
   }
 
   // Hot-refresh protocol roots on demand (no restart required)

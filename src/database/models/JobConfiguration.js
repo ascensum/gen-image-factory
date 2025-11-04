@@ -43,7 +43,7 @@ class JobConfiguration {
         fs.mkdirSync(primaryDir, { recursive: true });
       }
     } catch (e) {
-      console.warn('⚠️ Could not ensure primary DB directory:', e.message);
+      console.warn('️ Could not ensure primary DB directory:', e.message);
     }
 
     // One-time migration from legacy locations if needed
@@ -63,16 +63,16 @@ class JobConfiguration {
           try {
             if (legacy && fs.existsSync(legacy)) {
               fs.copyFileSync(legacy, primaryPath);
-              console.log(`🔁 Migrated database from legacy path to primary: ${legacy} -> ${primaryPath}`);
+              console.log(` Migrated database from legacy path to primary: ${legacy} -> ${primaryPath}`);
               break;
             }
           } catch (e) {
-            console.warn(`⚠️ Failed migrating DB from ${legacy}:`, e.message);
+            console.warn(`️ Failed migrating DB from ${legacy}:`, e.message);
           }
         }
       }
     } catch (e) {
-      console.warn('⚠️ DB migration check failed:', e.message);
+      console.warn('️ DB migration check failed:', e.message);
     }
 
     // Cleanup legacy DB files by moving them into a backup folder under the primary directory
@@ -105,17 +105,17 @@ class JobConfiguration {
                 try { fs.renameSync(extra, dest + suffix); } catch {}
               }
             });
-            console.log(`🧹 Moved legacy DB to backup: ${legacy} -> ${dest}`);
+            console.log(` Moved legacy DB to backup: ${legacy} -> ${dest}`);
           } catch (e) {
-            console.warn(`⚠️ Could not move legacy DB ${legacy}:`, e.message);
+            console.warn(`️ Could not move legacy DB ${legacy}:`, e.message);
           }
         }
       }
     } catch (e) {
-      console.warn('⚠️ Legacy DB cleanup skipped:', e.message);
+      console.warn('️ Legacy DB cleanup skipped:', e.message);
     }
 
-    console.log(`✅ Database path resolved (pinned${usedElectron ? ' userData' : ' project-data'}): ${primaryPath}`);
+    console.log(` Database path resolved (pinned${usedElectron ? ' userData' : ' project-data'}): ${primaryPath}`);
     return primaryPath;
   }
 
@@ -343,7 +343,7 @@ class JobConfiguration {
       outputDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
       tempDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'generated');
       
-      console.log(`📁 Using Electron Desktop path: ${desktopPath}`);
+      console.log(` Using Electron Desktop path: ${desktopPath}`);
     } catch (error) {
       // Fallback for non-Electron context (e.g., testing)
       const os = require('os');
@@ -353,7 +353,7 @@ class JobConfiguration {
       outputDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
       tempDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'generated');
       
-      console.log(`📁 Using OS home directory fallback: ${homeDir}`);
+      console.log(` Using OS home directory fallback: ${homeDir}`);
     }
 
     return {

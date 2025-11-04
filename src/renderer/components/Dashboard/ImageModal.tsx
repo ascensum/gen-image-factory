@@ -148,14 +148,14 @@ const ImageModal: React.FC<ImageModalProps> = ({
   if (typeof image.metadata === 'string') {
     try {
       metadata = JSON.parse(image.metadata);
-      console.log('🔍 Parsed metadata from string:', metadata);
+      console.log(' Parsed metadata from string:', metadata);
     } catch (error) {
-      console.error('❌ Failed to parse metadata string:', error);
+      console.error(' Failed to parse metadata string:', error);
       metadata = {};
     }
   } else if (image.metadata) {
     metadata = image.metadata;
-    console.log('🔍 Metadata is already an object:', metadata);
+    console.log(' Metadata is already an object:', metadata);
   }
   
   // Debug logging for metadata (only in development)
@@ -430,10 +430,10 @@ const ImageModal: React.FC<ImageModalProps> = ({
                             }
                             const refreshedImage = await api.generatedImages.getGeneratedImage(image.id);
                             if (refreshedImage && refreshedImage.success) {
-                              console.log('✅ Metadata refreshed. Close and reopen the modal to see changes.');
+                              console.log(' Metadata refreshed. Close and reopen the modal to see changes.');
                             }
                           } catch (error) {
-                            console.error('❌ Failed to refresh metadata:', error);
+                            console.error(' Failed to refresh metadata:', error);
                           }
                         }}
                         className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"

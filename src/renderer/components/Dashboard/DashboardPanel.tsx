@@ -365,18 +365,18 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
   // Refresh data when job status changes to completed
   useEffect(() => {
     if (jobStatus.state === 'completed') {
-      console.log('🔄 Job completed, refreshing data...');
+      console.log(' Job completed, refreshing data...');
       // Immediate refresh for job history and statistics
       loadJobHistory();
       loadStatistics();
       
       // Delay refresh for generated images to ensure metadata generation is complete
       setTimeout(() => {
-        console.log('🔄 Delayed refresh of generated images to ensure metadata is complete...');
+        console.log(' Delayed refresh of generated images to ensure metadata is complete...');
       loadGeneratedImages();
       }, 500); // 500ms delay to ensure backend metadata generation completes
     } else if (jobStatus.state === 'failed') {
-      console.log('🔄 Job failed, refreshing data...');
+      console.log(' Job failed, refreshing data...');
       // Refresh lists so Job History reflects failure without waiting for manual actions
       loadJobHistory();
       loadStatistics();
@@ -487,7 +487,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         // Filter to show only approved images on main dashboard
         const approvedImages = images.filter(img => img.qcStatus === 'approved');
         setGeneratedImages(approvedImages);
-        console.log('🔍 Showing approved images:', approvedImages.length, 'out of', images.length, 'total');
+        console.log(' Showing approved images:', approvedImages.length, 'out of', images.length, 'total');
       } else {
         console.warn('getAllGeneratedImages returned non-array:', images);
         setGeneratedImages([]);
@@ -570,14 +570,14 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
   const handleStartJob = async () => {
     try {
-      console.log('🚀 handleStartJob called - starting job execution...');
+      console.log(' handleStartJob called - starting job execution...');
       setIsLoading(true);
       setError(null);
       
-      console.log('📋 Getting current configuration...');
+      console.log(' Getting current configuration...');
       // Get current configuration
       const configResponse = await window.electronAPI.jobManagement.getConfiguration();
-      console.log('✅ Configuration response loaded:', configResponse);
+      console.log(' Configuration response loaded:', configResponse);
       
       // Extract the actual settings from the response
       if (!configResponse.success || !configResponse.settings) {
@@ -585,26 +585,26 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       }
       
       const config = configResponse.settings;
-      console.log('✅ Configuration extracted:', config);
+      console.log(' Configuration extracted:', config);
       
-      console.log('🎯 Starting the job with config...');
+      console.log(' Starting the job with config...');
       // Start the job
       const result = await window.electronAPI.jobManagement.jobStart(config);
-      console.log('✅ Job start result:', result);
+      console.log(' Job start result:', result);
       
-      console.log('🔄 Reloading data...');
+      console.log(' Reloading data...');
       // Reload data
       await Promise.all([
         loadJobHistory(),
         loadStatistics()
       ]);
-      console.log('✅ Data reloaded successfully');
+      console.log(' Data reloaded successfully');
       
     } catch (error) {
-      console.error('❌ Failed to start job:', error);
+      console.error(' Failed to start job:', error);
       setError('Failed to start job');
     } finally {
-      console.log('🏁 handleStartJob completed, setting loading to false');
+      console.log(' handleStartJob completed, setting loading to false');
       setIsLoading(false);
     }
   };
@@ -667,30 +667,30 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
           await loadStatistics();
           break;
         case 'rerun':
-          console.log('🚨 DEBUG RERUN: DashboardPanel rerun case triggered for jobId:', jobId);
-          console.log('🚨 DEBUG RERUN: Timestamp:', new Date().toISOString());
-          console.log('🚨 DEBUG RERUN: Stack trace:', new Error().stack);
+          console.log(' DEBUG RERUN: DashboardPanel rerun case triggered for jobId:', jobId);
+          console.log(' DEBUG RERUN: Timestamp:', new Date().toISOString());
+          console.log(' DEBUG RERUN: Stack trace:', new Error().stack);
           
           try {
             // Use the same rerun logic as Job Management to prevent duplicate jobs
-            console.log('🚨 DEBUG RERUN: About to call rerunJobExecution...');
+            console.log(' DEBUG RERUN: About to call rerunJobExecution...');
             const rerunResult = await window.electronAPI.jobManagement.rerunJobExecution(jobId);
-            console.log('🚨 DEBUG RERUN: rerunJobExecution result:', rerunResult);
+            console.log(' DEBUG RERUN: rerunJobExecution result:', rerunResult);
             
             if (rerunResult && rerunResult.success) {
-              console.log('🚨 DEBUG RERUN: Rerun successful, waiting for job registration...');
+              console.log(' DEBUG RERUN: Rerun successful, waiting for job registration...');
               // Add a small delay to ensure the job is fully registered, then refresh UI
               setTimeout(async () => {
-                console.log('🔄 Refreshing UI after rerun...');
+                console.log(' Refreshing UI after rerun...');
                 await loadJobHistory();
                 await loadStatistics();
               }, 1000);
             } else {
-              console.error('🚨 DEBUG RERUN: Rerun failed:', rerunResult);
+              console.error(' DEBUG RERUN: Rerun failed:', rerunResult);
               setError(`Failed to rerun job: ${rerunResult?.error || 'Unknown error'}`);
             }
           } catch (error: any) {
-            console.error('🚨 DEBUG RERUN: Exception during rerun:', error);
+            console.error(' DEBUG RERUN: Exception during rerun:', error);
             setError(`Failed to rerun job: ${error?.message ?? String(error)}`);
           }
           break;
@@ -756,7 +756,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     const steps = [
       {
         name: 'Initialization',
-        icon: '⚙️',
+        icon: '️',
         description: 'Setup & Parameters',
         required: true,
         completed: true,
@@ -802,7 +802,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     if (subtasks.length > 0) {
       steps.push({
         name: 'Image Generation',
-        icon: '🎨',
+        icon: '',
         description: subtasks.join(' + '),
         required: true,
         completed: false,

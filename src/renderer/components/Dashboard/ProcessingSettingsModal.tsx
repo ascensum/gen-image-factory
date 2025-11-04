@@ -46,16 +46,16 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
   if (!isOpen) return null;
 
   const handleRetry = () => {
-    console.log('🔍 ProcessingSettingsModal: handleRetry called');
-    console.log('🔍 ProcessingSettingsModal: useOriginalSettings:', useOriginalSettings);
-    console.log('🔍 ProcessingSettingsModal: includeMetadata:', includeMetadata);
-    console.log('🔍 ProcessingSettingsModal: batchSettings keys:', Object.keys(batchSettings));
+    console.log(' ProcessingSettingsModal: handleRetry called');
+    console.log(' ProcessingSettingsModal: useOriginalSettings:', useOriginalSettings);
+    console.log(' ProcessingSettingsModal: includeMetadata:', includeMetadata);
+    console.log(' ProcessingSettingsModal: batchSettings keys:', Object.keys(batchSettings));
     
     if (useOriginalSettings) {
-      console.log('🔍 ProcessingSettingsModal: Retrying with original settings');
+      console.log(' ProcessingSettingsModal: Retrying with original settings');
       onRetry(true, undefined, includeMetadata);
     } else {
-      console.log('🔍 ProcessingSettingsModal: Retrying with modified settings keys:', Object.keys(batchSettings));
+      console.log(' ProcessingSettingsModal: Retrying with modified settings keys:', Object.keys(batchSettings));
       onRetry(false, batchSettings, includeMetadata);
     }
   };

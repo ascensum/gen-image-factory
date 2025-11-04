@@ -16,3 +16,17 @@ To meet the functional requirements, the application will be conceptually organi
 * **Clarity over Density**: Avoid overwhelming users with too many options at once.
 * **Guided Workflow**: The UI should naturally guide the user through the process: 1. Configure -> 2. Run -> 3. View Results.
 * **Immediate Feedback**: Every user action should provide clear and immediate visual feedback. 
+
+## Progress and Status Semantics (2025-11-02)
+
+- Unified Generation Progress:
+  - Single generation (N=1): shows 0 while running; 100 on completion.
+  - Multiple generations (N>1): percent = gensDone / totalGenerations × 100.
+  - With QC enabled: cap at 95% until QC completes, then 100%.
+- Status taxonomy and counters:
+  - Labels unified across all views (Approved, QC Failed, Processing, Retry Pending, Retry Failed).
+  - Counters and filters reflect the same underlying state and remain consistent across Dashboard, Job Management, Single Job View, Image Gallery, and Failed Images Review.
+
+## Rerun Label Format
+
+All views display rerun jobs as `Parent Label (Rerun execIdShort)`, including in filters, lists, and details, and during in‑progress states.

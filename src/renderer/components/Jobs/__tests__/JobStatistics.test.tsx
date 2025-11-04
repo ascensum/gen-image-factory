@@ -99,10 +99,10 @@ describe('JobStatistics', () => {
     render(<JobStatistics {...defaultProps} />);
     
     expect(screen.getByText('✓ 75 jobs completed successfully')).toBeInTheDocument();
-    expect(screen.getByText('⚠ 15 jobs failed')).toBeInTheDocument();
-    expect(screen.getByText('🔄 5 jobs currently processing')).toBeInTheDocument();
-    expect(screen.getByText('⏳ 5 jobs waiting in queue')).toBeInTheDocument();
-    expect(screen.getByText('📊 Average of 5.0 images per job')).toBeInTheDocument();
+    expect(screen.getByText(' 15 jobs failed')).toBeInTheDocument();
+    expect(screen.getByText(' 5 jobs currently processing')).toBeInTheDocument();
+    expect(screen.getByText(' 5 jobs waiting in queue')).toBeInTheDocument();
+    expect(screen.getByText(' Average of 5.0 images per job')).toBeInTheDocument();
   });
 
   it('handles zero jobs case correctly', () => {
@@ -147,7 +147,7 @@ describe('JobStatistics', () => {
     expect(completionRateCard).toHaveTextContent('100%');
     
     expect(screen.getByText('✓ 50 jobs completed successfully')).toBeInTheDocument();
-    expect(screen.queryByText('⚠ 0 jobs failed')).not.toBeInTheDocument();
+    expect(screen.queryByText(' 0 jobs failed')).not.toBeInTheDocument();
   });
 
   it('handles edge case with only failed jobs', () => {
@@ -170,7 +170,7 @@ describe('JobStatistics', () => {
     const failureRateCard = screen.getByText('Failure Rate').closest('div');
     expect(failureRateCard).toHaveTextContent('100%');
     
-    expect(screen.getByText('⚠ 20 jobs failed')).toBeInTheDocument();
+    expect(screen.getByText(' 20 jobs failed')).toBeInTheDocument();
     expect(screen.queryByText('✓ 0 jobs completed successfully')).not.toBeInTheDocument();
   });
 
@@ -352,7 +352,7 @@ describe('JobStatistics', () => {
     const completionRateCard = screen.getByText('Completion Rate').closest('div');
     expect(completionRateCard).toHaveTextContent('100%');
     expect(screen.getByText('✓ 1 job completed successfully')).toBeInTheDocument();
-    expect(screen.getByText('📊 Average of 10.0 images per job')).toBeInTheDocument();
+    expect(screen.getByText(' Average of 10.0 images per job')).toBeInTheDocument();
   });
 
   it('applies correct ARIA labels and roles', () => {
@@ -407,6 +407,6 @@ describe('JobStatistics', () => {
     
     expect(screen.getByText('0')).toBeInTheDocument();
     expect(screen.getByText('0.0')).toBeInTheDocument();
-    expect(screen.queryByText('📊 Average of 0.0 images per job')).not.toBeInTheDocument();
+    expect(screen.queryByText(' Average of 0.0 images per job')).not.toBeInTheDocument();
   });
 });

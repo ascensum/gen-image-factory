@@ -27,7 +27,7 @@ interface RetryJob {
 }
 
 const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBack, onBackToSingleJob }) => {
-  console.log('🔍 FailedImagesReviewPanel: Component mounting...');
+  console.log(' FailedImagesReviewPanel: Component mounting...');
   
   const [failedImages, setFailedImages] = useState<GeneratedImage[]>([]);
   const [retryPendingImages, setRetryPendingImages] = useState<GeneratedImage[]>([]);
@@ -79,20 +79,20 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
 
   // Load all image statuses on component mount
   useEffect(() => {
-    console.log('🔍 FailedImagesReviewPanel: useEffect running...');
+    console.log(' FailedImagesReviewPanel: useEffect running...');
     loadAllImageStatuses();
     loadRetryQueueStatus();
     
     // Set up real-time retry event listeners
     const handleRetryProgress = (_event: any, data: any) => {
-      console.log('🔧 Retry progress event received:', data);
+      console.log(' Retry progress event received:', data);
       // Refresh data when progress updates
       loadAllImageStatuses();
       loadRetryQueueStatus();
     };
 
     const handleRetryCompleted = async (_event: any, data: any) => {
-      console.log('🔧 Retry completed event received:', data);
+      console.log(' Retry completed event received:', data);
       // Refresh data when job completes
       try {
         const newPath: string | undefined = data?.result?.newPath || data?.result?.processedImagePath;
@@ -101,14 +101,14 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
           await (window as any).electronAPI.refreshProtocolRoots([dir]);
         }
       } catch (e) {
-        console.warn('⚠️ Failed to refresh protocol roots after retry-completed:', (e as any)?.message || e);
+        console.warn('️ Failed to refresh protocol roots after retry-completed:', (e as any)?.message || e);
       }
       loadAllImageStatuses();
       loadRetryQueueStatus();
     };
 
     const handleRetryError = (_event: any, data: any) => {
-      console.log('🔧 Retry error event received:', data);
+      console.log(' Retry error event received:', data);
       setError(`Retry error: ${data.error}`);
       // Refresh data when error occurs
       loadAllImageStatuses();
@@ -116,13 +116,13 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     };
 
     const handleRetryQueueUpdated = (_event: any, _data: any) => {
-      console.log('🔧 Retry queue updated event received');
+      console.log(' Retry queue updated event received');
       // Refresh queue status
       loadRetryQueueStatus();
     };
 
     const handleRetryStatusUpdated = (_event: any, _data: any) => {
-      console.log('🔧 Retry status updated event received');
+      console.log(' Retry status updated event received');
       // Refresh data when status changes
       loadAllImageStatuses();
       loadRetryQueueStatus();
@@ -168,7 +168,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
 
   // Load all image statuses
   const loadAllImageStatuses = async () => {
-    console.log('🔍 loadAllImageStatuses: Starting...');
+    console.log(' loadAllImageStatuses: Starting...');
     try {
       setIsLoading(true);
       setError(null);
@@ -226,11 +226,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       } catch {}
       
     } catch (error) {
-      console.error('🔍 loadAllImageStatuses: Error occurred:', error);
+      console.error(' loadAllImageStatuses: Error occurred:', error);
       setError('Failed to load images');
     } finally {
       setIsLoading(false);
-      console.log('🔍 loadAllImageStatuses: Loading complete');
+      console.log(' loadAllImageStatuses: Loading complete');
     }
   };
 
@@ -329,7 +329,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
               await (window as any).electronAPI.refreshProtocolRoots([rootToAdd]);
             }
           } catch (e) {
-            console.warn('⚠️ refreshProtocolRoots failed (non-blocking):', (e as any)?.message || e);
+            console.warn('️ refreshProtocolRoots failed (non-blocking):', (e as any)?.message || e);
           }
           await loadAllImageStatuses();
           break;
@@ -338,7 +338,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
           const newSelected = new Set(selectedImages);
           newSelected.add(imageId);
           setSelectedImages(newSelected);
-          console.log('🔍 Image added to retry selection:', imageId, 'Total selected:', newSelected.size);
+          console.log(' Image added to retry selection:', imageId, 'Total selected:', newSelected.size);
           break;
         case 'delete':
           await window.electronAPI.generatedImages.deleteGeneratedImage(imageId);
@@ -396,11 +396,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   };
 
   const handleRetryWithSettings = async (useOriginalSettings: boolean, modifiedSettings?: ProcessingSettings, includeMetadata?: boolean) => {
-    console.log('🔍 FailedImagesReviewPanel: handleRetryWithSettings called');
-    console.log('🔍 FailedImagesReviewPanel: useOriginalSettings:', useOriginalSettings);
-    console.log('🔍 FailedImagesReviewPanel: modifiedSettings keys:', modifiedSettings ? Object.keys(modifiedSettings) : 'undefined');
-    console.log('🔍 FailedImagesReviewPanel: includeMetadata:', includeMetadata);
-    console.log('🔍 FailedImagesReviewPanel: selectedImages count:', selectedImages.size);
+    console.log(' FailedImagesReviewPanel: handleRetryWithSettings called');
+    console.log(' FailedImagesReviewPanel: useOriginalSettings:', useOriginalSettings);
+    console.log(' FailedImagesReviewPanel: modifiedSettings keys:', modifiedSettings ? Object.keys(modifiedSettings) : 'undefined');
+    console.log(' FailedImagesReviewPanel: includeMetadata:', includeMetadata);
+    console.log(' FailedImagesReviewPanel: selectedImages count:', selectedImages.size);
     
     if (selectedImages.size === 0) return;
     
@@ -409,7 +409,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
       
       // Process retry as a single batch with chosen settings
       const imageIds = Array.from(selectedImages);
-      console.log('🔍 FailedImagesReviewPanel: Calling retryFailedImagesBatch with imageIds:', imageIds);
+      console.log(' FailedImagesReviewPanel: Calling retryFailedImagesBatch with imageIds:', imageIds);
       
       const result = await window.electronAPI.retryFailedImagesBatch(
         imageIds, 
@@ -418,15 +418,15 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         includeMetadata
       );
       
-      console.log('🔍 FailedImagesReviewPanel: retryFailedImagesBatch result:', result);
+      console.log(' FailedImagesReviewPanel: retryFailedImagesBatch result:', result);
       
       if (result.success) {
-        console.log('🔍 FailedImagesReviewPanel: Retry successful, refreshing data...');
+        console.log(' FailedImagesReviewPanel: Retry successful, refreshing data...');
         await loadAllImageStatuses();
         await loadRetryQueueStatus(); // Refresh queue status
         setSelectedImages(new Set());
         setShowProcessingSettingsModal(false);
-        console.log('🔍 FailedImagesReviewPanel: Retry processing complete');
+        console.log(' FailedImagesReviewPanel: Retry processing complete');
         // Ensure counters settle for original-settings flow by polling briefly
         try {
           const ids = imageIds.map((id) => String(id));
@@ -434,11 +434,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
           waitAndRefreshUntilDone(ids).catch(() => {});
         } catch {}
       } else {
-        console.error('🔍 FailedImagesReviewPanel: Retry failed:', result.error);
+        console.error(' FailedImagesReviewPanel: Retry failed:', result.error);
         setError(result.error || 'Failed to process retry operations');
       }
     } catch (error) {
-      console.error('🔍 FailedImagesReviewPanel: Exception occurred:', error);
+      console.error(' FailedImagesReviewPanel: Exception occurred:', error);
       setError('Failed to process retry operations');
       console.error('Failed to process retry operations:', error);
     }
@@ -649,7 +649,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                 <div className="space-y-2">
                   {processingImages.map((image) => (
                     <div key={image.id} className="flex items-center justify-between text-sm">
-                      <span className="text-blue-800">🖼️ Image {image.id}: Processing...</span>
+                      <span className="text-blue-800">️ Image {image.id}: Processing...</span>
                       <div className="w-24 bg-blue-200 rounded-full h-2">
                         <div className="bg-blue-600 h-2 rounded-full animate-pulse" style={{ width: '75%' }}></div>
                       </div>

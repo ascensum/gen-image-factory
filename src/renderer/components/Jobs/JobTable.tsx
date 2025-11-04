@@ -68,7 +68,7 @@ const JobTable: React.FC<JobTableProps> = ({
   };
 
   const getSortIcon = (field: keyof JobExecution) => {
-    if (sortField !== field) return '↕️';
+    if (sortField !== field) return '️';
     return sortDirection === 'asc' ? '↑' : '↓';
   };
 
@@ -227,7 +227,7 @@ const JobTable: React.FC<JobTableProps> = ({
                       className="text-gray-400 hover:text-gray-600"
                       aria-label={`Edit label for job ${getDisplayLabel(job)}`}
                     >
-                      ✏️
+                      ️
                     </button>
                   </div>
                 </td>

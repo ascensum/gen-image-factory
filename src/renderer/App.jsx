@@ -20,10 +20,10 @@ function App() {
     const testIPC = async () => {
       try {
         const response = await window.electronAPI.ping();
-        setIpcStatus(response === 'pong' ? '✅ IPC Working' : '❌ IPC Failed');
+        setIpcStatus(response === 'pong' ? ' IPC Working' : ' IPC Failed');
       } catch (error) {
         console.error('IPC Error:', error);
-        setIpcStatus('❌ IPC Error: ' + error.message);
+        setIpcStatus(' IPC Error: ' + error.message);
       }
     };
 
@@ -106,7 +106,7 @@ function App() {
             // TODO: Implement export functionality
           }}
           onRerun={(jobId) => {
-            console.log(`🚨 APP: Rerun job ${jobId} - calling backend rerun function`);
+            console.log(` APP: Rerun job ${jobId} - calling backend rerun function`);
             window.electronAPI.jobManagement.rerunJobExecution(jobId);
           }}
           onDelete={async (jobId) => {

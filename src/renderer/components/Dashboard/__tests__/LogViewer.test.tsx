@@ -154,7 +154,7 @@ describe('LogViewer', () => {
     render(<LogViewer {...defaultProps} logs={[]} />);
     
     // The component shows a placeholder message when logs are empty
-    expect(screen.getByText('📜 Logs area - scroll when content overflows')).toBeInTheDocument();
+    expect(screen.getByText(' Logs area - scroll when content overflows')).toBeInTheDocument();
   });
 
   it('shows loading state', () => {

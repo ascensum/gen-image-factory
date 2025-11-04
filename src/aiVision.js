@@ -104,8 +104,8 @@ async function generateMetadata(imagePath, promptContext, customMetadataPrompt =
     const parsedAnalysis = JSON.parse(analysis);
     
     // Log the metadata result properly
-    console.log('🔍 Metadata Generation Result structure keys:', Object.keys(parsedAnalysis));
-    console.log('🔍 Metadata Generation Result length:', JSON.stringify(parsedAnalysis).length, 'characters');
+    console.log(' Metadata Generation Result structure keys:', Object.keys(parsedAnalysis));
+    console.log(' Metadata Generation Result length:', JSON.stringify(parsedAnalysis).length, 'characters');
     // logDebug('Metadata Generation Result:', JSON.stringify(parsedAnalysis, null, 2));
     
     return parsedAnalysis;

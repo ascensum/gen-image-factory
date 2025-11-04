@@ -11,6 +11,7 @@ A new local SQLite database will be introduced with three core models.
   - **Advanced**: debugMode
 
 * **`JobExecution`**: Stores the historical record of a specific run of a `JobConfiguration`.
+  - Field added (migration 002): `label TEXT NULL` for human-friendly job names.
 
 * **`GeneratedImage`**: Stores the results for each individual image, with the following key attributes:
     * `id`, `executionId`
@@ -33,7 +34,7 @@ A new local SQLite database will be introduced with three core models.
       - `trimTransparentBackground`: boolean - Whether transparent background trimming was applied
       - `jpgBackground`: string - JPG background color setting used
 
-## Security Implementation (Story 1.11)
+## Security Implementation (Story 1.13)
 
 ### API Key Storage Strategy
 The application implements a three-tier security approach for API key storage:
@@ -52,7 +53,7 @@ The application implements a three-tier security approach for API key storage:
 
 #### **Tier 3: Plain Text Database (Development Only)**
 - Current implementation for development/testing
-- Will be replaced by encrypted database in Story 1.11
+- Will be replaced by encrypted database in Story 1.13
 - Acceptable for development but not for production
 
 ### Security Schema Extensions
@@ -62,7 +63,7 @@ security_storage_method VARCHAR(20) DEFAULT 'keytar',
 security_encryption_status VARCHAR(20) DEFAULT 'available',
 security_last_check TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
--- Encrypted API keys (Story 1.11)
+-- Encrypted API keys (Story 1.13)
 encrypted_api_keys TEXT,  -- JSON object with encrypted API keys
 encryption_key_hash VARCHAR(64),  -- Hash of encryption key for validation
 ```

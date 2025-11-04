@@ -45,7 +45,7 @@ class RetryExecutor extends EventEmitter {
     this.currentImageId = null; // Track current image being processed
     
     if (!this.generatedImage) {
-      console.warn('🔧 RetryExecutor: No generatedImage model provided, database operations may fail');
+      console.warn(' RetryExecutor: No generatedImage model provided, database operations may fail');
     }
   }
 
@@ -56,11 +56,11 @@ class RetryExecutor extends EventEmitter {
    */
   async addBatchRetryJob(batchRetryJob) {
     try {
-      console.log(`🔧 RetryExecutor: addBatchRetryJob called with job type: ${batchRetryJob.type}`);
+      console.log(` RetryExecutor: addBatchRetryJob called with job type: ${batchRetryJob.type}`);
       
       const { imageIds, useOriginalSettings, modifiedSettings, includeMetadata } = batchRetryJob;
       
-      console.log(`🔧 RetryExecutor: Processing batch retry job:`);
+      console.log(` RetryExecutor: Processing batch retry job:`);
       console.log(`  - imageIds: ${imageIds}`);
       console.log(`  - useOriginalSettings: ${useOriginalSettings}`);
       console.log(`  - modifiedSettings keys:`, modifiedSettings ? Object.keys(modifiedSettings) : 'null');
@@ -82,7 +82,7 @@ class RetryExecutor extends EventEmitter {
         createdAt: new Date()
       }));
 
-      console.log(`🔧 RetryExecutor: Created ${retryJobs.length} individual retry jobs`);
+      console.log(` RetryExecutor: Created ${retryJobs.length} individual retry jobs`);
 
       // Add all jobs to the queue
       this.queue.push(...retryJobs);
@@ -95,11 +95,11 @@ class RetryExecutor extends EventEmitter {
         context: 'retry'
       });
 
-      console.log(`🔧 RetryExecutor: Added ${retryJobs.length} jobs to queue. Queue length: ${this.queue.length}`);
+      console.log(` RetryExecutor: Added ${retryJobs.length} jobs to queue. Queue length: ${this.queue.length}`);
 
       // Start processing if not already running
     if (!this.isProcessing) {
-        console.log(`🔧 RetryExecutor: Starting processing queue`);
+        console.log(` RetryExecutor: Starting processing queue`);
       this.processQueue();
     }
 
@@ -112,7 +112,7 @@ class RetryExecutor extends EventEmitter {
       };
 
     } catch (error) {
-      console.error(`🔧 RetryExecutor: Error adding batch retry job:`, error);
+      console.error(` RetryExecutor: Error adding batch retry job:`, error);
       return {
         success: false,
         error: error.message
@@ -125,17 +125,17 @@ class RetryExecutor extends EventEmitter {
    */
   async processQueue() {
     if (this.isProcessing) {
-      console.log(`🔧 RetryExecutor: Already processing, skipping`);
+      console.log(` RetryExecutor: Already processing, skipping`);
       return;
     }
 
     this.isProcessing = true;
-    console.log(`🔧 RetryExecutor: Starting to process queue. Queue length: ${this.queue.length}`);
+    console.log(` RetryExecutor: Starting to process queue. Queue length: ${this.queue.length}`);
 
     try {
       while (this.queue.length > 0) {
         const job = this.queue.shift();
-        console.log(`🔧 RetryExecutor: Processing job with keys:`, Object.keys(job));
+        console.log(` RetryExecutor: Processing job with keys:`, Object.keys(job));
         
         try {
           // Update job status to processing
@@ -150,7 +150,7 @@ class RetryExecutor extends EventEmitter {
           // Process the image
           const result = await this.processSingleImage(job);
 
-          console.log(`🔧 RetryExecutor: Job ${job.id} completed with result keys:`, Object.keys(result));
+          console.log(` RetryExecutor: Job ${job.id} completed with result keys:`, Object.keys(result));
 
           // Update job status based on result
           if (result.success) {
@@ -174,7 +174,7 @@ class RetryExecutor extends EventEmitter {
           }
 
         } catch (error) {
-          console.error(`🔧 RetryExecutor: Error processing job ${job.id}:`, error);
+          console.error(` RetryExecutor: Error processing job ${job.id}:`, error);
           job.status = 'failed';
           this.emit('job-error', {
             jobId: job.id,
@@ -195,10 +195,10 @@ class RetryExecutor extends EventEmitter {
         });
       }
 
-      console.log(`🔧 RetryExecutor: Queue processing completed`);
+      console.log(` RetryExecutor: Queue processing completed`);
       
     } catch (error) {
-      console.error(`🔧 RetryExecutor: Error during queue processing:`, error);
+      console.error(` RetryExecutor: Error during queue processing:`, error);
     } finally {
       this.isProcessing = false;
     }
@@ -348,10 +348,10 @@ class RetryExecutor extends EventEmitter {
       const { imageId, useOriginalSettings, modifiedSettings, includeMetadata } = job;
       this.currentImageId = imageId; // Track current image being processed
       
-      console.log(`🔧 RetryExecutor: Starting to process image ${imageId}`);
-      console.log(`🔧 RetryExecutor: useOriginalSettings: ${useOriginalSettings}`);
-      console.log(`🔧 RetryExecutor: modifiedSettings:`, modifiedSettings ? Object.keys(modifiedSettings) : 'null');
-      console.log(`🔧 RetryExecutor: includeMetadata: ${includeMetadata}`);
+      console.log(` RetryExecutor: Starting to process image ${imageId}`);
+      console.log(` RetryExecutor: useOriginalSettings: ${useOriginalSettings}`);
+      console.log(` RetryExecutor: modifiedSettings:`, modifiedSettings ? Object.keys(modifiedSettings) : 'null');
+      console.log(` RetryExecutor: includeMetadata: ${includeMetadata}`);
       
       // Get the image data from database
       const imageData = await this.generatedImage.getGeneratedImage(imageId);
@@ -366,22 +366,22 @@ class RetryExecutor extends EventEmitter {
       let sourcePath;
       if (image.tempImagePath) {
         sourcePath = image.tempImagePath;
-        console.log(`🔧 RetryExecutor: Using tempImagePath for retry: ${sourcePath}`);
+        console.log(` RetryExecutor: Using tempImagePath for retry: ${sourcePath}`);
       } else if (image.finalImagePath) {
         sourcePath = image.finalImagePath;
-        console.log(`🔧 RetryExecutor: No tempImagePath, using finalImagePath: ${sourcePath}`);
+        console.log(` RetryExecutor: No tempImagePath, using finalImagePath: ${sourcePath}`);
       } else {
         throw new Error(`No image path found for image ${imageId}`);
       }
       
       // Resolve the source path
       sourcePath = path.resolve(sourcePath);
-      console.log(`🔧 RetryExecutor: Resolved source path: ${sourcePath}`);
+      console.log(` RetryExecutor: Resolved source path: ${sourcePath}`);
       
       // Check if source file exists
       try {
         await fs.access(sourcePath);
-        console.log(`🔧 RetryExecutor: Source file found: ${sourcePath}`);
+        console.log(` RetryExecutor: Source file found: ${sourcePath}`);
       } catch (error) {
         throw new Error(`Source file not accessible: ${sourcePath}`);
       }
@@ -394,14 +394,14 @@ class RetryExecutor extends EventEmitter {
         // ALWAYS get the original job configuration for path resolution
         // Both original and modified settings should use the same file paths
         jobConfiguration = await this.getOriginalJobConfiguration(image);
-        console.log(`🔧 RetryExecutor: Retrieved job configuration for image ${imageId}`);
-        console.log(`🔧 RetryExecutor: DEBUG - jobConfiguration structure:`, {
+        console.log(` RetryExecutor: Retrieved job configuration for image ${imageId}`);
+        console.log(` RetryExecutor: DEBUG - jobConfiguration structure:`, {
           hasSettings: !!jobConfiguration.settings,
           hasFilePaths: !!(jobConfiguration.settings && jobConfiguration.settings.filePaths),
           outputDirectory: jobConfiguration.settings?.filePaths?.outputDirectory || 'not set'
         });
       } catch (error) {
-        console.error(`🔧 RetryExecutor: Error getting job configuration for image ${imageId}:`, error);
+        console.error(` RetryExecutor: Error getting job configuration for image ${imageId}:`, error);
         // Use fallback configuration
         jobConfiguration = this.getFallbackConfiguration();
       }
@@ -409,11 +409,11 @@ class RetryExecutor extends EventEmitter {
       if (useOriginalSettings) {
         // Parse original processing settings from database
         processingSettings = await this.getOriginalProcessingSettings(image);
-        console.log(`🔧 RetryExecutor: Using original settings keys:`, Object.keys(processingSettings));
+        console.log(` RetryExecutor: Using original settings keys:`, Object.keys(processingSettings));
       } else {
         // Use modified settings passed from frontend
         processingSettings = modifiedSettings;
-        console.log(`🔧 RetryExecutor: Using modified settings keys:`, Object.keys(processingSettings));
+        console.log(` RetryExecutor: Using modified settings keys:`, Object.keys(processingSettings));
       }
 
       // Update image status to processing
@@ -425,17 +425,17 @@ class RetryExecutor extends EventEmitter {
       if (processingResult.success) {
         // Processing successful
         await this.updateImageStatus(imageId, 'approved', 'Retry processing successful');
-        console.log(`🔧 RetryExecutor: Image ${imageId} processed successfully:`, processingResult.message);
+        console.log(` RetryExecutor: Image ${imageId} processed successfully:`, processingResult.message);
       } else {
         // Processing failed
         await this.updateImageStatus(imageId, 'failed_retry', processingResult.error);
-        console.error(`🔧 RetryExecutor: Image ${imageId} processing failed:`, processingResult.error);
+        console.error(` RetryExecutor: Image ${imageId} processing failed:`, processingResult.error);
       }
       
       return processingResult;
       
     } catch (error) {
-      console.error(`🔧 RetryExecutor: Error processing image ${imageId}:`, error);
+      console.error(` RetryExecutor: Error processing image ${imageId}:`, error);
       
       // Update image status to failed
       await this.updateImageStatus(imageId, 'failed_retry', error.message);
@@ -456,7 +456,7 @@ class RetryExecutor extends EventEmitter {
    */
   async getOriginalJobConfiguration(image) {
     try {
-      console.log(`🔧 RetryExecutor: Getting original job configuration for image ${image.id}, executionId: ${image.executionId}`);
+      console.log(` RetryExecutor: Getting original job configuration for image ${image.id}, executionId: ${image.executionId}`);
       
       // Get the job execution to find the configuration ID
       const { JobExecution } = require('../database/models/JobExecution');
@@ -468,48 +468,48 @@ class RetryExecutor extends EventEmitter {
       // First attempt to load execution
       let executionResult = await jobExecution.getJobExecution(image.executionId);
       if (!executionResult.success) {
-        console.warn(`🔧 RetryExecutor: First attempt failed to get job execution ${image.executionId} for image ${image.id}. Retrying once...`);
+        console.warn(` RetryExecutor: First attempt failed to get job execution ${image.executionId} for image ${image.id}. Retrying once...`);
         try { await this.delay(300); } catch {}
         executionResult = await jobExecution.getJobExecution(image.executionId);
       }
       if (!executionResult.success) {
-        console.warn(`🔧 RetryExecutor: Failed to get job execution after retry. Falling back. executionId=${image.executionId}`);
+        console.warn(` RetryExecutor: Failed to get job execution after retry. Falling back. executionId=${image.executionId}`);
         return this.getFallbackConfiguration();
       }
       
       const execution = executionResult.execution;
       if (!execution.configurationId) {
-        console.warn(`🔧 RetryExecutor: No configuration ID found for execution ${image.executionId}, using fallback`);
+        console.warn(` RetryExecutor: No configuration ID found for execution ${image.executionId}, using fallback`);
         return this.getFallbackConfiguration();
       }
       
       // Get the original job configuration
-      console.log(`🔧 RetryExecutor: Loading job configuration by ID: ${execution.configurationId}`);
+      console.log(` RetryExecutor: Loading job configuration by ID: ${execution.configurationId}`);
       let configResult = await this.jobConfig.getConfigurationById(execution.configurationId);
       if (!configResult.success) {
-        console.warn(`🔧 RetryExecutor: First attempt failed to load configuration ${execution.configurationId}. Retrying once...`);
+        console.warn(` RetryExecutor: First attempt failed to load configuration ${execution.configurationId}. Retrying once...`);
         try { await this.delay(300); } catch {}
         configResult = await this.jobConfig.getConfigurationById(execution.configurationId);
       }
       if (!configResult.success) {
-        console.warn(`🔧 RetryExecutor: Failed to load configuration after retry. Falling back. configurationId=${execution.configurationId}`);
+        console.warn(` RetryExecutor: Failed to load configuration after retry. Falling back. configurationId=${execution.configurationId}`);
         return this.getFallbackConfiguration();
       }
       
       const originalConfig = configResult.configuration;
-      console.log(`🔧 RetryExecutor: Retrieved original job configuration for image ${image.id} (configurationId=${execution.configurationId})`);
+      console.log(` RetryExecutor: Retrieved original job configuration for image ${image.id} (configurationId=${execution.configurationId})`);
       
       // Apply cross-platform path logic if original job didn't have custom paths
       const settings = originalConfig.settings || {};
       const filePaths = settings.filePaths || {};
       
-      console.log(`🔧 RetryExecutor: DEBUG - Original filePaths:`, JSON.stringify(filePaths, null, 2));
+      console.log(` RetryExecutor: DEBUG - Original filePaths:`, JSON.stringify(filePaths, null, 2));
       
       // Check if original job had custom paths set (not empty strings)
       const hasCustomOutputDir = filePaths.outputDirectory && filePaths.outputDirectory.trim() !== '';
       const hasCustomTempDir = filePaths.tempDirectory && filePaths.tempDirectory.trim() !== '';
       
-      console.log(`🔧 RetryExecutor: DEBUG - hasCustomOutputDir: ${hasCustomOutputDir}, hasCustomTempDir: ${hasCustomTempDir}`);
+      console.log(` RetryExecutor: DEBUG - hasCustomOutputDir: ${hasCustomOutputDir}, hasCustomTempDir: ${hasCustomTempDir}`);
       
       // Get current cross-platform defaults
       const defaultSettings = this.jobConfig.getDefaultSettings();
@@ -525,10 +525,10 @@ class RetryExecutor extends EventEmitter {
         metadataPromptFile: filePaths.metadataPromptFile || ''
       };
       
-      console.log(`🔧 RetryExecutor: Original outputDirectory: ${filePaths.outputDirectory || 'not set'}`);
-      console.log(`🔧 RetryExecutor: Original tempDirectory: ${filePaths.tempDirectory || 'not set'}`);
-      console.log(`🔧 RetryExecutor: Corrected outputDirectory: ${correctedFilePaths.outputDirectory}`);
-      console.log(`🔧 RetryExecutor: Corrected tempDirectory: ${correctedFilePaths.tempDirectory}`);
+      console.log(` RetryExecutor: Original outputDirectory: ${filePaths.outputDirectory || 'not set'}`);
+      console.log(` RetryExecutor: Original tempDirectory: ${filePaths.tempDirectory || 'not set'}`);
+      console.log(` RetryExecutor: Corrected outputDirectory: ${correctedFilePaths.outputDirectory}`);
+      console.log(` RetryExecutor: Corrected tempDirectory: ${correctedFilePaths.tempDirectory}`);
       
       return {
         ...originalConfig,
@@ -539,13 +539,13 @@ class RetryExecutor extends EventEmitter {
       };
       
     } catch (error) {
-      console.error(`🔧 RetryExecutor: Error getting original job configuration for image ${image?.id || 'unknown'}:`, error);
+      console.error(` RetryExecutor: Error getting original job configuration for image ${image?.id || 'unknown'}:`, error);
       return this.getFallbackConfiguration();
     }
   }
 
   getFallbackConfiguration() {
-    console.log(`🔧 RetryExecutor: Using fallback configuration with cross-platform paths`);
+    console.log(` RetryExecutor: Using fallback configuration with cross-platform paths`);
     const defaultSettings = this.jobConfig.getDefaultSettings();
     return {
       id: 'fallback',
@@ -575,9 +575,9 @@ class RetryExecutor extends EventEmitter {
       if (image.processingSettings) {
         try {
           originalSettings = JSON.parse(image.processingSettings);
-          console.log(`🔧 RetryExecutor: Retrieved original processing settings keys for image:`, Object.keys(originalSettings));
+          console.log(` RetryExecutor: Retrieved original processing settings keys for image:`, Object.keys(originalSettings));
         } catch (parseError) {
-          console.warn(`🔧 RetryExecutor: Failed to parse processing settings for image, using defaults:`, parseError);
+          console.warn(` RetryExecutor: Failed to parse processing settings for image, using defaults:`, parseError);
         }
       }
       
@@ -596,7 +596,7 @@ class RetryExecutor extends EventEmitter {
         jpgBackground: originalSettings.jpgBackground || 'white'
       };
     } catch (error) {
-      console.error(`🔧 RetryExecutor: Error getting original processing settings for image:`, error);
+      console.error(` RetryExecutor: Error getting original processing settings for image:`, error);
       // Return safe defaults if we can't get original settings
     return {
       imageEnhancement: false,
@@ -625,12 +625,12 @@ class RetryExecutor extends EventEmitter {
       // Update the database with new status
       if (this.generatedImage && typeof this.generatedImage.updateQCStatus === 'function') {
         await this.generatedImage.updateQCStatus(imageId, status, reason);
-        console.log(`🔧 RetryExecutor: Updated image ${imageId} status to ${status} in database`);
+        console.log(` RetryExecutor: Updated image ${imageId} status to ${status} in database`);
       } else {
-        console.warn(`🔧 RetryExecutor: Cannot update database - generatedImage model not available`);
+        console.warn(` RetryExecutor: Cannot update database - generatedImage model not available`);
       }
     } catch (error) {
-      console.error(`🔧 RetryExecutor: Failed to update database status for image ${imageId}:`, error);
+      console.error(` RetryExecutor: Failed to update database status for image ${imageId}:`, error);
     }
     
     // Emit status update event
@@ -653,14 +653,14 @@ class RetryExecutor extends EventEmitter {
    */
   async runPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration = null) {
     try {
-      console.log(`🔧 RetryExecutor: Starting real image processing for: ${sourcePath}`);
-      console.log(`🔧 RetryExecutor: Processing settings keys:`, Object.keys(settings)); // Sanitized
-      console.log(`🔧 RetryExecutor: Include metadata: ${includeMetadata}`);
+      console.log(` RetryExecutor: Starting real image processing for: ${sourcePath}`);
+      console.log(` RetryExecutor: Processing settings keys:`, Object.keys(settings)); // Sanitized
+      console.log(` RetryExecutor: Include metadata: ${includeMetadata}`);
       
       // Verify source file exists
       try {
         await fs.access(sourcePath);
-        console.log(`🔧 RetryExecutor: Source file verified: ${sourcePath}`);
+        console.log(` RetryExecutor: Source file verified: ${sourcePath}`);
       } catch (error) {
         throw new Error(`Source file not accessible: ${sourcePath}`);
       }
@@ -670,13 +670,13 @@ class RetryExecutor extends EventEmitter {
       const sourceFileName = path.basename(sourcePath, path.extname(sourcePath));
       const sourceExt = path.extname(sourcePath);
       
-      console.log(`🔧 RetryExecutor: Source directory: ${sourceDir}`);
-      console.log(`🔧 RetryExecutor: Source filename: ${sourceFileName}`);
-      console.log(`🔧 RetryExecutor: Source extension: ${sourceExt}`);
+      console.log(` RetryExecutor: Source directory: ${sourceDir}`);
+      console.log(` RetryExecutor: Source filename: ${sourceFileName}`);
+      console.log(` RetryExecutor: Source extension: ${sourceExt}`);
       
       // CRITICAL: Keep original in place, process it there
       // The sourcePath should be in the 'generated' folder, we'll process it there
-      console.log(`🔧 RetryExecutor: Processing original file in place: ${sourcePath}`);
+      console.log(` RetryExecutor: Processing original file in place: ${sourcePath}`);
       
       // Prepare config object for processImage function
       // Use a temporary directory for processing, then move to final destination
@@ -696,7 +696,7 @@ class RetryExecutor extends EventEmitter {
       try {
         await fs.mkdir(tempProcessingDir, { recursive: true });
       } catch (error) {
-        console.warn(`🔧 RetryExecutor: Temp directory creation failed:`, error.message);
+        console.warn(` RetryExecutor: Temp directory creation failed:`, error.message);
       }
       
       // Create sanitized config without API keys
@@ -705,7 +705,7 @@ class RetryExecutor extends EventEmitter {
       // IMPORTANT: Always process into a temporary directory first
       // Final move to original job's outputDirectory happens after processing
       const processOutputDir = tempProcessingDir;
-      console.log(`🔧 RetryExecutor: Using TEMP directory for processImage: ${processOutputDir}`);
+      console.log(` RetryExecutor: Using TEMP directory for processImage: ${processOutputDir}`);
       
       const processingConfig = {
         tempDirectory: tempProcessingDir,
@@ -723,26 +723,26 @@ class RetryExecutor extends EventEmitter {
       }
       
       // Process the image using the real processing pipeline
-      console.log(`🔧 RetryExecutor: Calling processImage with config keys:`, Object.keys(processingConfig)); // Sanitized
+      console.log(` RetryExecutor: Calling processImage with config keys:`, Object.keys(processingConfig)); // Sanitized
       const processedImagePath = await processImage(sourcePath, sourceFileName, processingConfig);
-      console.log(`🔧 RetryExecutor: Image processing completed: ${processedImagePath}`);
+      console.log(` RetryExecutor: Image processing completed: ${processedImagePath}`);
       
       // Determine the final destination path (Toupload folder)
       // Use job configuration paths if available, otherwise use constructor defaults
-      console.log(`🔧 RetryExecutor: DEBUG - jobConfiguration exists: ${!!jobConfiguration}`);
-      console.log(`🔧 RetryExecutor: DEBUG - jobConfiguration.settings exists: ${!!(jobConfiguration && jobConfiguration.settings)}`);
-      console.log(`🔧 RetryExecutor: DEBUG - jobConfiguration.settings.filePaths exists: ${!!(jobConfiguration && jobConfiguration.settings && jobConfiguration.settings.filePaths)}`);
+      console.log(` RetryExecutor: DEBUG - jobConfiguration exists: ${!!jobConfiguration}`);
+      console.log(` RetryExecutor: DEBUG - jobConfiguration.settings exists: ${!!(jobConfiguration && jobConfiguration.settings)}`);
+      console.log(` RetryExecutor: DEBUG - jobConfiguration.settings.filePaths exists: ${!!(jobConfiguration && jobConfiguration.settings && jobConfiguration.settings.filePaths)}`);
       
       let outputDirectory;
       if (jobConfiguration && jobConfiguration.settings && jobConfiguration.settings.filePaths) {
         outputDirectory = jobConfiguration.settings.filePaths.outputDirectory;
-        console.log(`🔧 RetryExecutor: Using original job outputDirectory: ${outputDirectory}`);
+        console.log(` RetryExecutor: Using original job outputDirectory: ${outputDirectory}`);
       } else {
         outputDirectory = this.outputDirectory;
-        console.log(`🔧 RetryExecutor: Using default outputDirectory: ${outputDirectory}`);
+        console.log(` RetryExecutor: Using default outputDirectory: ${outputDirectory}`);
       }
       
-      console.log(`🔧 RetryExecutor: DEBUG - Final outputDirectory for move: ${outputDirectory}`);
+      console.log(` RetryExecutor: DEBUG - Final outputDirectory for move: ${outputDirectory}`);
       
       let finalOutputPath;
       let finalExtension;
@@ -752,36 +752,36 @@ class RetryExecutor extends EventEmitter {
         finalExtension = '.jpg';
         // Final path should be in the configured output directory
         finalOutputPath = path.join(outputDirectory, `${sourceFileName}.jpg`);
-        console.log(`🔧 RetryExecutor: Converting to JPG, final path: ${finalOutputPath}`);
+        console.log(` RetryExecutor: Converting to JPG, final path: ${finalOutputPath}`);
       } else {
         // Keeping original format
         finalExtension = path.extname(processedImagePath);
         // Final path should be in the configured output directory
         finalOutputPath = path.join(outputDirectory, `${sourceFileName}${finalExtension}`);
-        console.log(`🔧 RetryExecutor: Keeping format, final path: ${finalOutputPath}`);
+        console.log(` RetryExecutor: Keeping format, final path: ${finalOutputPath}`);
       }
       
       // Ensure the temporary processing directory exists
       try {
         await fs.mkdir(tempProcessingDir, { recursive: true });
-        console.log(`🔧 RetryExecutor: Created temporary processing directory: ${tempProcessingDir}`);
+        console.log(` RetryExecutor: Created temporary processing directory: ${tempProcessingDir}`);
       } catch (error) {
-        console.warn(`🔧 RetryExecutor: Temporary processing directory creation failed:`, error.message);
+        console.warn(` RetryExecutor: Temporary processing directory creation failed:`, error.message);
       }
       
       // Ensure the final output directory exists
       try {
         await fs.mkdir(path.dirname(finalOutputPath), { recursive: true });
-        console.log(`🔧 RetryExecutor: Created final output directory: ${path.dirname(finalOutputPath)}`);
+        console.log(` RetryExecutor: Created final output directory: ${path.dirname(finalOutputPath)}`);
       } catch (error) {
-        console.warn(`🔧 RetryExecutor: Final output directory creation failed:`, error.message);
+        console.warn(` RetryExecutor: Final output directory creation failed:`, error.message);
       }
       
       // Generate new metadata if requested
       let metadataResult = null;
       if (includeMetadata) {
         try {
-          console.log(`🔧 RetryExecutor: Generating new metadata for processed image`);
+          console.log(` RetryExecutor: Generating new metadata for processed image`);
           // Get the original prompt from the database if available
           const imageData = await this.generatedImage.getGeneratedImage(this.currentImageId);
           let originalPrompt = 'Generated image';
@@ -812,43 +812,43 @@ class RetryExecutor extends EventEmitter {
             (metadataPrompt && metadataPrompt.trim() !== '') ? metadataPrompt : null,
             'gpt-4o-mini' // Default model
           );
-          console.log(`🔧 RetryExecutor: Metadata generation completed:`, metadataResult);
+          console.log(` RetryExecutor: Metadata generation completed:`, metadataResult);
         } catch (metadataError) {
-          console.warn(`🔧 RetryExecutor: Metadata generation failed, continuing without metadata:`, metadataError);
+          console.warn(` RetryExecutor: Metadata generation failed, continuing without metadata:`, metadataError);
         }
       }
       
       // CRITICAL: Move the processed image to final destination (Toupload folder)
-      console.log(`🔧 RetryExecutor: Moving processed image to final destination: ${finalOutputPath}`);
+      console.log(` RetryExecutor: Moving processed image to final destination: ${finalOutputPath}`);
       
       // If final destination already exists, delete it first
       try {
         await fs.access(finalOutputPath);
-        console.log(`🔧 RetryExecutor: Final destination exists, deleting old file: ${finalOutputPath}`);
+        console.log(` RetryExecutor: Final destination exists, deleting old file: ${finalOutputPath}`);
         await fs.unlink(finalOutputPath);
       } catch (error) {
         // File doesn't exist, which is fine
-        console.log(`🔧 RetryExecutor: Final destination doesn't exist yet, proceeding with move`);
+        console.log(` RetryExecutor: Final destination doesn't exist yet, proceeding with move`);
       }
       
       // Move the processed image to final destination
       await fs.rename(processedImagePath, finalOutputPath);
-      console.log(`🔧 RetryExecutor: Successfully moved processed image to: ${finalOutputPath}`);
+      console.log(` RetryExecutor: Successfully moved processed image to: ${finalOutputPath}`);
       
       // CRITICAL: Now delete the original source file from generated folder
       try {
-        console.log(`🔧 RetryExecutor: Deleting original source file: ${sourcePath}`);
+        console.log(` RetryExecutor: Deleting original source file: ${sourcePath}`);
         await fs.unlink(sourcePath);
-        console.log(`🔧 RetryExecutor: Original source file deleted successfully`);
+        console.log(` RetryExecutor: Original source file deleted successfully`);
       } catch (cleanupError) {
-        console.warn(`🔧 RetryExecutor: Failed to delete original source file:`, cleanupError.message);
+        console.warn(` RetryExecutor: Failed to delete original source file:`, cleanupError.message);
         // Don't throw error here, as the main processing was successful
       }
       
       // Update the database with the NEW image path and persist metadata if present
       if (this.currentImageId) {
         try {
-          console.log(`🔧 RetryExecutor: Updating database with new image path: ${finalOutputPath}`);
+          console.log(` RetryExecutor: Updating database with new image path: ${finalOutputPath}`);
           
           // Get the existing image data to preserve all required fields
           const existingImageData = await this.generatedImage.getGeneratedImage(this.currentImageId);
@@ -880,7 +880,7 @@ class RetryExecutor extends EventEmitter {
             processingSettings: existingImage.processingSettings
           };
           
-          console.log(`🔧 RetryExecutor: Updating image with all required fields preserved`);
+          console.log(` RetryExecutor: Updating image with all required fields preserved`);
           await this.generatedImage.updateGeneratedImage(this.currentImageId, updateData);
           // Additionally ensure metadata-only update if paths didn’t change (safety)
           if (metadataResult) {
@@ -891,14 +891,14 @@ class RetryExecutor extends EventEmitter {
                 description: metadataResult.new_description,
                 tags
               });
-              console.log('🔧 RetryExecutor: Persisted regenerated metadata');
+              console.log(' RetryExecutor: Persisted regenerated metadata');
             } catch (e) {
-              console.warn('🔧 RetryExecutor: Metadata persistence (byId) failed:', e.message);
+              console.warn(' RetryExecutor: Metadata persistence (byId) failed:', e.message);
             }
           }
-          console.log(`🔧 RetryExecutor: Database updated successfully`);
+          console.log(` RetryExecutor: Database updated successfully`);
         } catch (dbError) {
-          console.error(`🔧 RetryExecutor: Failed to update database with new path:`, dbError);
+          console.error(` RetryExecutor: Failed to update database with new path:`, dbError);
           throw new Error(`Database update failed: ${dbError.message}`);
         }
       }
@@ -923,7 +923,7 @@ class RetryExecutor extends EventEmitter {
       };
       
     } catch (error) {
-      console.error(`🔧 RetryExecutor: Image processing failed:`, error);
+      console.error(` RetryExecutor: Image processing failed:`, error);
       return {
         success: false,
         error: error.message

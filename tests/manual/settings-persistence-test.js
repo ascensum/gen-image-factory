@@ -10,7 +10,7 @@
 const { BackendAdapter } = require('../../src/adapter/backendAdapter');
 
 async function testSettingsPersistence() {
-  console.log('🧪 Testing Settings Persistence...\n');
+  console.log(' Testing Settings Persistence...\n');
   
   const backendAdapter = new BackendAdapter();
   
@@ -18,7 +18,7 @@ async function testSettingsPersistence() {
     // Test 1: Load default settings
     console.log('1️⃣ Loading default settings...');
     const defaultResult = await backendAdapter.getSettings();
-    console.log('✅ Default settings loaded:', defaultResult.success);
+    console.log(' Default settings loaded:', defaultResult.success);
     console.log('   - API Keys:', Object.keys(defaultResult.settings.apiKeys));
     console.log('   - File Paths:', Object.keys(defaultResult.settings.filePaths));
     console.log('   - Parameters:', Object.keys(defaultResult.settings.parameters));
@@ -75,12 +75,12 @@ async function testSettingsPersistence() {
     };
     
     const saveResult = await backendAdapter.saveSettings(testSettings);
-    console.log('✅ Test settings saved:', saveResult.success);
+    console.log(' Test settings saved:', saveResult.success);
     
     // Test 3: Load settings back
     console.log('\n3️⃣ Loading saved settings...');
     const loadResult = await backendAdapter.getSettings();
-    console.log('✅ Settings loaded:', loadResult.success);
+    console.log(' Settings loaded:', loadResult.success);
     
     // Test 4: Verify key fields were saved
     const loadedSettings = loadResult.settings;
@@ -104,39 +104,39 @@ async function testSettingsPersistence() {
     let allPassed = true;
     checks.forEach(check => {
       const passed = check.actual === check.expected;
-      console.log(`   ${passed ? '✅' : '❌'} ${check.field}: ${check.actual} ${passed ? '' : `(expected: ${check.expected})`}`);
+      console.log(`   ${passed ? '' : ''} ${check.field}: ${check.actual} ${passed ? '' : `(expected: ${check.expected})`}`);
       if (!passed) allPassed = false;
     });
     
     // Test 5: Test API key storage (with fallback)
     console.log('\n5️⃣ Testing API key storage...');
     const setKeyResult = await backendAdapter.setApiKey('openai', 'test-key-123');
-    console.log('✅ API key set:', setKeyResult.success);
+    console.log(' API key set:', setKeyResult.success);
     
     const getKeyResult = await backendAdapter.getApiKey('openai');
-    console.log('✅ API key retrieved:', getKeyResult.success);
+    console.log(' API key retrieved:', getKeyResult.success);
     console.log('   - Key value:', getKeyResult.apiKey ? '***' + getKeyResult.apiKey.slice(-3) : '(empty)');
     
     // Summary
-    console.log('\n🎉 Test Summary:');
-    console.log(`   - Settings Save: ${saveResult.success ? '✅ PASS' : '❌ FAIL'}`);
-    console.log(`   - Settings Load: ${loadResult.success ? '✅ PASS' : '❌ FAIL'}`);
-    console.log(`   - Data Persistence: ${allPassed ? '✅ PASS' : '❌ FAIL'}`);
-    console.log(`   - API Key Storage: ${setKeyResult.success && getKeyResult.success ? '✅ PASS' : '⚠️  PARTIAL (keychain may be disabled)'}`);
+    console.log('\n Test Summary:');
+    console.log(`   - Settings Save: ${saveResult.success ? ' PASS' : ' FAIL'}`);
+    console.log(`   - Settings Load: ${loadResult.success ? ' PASS' : ' FAIL'}`);
+    console.log(`   - Data Persistence: ${allPassed ? ' PASS' : ' FAIL'}`);
+    console.log(`   - API Key Storage: ${setKeyResult.success && getKeyResult.success ? ' PASS' : '️  PARTIAL (keychain may be disabled)'}`);
     
     if (allPassed && saveResult.success && loadResult.success) {
-      console.log('\n🎊 ALL TESTS PASSED! Settings persistence is working correctly.');
-      console.log('\n💡 Next steps:');
+      console.log('\n ALL TESTS PASSED! Settings persistence is working correctly.');
+      console.log('\n Next steps:');
       console.log('   1. Open the Electron app');
       console.log('   2. Go to Settings');
       console.log('   3. Make changes and click Save');
       console.log('   4. Restart the app to verify persistence');
     } else {
-      console.log('\n⚠️  Some tests failed. Check the console for details.');
+      console.log('\n️  Some tests failed. Check the console for details.');
     }
     
   } catch (error) {
-    console.error('❌ Test failed:', error);
+    console.error(' Test failed:', error);
   } finally {
     // Clean up
     if (backendAdapter) {

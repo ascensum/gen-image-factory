@@ -7,9 +7,9 @@ The enhancement will be built upon the existing technology stack. New components
 | Category | Technology |
 | :--- | :--- |
 | **Runtime** | Node.js (v16+) |
-| **AI Integration**| `openai` (^4.52.0) |
+| **AI Integration**| Runware (primary), OpenAI for QC/metadata, Remove.bg for background removal |
 | **Image Processing**| `sharp` (^0.32.0) |
-| **Data Handling**| `xlsx` (^0.18.5), `csv-parser` (^3.2.0) |
+| **Data Handling**| `exceljs` (^4.x), `csv-parser` (^3.2.0) |
 | **HTTP Client** | `axios` (^1.3.1) |
 
 ## Integration Approach
@@ -25,3 +25,9 @@ A new `/electron` directory will be created to house all UI and Electron-specifi
 ## Deployment and Operations
 
 The final application will be packaged using `electron-builder` to generate distributable installers for Windows, macOS, and Linux. 
+
+### Release and CI Policy (2025-11-02)
+
+- Manual unsigned releases via GitHub Releases; keep historical releases for rollback.
+- Provide a `workflow_dispatch` that builds matrix artifacts (macOS/Windows/Linux) and publishes to the selected Release; auto‑update is disabled initially.
+- CI quality gates: run unit/integration/E2E tests, CodeQL (JavaScript), and Semgrep (Electron + JavaScript packs). High‑risk findings fail CI; optional `npm audit` may run locally or in CI.

@@ -42,7 +42,7 @@ class GeneratedImage {
         fs.mkdirSync(primaryDir, { recursive: true });
       }
     } catch (e) {
-      console.warn('⚠️ Could not ensure primary DB directory:', e.message);
+      console.warn('️ Could not ensure primary DB directory:', e.message);
     }
 
     // One-time migration from legacy locations if primary file missing
@@ -64,16 +64,16 @@ class GeneratedImage {
           try {
             if (legacy && fs.existsSync(legacy)) {
               fs.copyFileSync(legacy, primaryPath);
-              console.log(`🔁 Migrated database from legacy path to primary: ${legacy} -> ${primaryPath}`);
+              console.log(` Migrated database from legacy path to primary: ${legacy} -> ${primaryPath}`);
               break;
             }
           } catch (e) {
-            console.warn(`⚠️ Failed migrating DB from ${legacy}:`, e.message);
+            console.warn(`️ Failed migrating DB from ${legacy}:`, e.message);
           }
         }
       }
     } catch (e) {
-      console.warn('⚠️ DB migration check failed:', e.message);
+      console.warn('️ DB migration check failed:', e.message);
     }
 
     // Cleanup legacy DB files by moving them into a backup folder under the primary directory
@@ -107,17 +107,17 @@ class GeneratedImage {
                 try { fs.renameSync(extra, dest + suffix); } catch {}
               }
             });
-            console.log(`🧹 Moved legacy DB to backup: ${legacy} -> ${dest}`);
+            console.log(` Moved legacy DB to backup: ${legacy} -> ${dest}`);
           } catch (e) {
-            console.warn(`⚠️ Could not move legacy DB ${legacy}:`, e.message);
+            console.warn(`️ Could not move legacy DB ${legacy}:`, e.message);
           }
         }
       }
     } catch (e) {
-      console.warn('⚠️ Legacy DB cleanup skipped:', e.message);
+      console.warn('️ Legacy DB cleanup skipped:', e.message);
     }
 
-    console.log(`✅ Database path resolved (pinned${usedElectron ? ' userData' : ' project-data'}): ${primaryPath}`);
+    console.log(` Database path resolved (pinned${usedElectron ? ' userData' : ' project-data'}): ${primaryPath}`);
     return primaryPath;
   }
 
@@ -226,7 +226,7 @@ class GeneratedImage {
           const mappingIdColumn = columns.find(col => col.name === 'image_mapping_id');
           
           if ((executionIdColumn && executionIdColumn.notnull === 1) || !mappingIdColumn) {
-            console.log('🔄 Migrating generated_images table to add image_mapping_id and allow nullable execution_id...');
+            console.log(' Migrating generated_images table to add image_mapping_id and allow nullable execution_id...');
             this.migrateTable().then(resolve).catch(reject);
           } else {
             resolve();
@@ -241,7 +241,7 @@ class GeneratedImage {
    */
   async migrateTable() {
     return new Promise((resolve, reject) => {
-      console.log('🔄 Starting generated_images table migration...');
+      console.log(' Starting generated_images table migration...');
       
       // Create new table with nullable execution_id and image_mapping_id
       const createNewTableSQL = `
@@ -275,7 +275,7 @@ class GeneratedImage {
               reject(err);
               return;
             }
-            console.log('✅ New generated_images table created');
+            console.log(' New generated_images table created');
 
             // Copy data from old table to new table
             this.db.run(`
@@ -289,7 +289,7 @@ class GeneratedImage {
                 reject(err);
                 return;
               }
-              console.log('✅ Data copied to new table');
+              console.log(' Data copied to new table');
 
               // Drop old table
               this.db.run('DROP TABLE generated_images', (err) => {
@@ -298,7 +298,7 @@ class GeneratedImage {
                   reject(err);
                   return;
                 }
-                console.log('✅ Old table dropped');
+                console.log(' Old table dropped');
 
                 // Rename new table
                 this.db.run('ALTER TABLE generated_images_new RENAME TO generated_images', (err) => {
@@ -307,7 +307,7 @@ class GeneratedImage {
                     reject(err);
                     return;
                   }
-                  console.log('✅ Table migration completed successfully');
+                  console.log(' Table migration completed successfully');
                   resolve();
                 });
               });
@@ -491,15 +491,15 @@ class GeneratedImage {
     try {
       await fs.promises.access(imagePath);
       await fs.promises.unlink(imagePath);
-      console.log(`🗑️ Deleted image file: ${imagePath}`);
+      console.log(`️ Deleted image file: ${imagePath}`);
       return true;
     } catch (error) {
       if (error.code === 'ENOENT') {
         // File doesn't exist, which is fine
-        console.log(`ℹ️ Image file not found (already deleted): ${imagePath}`);
+        console.log(`️ Image file not found (already deleted): ${imagePath}`);
         return true;
       } else {
-        console.warn(`⚠️ Could not delete image file ${imagePath}:`, error.message);
+        console.warn(`️ Could not delete image file ${imagePath}:`, error.message);
         return false;
       }
     }

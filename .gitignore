@@ -89,6 +89,8 @@ Thumbs.db
 /user_data/
 /test-results/
 /playwright-report/
+bulk_export_*.zip
+exported-images-*.zip
 
 # Excel files
 *.xlsx

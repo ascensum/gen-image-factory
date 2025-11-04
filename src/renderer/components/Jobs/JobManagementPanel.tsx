@@ -605,7 +605,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       <div className="min-h-screen bg-[--background] text-[--foreground] flex flex-col overflow-hidden">
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-red-600 mb-4">⚠️ Error</div>
+            <div className="text-red-600 mb-4">️ Error</div>
             <p className="text-gray-600">{error}</p>
             <button 
               onClick={() => loadJobs(false)} 
@@ -913,20 +913,20 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                           e.preventDefault(); // Prevent default behavior
                           e.stopPropagation(); // Prevent row click from firing
                           
-                          console.log('🚨 DEBUG RERUN: JobManagementPanel rerun button clicked for job:', job.id);
-                          console.log('🚨 DEBUG RERUN: Timestamp:', new Date().toISOString());
-                          console.log('🚨 DEBUG RERUN: Event type:', e.type);
-                          console.log('🚨 DEBUG RERUN: Event target:', e.target);
-                          console.log('🚨 DEBUG RERUN: Event currentTarget:', e.currentTarget);
+                          console.log(' DEBUG RERUN: JobManagementPanel rerun button clicked for job:', job.id);
+                          console.log(' DEBUG RERUN: Timestamp:', new Date().toISOString());
+                          console.log(' DEBUG RERUN: Event type:', e.type);
+                          console.log(' DEBUG RERUN: Event target:', e.target);
+                          console.log(' DEBUG RERUN: Event currentTarget:', e.currentTarget);
                           
                           try {
                             // Call the rerun function
                             await window.electronAPI.jobManagement.rerunJobExecution(job.id);
                             
                             // Add a small delay to ensure the job is fully registered, then refresh UI
-                            console.log('🔄 Waiting for job registration to complete...');
+                            console.log(' Waiting for job registration to complete...');
                             setTimeout(async () => {
-                              console.log('🔄 Refreshing Job Management UI after rerun...');
+                              console.log(' Refreshing Job Management UI after rerun...');
                               await loadJobs();
                             }, 1000);
                           } catch (error) {

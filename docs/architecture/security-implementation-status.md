@@ -1,15 +1,15 @@
 # Security Implementation Status
 
 ## Overview
-This document tracks the security implementation status and the changes introduced by Story 1.11 (Security Hardening) and their impact on the architecture documentation.
+This document tracks the security implementation status and the changes introduced by Story 1.13 (Security Hardening) and their impact on the architecture documentation.
 
-## Security Changes from Story 1.11
+## Security Changes from Story 1.13
 
 ### **✅ Implemented Changes**
 
 #### **1. Security Tier Implementation**
 - **Tier 1**: Native OS Keychain (Primary) - ✅ Implemented
-- **Tier 2**: Encrypted Database (Fallback) - 🔄 Planned for Story 1.11
+- **Tier 2**: Encrypted Database (Fallback) - 🔄 Planned for Story 1.13
 - **Tier 3**: Plain Text Database (Development) - ✅ Current Implementation
 
 #### **2. Security Status Communication**
@@ -18,9 +18,9 @@ This document tracks the security implementation status and the changes introduc
 - **User messaging about storage method** - ✅ Implemented
 
 #### **3. Memory Protection (Planned)**
-- **API key clearing on exit** - 🔄 Planned for Story 1.11
-- **Log masking** - 🔄 Planned for Story 1.11
-- **Secure string handling** - 🔄 Planned for Story 1.11
+- **API key clearing on exit** - 🔄 Planned for Story 1.13
+- **Log masking** - 🔄 Planned for Story 1.13
+- **Secure string handling** - 🔄 Planned for Story 1.13
 
 ### **🔄 Architecture Documentation Updates**
 
@@ -78,9 +78,9 @@ if (apiKey) {
 }
 ```
 
-### **Planned Implementation (Story 1.11)**
+### **Planned Implementation (Story 1.13)**
 ```typescript
-// Security Tier 2: Encrypted Database (Story 1.11 Fallback)
+// Security Tier 2: Encrypted Database (Story 1.13 Fallback)
 } catch (error) {
   console.warn('Native keychain unavailable, trying encrypted database');
   const encryptedKey = await this.encryptedDb.getEncryptedValue('api-keys', serviceName);
@@ -102,7 +102,36 @@ if (apiKey) {
 }
 ```
 
-### **Planned UI Messages (Story 1.11)**
+## Electron Security Standards & CI Enforcement
+
+Defaults enforced in the Electron app:
+- `nodeIntegration: false`
+- `contextIsolation: true`
+- `enableRemoteModule: false`
+- `sandbox: true`
+- `webSecurity: true`
+
+Process enforcement:
+- Semgrep runs locally (pre-commit) on staged files and in CI (full repo) with `p/owasp-electron` and `p/javascript` packs; high‑risk findings fail CI.
+- CodeQL runs in CI for JavaScript; security alerts must be addressed.
+- IPC channels are whitelisted and validated via preload; inputs are sanitized.
+- Renderer applies strict CSP; no `eval()` or remote code loading is allowed.
+
+Configuration hygiene:
+- `.semgrep.yml` pins ruleset versions and excludes heavy/generated paths (e.g., `node_modules`, `playwright-report`, built assets) to keep scans fast and reproducible.
+
+## Unsigned Builds Policy (Initial Phase)
+
+- The application will distribute unsigned binaries via GitHub Releases initially.
+- Users must explicitly accept OS warnings (Undefined/Unknown Publisher) during install:
+  - macOS: Right‑click → Open (Gatekeeper prompt) for .app/.dmg/.zip
+  - Windows: SmartScreen warning; proceed anyway
+  - Linux: Typically no warning; may need executable bit
+- Auto-update is intentionally disabled at this stage; all updates are manual installs from Releases.
+- Rollback is manual: Users download and reinstall an older version from the Releases page.
+- Future path (optional): enable signing/notarization and app store submissions, then adopt auto-update with `electron-updater` and allow‑downgrade policies as needed.
+
+### **Planned UI Messages (Story 1.13)**
 ```typescript
 // Future implementation
 {secureStorageState === 'available' 
@@ -168,7 +197,7 @@ if (apiKey) {
 
 ## Conclusion
 
-The security changes from Story 1.11 have been properly reflected in the architecture documentation. The three-tier security approach provides a robust foundation for secure API key storage while maintaining user-friendly communication about security status.
+The security changes from Story 1.13 have been properly reflected in the architecture documentation. The three-tier security approach provides a robust foundation for secure API key storage while maintaining user-friendly communication about security status.
 
 The architecture now clearly documents:
 - Security implementation tiers
@@ -176,4 +205,4 @@ The architecture now clearly documents:
 - Security status communication
 - Encryption and fallback mechanisms
 
-All major architecture documents have been updated to reflect the security enhancements planned in Story 1.11.
+All major architecture documents have been updated to reflect the security enhancements planned in Story 1.13.

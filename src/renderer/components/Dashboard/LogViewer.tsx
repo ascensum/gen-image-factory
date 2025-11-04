@@ -375,14 +375,14 @@ const LogViewer: React.FC<LogViewerProps> = ({
                       {/* Image index */}
                       {log.imageIndex !== null && log.imageIndex !== undefined && (
                         <div className="text-purple-600">
-                          📷 Image {log.imageIndex + 1}
+                           Image {log.imageIndex + 1}
                         </div>
                       )}
                       
                       {/* Duration */}
                       {log.durationMs !== null && log.durationMs !== undefined && (
                         <div className="text-orange-600">
-                          ⏱️ {log.durationMs}ms
+                          ️ {log.durationMs}ms
                         </div>
                       )}
                       
@@ -398,7 +398,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
                       {log.metadata && Object.keys(log.metadata).length > 0 && (
                         <details className="mt-1">
                           <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
-                            📋 Metadata ({Object.keys(log.metadata).length} fields)
+                             Metadata ({Object.keys(log.metadata).length} fields)
                           </summary>
                           <div className="mt-1 pl-2 text-gray-600">
                             {Object.entries(log.metadata).map(([key, value]) => (

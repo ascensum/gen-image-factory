@@ -150,7 +150,7 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
           <div className="flex items-center space-x-2">
             {image.seed && (
               <span className="font-mono" title={`Seed: ${image.seed}`}>
-                🎲 {image.seed}
+                 {image.seed}
               </span>
             )}
           </div>

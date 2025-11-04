@@ -78,7 +78,7 @@ describe('FailedImageCard', () => {
         />
       );
 
-      expect(screen.getByText('🎲 12345')).toBeInTheDocument();
+      expect(screen.getByText(' 12345')).toBeInTheDocument();
     });
 
     it('displays the creation date', () => {
@@ -158,7 +158,7 @@ describe('FailedImageCard', () => {
         />
       );
 
-      expect(screen.getByText('⚠️ Failed')).toBeInTheDocument();
+      expect(screen.getByText('️ Failed')).toBeInTheDocument();
     });
 
     it('does not show failure indicator when no qcReason', () => {
@@ -173,7 +173,7 @@ describe('FailedImageCard', () => {
         />
       );
 
-      expect(screen.queryByText('⚠️ Failed')).not.toBeInTheDocument();
+      expect(screen.queryByText('️ Failed')).not.toBeInTheDocument();
     });
 
     it('displays failure reason prominently', () => {
@@ -272,9 +272,9 @@ describe('FailedImageCard', () => {
       );
 
       expect(screen.getByText('✓ Approve')).toBeInTheDocument();
-      expect(screen.getByText('🔄 Retry')).toBeInTheDocument();
-      expect(screen.getByText('👁 View')).toBeInTheDocument();
-      expect(screen.getByText('🗑 Delete')).toBeInTheDocument();
+      expect(screen.getByText(' Retry')).toBeInTheDocument();
+      expect(screen.getByText(' View')).toBeInTheDocument();
+      expect(screen.getByText(' Delete')).toBeInTheDocument();
     });
 
     it('calls onAction with correct parameters for approve', () => {
@@ -303,7 +303,7 @@ describe('FailedImageCard', () => {
         />
       );
 
-      const retryButton = screen.getByText('🔄 Retry');
+      const retryButton = screen.getByText(' Retry');
       fireEvent.click(retryButton);
 
       expect(mockOnAction).toHaveBeenCalledWith('retry', 'test-image-1');
@@ -319,7 +319,7 @@ describe('FailedImageCard', () => {
         />
       );
 
-      const viewButton = screen.getByText('👁 View');
+      const viewButton = screen.getByText(' View');
       fireEvent.click(viewButton);
 
       expect(mockOnAction).toHaveBeenCalledWith('view', 'test-image-1');
@@ -335,7 +335,7 @@ describe('FailedImageCard', () => {
         />
       );
 
-      const deleteButton = screen.getByText('🗑 Delete');
+      const deleteButton = screen.getByText(' Delete');
       fireEvent.click(deleteButton);
 
       expect(mockOnAction).toHaveBeenCalledWith('delete', 'test-image-1');
@@ -354,9 +354,9 @@ describe('FailedImageCard', () => {
       );
 
       const approveButton = screen.getByText('✓ Approve');
-      const retryButton = screen.getByText('🔄 Retry');
-      const viewButton = screen.getByText('👁 View');
-      const deleteButton = screen.getByText('🗑 Delete');
+      const retryButton = screen.getByText(' Retry');
+      const viewButton = screen.getByText(' View');
+      const deleteButton = screen.getByText(' Delete');
 
       expect(approveButton).toHaveClass('bg-green-600', 'hover:bg-green-700');
       expect(retryButton).toHaveClass('bg-blue-600', 'hover:bg-blue-700');
@@ -443,7 +443,7 @@ describe('FailedImageCard', () => {
         />
       );
 
-      expect(screen.queryByText(/🎲/)).not.toBeInTheDocument();
+      expect(screen.queryByText(//)).not.toBeInTheDocument();
     });
 
     it('handles image without metadata gracefully', () => {
@@ -540,7 +540,7 @@ describe('FailedImageCard', () => {
       );
 
       const approveButton = screen.getByText('✓ Approve');
-      const retryButton = screen.getByText('🔄 Retry');
+      const retryButton = screen.getByText(' Retry');
 
       // Rapid clicks should all be registered
       fireEvent.click(approveButton);

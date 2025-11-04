@@ -27,13 +27,13 @@ class BackendAdapter {
     
     // Check if there's already a global backendAdapter and reuse its JobRunner
     if (global.backendAdapter && global.backendAdapter.jobRunner) {
-      console.log('🔄 Reusing existing JobRunner from global backendAdapter');
+      console.log(' Reusing existing JobRunner from global backendAdapter');
       this.jobRunner = global.backendAdapter.jobRunner;
     } else if (options.existingJobRunner) {
-      console.log('🔄 Using passed existing JobRunner');
+      console.log(' Using passed existing JobRunner');
       this.jobRunner = options.existingJobRunner;
     } else {
-      console.log('🆕 Creating new JobRunner instance');
+      console.log(' Creating new JobRunner instance');
       this.jobRunner = new JobRunner();
     }
     
@@ -57,7 +57,7 @@ class BackendAdapter {
    */
   setMainWindow(mainWindow) {
     this.mainWindow = mainWindow;
-    console.log('🔧 BackendAdapter: MainWindow reference set for event sending');
+    console.log(' BackendAdapter: MainWindow reference set for event sending');
     
     // Initialize RetryExecutor when mainWindow is available
     this.initializeRetryExecutor();
@@ -68,17 +68,17 @@ class BackendAdapter {
    */
   async initializeRetryExecutor() {
     try {
-      console.log('🔧 BackendAdapter: Initializing RetryExecutor...');
+      console.log(' BackendAdapter: Initializing RetryExecutor...');
       
       // Ensure settings are loaded before creating RetryExecutor
       if (!this.settings) {
         try {
-          console.log('🔧 BackendAdapter: Loading settings for RetryExecutor...');
+          console.log(' BackendAdapter: Loading settings for RetryExecutor...');
           const settingsResult = await this.getSettings();
           this.settings = settingsResult.settings || {};
-          console.log('🔧 BackendAdapter: Settings loaded with keys:', Object.keys(this.settings));
+          console.log(' BackendAdapter: Settings loaded with keys:', Object.keys(this.settings));
         } catch (error) {
-          console.warn('🔧 BackendAdapter: Failed to load settings for RetryExecutor, using defaults:', error.message);
+          console.warn(' BackendAdapter: Failed to load settings for RetryExecutor, using defaults:', error.message);
           this.settings = {};
         }
       }
@@ -100,7 +100,7 @@ class BackendAdapter {
       // Override with user settings if available
       tempDir = this.settings?.filePaths?.tempDirectory || tempDir;
       outputDir = this.settings?.filePaths?.outputDirectory || outputDir;
-      console.log('🔧 BackendAdapter: Creating RetryExecutor with tempDirectory:', tempDir, 'outputDirectory:', outputDir);
+      console.log(' BackendAdapter: Creating RetryExecutor with tempDirectory:', tempDir, 'outputDirectory:', outputDir);
       
       try {
         this.retryExecutor = new RetryExecutor({
@@ -109,20 +109,20 @@ class BackendAdapter {
           generatedImage: this.generatedImage,
           jobConfig: this.jobConfig
         });
-        console.log('🔧 BackendAdapter: RetryExecutor created successfully');
+        console.log(' BackendAdapter: RetryExecutor created successfully');
         
         // Set up event listeners for progress tracking
         if (this.retryExecutor && typeof this.retryExecutor.on === 'function' && this.mainWindow) {
           this.setupRetryExecutorEventListeners();
         }
       } catch (error) {
-        console.error('🔧 BackendAdapter: Failed to create RetryExecutor:', error);
+        console.error(' BackendAdapter: Failed to create RetryExecutor:', error);
         // Don't throw error, just log it and continue without retry functionality
-        console.warn('🔧 BackendAdapter: Retry functionality will be disabled due to initialization failure');
+        console.warn(' BackendAdapter: Retry functionality will be disabled due to initialization failure');
         this.retryExecutor = null;
       }
     } catch (error) {
-      console.error('🔧 BackendAdapter: Error during RetryExecutor initialization:', error);
+      console.error(' BackendAdapter: Error during RetryExecutor initialization:', error);
       this.retryExecutor = null;
     }
   }
@@ -144,9 +144,9 @@ class BackendAdapter {
             });
           }
         } catch (error) {
-          console.warn('🔧 BackendAdapter: Failed to send retry-progress event to frontend:', error.message);
+          console.warn(' BackendAdapter: Failed to send retry-progress event to frontend:', error.message);
         }
-        console.log('🔧 BackendAdapter: RetryExecutor progress event:', data);
+        console.log(' BackendAdapter: RetryExecutor progress event:', data);
       });
 
       this.retryExecutor.on('job-completed', (data) => {
@@ -159,9 +159,9 @@ class BackendAdapter {
             });
           }
         } catch (error) {
-          console.warn('🔧 BackendAdapter: Failed to send retry-completed event to frontend:', error.message);
+          console.warn(' BackendAdapter: Failed to send retry-completed event to frontend:', error.message);
         }
-        console.log('🔧 BackendAdapter: RetryExecutor job completed:', data);
+        console.log(' BackendAdapter: RetryExecutor job completed:', data);
       });
 
       this.retryExecutor.on('job-error', (data) => {
@@ -174,9 +174,9 @@ class BackendAdapter {
             });
           }
         } catch (error) {
-          console.warn('🔧 BackendAdapter: Failed to send retry-error event to frontend:', error.message);
+          console.warn(' BackendAdapter: Failed to send retry-error event to frontend:', error.message);
         }
-        console.log('🔧 BackendAdapter: RetryExecutor job error:', data);
+        console.log(' BackendAdapter: RetryExecutor job error:', data);
       });
 
       this.retryExecutor.on('queue-updated', (data) => {
@@ -189,9 +189,9 @@ class BackendAdapter {
             });
           }
         } catch (error) {
-          console.warn('🔧 BackendAdapter: Failed to send retry-queue-updated event to frontend:', error.message);
+          console.warn(' BackendAdapter: Failed to send retry-queue-updated event to frontend:', error.message);
         }
-        console.log('🔧 BackendAdapter: RetryExecutor queue updated:', data);
+        console.log(' BackendAdapter: RetryExecutor queue updated:', data);
       });
 
       this.retryExecutor.on('job-status-updated', (data) => {
@@ -204,14 +204,14 @@ class BackendAdapter {
             });
           }
         } catch (error) {
-          console.warn('🔧 BackendAdapter: Failed to send retry-status-updated event to frontend:', error.message);
+          console.warn(' BackendAdapter: Failed to send retry-status-updated event to frontend:', error.message);
         }
-        console.log('🔧 BackendAdapter: RetryExecutor status updated:', data);
+        console.log(' BackendAdapter: RetryExecutor status updated:', data);
       });
       
-      console.log('🔧 BackendAdapter: RetryExecutor event listeners set up successfully');
+      console.log(' BackendAdapter: RetryExecutor event listeners set up successfully');
     } catch (error) {
-      console.error('🔧 BackendAdapter: Error setting up RetryExecutor event listeners:', error);
+      console.error(' BackendAdapter: Error setting up RetryExecutor event listeners:', error);
     }
   }
 
@@ -240,9 +240,9 @@ class BackendAdapter {
   }
 
   setupIpcHandlers() {
-    console.log('🔧 BackendAdapter.setupIpcHandlers() called');
-    console.log('🔧 this.ipc type:', typeof this.ipc);
-    console.log('🔧 ipcMain available:', typeof ipcMain !== 'undefined');
+    console.log(' BackendAdapter.setupIpcHandlers() called');
+    console.log(' this.ipc type:', typeof this.ipc);
+    console.log(' ipcMain available:', typeof ipcMain !== 'undefined');
     
     // Only set up IPC handlers if we have an IPC interface (electron main or injected)
     const _ipc = this.ipc;
@@ -250,7 +250,7 @@ class BackendAdapter {
     // If no IPC interface in constructor, try to get it from global scope (for main.js usage)
     if (!_ipc && typeof ipcMain !== 'undefined') {
       this.ipc = ipcMain;
-      console.log('🔧 BackendAdapter: Using ipcMain from global scope');
+      console.log(' BackendAdapter: Using ipcMain from global scope');
     }
     
     if (typeof this.ipc !== 'undefined' && this.ipc) {
@@ -344,11 +344,11 @@ class BackendAdapter {
 
       // Job Control
       _ipc.handle('job:start', async (event, config) => {
-        console.log('🚨 IPC HANDLER: job:start called with config keys:', Object.keys(config));
-        console.log('🚨 IPC HANDLER: About to call this.startJob...');
-        console.log('🚨 IPC HANDLER: Stack trace:', new Error().stack);
+        console.log(' IPC HANDLER: job:start called with config keys:', Object.keys(config));
+        console.log(' IPC HANDLER: About to call this.startJob...');
+        console.log(' IPC HANDLER: Stack trace:', new Error().stack);
         const result = await this.startJob(config);
-        console.log('🚨 IPC HANDLER: this.startJob returned:', result);
+        console.log(' IPC HANDLER: this.startJob returned:', result);
         return result;
       });
 
@@ -608,13 +608,13 @@ class BackendAdapter {
         if (!global.rerunCallCount) global.rerunCallCount = 0;
         global.rerunCallCount++;
         
-        console.log('🚨 DEBUG RERUN: IPC handler called with id:', id);
-        console.log('🚨 DEBUG RERUN: Event source:', event.sender?.id);
-        console.log('🚨 DEBUG RERUN: Current timestamp:', new Date().toISOString());
-        console.log('🚨 DEBUG RERUN: Stack trace:', new Error().stack);
-        console.log('🚨 DEBUG RERUN: Global call count:', global.rerunCallCount);
-        console.log('🚨 DEBUG RERUN: Process ID:', process.pid);
-        console.log('🚨 DEBUG RERUN: Memory usage:', process.memoryUsage());
+        console.log(' DEBUG RERUN: IPC handler called with id:', id);
+        console.log(' DEBUG RERUN: Event source:', event.sender?.id);
+        console.log(' DEBUG RERUN: Current timestamp:', new Date().toISOString());
+        console.log(' DEBUG RERUN: Stack trace:', new Error().stack);
+        console.log(' DEBUG RERUN: Global call count:', global.rerunCallCount);
+        console.log(' DEBUG RERUN: Process ID:', process.pid);
+        console.log(' DEBUG RERUN: Memory usage:', process.memoryUsage());
         
         try {
           await this.ensureInitialized();
@@ -1089,13 +1089,13 @@ class BackendAdapter {
   // Job Control Methods
   async startJob(config) {
     try {
-      console.log('🚨 METHOD ENTRY: backendAdapter.startJob method entered!');
-      console.log('🔧 backendAdapter.startJob called with config keys:', Object.keys(config));
-      console.log('🔧 DEBUG - filePaths in config:', JSON.stringify(config.filePaths, null, 2));
+      console.log(' METHOD ENTRY: backendAdapter.startJob method entered!');
+      console.log(' backendAdapter.startJob called with config keys:', Object.keys(config));
+      console.log(' DEBUG - filePaths in config:', JSON.stringify(config.filePaths, null, 2));
       
       // Prevent multiple simultaneous job executions
       if (this.jobRunner && this.jobRunner.isRunning) {
-        console.log('⚠️ Job is already running, ignoring duplicate start request');
+        console.log('️ Job is already running, ignoring duplicate start request');
         return { success: false, error: 'Job is already running' };
       }
       
@@ -1116,7 +1116,7 @@ class BackendAdapter {
             : defaultFilePaths.tempDirectory
         };
         
-        console.log('🔧 DEBUG - Normalized filePaths:', JSON.stringify(normalizedConfig.filePaths, null, 2));
+        console.log(' DEBUG - Normalized filePaths:', JSON.stringify(normalizedConfig.filePaths, null, 2));
       }
       
       // Detect test environment once and reuse throughout
@@ -1148,7 +1148,7 @@ class BackendAdapter {
       }
 
       // Save the normalized job configuration first so it can be retrieved later
-      console.log('💾 Saving normalized job configuration for future retrieval...');
+      console.log(' Saving normalized job configuration for future retrieval...');
       const providedLabel = (normalizedConfig && normalizedConfig.parameters && typeof normalizedConfig.parameters.label === 'string')
         ? normalizedConfig.parameters.label.trim()
         : '';
@@ -1161,12 +1161,12 @@ class BackendAdapter {
         normalizedConfig.parameters = { ...(normalizedConfig.parameters || {}), label: fallbackLabel };
       }
       const configResult = await this.jobConfig.saveSettings(normalizedConfig, configName);
-      console.log('💾 Configuration saved with ID:', configResult.id);
+      console.log(' Configuration saved with ID:', configResult.id);
 
       // Lightweight fast-path for test environments to avoid real external calls
       try {
         if (isTestEnv) {
-          console.log('🧪 Test mode detected: using lightweight startJob path');
+          console.log(' Test mode detected: using lightweight startJob path');
           // Create execution (running)
           const createRes = await this.jobExecution.saveJobExecution({
             configurationId: configResult.id,
@@ -1194,11 +1194,11 @@ class BackendAdapter {
           return { success: true, jobId: `test_${Date.now()}`, executionId: execId };
         }
       } catch (e) {
-        console.warn('🧪 Test fast-path failed, falling back to normal flow:', e.message);
+        console.warn(' Test fast-path failed, falling back to normal flow:', e.message);
       }
       
       // Create or reuse a JobRunner instance (tests can mock the imported JobRunner)
-      console.log('🆕 Preparing JobRunner instance for this job');
+      console.log(' Preparing JobRunner instance for this job');
       const jobRunner = this.jobRunner || new JobRunner();
       
       // Set the backendAdapter reference
@@ -1212,24 +1212,24 @@ class BackendAdapter {
       jobRunner.databaseExecutionId = null;
       jobRunner.persistedLabel = null;
       
-      console.log('🔧 jobRunner instance:', jobRunner);
-      console.log('🔧 jobRunner.startJob method type:', typeof jobRunner.startJob);
+      console.log(' jobRunner instance:', jobRunner);
+      console.log(' jobRunner.startJob method type:', typeof jobRunner.startJob);
       
       if (!jobRunner || typeof jobRunner.startJob !== 'function') {
         throw new Error('JobRunner not properly initialized');
       }
       
-      console.log('🔧 About to call jobRunner.startJob with normalized config keys:', Object.keys(normalizedConfig));
+      console.log(' About to call jobRunner.startJob with normalized config keys:', Object.keys(normalizedConfig));
       const result = await jobRunner.startJob(normalizedConfig);
-      console.log('✅ backendAdapter.startJob result:', result);
+      console.log(' backendAdapter.startJob result:', result);
       
       // Store the jobRunner instance for status queries
       this.jobRunner = jobRunner;
       
       return result;
     } catch (error) {
-      console.error('❌ Error starting job in backendAdapter:', error);
-      console.error('❌ Error stack:', error.stack);
+      console.error(' Error starting job in backendAdapter:', error);
+      console.error(' Error stack:', error.stack);
       const translatedError = this.errorTranslation.createJobError(
         'unknown',
         error,
@@ -1284,9 +1284,9 @@ class BackendAdapter {
   async getJobStatus() {
     try {
       const status = await this.jobRunner.getJobStatus();
-      console.log('🔍 getJobStatus - Raw status from jobRunner:', status);
-      console.log('🔍 getJobStatus - status.state:', status.state);
-      console.log('🔍 getJobStatus - status.currentJob:', status.currentJob);
+      console.log(' getJobStatus - Raw status from jobRunner:', status);
+      console.log(' getJobStatus - status.state:', status.state);
+      console.log(' getJobStatus - status.currentJob:', status.currentJob);
       
       const result = {
         state: status.state || 'idle',
@@ -1298,7 +1298,7 @@ class BackendAdapter {
         estimatedTimeRemaining: status.estimatedTimeRemaining || null
       };
       
-      console.log('🔍 getJobStatus - Returning result:', result);
+      console.log(' getJobStatus - Returning result:', result);
       return result;
     } catch (error) {
       console.error('Error getting job status:', error);
@@ -1748,7 +1748,7 @@ class BackendAdapter {
       
       // Check if image has tempImagePath (should be moved to final location)
       if (image.tempImagePath && !image.finalImagePath) {
-        console.log(`🔧 manualApproveImage: Moving image from temp to final location`);
+        console.log(` manualApproveImage: Moving image from temp to final location`);
         
         // Get the original job configuration to determine correct output directory
         const jobConfig = await this.getJobConfigurationForImage(imageId);
@@ -1756,19 +1756,19 @@ class BackendAdapter {
         
         if (jobConfig && jobConfig.settings && jobConfig.settings.filePaths) {
           outputDirectory = jobConfig.settings.filePaths.outputDirectory;
-          console.log(`🔧 manualApproveImage: Using custom outputDirectory: ${outputDirectory}`);
+          console.log(` manualApproveImage: Using custom outputDirectory: ${outputDirectory}`);
         } else {
           // Use fallback path
           try {
             const { app } = require('electron');
             const desktopPath = app.getPath('desktop');
             outputDirectory = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
-            console.log(`🔧 manualApproveImage: Using fallback Desktop path: ${outputDirectory}`);
+            console.log(` manualApproveImage: Using fallback Desktop path: ${outputDirectory}`);
           } catch (error) {
             const os = require('os');
             const homeDir = os.homedir();
             outputDirectory = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
-            console.log(`🔧 manualApproveImage: Using fallback Documents path: ${outputDirectory}`);
+            console.log(` manualApproveImage: Using fallback Documents path: ${outputDirectory}`);
           }
         }
         
@@ -1781,7 +1781,7 @@ class BackendAdapter {
         
         // Move the file from temp to final location
         await fs.rename(image.tempImagePath, finalImagePath);
-        console.log(`🔧 manualApproveImage: Successfully moved image to: ${finalImagePath}`);
+        console.log(` manualApproveImage: Successfully moved image to: ${finalImagePath}`);
         
         // Update database with full row to satisfy NOT NULL constraints
         await this.generatedImage.updateGeneratedImage(imageId, {
@@ -1795,7 +1795,7 @@ class BackendAdapter {
           processingSettings: image.processingSettings || null
         });
         
-        console.log(`🔧 manualApproveImage: Updated database with final path`);
+        console.log(` manualApproveImage: Updated database with final path`);
       }
       
       // Update QC status to approved
@@ -1980,11 +1980,11 @@ class BackendAdapter {
   // Failed Images Review Methods - Batch Processing
   async retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings = null, includeMetadata = false) {
     try {
-      console.log('🔧 BackendAdapter: retryFailedImagesBatch called');
-      console.log('🔧 BackendAdapter: imageIds:', imageIds);
-      console.log('🔧 BackendAdapter: useOriginalSettings:', useOriginalSettings);
-      console.log('🔧 BackendAdapter: modifiedSettings keys:', modifiedSettings ? Object.keys(modifiedSettings) : 'null');
-      console.log('🔧 BackendAdapter: includeMetadata:', includeMetadata);
+      console.log(' BackendAdapter: retryFailedImagesBatch called');
+      console.log(' BackendAdapter: imageIds:', imageIds);
+      console.log(' BackendAdapter: useOriginalSettings:', useOriginalSettings);
+      console.log(' BackendAdapter: modifiedSettings keys:', modifiedSettings ? Object.keys(modifiedSettings) : 'null');
+      console.log(' BackendAdapter: includeMetadata:', includeMetadata);
       
       await this.ensureInitialized();
       
@@ -2050,7 +2050,7 @@ class BackendAdapter {
         ? this.sanitizeProcessingSettings(modifiedSettings)
         : null;
       
-      console.log('🔧 BackendAdapter: sanitizedSettings keys:', sanitizedSettings ? Object.keys(sanitizedSettings) : 'null');
+      console.log(' BackendAdapter: sanitizedSettings keys:', sanitizedSettings ? Object.keys(sanitizedSettings) : 'null');
 
       // Update all images to retry_pending status
       const updatePromises = images.map(image => {
@@ -2068,7 +2068,7 @@ class BackendAdapter {
       // If using modified settings, DO NOT persist them globally to images.
       // Pass them transiently via retry queue only to avoid configuration bleed.
       if (!useOriginalSettings && sanitizedSettings) {
-        console.log('🔧 BackendAdapter: Using modified settings transiently for retry (no DB persist)');
+        console.log(' BackendAdapter: Using modified settings transiently for retry (no DB persist)');
       }
 
       // Create a batch retry job
@@ -2082,18 +2082,18 @@ class BackendAdapter {
         status: 'pending'
       };
       
-      console.log('🔧 BackendAdapter: Created batch retry job with keys:', Object.keys(batchRetryJob));
+      console.log(' BackendAdapter: Created batch retry job with keys:', Object.keys(batchRetryJob));
 
       // Add the batch retry job to the executor
       let queuedJob;
       try {
         if (this.retryExecutor && typeof this.retryExecutor.addBatchRetryJob === 'function') {
-          console.log('🔧 BackendAdapter: Adding batch retry job to RetryExecutor');
+          console.log(' BackendAdapter: Adding batch retry job to RetryExecutor');
           queuedJob = await this.retryExecutor.addBatchRetryJob(batchRetryJob);
-          console.log('🔧 BackendAdapter: Job queued successfully with keys:', Object.keys(queuedJob));
+          console.log(' BackendAdapter: Job queued successfully with keys:', Object.keys(queuedJob));
         } else {
           // Fallback for test environment or when RetryExecutor is not available
-          console.log('🔧 BackendAdapter: RetryExecutor not available, using fallback');
+          console.log(' BackendAdapter: RetryExecutor not available, using fallback');
           queuedJob = {
             ...batchRetryJob,
             id: `retry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -2101,7 +2101,7 @@ class BackendAdapter {
           };
         }
       } catch (error) {
-        console.error('🔧 BackendAdapter: Error adding batch retry job to executor:', error);
+        console.error(' BackendAdapter: Error adding batch retry job to executor:', error);
         // Create a fallback job if the executor fails
         queuedJob = {
           ...batchRetryJob,
@@ -2133,7 +2133,7 @@ class BackendAdapter {
    */
   async ensureRetryExecutorInitialized() {
     if (!this.retryExecutor) {
-      console.log('🔧 BackendAdapter: RetryExecutor not initialized, attempting to initialize...');
+      console.log(' BackendAdapter: RetryExecutor not initialized, attempting to initialize...');
       await this.initializeRetryExecutor();
     }
     return this.retryExecutor !== null;
@@ -2625,7 +2625,7 @@ class BackendAdapter {
           queueTimestamp: new Date().toISOString()
         })));
         
-        console.log(`📋 Bulk rerun: ${remainingJobs.length} jobs queued for sequential execution`);
+        console.log(` Bulk rerun: ${remainingJobs.length} jobs queued for sequential execution`);
       }
         
         return { 
@@ -2686,20 +2686,20 @@ class BackendAdapter {
   async processNextBulkRerunJob() {
     try {
       if (!global.bulkRerunQueue || global.bulkRerunQueue.length === 0) {
-        console.log('📋 Bulk rerun: No jobs in queue');
+        console.log(' Bulk rerun: No jobs in queue');
         return { success: false, message: 'No jobs in queue' };
       }
 
       // Check if we can start another job
       const currentStatus = await this.jobRunner.getJobStatus();
       if (currentStatus.status === 'running') {
-        console.log('📋 Bulk rerun: Another job is running, waiting...');
+        console.log(' Bulk rerun: Another job is running, waiting...');
         return { success: false, message: 'Another job is running' };
       }
 
       // Get the next job from the queue
       const nextJob = global.bulkRerunQueue.shift();
-      console.log(`📋 Bulk rerun: Processing next job: ${nextJob.label || nextJob.jobId}`);
+      console.log(` Bulk rerun: Processing next job: ${nextJob.label || nextJob.jobId}`);
 
       // Create a new job execution record FIRST (before starting the job)
       const nextLabelBase = (nextJob?.configuration?.parameters?.label || nextJob?.label || '').toString().trim() || (nextJob?.configuration?.name || '').toString().trim();
@@ -2711,7 +2711,7 @@ class BackendAdapter {
 
       const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
       if (!newExecution.success) {
-        console.error('📋 Bulk rerun: Failed to create execution record for queued job');
+        console.error(' Bulk rerun: Failed to create execution record for queued job');
         return { success: false, error: 'Failed to create execution record' };
       }
 
@@ -2733,7 +2733,7 @@ class BackendAdapter {
       // Start the job
       const jobResult = await this.jobRunner.startJob(nextJob.configuration);
       if (jobResult.success) {
-        console.log(`📋 Bulk rerun: Started queued job: ${nextJob.label || nextJob.jobId}`);
+        console.log(` Bulk rerun: Started queued job: ${nextJob.label || nextJob.jobId}`);
         return { 
           success: true, 
           message: 'Queued job started successfully',
@@ -2744,7 +2744,7 @@ class BackendAdapter {
       } else {
         // Update execution record to failed
         await this.jobExecution.updateJobExecution(newExecution.id, { status: 'failed' });
-        console.error(`📋 Bulk rerun: Failed to start queued job: ${jobResult.error}`);
+        console.error(` Bulk rerun: Failed to start queued job: ${jobResult.error}`);
         return { success: false, error: jobResult.error };
       }
 

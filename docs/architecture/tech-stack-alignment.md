@@ -24,7 +24,7 @@ The foundation of the application remains your proven Node.js backend.
 | **Keytar** | Secure Key Storage | To securely store API keys in the native OS credential manager. |
 | **Electron Builder**| Application Packager | To package the application into distributable installers. |
 
-## Security Technology Stack (Story 1.11)
+## Security Technology Stack (Story 1.13)
 
 | Technology | Purpose | Rationale |
 | :--- | :--- | :--- |

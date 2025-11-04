@@ -73,7 +73,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   }, [jobId]);
 
   const loadJobData = async () => {
-    console.log('🔄 SingleJobView: loadJobData called');
+    console.log(' SingleJobView: loadJobData called');
     setIsLoading(true);
     setError(null);
     
@@ -100,11 +100,11 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
         // Calculate and update statistics from actual images
         if (jobResult.execution.id) {
-          console.log('🔄 SingleJobView: Calculating statistics for execution ID:', jobResult.execution.id);
+          console.log(' SingleJobView: Calculating statistics for execution ID:', jobResult.execution.id);
           try {
             const statsResult = await window.electronAPI.calculateJobExecutionStatistics(jobResult.execution.id);
             if (statsResult.success) {
-              console.log('🔄 SingleJobView: Calculated statistics:', statsResult.statistics);
+              console.log(' SingleJobView: Calculated statistics:', statsResult.statistics);
               // Update the job with calculated statistics including QC breakdown
               setJob(prevJob => {
                 const base = prevJob ?? ({} as JobExecution);
@@ -135,12 +135,12 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       
       // Load job images - use the numeric database ID from job execution
       if (jobResult.execution?.id) {
-        console.log('🔄 SingleJobView: Loading images for execution ID:', jobResult.execution.id);
+        console.log(' SingleJobView: Loading images for execution ID:', jobResult.execution.id);
         const imagesResult = await window.electronAPI.generatedImages.getGeneratedImagesByExecution(jobResult.execution.id);
-        console.log('🔄 SingleJobView: Images result:', imagesResult);
+        console.log(' SingleJobView: Images result:', imagesResult);
         if (imagesResult.success) {
-          console.log('🔄 SingleJobView: Setting images:', imagesResult.images);
-          console.log('🔄 SingleJobView: Images QC statuses:', imagesResult.images?.map((img: any) => ({ id: img.id, qcStatus: img.qcStatus })));
+          console.log(' SingleJobView: Setting images:', imagesResult.images);
+          console.log(' SingleJobView: Images QC statuses:', imagesResult.images?.map((img: any) => ({ id: img.id, qcStatus: img.qcStatus })));
           setImages(imagesResult.images || []);
         } else {
           console.warn('Failed to load images:', imagesResult.error);
@@ -164,27 +164,27 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       }
       
       // Load job configuration if available
-      console.log('🔍 DEBUG: jobResult structure:', jobResult);
-      console.log('🔍 DEBUG: jobResult.execution:', jobResult.execution);
-      console.log('🔍 DEBUG: jobResult.execution?.configurationId:', jobResult.execution?.configurationId);
+      console.log(' DEBUG: jobResult structure:', jobResult);
+      console.log(' DEBUG: jobResult.execution:', jobResult.execution);
+      console.log(' DEBUG: jobResult.execution?.configurationId:', jobResult.execution?.configurationId);
       
       if (jobResult.execution?.configurationId) {
         try {
-          console.log('🔍 DEBUG: About to call getJobConfigurationById with:', jobResult.execution.configurationId);
+          console.log(' DEBUG: About to call getJobConfigurationById with:', jobResult.execution.configurationId);
           const configResult = await window.electronAPI.getJobConfigurationById(jobResult.execution.configurationId);
-          console.log('🔍 DEBUG: getJobConfigurationById result:', configResult);
+          console.log(' DEBUG: getJobConfigurationById result:', configResult);
           if (configResult.success && configResult.configuration) {
-            console.log('🔍 DEBUG: Setting job configuration:', configResult.configuration);
+            console.log(' DEBUG: Setting job configuration:', configResult.configuration);
             setJobConfiguration(configResult.configuration);
           } else {
-            console.warn('🔍 DEBUG: getJobConfigurationById failed:', configResult);
+            console.warn(' DEBUG: getJobConfigurationById failed:', configResult);
           }
         } catch (configError) {
           console.warn('Failed to load job configuration:', configError);
           // Don't fail the entire load for missing configuration
         }
       } else {
-        console.warn('🔍 DEBUG: No configurationId found in jobResult.execution');
+        console.warn(' DEBUG: No configurationId found in jobResult.execution');
       }
       
     } catch (error) {
@@ -212,9 +212,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   }, []);
   
   const handleRerun = useCallback(() => {
-    console.log('🚨 DEBUG RERUN: SingleJobView rerun button clicked for jobId:', jobId);
-    console.log('🚨 DEBUG RERUN: Timestamp:', new Date().toISOString());
-    console.log('🚨 DEBUG RERUN: Stack trace:', new Error().stack);
+    console.log(' DEBUG RERUN: SingleJobView rerun button clicked for jobId:', jobId);
+    console.log(' DEBUG RERUN: Timestamp:', new Date().toISOString());
+    console.log(' DEBUG RERUN: Stack trace:', new Error().stack);
     onRerun(jobId);
   }, [onRerun, jobId]);
   

@@ -283,16 +283,16 @@ const JobStatistics: React.FC<JobStatisticsProps> = ({
                     <p>✓ {completedJobs} job{completedJobs !== 1 ? 's' : ''} completed successfully</p>
                   )}
                   {failedJobs > 0 && (
-                    <p>⚠ {failedJobs} job{failedJobs !== 1 ? 's' : ''} failed</p>
+                    <p> {failedJobs} job{failedJobs !== 1 ? 's' : ''} failed</p>
                   )}
                   {processingJobs > 0 && (
-                    <p>🔄 {processingJobs} job{processingJobs !== 1 ? 's' : ''} currently processing</p>
+                    <p> {processingJobs} job{processingJobs !== 1 ? 's' : ''} currently processing</p>
                   )}
                   {pendingJobs > 0 && (
-                    <p>⏳ {pendingJobs} job{pendingJobs !== 1 ? 's' : ''} waiting in queue</p>
+                    <p> {pendingJobs} job{pendingJobs !== 1 ? 's' : ''} waiting in queue</p>
                   )}
                   {averageImagesPerJob > 0 && (
-                    <p>📊 Average of {averageImagesPerJob.toFixed(1)} images per job</p>
+                    <p> Average of {averageImagesPerJob.toFixed(1)} images per job</p>
                   )}
                 </>
               )}

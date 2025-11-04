@@ -1,4 +1,9 @@
 #!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+bash scripts/pre-commit-hook.sh
+
+#!/bin/sh
 set -e
 
 # Ensure Node 22 via nvm if available

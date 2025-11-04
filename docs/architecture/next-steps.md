@@ -4,7 +4,7 @@ This architecture document provides the complete technical blueprint for the enh
 
 ## Security Implementation Priorities
 
-### **Story 1.11: Security Hardening (Future Enhancement)**
+### **Story 1.13: Security Hardening (Future Enhancement)**
 - **Encrypted Database Fallback**: Implement encrypted database storage when keytar is unavailable
 - **Memory Protection**: Add comprehensive memory protection for sensitive data
 - **Log Masking**: Implement secure logging that masks API keys and sensitive information
@@ -32,8 +32,16 @@ This architecture document provides the complete technical blueprint for the enh
 5. **Story 1.8**: Job History - Database integration for job history and persistence
 6. **Story 1.12**: Advanced Export & File Management - ZIP+Excel export and file operations
 
+### **CI/CD & DevSecOps (Architectural Deliverables)**
+1. Add local pre-commit gate (fast): `.husky/pre-commit` running ESLint (no warnings), `npm run test:critical`, Semgrep (Electron + JS), optional `npm audit --omit=dev`.
+2. Add cloud QA (GitHub Actions): `.github/workflows/ci.yml` with build, tests, CodeQL, Semgrep, audit on push to `main`.
+3. Add `.semgrep.yml` to manage local overrides; keep public packs as base (`p/owasp-electron`, `p/javascript`).
+4. Optional: release build on tags with `electron-builder --publish never` and upload artifacts to release draft.
+5. Refinements: CI concurrency (cancel in-progress), Semgrep excludes and pinned rulesets, weekly scheduled CodeQL.
+6. Manual unsigned releases on demand: Add `workflow_dispatch` that builds matrix artifacts and publishes to GitHub Releases (no auto-update; keep prior releases for rollback).
+
 ### **Security Enhancement Path**
-1. **Story 1.11**: Security Hardening - Encrypted database and memory protection
+1. **Story 1.13**: Security Hardening - Encrypted database and memory protection
 2. **Security Monitoring**: Add security health checks and alerts
 3. **Advanced Security**: Key rotation and advanced security features (if needed)
 

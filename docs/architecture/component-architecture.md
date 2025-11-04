@@ -6,13 +6,13 @@ The application will be composed of several new components that orchestrate and 
 graph TD
     subgraph "Electron Renderer Process"
         UI[UI Components <br/>(React + TypeScript + Tailwind CSS)]
-        SecurityUI[Security Status UI <br/>(Story 1.11)]
+        SecurityUI[Security Status UI <br/>(Story 1.13)]
         Vite[Vite Build Tool <br/>& Dev Server]
     end
 
     subgraph "Electron Main Process"
         Adapter[Backend Adapter]
-        SecurityMgr[Security Manager <br/>(Story 1.11)]
+        SecurityMgr[Security Manager <br/>(Story 1.13)]
         DB[Database Service <br/>(SQLite)]
         SecureStore[Secure Storage Service <br/>(Keytar)]
         CoreLogic[Core Logic Services <br/>(Midjourney/OpenAI/RemoveBG)]
@@ -79,7 +79,7 @@ The Settings UI is organized into logical sections with conditional visibility a
 - **Features**: Debug mode, auto-save settings, performance options
 - **Integration**: Development and debugging features
 
-### Security Components (Story 1.11)
+### Security Components (Story 1.13)
 
 #### **SecurityStatusIndicator.tsx** - Security Status Display
 - **Purpose**: Display security status and storage method to users
@@ -120,10 +120,12 @@ The Settings UI is organized into logical sections with conditional visibility a
 - **Features**: Job control, settings management, security integration
 - **Security**: Three-tier security implementation (keytar → encrypted DB → plain text)
 
-### **SecurityManager** - Security Management (Story 1.11)
+### **SecurityManager** - Security Management (Story 1.13)
 - **Purpose**: Centralized security management and encryption
 - **Features**: API key encryption, memory protection, security status
 - **Integration**: Database encryption, keytar fallback management
+
+Note (2025-11-02): In the current implementation, Security Manager responsibilities are consolidated inside `BackendAdapter`. A separate `SecurityManager` module and encrypted-DB fallback are planned but not yet implemented.
 
 ### **JobRunner** - Job Execution Service
 - **Purpose**: Encapsulates core job execution logic
@@ -135,7 +137,7 @@ The Settings UI is organized into logical sections with conditional visibility a
 - **Features**: Error categorization, user messaging, logging
 - **Integration**: Comprehensive error handling across all components
 
-## Security Architecture (Story 1.11)
+## Security Architecture (Story 1.13)
 
 ### Security Implementation Tiers
 1. **Native OS Keychain**: Primary secure storage using keytar

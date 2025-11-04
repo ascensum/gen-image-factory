@@ -37,7 +37,11 @@
     "test:regression:retry": "npm run test:retry && npm run test:job-management",
     "test:labels": "vitest run tests/unit/ui/JobHistoryLabelFormatting.test.tsx",
     "test:labels:all": "vitest run tests/unit/ui/JobHistoryLabelFormatting.test.tsx tests/unit/ui/DashboardFiltersLabelFormatting.test.tsx tests/unit/ui/FailedImagesReviewFiltersLabelFormatting.test.tsx",
-    "test:exports": "vitest run tests/integration/backend/ExportZip.integration.test.ts tests/integration/backend/ExportJobExcel.integration.test.ts tests/integration/backend/BulkExportJobs.integration.test.ts"
+    "test:exports": "vitest run tests/integration/backend/ExportZip.integration.test.ts tests/integration/backend/ExportJobExcel.integration.test.ts tests/integration/backend/BulkExportJobs.integration.test.ts",
+    "repo:scan": "node scripts/repo-scan.js",
+    "repo:scan:staged": "node scripts/repo-scan.js --staged",
+    "repo:clean": "node scripts/repo-clean.js",
+    "guardrails:check": "npm run repo:scan && npm run test:exports && npm run test:retry && npm run test:labels && npm run test:security && npm run test:job-management"
   },
   "author": "Gen Image Factory Team",
   "license": "MIT",

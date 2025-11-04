@@ -1,5 +1,83 @@
 # Testing Strategy and Standards
 
+Note (2025-11-02): CI is not yet configured in this repository. Add GitHub Actions to run unit/integration tests (Vitest) and E2E (Playwright) on PRs, and a separate build workflow to package Electron apps on tags.
+
+## QA + DevSecOps Pipeline (Solo Developer, direct-to-main)
+
+This project uses a two-layer QA approach optimized for a solo developer committing straight to `main` while keeping security first and avoiding over‑engineering.
+
+### Local QA Layer (Developer Machine)
+
+- Trigger: husky `pre-commit` (staged files only)
+- Purpose: Fast, blocking checks for obvious bugs and security issues (< 20s)
+- Steps (fail fast, non‑zero exit on failure):
+  - ESLint (no warnings allowed) on staged files
+  - Critical regression tests: `npm run test:critical`
+  - Semgrep security scan with open rulesets (Electron + JS): `p/owasp-electron`, `p/javascript` (staged files)
+  - Optional: `npm audit --omit=dev`
+- Out of scope for pre-commit: full E2E tests
+
+Deliverable: `.husky/pre-commit` script enforcing the above.
+
+### Cloud QA Layer (GitHub Actions)
+
+- Trigger: `on: push` to `main`
+- Purpose: Deep validation and dependency security on every commit
+- Jobs (minimal, reproducible):
+  - Build: `npm ci && npm run build`
+  - Unit + Integration tests: `npm test`
+  - CodeQL scan: `github/codeql-action` (free for public repos)
+  - Semgrep scan: `npx semgrep --config p/owasp-electron --error`
+  - Dependency check: `npm audit` and/or Dependabot alerts
+  - Optional artifact build: `electron-builder --publish never` (no release)
+- Fail workflow on high-risk findings from CodeQL or Semgrep.
+
+Deliverables:
+- `.github/workflows/ci.yml` (single minimal workflow)
+- `.semgrep.yml` (project overrides; base rulesets remain public packs)
+
+#### Refinements for Speed and Signal
+- Concurrency: cancel superseded runs on `main` to avoid wasting minutes on old pushes.
+- Semgrep scope: exclude heavy/non-source paths (e.g., `node_modules`, `playwright-report`, `web-bundles`, build output) and pin ruleset versions via `.semgrep.yml` to ensure reproducibility.
+- Scheduling: keep Semgrep on every push; run CodeQL both on push and as a lightweight weekly scheduled run to catch drift.
+- Critical subset discipline: keep `test:critical` very small and high-signal so pre-commit stays < 20s.
+
+### Electron Security Standards (Enforced)
+
+All generated code and reviews must adhere to the following defaults in the Electron app:
+- `nodeIntegration: false`
+- `contextIsolation: true`
+- `enableRemoteModule: false`
+- `sandbox: true`
+- `webSecurity: true`
+
+Also required:
+- Use preload scripts + `contextBridge` for IPC
+- Whitelist IPC channels; validate and sanitize inputs
+- Never load remote code or use `eval()`
+- Apply a Content Security Policy (CSP) in the renderer
+
+These are statically checked via Semgrep (Electron rules) and validated in code reviews.
+
+### Optional Enhancements
+
+- Add OWASP ZAP or Trivy scans as a stage 2 CI job
+- Add AI code risk review (e.g., CodeRabbit or Semgrep AI plugin)
+- Periodically run `npx semgrep --config p/security-audit` locally (manual)
+
+### Test Taxonomy and Runners
+
+- Unit tests (Vitest): default runner via `npm test`
+- Integration tests (Vitest + Electron IPC mocks): included in `npm test`
+- E2E tests (Playwright): triggered manually or in nightly CI (not in pre-commit)
+- Critical subset (`test:critical`): minimal set for pre-commit gate
+
+### Maintenance
+
+- Keep CI YAML minimal; prefer official actions and public rule packs
+- Dependabot enabled for vulnerable dependency PRs
+- Revisit critical test set quarterly to ensure fast, representative coverage
+
 ## Overview
 
 This document defines the comprehensive testing strategy for the Electron application, ensuring reliability, maintainability, and user confidence across all layers of the application.

@@ -95,9 +95,9 @@ const JobHistory: React.FC<JobHistoryProps> = ({
         onJobAction('export', jobId);
         break;
               case 'rerun':
-          console.log('🚨 DEBUG RERUN: JobHistory rerun case triggered for jobId:', jobId);
-          console.log('🚨 DEBUG RERUN: Timestamp:', new Date().toISOString());
-          console.log('🚨 DEBUG RERUN: Stack trace:', new Error().stack);
+          console.log(' DEBUG RERUN: JobHistory rerun case triggered for jobId:', jobId);
+          console.log(' DEBUG RERUN: Timestamp:', new Date().toISOString());
+          console.log(' DEBUG RERUN: Stack trace:', new Error().stack);
           onJobAction('rerun', jobId);
           break;
       case 'delete':
@@ -274,7 +274,7 @@ const JobHistory: React.FC<JobHistoryProps> = ({
         {/* Scroll indicator - shows when content overflows */}
         {filteredAndSortedJobs.length > 5 && (
           <div className="text-xs text-gray-500 text-center py-2 border-b border-gray-200">
-            📜 Job History area - scroll when content overflows ({filteredAndSortedJobs.length} total)
+             Job History area - scroll when content overflows ({filteredAndSortedJobs.length} total)
           </div>
         )}
         

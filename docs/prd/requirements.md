@@ -18,11 +18,15 @@
 14. **FR14**: The UI shall implement a master toggle system with proper feature dependencies and conditional visibility to prevent user confusion and ensure logical workflow.
 15. **FR15**: The application shall support independent image enhancement features that can be enabled regardless of image conversion settings, providing flexible image processing options.
 16. **FR16**: The UI shall provide ZIP export functionality that packages selected images with their metadata (title, description, tags) into a downloadable ZIP file containing both the image files and an Excel spreadsheet.
+17. **FR17**: The Dashboard shall use a unified Generation Progress bar with the following semantics: single generation (N=1) shows 0 while running and 100 on completion; multiple generations (N>1) compute percent as `gensDone / totalGenerations × 100`. When QC is enabled, the progress caps at 95% until QC completes, then reaches 100%.
+18. **FR18**: Status labels, counters, and filters shall be consistent and accurate across Dashboard, Job Management, Single Job View, Image Gallery, and Failed Images Review; label taxonomy is unified (e.g., Approved, QC Failed, Processing, Retry Pending, Retry Failed).
+19. **FR19**: Rerun job labels shall be displayed uniformly across the UI as `Parent Label (Rerun execIdShort)` including during in‑progress states and in all lists, filters, and detail views.
+20. **FR20**: Export UX shall follow: single‑job export via destination‑aware Excel modal (.xlsx) and bulk export via destination‑aware ZIP modal (images + metadata.xlsx), both supporting duplicate policy (append/overwrite), remembering last custom location per type, and using `exceljs` end‑to‑end.
 
 ## Non-Functional Requirements
 
 1.  **NFR1**: The application's UI must remain responsive and not freeze while the backend processing is running.
-2.  **NFR2**: All external API keys must be stored securely using the native OS credential manager (e.g., via a library like `keytar`). If the native manager is unavailable, the application must not store keys persistently and will require the user to enter them at the start of each session.
+2.  **NFR2**: All external API keys must be stored securely using a tiered approach: Primary storage in the native OS credential manager via `keytar`; production fallback to encrypted database storage when `keytar` is unavailable (planned under Security Hardening); development fallback is non‑persistent plain text. The UI must display the current security status and storage method. Sensitive values must be masked in logs; memory protection is planned under Security Hardening.
 3.  **NFR3**: The application must be packaged as a standalone desktop application for Windows, macOS, and Linux using Electron.
 4.  **NFR4**: The core backend logic (prompt generation, image production) must be reused from the existing CLI tool.
 5.  **NFR5**: A 'Backend Adapter' or 'Facade' layer must be implemented between the UI and the core backend logic. The UI will exclusively interact with this adapter, which will be responsible for managing backend interaction patterns (e.g., polling), translating technical errors into user-friendly messages, and providing a service-agnostic interface to allow for future backend provider changes with minimal UI impact.
@@ -30,6 +34,8 @@
     - Database integration tests isolated per suite (in-memory or unique path) with migrations in setup and serial execution when needed.
     - Settings integration tests aligned to `BackendAdapter` with mocks for `keytar` and Electron dialogs.
     - Centralized mocks and helpers in `tests/setup.ts` to avoid native module invocation during tests.
+
+7.  **NFR7**: CI must enforce quality gates: unit/integration/E2E tests, CodeQL, and Semgrep (Electron + JavaScript packs). High‑risk findings fail CI; optional `npm audit` may run locally or in CI.
 
 ## Compatibility Requirements
 

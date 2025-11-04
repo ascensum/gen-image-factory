@@ -534,8 +534,8 @@ describe('FailedImageReviewModal', () => {
       );
 
       const approveButton = screen.getByText('✓ Approve Image');
-      const retryButton = screen.getByText('🔄 Add to Retry Pool');
-      const deleteButton = screen.getByText('🗑 Delete Image');
+      const retryButton = screen.getByText(' Add to Retry Pool');
+      const deleteButton = screen.getByText(' Delete Image');
 
       expect(approveButton).toHaveClass('bg-green-600', 'hover:bg-green-700');
       expect(retryButton).toHaveClass('bg-blue-600', 'hover:bg-blue-700');
@@ -706,7 +706,7 @@ describe('FailedImageReviewModal', () => {
       );
 
       const approveButton = screen.getByText('✓ Approve Image');
-      const retryButton = screen.getByText('🔄 Add to Retry Pool');
+      const retryButton = screen.getByText(' Add to Retry Pool');
 
       // Rapid clicks should all be registered
       fireEvent.click(approveButton);

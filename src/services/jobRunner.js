@@ -352,19 +352,19 @@ class JobRunner extends EventEmitter {
     // Also log to console
     switch (level) {
       case 'debug':
-        console.debug('🔍', message);
+        console.debug('', message);
         break;
       case 'info':
-        console.info('ℹ️', message);
+        console.info('️', message);
         break;
       case 'warn':
-        console.warn('⚠️', message);
+        console.warn('️', message);
         break;
       case 'error':
-        console.error('❌', message);
+        console.error('', message);
         break;
       default:
-        console.log('📝', message);
+        console.log('', message);
     }
 
     return structuredLog;
@@ -385,7 +385,7 @@ class JobRunner extends EventEmitter {
       
       // Check if job is already running
       if (this.jobState.status === 'running') {
-        console.log('⚠️ Job already running, cannot start new job');
+        console.log('️ Job already running, cannot start new job');
         return {
           success: false,
           error: 'A job is already running. Please stop the current job first.',
@@ -393,20 +393,20 @@ class JobRunner extends EventEmitter {
         };
       }
 
-      console.log('✅ No job currently running, proceeding...');
+      console.log(' No job currently running, proceeding...');
       
       // Validate configuration
-      console.log('🔍 Validating configuration...');
+      console.log(' Validating configuration...');
       const validationResult = this.validateConfiguration(config);
       if (!validationResult.valid) {
-        console.log('❌ Configuration validation failed:', validationResult.error);
+        console.log(' Configuration validation failed:', validationResult.error);
         return {
           success: false,
           error: validationResult.error,
           code: 'JOB_CONFIGURATION_ERROR'
         };
       }
-      console.log('✅ Configuration validation passed');
+      console.log(' Configuration validation passed');
 
       // Normalize processing sub-object if present
       try {
@@ -448,7 +448,7 @@ class JobRunner extends EventEmitter {
 
       // Initialize job
       const jobId = uuidv4();
-      console.log('🆔 Generated job ID:', jobId);
+      console.log(' Generated job ID:', jobId);
       
       // Preserve completed status from previous job if it exists
       const wasCompleted = this.jobState.status === 'completed';
@@ -456,7 +456,7 @@ class JobRunner extends EventEmitter {
       
       // PRESERVE the configurationId that was set by backendAdapter!
       const preservedConfigurationId = this.configurationId;
-      console.log('🔍 PRESERVING configurationId:', preservedConfigurationId);
+      console.log(' PRESERVING configurationId:', preservedConfigurationId);
       
       this.jobState = {
         id: jobId,
@@ -477,14 +477,14 @@ class JobRunner extends EventEmitter {
       
       // RESTORE the configurationId after resetting jobState
       this.configurationId = preservedConfigurationId;
-      console.log('🔍 RESTORED configurationId:', this.configurationId);
+      console.log(' RESTORED configurationId:', this.configurationId);
       
       // If previous job was completed, log it for debugging
       if (wasCompleted) {
 
       }
 
-      console.log('✅ Job state initialized:', this.jobState);
+      console.log(' Job state initialized:', this.jobState);
 
       // Emit progress update
       this.emitProgress('initialization', 0, 'Initializing job configuration...');
@@ -494,8 +494,8 @@ class JobRunner extends EventEmitter {
         this.setEnvironmentFromConfig(config);
   
       } catch (error) {
-        console.error('❌ Error in setEnvironmentFromConfig:', error);
-        console.error('❌ Error stack:', error.stack);
+        console.error(' Error in setEnvironmentFromConfig:', error);
+        console.error(' Error stack:', error.stack);
         throw error; // Re-throw to prevent silent failure
       }
 
@@ -510,24 +510,24 @@ class JobRunner extends EventEmitter {
         // Since we are in the main process, we can access the existing instance
         if (process.mainModule && process.mainModule.exports && process.mainModule.exports.backendAdapter) {
           this.backendAdapter = process.mainModule.exports.backendAdapter;
-          console.log("✅ MODULE LOAD: Using existing main process backend adapter");
+          console.log(" MODULE LOAD: Using existing main process backend adapter");
         } else if (global.backendAdapter) {
           this.backendAdapter = global.backendAdapter;
-          console.log("✅ MODULE LOAD: Using existing global backend adapter");
+          console.log(" MODULE LOAD: Using existing global backend adapter");
         } else {
           this.backendAdapter = null;
         }
         
         if (this.backendAdapter) {
-          console.log("✅ MODULE LOAD: Database integration enabled - job executions will be saved");
+          console.log(" MODULE LOAD: Database integration enabled - job executions will be saved");
         } else {
-          console.warn("⚠️ MODULE LOAD: No backend adapter available - job executions will not be saved to database");
+          console.warn("️ MODULE LOAD: No backend adapter available - job executions will not be saved to database");
         }
       } catch (error) {
-        console.error('❌ MODULE LOAD: Could not initialize backend adapter for database integration:', error);
-        console.error('❌ MODULE LOAD: Error stack:', error.stack);
-        console.warn('❌ MODULE LOAD: Job executions will not be saved to database');
-        console.warn('❌ MODULE LOAD: Frontend will continue to show no data');
+        console.error(' MODULE LOAD: Could not initialize backend adapter for database integration:', error);
+        console.error(' MODULE LOAD: Error stack:', error.stack);
+        console.warn(' MODULE LOAD: Job executions will not be saved to database');
+        console.warn(' MODULE LOAD: Frontend will continue to show no data');
       }
 
       // Store the job configuration for progress step filtering
@@ -557,7 +557,7 @@ class JobRunner extends EventEmitter {
       
       // If rerun flag is set but no execution id passed in from backend, clear rerun state for normal job
       if (this.isRerun && (this.databaseExecutionId === null || this.databaseExecutionId === undefined)) {
-        console.log('🔄 Rerun flag cleared: no databaseExecutionId set for rerun, proceeding as normal job');
+        console.log(' Rerun flag cleared: no databaseExecutionId set for rerun, proceeding as normal job');
         this.isRerun = false;
         this.persistedLabel = null;
       }
@@ -567,7 +567,7 @@ class JobRunner extends EventEmitter {
       // BUT NOT during reruns (reruns are handled by the backend rerun handler)
       if (this.backendAdapter && !this.isRerun) {
         try {
-          console.log("💾 Saving job execution to database...");
+          console.log(" Saving job execution to database...");
           // Compute a persisted fallback label if none provided
           const providedLabel = (config && config.parameters && typeof config.parameters.label === 'string')
             ? config.parameters.label.trim()
@@ -590,34 +590,34 @@ class JobRunner extends EventEmitter {
           this.persistedLabel = jobExecution.label;
           
           const saveResult = await this.backendAdapter.saveJobExecution(jobExecution);
-          console.log("✅ Job execution saved to database:", saveResult);
-          console.log("🔍 saveResult type:", typeof saveResult);
-          console.log("🔍 saveResult keys:", Object.keys(saveResult));
-          console.log("🔍 saveResult.success:", saveResult.success);
-          console.log("🔍 saveResult.id:", saveResult.id);
+          console.log(" Job execution saved to database:", saveResult);
+          console.log(" saveResult type:", typeof saveResult);
+          console.log(" saveResult keys:", Object.keys(saveResult));
+          console.log(" saveResult.success:", saveResult.success);
+          console.log(" saveResult.id:", saveResult.id);
           
           // Store the database execution ID for later use
           if (saveResult.success && saveResult.id) {
             this.databaseExecutionId = saveResult.id;
-            console.log('🔍 Stored database execution ID:', this.databaseExecutionId);
-            console.log('🔍 this.databaseExecutionId after assignment:', this.databaseExecutionId);
+            console.log(' Stored database execution ID:', this.databaseExecutionId);
+            console.log(' this.databaseExecutionId after assignment:', this.databaseExecutionId);
           } else {
-            console.warn('⚠️ saveResult missing required fields:', saveResult);
+            console.warn('️ saveResult missing required fields:', saveResult);
           }
         } catch (error) {
-          console.error("❌ Failed to save job execution to database:", error);
+          console.error(" Failed to save job execution to database:", error);
         }
       } else if (this.isRerun) {
-        console.log("🔄 Rerun mode - skipping JobRunner database save (handled by backend rerun handler)");
+        console.log(" Rerun mode - skipping JobRunner database save (handled by backend rerun handler)");
       } else {
-        console.warn("⚠️ No backendAdapter available - job execution will not be saved to database");
+        console.warn("️ No backendAdapter available - job execution will not be saved to database");
       }
       
       
       // For testing purposes, wait a bit to ensure job state is set
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      console.log('✅ Job started successfully, returning result');
+      console.log(' Job started successfully, returning result');
       return {
         success: true,
         jobId: jobId,
@@ -625,7 +625,7 @@ class JobRunner extends EventEmitter {
       };
 
     } catch (error) {
-      console.error('❌ Error starting job in JobRunner:', error);
+      console.error(' Error starting job in JobRunner:', error);
       this.jobState.status = 'error';
       this.jobState.error = error.message;
       
@@ -684,35 +684,35 @@ class JobRunner extends EventEmitter {
    * @returns {Object} Validation result
    */
   validateConfiguration(config) {
-    console.log('🔍 validateConfiguration called');
+    console.log(' validateConfiguration called');
     // Never log raw API keys
-    console.log('🔍 config.apiKeys: [REDACTED]');
-    console.log('🔍 config.filePaths:', config.filePaths);
-    console.log('🔍 config.parameters:', config.parameters);
+    console.log(' config.apiKeys: [REDACTED]');
+    console.log(' config.filePaths:', config.filePaths);
+    console.log(' config.parameters:', config.parameters);
     
     // Check required API keys
     if (!config.apiKeys || !config.apiKeys.openai) {
-      console.log('❌ OpenAI API key missing or invalid');
+      console.log(' OpenAI API key missing or invalid');
       return { valid: false, error: 'OpenAI API key is required' };
     }
     if (!config.apiKeys.runware) {
-      console.log('❌ Runware API key missing');
+      console.log(' Runware API key missing');
       return { valid: false, error: 'Runware API key is required' };
     }
 
     // Check file paths
     if (!config.filePaths || !config.filePaths.outputDirectory) {
-      console.log('❌ Output directory missing');
+      console.log(' Output directory missing');
       return { valid: false, error: 'Output directory is required' };
     }
 
     // Check parameters
     if (!config.parameters || !config.parameters.processMode) {
-      console.log('❌ Process mode missing');
+      console.log(' Process mode missing');
       return { valid: false, error: 'Process mode is required' };
     }
 
-    console.log('✅ Configuration validation passed');
+    console.log(' Configuration validation passed');
     return { valid: true };
   }
 
@@ -729,21 +729,21 @@ class JobRunner extends EventEmitter {
     // Set API keys
     if (config.apiKeys.openai) {
       process.env.OPENAI_API_KEY = config.apiKeys.openai;
-      console.log('✅ OpenAI API key set');
+      console.log(' OpenAI API key set');
     }
     if (config.apiKeys.runware) {
       process.env.RUNWARE_API_KEY = config.apiKeys.runware;
-      console.log('✅ Runware API key set');
+      console.log(' Runware API key set');
     }
     if (config.apiKeys.removeBg) {
       process.env.REMOVE_BG_API_KEY = config.apiKeys.removeBg;
-      console.log('✅ RemoveBG API key set');
+      console.log(' RemoveBG API key set');
     }
 
     // Set other environment variables as needed
     if (config.advanced && config.advanced.debugMode) {
       process.env.DEBUG_MODE = 'true';
-      console.log('✅ Debug mode enabled');
+      console.log(' Debug mode enabled');
     }
     
     console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
@@ -759,7 +759,7 @@ class JobRunner extends EventEmitter {
    */
   async executeJob(config, jobId) {
     try {
-      console.log('🚀 Starting job execution with clean 2-step workflow...');
+      console.log(' Starting job execution with clean 2-step workflow...');
       
             // Step 1: Initialization (includes parameter generation)
       if (this.isStopping) return;
@@ -767,7 +767,7 @@ class JobRunner extends EventEmitter {
         level: 'info',
         stepName: 'initialization',
         subStep: 'start',
-        message: '📋 Step 1: Initialization - generating parameters...'
+        message: ' Step 1: Initialization - generating parameters...'
       });
       
       const parameters = await this.generateParameters(config);
@@ -775,7 +775,7 @@ class JobRunner extends EventEmitter {
         level: 'info',
         stepName: 'initialization',
         subStep: 'complete',
-        message: '✅ Parameters generated successfully'
+        message: ' Parameters generated successfully'
       });
       
       // Mark initialization as complete and update progress
@@ -788,7 +788,7 @@ class JobRunner extends EventEmitter {
         level: 'info',
         stepName: 'image_generation',
         subStep: 'start',
-        message: '🎨 Step 2: Image Generation - calling producePictureModule...'
+        message: ' Step 2: Image Generation - calling producePictureModule...'
       });
       // Flip UI to Image Generation active (blue) immediately after initialization
       this.emitProgress('image_generation', 25, 'Image generation started');
@@ -800,14 +800,14 @@ class JobRunner extends EventEmitter {
           level: 'info',
           stepName: 'image_generation',
           subStep: 'complete',
-          message: `✅ Generated ${images?.length || 0} images successfully`
+          message: ` Generated ${images?.length || 0} images successfully`
         });
       } catch (error) {
         this._logStructured({
           level: 'error',
           stepName: 'image_generation',
           subStep: 'error',
-          message: `❌ Image generation failed: ${error.message}`
+          message: ` Image generation failed: ${error.message}`
         });
         throw error;
       }
@@ -815,7 +815,7 @@ class JobRunner extends EventEmitter {
       // Save images to database with correct paths
       if (this.backendAdapter && Array.isArray(images)) {
         try {
-          console.log("💾 Saving generated images to database...");
+          console.log(" Saving generated images to database...");
       // Local helper to strip Midjourney-style flags from prompt for storage/UI
       const sanitizePromptForRunware = (prompt) => {
         if (!prompt || typeof prompt !== 'string') return '';
@@ -832,7 +832,7 @@ class JobRunner extends EventEmitter {
           for (const image of images) {
             if (image.path && image.status === "generated") {
               const executionId = this.databaseExecutionId;
-              console.log('🔍 Using database execution ID:', executionId);
+              console.log(' Using database execution ID:', executionId);
               
               if (executionId) {
                 // QC-first flow: treat module output as temp image; final path set later after QC/move
@@ -872,14 +872,14 @@ class JobRunner extends EventEmitter {
                 };
                 
                 // Log the generatedImage object to see what's being saved
-                console.log('🔍 Saving generatedImage to database with keys:', Object.keys(generatedImage));
-                console.log('🔍 Image metadata being saved with keys:', image.metadata ? Object.keys(image.metadata) : 'none');
-                console.log('🔍 Stringified metadata length:', JSON.stringify(image.metadata || {}).length, 'characters');
+                console.log(' Saving generatedImage to database with keys:', Object.keys(generatedImage));
+                console.log(' Image metadata being saved with keys:', image.metadata ? Object.keys(image.metadata) : 'none');
+                console.log(' Stringified metadata length:', JSON.stringify(image.metadata || {}).length, 'characters');
                 
                 const saveResult = await this.backendAdapter.saveGeneratedImage(generatedImage);
-                console.log("✅ Generated image saved to database:", saveResult);
+                console.log(" Generated image saved to database:", saveResult);
               } else {
-                console.warn('⚠️ Skipping image save - no execution ID available');
+                console.warn('️ Skipping image save - no execution ID available');
               }
             }
           }
@@ -928,7 +928,7 @@ class JobRunner extends EventEmitter {
                 }
               }
             } catch (immediateMoveErr) {
-              console.error('❌ Immediate move (QC disabled) failed:', immediateMoveErr);
+              console.error(' Immediate move (QC disabled) failed:', immediateMoveErr);
               try {
                 this._logStructured({
                   level: 'error',
@@ -941,10 +941,10 @@ class JobRunner extends EventEmitter {
             }
           }
         } catch (error) {
-          console.error("❌ Failed to save generated images to database:", error);
+          console.error(" Failed to save generated images to database:", error);
         }
       } else {
-        console.warn("⚠️ No backendAdapter available or no images - generated images will not be saved to database");
+        console.warn("️ No backendAdapter available or no images - generated images will not be saved to database");
       }
       
       // Note: producePictureModule already handles metadata generation if enabled
@@ -1018,14 +1018,14 @@ class JobRunner extends EventEmitter {
           }
         }
       } catch (qcErr) {
-        console.error('❌ QC/move phase error:', qcErr);
+        console.error(' QC/move phase error:', qcErr);
       }
       
       // Mark image generation/QC as complete and update progress
       this.completedSteps.push('image_generation');
       this.emitProgress('image_generation', 100, 'Image generation completed');
       
-      console.log('🎉 Job execution completed successfully!');
+      console.log(' Job execution completed successfully!');
 
       // Note: producePictureModule already handles metadata generation if enabled
       // No additional metadata processing needed here
@@ -1040,8 +1040,8 @@ class JobRunner extends EventEmitter {
       // Save completed job execution to database if backendAdapter is available
       if (this.backendAdapter) {
         try {
-          console.log("💾 Updating job execution in database...");
-          console.log("🔍 Job state before update:", {
+          console.log(" Updating job execution in database...");
+          console.log(" Job state before update:", {
             totalImages: this.jobState.totalImages,
             generatedImages: this.jobState.generatedImages,
             failedImages: this.jobState.failedImages,
@@ -1061,34 +1061,34 @@ class JobRunner extends EventEmitter {
             label: this.persistedLabel || null
           };
           
-          // console.log("🔍 About to update job execution with data:", JSON.stringify(updatedJobExecution, null, 2));
+          // console.log(" About to update job execution with data:", JSON.stringify(updatedJobExecution, null, 2));
           const updateResult = await this.backendAdapter.updateJobExecution(this.databaseExecutionId, updatedJobExecution);
-          console.log("✅ Job execution updated in database:", updateResult);
+          console.log(" Job execution updated in database:", updateResult);
           // Recalculate and persist technical counts (successful/failed) from DB snapshot
           try {
             if (this.databaseExecutionId) {
               await this.backendAdapter.updateJobExecutionStatistics(this.databaseExecutionId);
             }
           } catch (statsErr) {
-            console.warn('⚠️ Failed to update job execution statistics:', statsErr?.message || statsErr);
+            console.warn('️ Failed to update job execution statistics:', statsErr?.message || statsErr);
           }
           
           // Verify the update worked by reading back the job execution
           if (updateResult.success) {
             try {
               const verifyResult = await this.backendAdapter.getJobExecution(this.databaseExecutionId);
-              // console.log("🔍 Verification - job execution after update:", JSON.stringify(verifyResult, null, 2));
-              console.log("🔍 About to update job execution with keys:", Object.keys(updatedJobExecution));
-              console.log("🔍 Job execution update successful, changes:", verifyResult.changes);
+              // console.log(" Verification - job execution after update:", JSON.stringify(verifyResult, null, 2));
+              console.log(" About to update job execution with keys:", Object.keys(updatedJobExecution));
+              console.log(" Job execution update successful, changes:", verifyResult.changes);
             } catch (verifyError) {
-              console.error("❌ Failed to verify job execution update:", verifyError);
+              console.error(" Failed to verify job execution update:", verifyError);
             }
           }
         } catch (error) {
-          console.error("❌ Failed to update job execution in database:", error);
+          console.error(" Failed to update job execution in database:", error);
         }
       } else {
-        console.warn("⚠️ No backendAdapter available - job execution will not be saved to database");
+        console.warn("️ No backendAdapter available - job execution will not be saved to database");
       }
       
 
@@ -1096,22 +1096,22 @@ class JobRunner extends EventEmitter {
       // Check if there are bulk rerun jobs in the queue and process the next one
       if (this.backendAdapter && this.isRerun) {
         try {
-          console.log('📋 Checking for next bulk rerun job in queue...');
+          console.log(' Checking for next bulk rerun job in queue...');
           const nextJobResult = await this.backendAdapter.processNextBulkRerunJob();
           if (nextJobResult.success) {
-            console.log(`📋 Started next bulk rerun job: ${nextJobResult.message}`);
+            console.log(` Started next bulk rerun job: ${nextJobResult.message}`);
           } else if (nextJobResult.message === 'No jobs in queue') {
-            console.log('📋 No more bulk rerun jobs in queue');
+            console.log(' No more bulk rerun jobs in queue');
           } else {
-            console.log(`📋 Next bulk rerun job not ready: ${nextJobResult.message}`);
+            console.log(` Next bulk rerun job not ready: ${nextJobResult.message}`);
           }
         } catch (error) {
-          console.error('❌ Error processing next bulk rerun job:', error);
+          console.error(' Error processing next bulk rerun job:', error);
         }
       }
 
     } catch (error) {
-      console.error('❌ Job execution error:', error);
+      console.error(' Job execution error:', error);
       this.jobState.status = 'error';
       this.jobState.error = error.message;
       this.jobState.endTime = new Date();
@@ -1119,7 +1119,7 @@ class JobRunner extends EventEmitter {
       // Save error state to database if backendAdapter is available
       if (this.backendAdapter) {
         try {
-          console.log("💾 Updating job execution with error status in database...");
+          console.log(" Updating job execution with error status in database...");
           const errorJobExecution = {
             configurationId: this.configurationId, // Preserve the configuration ID
             startedAt: this.jobState.startTime,
@@ -1133,12 +1133,12 @@ class JobRunner extends EventEmitter {
           };
           
           const updateResult = await this.backendAdapter.updateJobExecution(this.databaseExecutionId, errorJobExecution);
-          console.log("✅ Job execution error status updated in database:", updateResult);
+          console.log(" Job execution error status updated in database:", updateResult);
         } catch (dbError) {
-          console.error("❌ Failed to update job execution error status in database:", dbError);
+          console.error(" Failed to update job execution error status in database:", dbError);
         }
       } else {
-        console.warn("⚠️ No backendAdapter available - job error status will not be saved to database");
+        console.warn("️ No backendAdapter available - job error status will not be saved to database");
       }
       
       this.emit('error', {
@@ -1153,17 +1153,17 @@ class JobRunner extends EventEmitter {
       // If this was part of a bulk rerun, advance the queue even on failure
       if (this.backendAdapter && this.isRerun) {
         try {
-          console.log('📋 Bulk rerun: current job failed, attempting to start next queued job...');
+          console.log(' Bulk rerun: current job failed, attempting to start next queued job...');
           const nextJobResult = await this.backendAdapter.processNextBulkRerunJob();
           if (nextJobResult.success) {
-            console.log(`📋 Started next bulk rerun job after failure: ${nextJobResult.message}`);
+            console.log(` Started next bulk rerun job after failure: ${nextJobResult.message}`);
           } else if (nextJobResult.message === 'No jobs in queue') {
-            console.log('📋 No more bulk rerun jobs in queue after failure');
+            console.log(' No more bulk rerun jobs in queue after failure');
           } else {
-            console.log(`📋 Next bulk rerun job not ready after failure: ${nextJobResult.message}`);
+            console.log(` Next bulk rerun job not ready after failure: ${nextJobResult.message}`);
           }
         } catch (queueErr) {
-          console.error('❌ Error advancing bulk rerun queue after failure:', queueErr);
+          console.error(' Error advancing bulk rerun queue after failure:', queueErr);
         }
       }
     }
@@ -1364,7 +1364,7 @@ class JobRunner extends EventEmitter {
         metadata: { error: error.message, stack: error.stack }
       });
       
-      console.error('❌ Error generating parameters:', error);
+      console.error(' Error generating parameters:', error);
       throw new Error(`Failed to generate parameters: ${error.message}`);
     }
   }
@@ -1399,10 +1399,10 @@ class JobRunner extends EventEmitter {
 
       
       // Prepare the configuration for producePictureModule
-      console.log(`🔧 JobRunner: DEBUG - config.filePaths:`, JSON.stringify(config.filePaths, null, 2));
+      console.log(` JobRunner: DEBUG - config.filePaths:`, JSON.stringify(config.filePaths, null, 2));
       // Clarify directory mapping in logs: temp is where generator writes first; final move goes to outputDirectory
-      console.log(`🔧 JobRunner: DEBUG - OUTPUT directory (final):`, config.filePaths?.outputDirectory);
-      console.log(`🔧 JobRunner: DEBUG - TEMP directory (initial writes):`, config.filePaths?.tempDirectory);
+      console.log(` JobRunner: DEBUG - OUTPUT directory (final):`, config.filePaths?.outputDirectory);
+      console.log(` JobRunner: DEBUG - TEMP directory (initial writes):`, config.filePaths?.tempDirectory);
       
       // When QC is enabled, defer processing until retry flows (QC-first design)
       const processingEnabled = !(config.ai?.runQualityCheck === true);
@@ -1441,7 +1441,7 @@ class JobRunner extends EventEmitter {
         variations: effectiveVariations
       };
       
-      console.log(`🔧 JobRunner: DEBUG - moduleConfig (initial write path):`, {
+      console.log(` JobRunner: DEBUG - moduleConfig (initial write path):`, {
         outputDirectory: moduleConfig.outputDirectory,
         tempDirectory: moduleConfig.tempDirectory
       });
@@ -1505,13 +1505,13 @@ class JobRunner extends EventEmitter {
         }
       });
       
-      console.log('✅ Images generated by module:', result);
-      console.log('🔍 Result type:', typeof result);
-      console.log('🔍 Result is array:', Array.isArray(result));
-      console.log('🔍 Result length:', Array.isArray(result) ? result.length : 'N/A');
-      // console.log('🔍 Result structure:', JSON.stringify(result, null, 2));
-      console.log('🔍 Result structure keys:', Object.keys(result));
-      console.log('🔍 Result success status:', result.success);
+      console.log(' Images generated by module:', result);
+      console.log(' Result type:', typeof result);
+      console.log(' Result is array:', Array.isArray(result));
+      console.log(' Result length:', Array.isArray(result) ? result.length : 'N/A');
+      // console.log(' Result structure:', JSON.stringify(result, null, 2));
+      console.log(' Result structure keys:', Object.keys(result));
+      console.log(' Result success status:', result.success);
       
       // The module returns an array of image objects, each with outputPath
       if (result && Array.isArray(result)) {
@@ -1592,10 +1592,10 @@ class JobRunner extends EventEmitter {
           };
 
           // Debug log the metadata extraction
-          // console.log(`🔍 Image ${index + 1} - item.settings:`, JSON.stringify(item.settings, null, 2));
-          // console.log(`🔍 Image ${index + 1} - extractedMetadata:`, JSON.stringify(extractedMetadata, null, 2));
-          console.log(`🔍 Image ${index + 1} - item.settings keys:`, Object.keys(item.settings));
-          console.log(`🔍 Image ${index + 1} - extractedMetadata keys:`, Object.keys(extractedMetadata));
+          // console.log(` Image ${index + 1} - item.settings:`, JSON.stringify(item.settings, null, 2));
+          // console.log(` Image ${index + 1} - extractedMetadata:`, JSON.stringify(extractedMetadata, null, 2));
+          console.log(` Image ${index + 1} - item.settings keys:`, Object.keys(item.settings));
+          console.log(` Image ${index + 1} - extractedMetadata keys:`, Object.keys(extractedMetadata));
           
           this._logStructured({
             level: 'debug',
@@ -1692,7 +1692,7 @@ class JobRunner extends EventEmitter {
         metadata: { error: error.message, stack: error.stack }
       });
       
-      console.error('❌ Error generating images:', error);
+      console.error(' Error generating images:', error);
       throw new Error(`Failed to generate images: ${error.message}`);
     }
   }
@@ -1708,7 +1708,7 @@ class JobRunner extends EventEmitter {
 
       
     } catch (error) {
-      console.error('❌ Error during background removal:', error);
+      console.error(' Error during background removal:', error);
       throw new Error(`Background removal failed: ${error.message}`);
     }
   }
@@ -1722,11 +1722,11 @@ class JobRunner extends EventEmitter {
     try {
       
       if (!this.backendAdapter || !executionId) {
-        console.warn('⚠️ Cannot get saved images: missing backendAdapter or executionId');
+        console.warn('️ Cannot get saved images: missing backendAdapter or executionId');
         return [];
       }
       
-      console.log(`🔍 Getting saved images for execution ${executionId}...`);
+      console.log(` Getting saved images for execution ${executionId}...`);
       const result = await this.backendAdapter.getAllGeneratedImages();
       
       // Handle both response formats: direct array or {success, images} object
@@ -1741,14 +1741,14 @@ class JobRunner extends EventEmitter {
       if (Array.isArray(images)) {
         // Filter images for this specific execution
         const executionImages = images.filter(img => img.executionId === executionId);
-        console.log(`✅ Found ${executionImages.length} saved images for execution ${executionId}`);
+        console.log(` Found ${executionImages.length} saved images for execution ${executionId}`);
         return executionImages;
       } else {
-        console.warn('⚠️ Failed to get saved images - not an array:', images);
+        console.warn('️ Failed to get saved images - not an array:', images);
         return [];
       }
     } catch (error) {
-      console.error('❌ Error getting saved images:', error);
+      console.error(' Error getting saved images:', error);
       return [];
     }
   }
@@ -2210,7 +2210,7 @@ class JobRunner extends EventEmitter {
     const currentStepIndex = PROGRESS_STEPS.findIndex(s => s.name === this.jobState.currentStep);
     
     // Debug logging to help troubleshoot progress step issues
-    console.log('🔍 getJobStatus debug:', {
+    console.log(' getJobStatus debug:', {
       PROGRESS_STEPS_length: PROGRESS_STEPS.length,
       PROGRESS_STEPS_names: PROGRESS_STEPS.map(s => s.name),
       currentStep: this.jobState.currentStep,
@@ -2335,14 +2335,14 @@ class JobRunner extends EventEmitter {
    */
   async processSingleImage(tempImagePath, config) {
     try {
-      console.log(`🔄 Processing image: ${tempImagePath}`);
+      console.log(` Processing image: ${tempImagePath}`);
       
       // For now, return the same path (no processing applied)
       // TODO: Implement actual image processing based on config
-      console.log(`ℹ️ Image processing not yet implemented, returning original path: ${tempImagePath}`);
+      console.log(`️ Image processing not yet implemented, returning original path: ${tempImagePath}`);
       return tempImagePath;
     } catch (error) {
-      console.error(`❌ Error processing image ${tempImagePath}:`, error);
+      console.error(` Error processing image ${tempImagePath}:`, error);
       return null;
     }
   }
@@ -2372,22 +2372,22 @@ class JobRunner extends EventEmitter {
       // Resolve and lock final output directory once per job
       if (!this.finalOutputDirectory) {
         let lockedDir = this.jobConfiguration?.filePaths?.outputDirectory;
-        console.log(`🔧 JobRunner: DEBUG - filePaths:`, JSON.stringify(this.jobConfiguration?.filePaths, null, 2));
-        console.log(`🔧 JobRunner: DEBUG - original outputDirectory: ${lockedDir || 'not set'}`);
+        console.log(` JobRunner: DEBUG - filePaths:`, JSON.stringify(this.jobConfiguration?.filePaths, null, 2));
+        console.log(` JobRunner: DEBUG - original outputDirectory: ${lockedDir || 'not set'}`);
         if (!lockedDir || (typeof lockedDir === 'string' && lockedDir.trim() === '')) {
           try {
             const { app } = require('electron');
             const desktopPath = app.getPath('desktop');
             lockedDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
-            console.log(`🔧 JobRunner: DEBUG - Using fallback Desktop path: ${lockedDir}`);
+            console.log(` JobRunner: DEBUG - Using fallback Desktop path: ${lockedDir}`);
           } catch (error) {
             const os = require('os');
             const homeDir = os.homedir();
             lockedDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
-            console.log(`🔧 JobRunner: DEBUG - Using fallback Documents path: ${lockedDir}`);
+            console.log(` JobRunner: DEBUG - Using fallback Documents path: ${lockedDir}`);
           }
         } else {
-          console.log(`🔧 JobRunner: DEBUG - Using custom path: ${lockedDir}`);
+          console.log(` JobRunner: DEBUG - Using custom path: ${lockedDir}`);
         }
         await fs.mkdir(lockedDir, { recursive: true });
         this.finalOutputDirectory = lockedDir;
@@ -2423,13 +2423,13 @@ class JobRunner extends EventEmitter {
         await fs.rename(processedImagePath, finalImagePath);
         moved = true;
       } catch (err) {
-        console.warn(`⚠️ rename failed (${err?.code || 'unknown'}). Falling back to copy+unlink`);
+        console.warn(`️ rename failed (${err?.code || 'unknown'}). Falling back to copy+unlink`);
         try {
           await fs.copyFile(processedImagePath, finalImagePath);
           await fs.unlink(processedImagePath);
           moved = true;
         } catch (copyErr) {
-          console.error('❌ copy+unlink fallback failed:', copyErr?.message || copyErr);
+          console.error(' copy+unlink fallback failed:', copyErr?.message || copyErr);
           moved = false;
         }
       }
@@ -2437,7 +2437,7 @@ class JobRunner extends EventEmitter {
       // Verify final existence and original absence
       const finalExists = (() => { try { fsSync.accessSync(finalImagePath); return true; } catch { return false; } })();
       const originalExists = (() => { try { fsSync.accessSync(processedImagePath); return true; } catch { return false; } })();
-      console.log(`✅ Move verification for ${imageMappingId}: finalExists=${finalExists}, originalExists=${originalExists}, dest=${finalImagePath}`);
+      console.log(` Move verification for ${imageMappingId}: finalExists=${finalExists}, originalExists=${originalExists}, dest=${finalImagePath}`);
       try {
         this._logStructured({
           level: moved && finalExists ? 'info' : 'warn',
@@ -2451,7 +2451,7 @@ class JobRunner extends EventEmitter {
         throw new Error('Final image not present after move operation');
       }
 
-      console.log(`✅ Image moved from ${processedImagePath} to ${finalImagePath}`);
+      console.log(` Image moved from ${processedImagePath} to ${finalImagePath}`);
       try {
         this._logStructured({
           level: 'info',
@@ -2463,7 +2463,7 @@ class JobRunner extends EventEmitter {
       } catch {}
       return finalImagePath;
     } catch (error) {
-      console.error(`❌ Error moving image to final location:`, error);
+      console.error(` Error moving image to final location:`, error);
       try {
         this._logStructured({
           level: 'error',
@@ -2489,14 +2489,14 @@ class JobRunner extends EventEmitter {
       if (this.backendAdapter) {
         // Update the database with new paths
         await this.backendAdapter.updateImagePathsByMappingId(imageMappingId, tempImagePath, finalImagePath);
-        console.log(`✅ Updated image paths for ${imageMappingId}: temp=${tempImagePath}, final=${finalImagePath}`);
+        console.log(` Updated image paths for ${imageMappingId}: temp=${tempImagePath}, final=${finalImagePath}`);
         return true;
       } else {
-        console.warn('⚠️ No backendAdapter available for updating image paths');
+        console.warn('️ No backendAdapter available for updating image paths');
         return false;
       }
     } catch (error) {
-      console.error(`❌ Error updating image paths for ${imageMappingId}:`, error);
+      console.error(` Error updating image paths for ${imageMappingId}:`, error);
       return false;
     }
   }

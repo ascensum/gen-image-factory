@@ -7,10 +7,10 @@ import { describe, it, expect } from 'vitest';
  * for job management without triggering database operations.
  * 
  * Based on confirmed working functionality:
- * ✅ Single Job Run on Start button
- * ✅ Job History single rerun  
- * ✅ Job Management single job rerun
- * ✅ Rerun job from Single Job View
+ *  Single Job Run on Start button
+ *  Job History single rerun  
+ *  Job Management single job rerun
+ *  Rerun job from Single Job View
  */
 
 describe('Job Management Logic Tests', () => {

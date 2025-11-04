@@ -30,7 +30,7 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         id: 1, 
         name: 'Initialization', 
         description: 'Setting up job configuration and parameters', 
-        icon: '⚙️', 
+        icon: '️', 
         required: true,
         subSteps: ['Configuration', 'Parameters']
       },
@@ -38,7 +38,7 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         id: 2, 
         name: 'Image Generation', 
         description: 'Generating images and metadata', 
-        icon: '🎨', 
+        icon: '', 
         required: true,
         subSteps: ['AI Generation', 'Metadata'],
         hasMetadata: jobConfiguration?.ai?.runMetadataGen
@@ -47,7 +47,7 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
         id: 3, 
         name: 'Quality & Processing', 
         description: 'Quality checks and image processing', 
-        icon: '🔍', 
+        icon: '', 
         required: false,
         subSteps: ['Quality Check', 'Processing'],
         hasQualityCheck: jobConfiguration?.ai?.runQualityCheck,

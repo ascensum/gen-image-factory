@@ -17,7 +17,7 @@ The `Backend Adapter` will expose a single, global API object (`window.api`) to 
 * `getApiKey(serviceName)`: Retrieves a specific API key from the secure OS credential store.
 * `setApiKey(serviceName, apiKey)`: Saves a specific API key to the secure OS credential store.
 
-### Security Management (Story 1.11)
+### Security Management (Story 1.13)
 * `getSecurityStatus()`: Returns security status information including storage method and security level.
 * `getEncryptionStatus()`: Returns encryption status for database fallback storage.
 * `clearSensitiveData()`: Clears API keys from memory and secure storage.
@@ -46,6 +46,20 @@ The `Backend Adapter` will expose a single, global API object (`window.api`) to 
 * `clearAllHistory()`: Deletes all job execution history and image records from the database.
 * `deleteJobConfiguration(jobConfigurationId)`: Deletes a saved job configuration preset.
 
+## Implementation Delta: IPC Endpoints (2025-11-02)
+
+The following IPC channels are implemented and exposed via `electron/preload.js` in the current codebase. They complement the high-level API documented above.
+
+- Job control: `job:start`, `job:stop`, `job:force-stop-all`, `job:get-status`, `job:get-progress`, `job:get-logs`
+- Settings & configuration: `get-settings`, `save-settings`, `settings:get-configuration`, `job-configuration:get-by-id`, `job-configuration:update`, `job-configuration:update-name`
+- Security: `get-security-status`, `get-api-key`, `set-api-key`
+- File dialogs and paths: `select-file`, `validate-path`, `protocol:refresh-roots`, `get-exports-folder-path`, `open-exports-folder`, `reveal-in-folder`
+- Job executions: `job-execution:save`, `job-execution:get`, `job-execution:get-all`, `job-execution:update`, `job-execution:delete`, `job-execution:history`, `job-execution:statistics`, `job-execution:export-to-excel`, `job-execution:bulk-delete`, `job-execution:bulk-export`, `job-execution:bulk-rerun`, `job-execution:rename`, `job-execution:export`
+- Generated images: `generated-image:save`, `generated-image:get`, `generated-image:get-by-execution`, `generated-image:get-all`, `generated-image:update`, `generated-image:delete`, `generated-image:get-by-qc-status`, `generated-image:update-qc-status`, `generated-image:update-qc-status-by-mapping`, `generated-image:manual-approve`, `generated-image:metadata`, `generated-image:statistics`, `generated-image:export-zip`, `generated-image:bulk-delete`
+- Failed images retry: `failed-image:retry-original`, `failed-image:retry-modified`, `failed-image:retry-batch`, plus progress events (`retry-progress`, `retry-completed`, `retry-error`, `retry-queue-updated`, `retry-status-updated`).
+
+Note: The Security Manager responsibilities are currently implemented within `BackendAdapter` rather than a separate module.
+
 ## Security Implementation Tiers
 
 ### Security Tier 1: Native OS Keychain (Primary)
@@ -57,7 +71,7 @@ if (apiKey) {
 }
 ```
 
-### Security Tier 2: Encrypted Database (Story 1.11 Fallback)
+### Security Tier 2: Encrypted Database (Story 1.13 Fallback)
 ```typescript
 // Encrypted database fallback when keytar unavailable
 } catch (error) {

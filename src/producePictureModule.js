@@ -392,27 +392,27 @@ async function producePictureModule(
           );
           
           // Log the metadata result for debugging
-          console.log('🔍 Metadata result from aiVision with keys:', metadataResult ? Object.keys(metadataResult) : 'none');
+          console.log(' Metadata result from aiVision with keys:', metadataResult ? Object.keys(metadataResult) : 'none');
           
           // Update settings with new metadata
           if (metadataResult.new_title) {
             // Ensure nested objects exist before assignment
             updatedSettings.title = updatedSettings.title || {};
             updatedSettings.title.title = { en: metadataResult.new_title };
-            console.log('✅ Added title to settings:', metadataResult.new_title);
+            console.log(' Added title to settings:', metadataResult.new_title);
           }
           if (metadataResult.new_description) {
             updatedSettings.title = updatedSettings.title || {};
             updatedSettings.title.description = { en: metadataResult.new_description };
-            console.log('✅ Added description to settings:', metadataResult.new_description);
+            console.log(' Added description to settings:', metadataResult.new_description);
           }
           if (metadataResult.uploadTags) {
             updatedSettings.uploadTags = { en: metadataResult.uploadTags };
-            console.log('✅ Added uploadTags to settings:', metadataResult.uploadTags);
+            console.log(' Added uploadTags to settings:', metadataResult.uploadTags);
           }
           
           // Log the final updated settings
-          console.log('🔍 Final updatedSettings with keys:', Object.keys(updatedSettings));
+          console.log(' Final updatedSettings with keys:', Object.keys(updatedSettings));
         }
 
         // PROCESS IMAGE
@@ -457,8 +457,8 @@ async function producePictureModule(
 }
 
 async function processImage(inputImagePath, imgName, config = {}) {
-  console.log(`🔧 processImage: Starting with inputImagePath: ${inputImagePath}, imgName: ${imgName}`);
-  console.log(`🔧 processImage: Received config keys:`, Object.keys(config));
+  console.log(` processImage: Starting with inputImagePath: ${inputImagePath}, imgName: ${imgName}`);
+  console.log(` processImage: Received config keys:`, Object.keys(config));
   
   const {
     removeBg,
@@ -474,7 +474,7 @@ async function processImage(inputImagePath, imgName, config = {}) {
     pngQuality,
   } = config;
 
-  console.log(`🔧 processImage: Extracted settings:`);
+  console.log(` processImage: Extracted settings:`);
   console.log(`  - removeBg: ${removeBg}`);
   console.log(`  - imageConvert: ${imageConvert}`);
   console.log(`  - imageEnhancement: ${imageEnhancement}`);
@@ -545,33 +545,33 @@ async function processImage(inputImagePath, imgName, config = {}) {
   // Align behavior with retryExecutor: require both imageConvert AND convertToJpg to convert
   const shouldConvertToJpg = !!imageConvert && !!convertToJpg;
   const finalExtension = shouldConvertToJpg ? ".jpg" : ".png";
-  console.log(`🔧 processImage: Final extension determined: ${finalExtension} (convertToJpg: ${convertToJpg}, imageConvert: ${imageConvert})`);
+  console.log(` processImage: Final extension determined: ${finalExtension} (convertToJpg: ${convertToJpg}, imageConvert: ${imageConvert})`);
   
   // Use settings path instead of hardcoded relative path
-  console.log(`🔧 processImage: DEBUG - config.outputDirectory:`, config.outputDirectory);
-  console.log(`🔧 processImage: DEBUG - config keys:`, Object.keys(config));
+  console.log(` processImage: DEBUG - config.outputDirectory:`, config.outputDirectory);
+  console.log(` processImage: DEBUG - config keys:`, Object.keys(config));
   
   const outputDir = config.outputDirectory || './pictures/toupload';
-  console.log(`🔧 processImage: DEBUG - final outputDir:`, outputDir);
+  console.log(` processImage: DEBUG - final outputDir:`, outputDir);
   
   // Normalize imgName to avoid double extensions like .png.jpg
   const baseName = imgName.replace(/\.(png|jpg|jpeg)$/i, '');
   const outputPath = path.resolve(path.join(outputDir, `${baseName}${finalExtension}`));
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
-  console.log(`🔧 processImage: Output path: ${outputPath}`);
+  console.log(` processImage: Output path: ${outputPath}`);
 
   // 5. Encode to Final Format and Save
   try {
     if (finalExtension === '.jpg') {
       const backgroundColor = jpgBackground === 'black' ? '#000000' : '#ffffff';
-      console.log(`🔧 processImage: Saving as JPG with quality: ${jpgQuality}, background: ${backgroundColor}`);
+      console.log(` processImage: Saving as JPG with quality: ${jpgQuality}, background: ${backgroundColor}`);
       await sharpInstance
         .flatten({ background: backgroundColor })
         .jpeg({ quality: jpgQuality, chromaSubsampling: '4:4:4' })
         .toFile(outputPath);
     } else {
-      console.log(`🔧 processImage: Saving as PNG with quality: ${pngQuality}`);
+      console.log(` processImage: Saving as PNG with quality: ${pngQuality}`);
       await sharpInstance.png({ quality: pngQuality }).toFile(outputPath);
     }
     logDebug('Final image saved to:', outputPath);
@@ -593,7 +593,7 @@ async function processImage(inputImagePath, imgName, config = {}) {
     console.error(`Error deleting original downloaded image ${inputImagePath}:`, error);
   }
 
-  console.log(`🔧 processImage: Completed successfully. Output: ${outputPath}`);
+  console.log(` processImage: Completed successfully. Output: ${outputPath}`);
   return outputPath;
 }
 
