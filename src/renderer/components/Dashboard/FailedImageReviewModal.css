@@ -1,0 +1,22 @@
+/* Dedicated override to match Single Job View action button sizing */
+.review-modal-button {
+  padding: 0.5rem 1rem !important; /* match .btn-* in SingleJobView */
+  border-radius: 0.5rem; /* approximate var(--radius) used elsewhere */
+  font-weight: 500 !important;
+  font-size: 0.875rem !important; /* match common .btn text size in SingleJobView */
+  line-height: 1 !important; /* avoid taller computed height */
+  height: 36px !important; /* hard cap for perfect parity */
+  box-sizing: border-box; /* include padding in height */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+}
+
+.review-modal-button svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+

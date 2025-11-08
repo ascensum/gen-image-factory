@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import type { GeneratedImage } from '../../../types/generatedImage';
 import FailedImageCard from './FailedImageCard';
-import FailedImageReviewModal from './FailedImageReviewModal';
+import FailedImageModalContainer from './FailedImageModalContainer';
 import ProcessingSettingsModal from './ProcessingSettingsModal';
 import type { ProcessingSettings } from '../../../types/processing';
 
@@ -35,6 +36,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
   const [retryFailedImages, setRetryFailedImages] = useState<GeneratedImage[]>([]);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [selectedImageForReview, setSelectedImageForReview] = useState<GeneratedImage | null>(null);
+  const [deletedImageIds, setDeletedImageIds] = useState<Set<string>>(new Set());
   const [showProcessingSettingsModal, setShowProcessingSettingsModal] = useState(false);
   const [activeTab, setActiveTab] = useState<QCStatus>('qc_failed');
   const [processingSettings] = useState<ProcessingSettings>({
@@ -448,6 +450,11 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     const currentImages = getCurrentTabImages();
     
     let filtered = currentImages.filter(image => {
+      // Filter out deleted images
+      if (deletedImageIds.has(String(image.id))) {
+        return false;
+      }
+      
       // Job filter
       if (filterJob !== 'all' && String(image.executionId) !== filterJob) {
         return false;
@@ -500,7 +507,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     });
 
     return sorted;
-  }, [activeTab, failedImages, retryPendingImages, processingImages, retryFailedImages, filterJob, searchQuery, sortBy]);
+  }, [activeTab, failedImages, retryPendingImages, processingImages, retryFailedImages, filterJob, searchQuery, sortBy, deletedImageIds]);
 
   const uniqueJobIds = Array.from(new Set([
     ...failedImages.map(img => String(img.executionId)),
@@ -1111,26 +1118,153 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         </div>
       )}
 
-      {/* Individual Image Review Modal */}
-      {selectedImageForReview && (() => {
-        const currentIndex = filteredAndSortedImages.findIndex(img => String(img.id) === String((selectedImageForReview as any).id));
-        const hasPrevious = currentIndex > 0;
-        const hasNext = currentIndex >= 0 && currentIndex < filteredAndSortedImages.length - 1;
-        const onPrevious = hasPrevious ? () => setSelectedImageForReview(filteredAndSortedImages[currentIndex - 1]) : undefined;
-        const onNext = hasNext ? () => setSelectedImageForReview(filteredAndSortedImages[currentIndex + 1]) : undefined;
-        return (
-          <FailedImageReviewModal
-            image={selectedImageForReview}
-            isOpen={!!selectedImageForReview}
-            onClose={() => setSelectedImageForReview(null)}
-            onAction={handleImageAction}
-            onPrevious={onPrevious}
-            onNext={onNext}
-            hasPrevious={hasPrevious}
-            hasNext={hasNext}
-          />
-        );
-      })()}
+      {/* Individual Image Review Modal Container */}
+      <FailedImageModalContainer
+        key="failed-image-modal-container"
+        selectedImage={selectedImageForReview}
+        allImages={filteredAndSortedImages}
+        onClose={() => {
+          setSelectedImageForReview(null);
+          // Clear deleted IDs and refresh grid
+          setDeletedImageIds(new Set());
+          loadAllImageStatuses();
+        }}
+        onAction={handleImageAction}
+        onApprove={async (imageId: string) => {
+          // Compute next image target BEFORE approval
+          const currIdx = filteredAndSortedImages.findIndex(img => String(img.id) === String(imageId));
+          let nextImage: GeneratedImage | null = null;
+          
+          if (currIdx >= 0) {
+            // Try next image first
+            if (currIdx < filteredAndSortedImages.length - 1) {
+              nextImage = filteredAndSortedImages[currIdx + 1];
+            } 
+            // Fall back to previous if approving last image
+            else if (currIdx > 0) {
+              nextImage = filteredAndSortedImages[currIdx - 1];
+            }
+          }
+          
+          // Approve image
+          try {
+            if ((window as any).electronAPI?.generatedImages?.manualApproveImage) {
+              await (window as any).electronAPI.generatedImages.manualApproveImage(imageId);
+            } else {
+              await window.electronAPI.generatedImages.updateQCStatus(imageId, 'approved');
+            }
+            
+            // Optimistically remove from failed list
+            setDeletedImageIds(prev => new Set(prev).add(String(imageId)));
+            
+            // If we have a next image, switch to it
+            if (nextImage) {
+              flushSync(() => {
+                setSelectedImageForReview(nextImage);
+              });
+            } else {
+              // No next image, close modal
+              flushSync(() => {
+                setSelectedImageForReview(null);
+              });
+            }
+          } catch (error) {
+            console.error('Failed to approve image:', error);
+          }
+        }}
+        onRetry={async (imageId: string) => {
+          // Compute next image target BEFORE adding to retry
+          const currIdx = filteredAndSortedImages.findIndex(img => String(img.id) === String(imageId));
+          let nextImage: GeneratedImage | null = null;
+          
+          if (currIdx >= 0) {
+            // Try next image first
+            if (currIdx < filteredAndSortedImages.length - 1) {
+              nextImage = filteredAndSortedImages[currIdx + 1];
+            } 
+            // Fall back to previous if last image
+            else if (currIdx > 0) {
+              nextImage = filteredAndSortedImages[currIdx - 1];
+            }
+          }
+          
+          // Add to retry selection (checks checkbox in gallery)
+          const newSelected = new Set(selectedImages);
+          newSelected.add(imageId);
+          setSelectedImages(newSelected);
+          console.log('✓ Image added to retry selection:', imageId, 'Total selected:', newSelected.size);
+          
+          // If we have a next image, switch to it
+          if (nextImage) {
+            flushSync(() => {
+              setSelectedImageForReview(nextImage);
+            });
+          } else {
+            // No next image, close modal
+            flushSync(() => {
+              setSelectedImageForReview(null);
+            });
+          }
+        }}
+        onDelete={async (imageId: string) => {
+          // Compute next image target BEFORE deletion
+          const currIdx = filteredAndSortedImages.findIndex(img => String(img.id) === String(imageId));
+          let nextImage: GeneratedImage | null = null;
+          
+          if (currIdx >= 0) {
+            // Try next image first
+            if (currIdx < filteredAndSortedImages.length - 1) {
+              nextImage = filteredAndSortedImages[currIdx + 1];
+            } 
+            // Fall back to previous if deleting last image
+            else if (currIdx > 0) {
+              nextImage = filteredAndSortedImages[currIdx - 1];
+            }
+          }
+          
+          // Delete image directly via API
+          try {
+            await window.electronAPI.generatedImages.deleteGeneratedImage(imageId);
+            
+            // Optimistically remove from UI immediately
+            setDeletedImageIds(prev => new Set(prev).add(String(imageId)));
+            
+            // If we have a next image, switch to it
+            if (nextImage) {
+              flushSync(() => {
+                setSelectedImageForReview(nextImage);
+              });
+            } else {
+              // No next image, close modal
+              flushSync(() => {
+                setSelectedImageForReview(null);
+              });
+            }
+          } catch (error) {
+            console.error('Failed to delete image:', error);
+          }
+        }}
+        onPreviousImage={(currentImage) => {
+          const currentIndex = filteredAndSortedImages.findIndex(img => String(img.id) === String(currentImage.id));
+          if (currentIndex > 0) {
+            setSelectedImageForReview(filteredAndSortedImages[currentIndex - 1]);
+          }
+        }}
+        onNextImage={(currentImage) => {
+          const currentIndex = filteredAndSortedImages.findIndex(img => String(img.id) === String(currentImage.id));
+          if (currentIndex >= 0 && currentIndex < filteredAndSortedImages.length - 1) {
+            setSelectedImageForReview(filteredAndSortedImages[currentIndex + 1]);
+          }
+        }}
+        hasPrevious={(currentImage) => {
+          const currentIndex = filteredAndSortedImages.findIndex(img => String(img.id) === String(currentImage.id));
+          return currentIndex > 0;
+        }}
+        hasNext={(currentImage) => {
+          const currentIndex = filteredAndSortedImages.findIndex(img => String(img.id) === String(currentImage.id));
+          return currentIndex >= 0 && currentIndex < filteredAndSortedImages.length - 1;
+        }}
+      />
 
       {/* Processing Settings Modal */}
       {showProcessingSettingsModal && (

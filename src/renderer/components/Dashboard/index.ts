@@ -9,6 +9,7 @@ export { default as ImageModal } from './ImageModal';
 export { default as FailedImagesReviewPanel } from './FailedImagesReviewPanel';
 export { default as FailedImageCard } from './FailedImageCard';
 export { default as FailedImageReviewModal } from './FailedImageReviewModal';
+export { default as FailedImageModalContainer } from './FailedImageModalContainer';
 export { default as ProcessingSettingsModal } from './ProcessingSettingsModal';
 
 // Export types

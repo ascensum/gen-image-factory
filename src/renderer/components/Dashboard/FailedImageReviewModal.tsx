@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import './FailedImageReviewModal.css';
 import StatusBadge from '../Common/StatusBadge';
 import type { GeneratedImage } from '../../../types/generatedImage';
 
@@ -9,10 +10,13 @@ interface FailedImageReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAction: (action: string, imageId: string) => void;
+  onApprove?: (imageId: string) => Promise<void>;
+  onRetry?: (imageId: string) => Promise<void>;
   onPrevious?: () => void;
   onNext?: () => void;
   hasPrevious?: boolean;
   hasNext?: boolean;
+  onDelete?: (imageId: string) => Promise<void>;
 }
 
 const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
@@ -20,8 +24,11 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
   isOpen,
   onClose,
   onAction,
+  onApprove,
+  onRetry,
   onPrevious,
-  onNext
+  onNext,
+  onDelete
 }) => {
   if (!isOpen) return null;
 
@@ -33,6 +40,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
   const [isPanning, setIsPanning] = useState<boolean>(false);
   const panStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const translateStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const previousImageIdRef = useRef<string | number | null>(null);
 
   // Parse metadata safely (string or object) similar to Image Gallery modal
   const parseMetadata = (raw: any): any => {
@@ -68,6 +76,13 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
 
   // Focus management
   useEffect(() => {
+    // Component mounted
+    return () => {
+      // Component unmounting
+    };
+  }, []);
+  
+  useEffect(() => {
     if (isOpen) {
       const closeButton = document.querySelector('[aria-label="Close modal"]') as HTMLButtonElement;
       if (closeButton) {
@@ -93,10 +108,32 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
     setTranslate({ x: 0, y: 0 });
   }, []);
 
+  // Only reset zoom/scale when modal first opens or when it's a fresh open (not navigation)
   useEffect(() => {
-    if (isOpen) {
-      const id = requestAnimationFrame(fitToContainer);
-      return () => cancelAnimationFrame(id);
+    if (isOpen && image) {
+      const currentImageId = image.id;
+      const previousImageId = previousImageIdRef.current;
+      
+      // Check if this is a new modal session (modal was closed) vs navigation within modal
+      const isNewSession = previousImageId === null;
+      // Check if the image ID actually changed (not just a re-render with same image)
+      const imageChanged = previousImageId !== null && String(previousImageId) !== String(currentImageId);
+      
+      if (isNewSession) {
+        // Fresh modal open - reset everything and fit image
+        setActiveTab('details');
+        setScale(1);
+        setTranslate({ x: 0, y: 0 });
+        requestAnimationFrame(fitToContainer);
+        previousImageIdRef.current = currentImageId;
+      } else if (imageChanged) {
+        // Navigating to different image - just update tracker, preserve zoom/pan
+        previousImageIdRef.current = currentImageId;
+      }
+      // else: same image re-rendered (e.g., list refresh) - do nothing
+    } else if (!isOpen) {
+      // Modal closed - reset tracker for next session
+      previousImageIdRef.current = null;
     }
   }, [isOpen, image, fitToContainer]);
 
@@ -155,20 +192,50 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => handleAction('approve')} className="px-2.5 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-xs inline-flex items-center gap-1" title="Approve image (move to success)">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            <button 
+              onClick={async () => {
+                if (onApprove) {
+                  await onApprove(String(image.id));
+                } else {
+                  handleAction('approve');
+                }
+              }} 
+              className="review-modal-button bg-green-600 text-white hover:bg-green-700" 
+              title="Approve image (move to success)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
               Approve
             </button>
-            <button onClick={() => handleAction('retry')} className="px-2.5 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs inline-flex items-center gap-1" title="Add image to retry pool">
+            <button 
+              onClick={async () => {
+                if (onRetry) {
+                  await onRetry(String(image.id));
+                } else {
+                  handleAction('retry');
+                }
+              }} 
+              className="review-modal-button bg-blue-600 text-white hover:bg-blue-700" 
+              title="Add image to retry pool"
+            >
               {/* lucide redo-2 */}
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m15 14 5-5-5-5" />
                 <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5 5.5 5.5 0 0 0 9.5 20H13" />
               </svg>
               Add to Retry
             </button>
-            <button onClick={() => handleAction('delete')} className="px-2.5 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 text-xs inline-flex items-center gap-1" title="Delete image permanently">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            <button 
+              onClick={async () => {
+                if (onDelete) {
+                  await onDelete(String(image.id));
+                } else {
+                  handleAction('delete');
+                }
+              }} 
+              className="review-modal-button bg-red-600 text-white hover:bg-red-700" 
+              title="Delete image permanently"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
               Delete
             </button>
             <div className="flex items-center space-x-1">

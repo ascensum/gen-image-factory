@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { flushSync } from 'react-dom';
 import StatusBadge from '../Common/StatusBadge';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import ImageModal from './ImageModal';
@@ -58,6 +59,9 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
     else setInternalSelected(next);
   };
   const [showImageModal, setShowImageModal] = useState<string | null>(null);
+  const [modalImageCache, setModalImageCache] = useState<GeneratedImage | null>(null);
+  const deletingImageRef = React.useRef<boolean>(false);
+  const modalLockedRef = React.useRef<boolean>(false);
   
 
   // Safely parse metadata which may be stored as a JSON string
@@ -176,7 +180,8 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   const handleModalNavigation = (direction: 'next' | 'previous') => {
     if (!showImageModal) return;
     
-    const currentIndex = filteredAndSortedImages.findIndex(img => img.id === showImageModal);
+    // Use String() for type-safe comparison
+    const currentIndex = filteredAndSortedImages.findIndex(img => String(img.id) === String(showImageModal));
     if (currentIndex === -1) return;
     
     let newIndex;
@@ -186,13 +191,17 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       newIndex = currentIndex - 1 >= 0 ? currentIndex - 1 : currentIndex;
     }
     
-    setShowImageModal(filteredAndSortedImages[newIndex].id);
+    const nextImage = filteredAndSortedImages[newIndex];
+    // Clear cache when manually navigating
+    setModalImageCache(null);
+    setShowImageModal(nextImage?.id || null);
   };
 
   const getModalNavigationProps = () => {
     if (!showImageModal) return { hasPrevious: false, hasNext: false };
     
-    const currentIndex = filteredAndSortedImages.findIndex(img => img.id === showImageModal);
+    // Use String() for type-safe comparison
+    const currentIndex = filteredAndSortedImages.findIndex(img => String(img.id) === String(showImageModal));
     return {
       hasPrevious: currentIndex > 0,
       hasNext: currentIndex < filteredAndSortedImages.length - 1
@@ -251,7 +260,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                         src={`local-file://${image.finalImagePath || image.tempImagePath}`}
                         alt={image.generationPrompt}
                         className="w-full h-full object-cover cursor-pointer"
-                        onClick={() => setShowImageModal(image.id)}
+                        onClick={() => { setModalImageCache(image); setShowImageModal(image.id); }}
                         onError={(e) => {
                           e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik01MCA1MEgxNTBWNzVINzVWMTI1SDUwVjUwWiIgZmlsbD0iI0QxRDVEM0EiLz4KPHN2ZyB4PSI3NSIgeT0iODAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI0NSIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iI0QxRDVEM0EiLz4KPHN2ZyB4PSI3NSIgeT0iODAiIHdpZHRoPSI1MCIgaGVpZ2h0PSI0NSIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0Oi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0xOSAzSDVDMy45IDMgMyAzLjkgMyA1VjE5QzMgMjAuMSAzLjkgMjEgNSAyMUgxOUMyMC4xIDIxIDIxIDIwLjEgMjEgMTlWNUMxMSAzLjkgMjAuMSAzIDE5IDNaTTE5IDE5SDVWNUgxOVYxOVoiIGZpbGw9IiM5QjlCQTAiLz4KPHBhdGggZD0iTTE0IDEzSDEwVjE3SDE0VjEzWiIgZmlsbD0iI0QxRDVEM0EiLz4KPC9zdmc+Cjwvc3ZnPgo=';
                         }}
@@ -272,6 +281,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            setModalImageCache(image);
                             setShowImageModal(image.id);
                           }}
                           className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700"
@@ -431,7 +441,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                                 return typeof t === 'string' ? t : 'Generated Image';
                               })()}
                               className="w-full h-full object-cover cursor-pointer"
-                              onClick={() => setShowImageModal(image.id)}
+                          onClick={() => { setModalImageCache(image); setShowImageModal(image.id); }}
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik0yNCAyNEg0MFY0MEgyNFYyNFoiIGZpbGw9IiNEMUQ1REIiLz4KPC9zdmc+';
@@ -518,14 +528,107 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
       {/* Note: Retry settings modal removed since it's not needed for success images */}
 
       {/* Image Modal */}
-      <ImageModal
-        image={showImageModal ? images.find(img => img.id === showImageModal) || null : null}
-        isOpen={!!showImageModal}
-        onClose={() => setShowImageModal(null)}
+      {showImageModal && (() => {
+        // Always prioritize cache, it contains the target image during transitions
+        // Use String() for type-safe comparison
+        const modalImage = modalImageCache || filteredAndSortedImages.find(img => String(img.id) === String(showImageModal));
+        
+        // If no image found and not deleting, close modal
+        if (!modalImage && !deletingImageRef.current) {
+          setTimeout(() => {
+            if (!deletingImageRef.current) {
+              setShowImageModal(null);
+              setModalImageCache(null);
+            }
+          }, 0);
+          return null;
+        }
+        return (
+          <ImageModal
+            image={modalImage || null}
+            isOpen={true}
+            onClose={() => {
+              // Don't allow closing during delete operation
+              if (deletingImageRef.current || modalLockedRef.current) {
+                return;
+              }
+              setShowImageModal(null); 
+              setModalImageCache(null);
+              deletingImageRef.current = false;
+              modalLockedRef.current = false;
+            }}
         onNext={() => handleModalNavigation('next')}
         onPrevious={() => handleModalNavigation('previous')}
         {...getModalNavigationProps()}
-      />
+        onDelete={async (id) => {
+          deletingImageRef.current = true;
+          modalLockedRef.current = true;
+          
+          // Compute next image target BEFORE deletion using current filtered list
+          // Use String() to ensure type-safe comparison (IDs might be number or string)
+          const currentIndex = filteredAndSortedImages.findIndex(img => String(img.id) === String(id));
+          let nextId: string | null = null;
+          let nextImage: GeneratedImage | null = null;
+          
+          if (currentIndex >= 0) {
+            // Try next image first
+            if (currentIndex < filteredAndSortedImages.length - 1) {
+              nextImage = filteredAndSortedImages[currentIndex + 1];
+              nextId = nextImage.id;
+            } 
+            // Fall back to previous if we're deleting the last image
+            else if (currentIndex > 0) {
+              nextImage = filteredAndSortedImages[currentIndex - 1];
+              nextId = nextImage.id;
+            }
+          }
+          
+          // If we have a next image, switch to it immediately
+          if (nextId && nextImage) {
+            // First: Switch modal to next image synchronously (before any async operations)
+            flushSync(() => {
+              setModalImageCache(nextImage);
+              setShowImageModal(nextId);
+            });
+            
+            // Second: Delete the image directly via window API
+            // This bypasses parent's immediate loadGeneratedImages() call that would close modal
+            try {
+              await window.electronAPI.jobManagement.deleteGeneratedImage(id);
+              
+              // Wait a bit for modal state to settle, then trigger background refresh
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+              // Trigger parent's image refresh in background (modal state is already stable)
+              // This will update the gallery grid without affecting the modal
+              setTimeout(() => {
+                onImageAction('delete', id);
+              }, 50);
+            } catch (error) {
+              console.error('Failed to delete image:', error);
+            } finally {
+              deletingImageRef.current = false;
+              modalLockedRef.current = false;
+            }
+          } else {
+            // No next image, close modal and delete normally
+            flushSync(() => {
+              setShowImageModal(null);
+              setModalImageCache(null);
+            });
+            
+            try {
+              // Delete via parent handler (will refresh images list)
+              await onImageAction('delete', id);
+            } finally {
+              deletingImageRef.current = false;
+              modalLockedRef.current = false;
+            }
+          }
+        }}
+          />
+        );
+      })()}
     </div>
   );
 };
