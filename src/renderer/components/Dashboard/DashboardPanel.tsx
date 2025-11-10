@@ -1132,7 +1132,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
 
               {/* Filters and Controls - STATIC (non-scrollable) */}
               <div className="flex flex-wrap items-center gap-4 p-4 bg-gray-50 rounded-lg mb-4 flex-shrink-0">
-                <div className="flex items-center space-x-4">
+                <div className="flex flex-wrap items-center gap-4">
                   {/* View Toggle */}
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-700">View:</span>
@@ -1356,7 +1356,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                 </div>
 
                 {/* Action Buttons - STATIC (non-scrollable) */}
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {/* Select All Checkbox */}
                   <div className="flex items-center space-x-2">
                     <input
