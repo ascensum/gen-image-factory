@@ -38,6 +38,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
   const [scale, setScale] = useState<number>(1);
   const [translate, setTranslate] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState<boolean>(false);
+  const [showHelp, setShowHelp] = useState<boolean>(false);
   const panStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const translateStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const previousImageIdRef = useRef<string | number | null>(null);
@@ -238,6 +239,16 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
               Delete
             </button>
+            {/* Help in header */}
+            <button
+              type="button"
+              onClick={() => setShowHelp(v => !v)}
+              className="px-2 py-1 text-xs bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded"
+              aria-label="Image Control Info"
+              title="Image Control Info"
+            >
+              Image Control Info
+            </button>
             <div className="flex items-center space-x-1">
               <button onClick={onPrevious} className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100" aria-label="Previous image">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -251,6 +262,29 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Help Popover (anchored under header, inside modal container) */}
+        {showHelp && (
+          <div className="absolute top-14 right-4 w-80 bg-white border border-gray-200 rounded-md shadow-lg p-3 text-xs text-gray-700 z-20">
+            <div className="flex items-start justify-between mb-2">
+              <div className="font-medium text-gray-900">Image viewer controls</div>
+              <button
+                type="button"
+                className="p-1 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowHelp(false)}
+                aria-label="Close help"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <ul className="space-y-1 list-disc pl-4">
+              <li><span className="font-medium">Pan</span>: Click and drag on the image</li>
+              <li><span className="font-medium">Zoom</span>: Ctrl (Windows/Linux) or ⌘ Cmd (macOS) + mouse wheel</li>
+              <li><span className="font-medium">Fit</span>: Double‑click image</li>
+              <li><span className="font-medium">Toolbar (bottom‑right)</span>: Zoom out (−), Zoom in (+), Reset, Fit to screen</li>
+            </ul>
+          </div>
+        )}
 
         {/* Content */}
         <div 
@@ -403,6 +437,10 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                         <p className="text-sm text-gray-900">{image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : '—'}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">File Path</label>
+                        <p className="text-sm text-gray-900 font-mono break-all">{image.finalImagePath || image.tempImagePath || '—'}</p>
                       </div>
                     </div>
                   </div>

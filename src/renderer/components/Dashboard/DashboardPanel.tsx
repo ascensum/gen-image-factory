@@ -957,18 +957,6 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
                   Job Progress
-                  {/* Delete Selected Button */}
-                  {selectedImages.size > 0 && (
-                    <button
-                      onClick={() => handleBulkAction('delete', Array.from(selectedImages))}
-                      className="px-3 py-1 text-sm rounded-md transition-colors flex items-center space-x-1 bg-red-600 text-white hover:bg-red-700"
-                    >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      <span>Delete Selected</span>
-                    </button>
-                  )}
                 </div>
               </div>
               <div className="panel-content">
@@ -1409,14 +1397,14 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                 <button
                   onClick={() => setShowExportModal(true)}
                   disabled={selectedImages.size === 0 || isExportingZip}
-                  className={`px-3 py-1 text-sm rounded-md transition-colors flex items-center space-x-1 ${
+                  className={`px-4 py-2 text-sm rounded-md transition-colors flex items-center gap-2 ${
                     selectedImages.size === 0 || isExportingZip
                       ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                       : 'bg-green-600 text-white hover:bg-green-700'
                   }`}
                   title={selectedImages.size === 0 ? 'Select images to enable export' : 'Export selected images to ZIP'}
                 >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                   </svg>
                   <span>{isExportingZip ? (zipExportStep === 'creating-excel' ? 'Excel…' : zipExportStep === 'zipping' ? 'Zipping…' : 'Exporting…') : 'Export ZIP'}</span>
@@ -1426,10 +1414,10 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                   {selectedImages.size > 0 && (
                     <button
                       onClick={() => handleBulkAction('delete', Array.from(selectedImages))}
-                      className="px-3 py-1 text-sm rounded-md transition-colors flex items-center space-x-1 bg-red-600 text-white hover:bg-red-700"
+                      className="px-4 py-2 text-sm rounded-md transition-colors flex items-center gap-2 bg-red-600 text-white hover:bg-red-700"
                       title={`Delete ${selectedImages.size} selected image${selectedImages.size === 1 ? '' : 's'}`}
                     >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                       <span>Delete Selected ({selectedImages.size})</span>

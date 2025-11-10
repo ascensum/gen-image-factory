@@ -142,7 +142,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                 <div>
                   <div className="text-sm font-medium text-gray-900">Retry with Original Settings</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Process all images with their original job settings (QC, metadata, processing)
+                    Process all images with their original job settings (Metadata, processing)
                   </div>
                 </div>
               </label>
@@ -160,7 +160,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                 <div>
                   <div className="text-sm font-medium text-gray-900">Retry with Modified Settings</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Process all images with new settings (QC, metadata, processing) — no image regeneration
+                    Process all images with new settings (Metadata, processing) — no image regeneration
                   </div>
                 </div>
               </label>
@@ -211,7 +211,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                     <h4 className="text-sm font-medium text-yellow-800">Important Note</h4>
                     <p className="text-sm text-yellow-700 mt-1">
                       These settings will be applied to all {selectedCount} images in the batch. 
-                      Images will NOT be regenerated - only QC, metadata, and processing will be updated.
+                      Images will NOT be regenerated and Quality Controlled - only metadata or/and processing will be updated.
                     </p>
                     <p className="text-sm text-yellow-600 mt-2">
                       <strong>Current defaults:</strong> Image conversion enabled, converting to JPG at 85% quality

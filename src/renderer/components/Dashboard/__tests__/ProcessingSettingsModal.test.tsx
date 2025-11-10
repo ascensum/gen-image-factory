@@ -323,7 +323,7 @@ describe('ProcessingSettingsModal', () => {
       fireEvent.click(modifiedRadio1);
 
       expect(screen.getByText('Important Note')).toBeInTheDocument();
-      expect(screen.getByText(/Images will NOT be regenerated/i)).toBeInTheDocument();
+      expect(screen.getByText(/Images will NOT be regenerated and Quality Controlled/i)).toBeInTheDocument();
     });
   });
 
