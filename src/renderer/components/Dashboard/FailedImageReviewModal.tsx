@@ -289,10 +289,10 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
         {/* Content */}
         <div 
           data-testid="modal-content"
-          className="flex flex-col lg:flex-row h-[calc(90vh-80px)] overflow-hidden"
+          className="flex flex-col xl:flex-row h-[calc(90vh-80px)] overflow-hidden"
         >
           {/* Left Panel - Image Display with pan/zoom/center */}
-          <div className="lg:w-2/3 p-6 bg-gray-50 flex flex-col h-full">
+          <div className="xl:w-2/3 p-6 bg-gray-50 flex flex-col h-full min-h-[300px]">
             <div 
               data-testid="image-container"
               className="relative flex-1 h-full min-h-0"
@@ -378,7 +378,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
           </div>
 
           {/* Right Panel - Tabs and Actions */}
-          <div className="w-full lg:w-1/3 p-6 overflow-hidden border-l border-gray-200 flex flex-col min-h-0">
+          <div className="w-full xl:w-1/3 p-6 overflow-hidden xl:border-l border-gray-200 flex flex-col min-h-0 xl:min-w-[400px]">
             {/* Tabs */}
             <div className="flex border-b border-gray-200 mb-4">
               {(['details','metadata','processing'] as TabType[]).map(tab => (
