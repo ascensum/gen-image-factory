@@ -159,33 +159,57 @@ app.whenReady().then(async () => {
   }
   // Precompute dynamic allowed roots from defaults and saved settings
   try {
+    console.log('\n========== INITIALIZING ALLOWED ROOTS ==========');
+    
+    // HARDCODED: Always allow Desktop paths (NEVER REMOVE THIS!)
+    const desktopPath = app.getPath('desktop');
+    const hardcodedDesktopPaths = [
+      path.join(desktopPath, 'gen-image-factory'),
+      path.join(desktopPath, 'gen-image-factory', 'pictures'),
+      path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload'),
+      path.join(desktopPath, 'gen-image-factory', 'pictures', 'generated')
+    ];
+    console.log(' HARDCODED Desktop paths:', hardcodedDesktopPaths);
+    
     const jobConfig = new JobConfiguration();
     const defaults = jobConfig.getDefaultSettings();
+    console.log(' Default settings loaded:', {
+      outputDirectory: defaults?.filePaths?.outputDirectory,
+      tempDirectory: defaults?.filePaths?.tempDirectory
+    });
+    
     const defaultRoots = [
       defaults?.filePaths?.outputDirectory,
       defaults?.filePaths?.tempDirectory
     ].filter(Boolean);
 
+    // Start with hardcoded paths FIRST to ensure Desktop is always allowed
     allowedRoots = [
+      ...hardcodedDesktopPaths,
       // app userData child folders we may use
       path.join(app.getPath('userData'), 'exports'),
       path.join(app.getPath('userData'), 'generated'),
       ...defaultRoots
     ];
+    console.log(' Initial allowed roots (HARDCODED + defaults + userData):', allowedRoots);
 
     // Pull current saved settings synchronously before protocol registration
     try {
       const { settings } = await jobConfig.getSettings('default');
       const saved = settings?.filePaths || {};
-      [saved.outputDirectory, saved.tempDirectory]
-        .filter(Boolean)
-        .forEach((p) => allowedRoots.push(p));
+      const savedPaths = [saved.outputDirectory, saved.tempDirectory].filter(Boolean);
+      if (savedPaths.length > 0) {
+        savedPaths.forEach((p) => allowedRoots.push(p));
+        console.log(' Added saved settings paths:', savedPaths);
+      } else {
+        console.log(' No saved settings paths found');
+      }
       console.log(' Allowed roots (with saved):', allowedRoots);
     } catch (_e) {
-      console.log(' Using default allowed roots only');
+      console.log(' Using default allowed roots only (no saved settings)');
     }
 
-    console.log(' Allowed roots (initial):', allowedRoots);
+    console.log(' Allowed roots before image scan:', allowedRoots);
 
     // Add dynamic roots from recent generated images (final and temp directories)
     try {
@@ -197,13 +221,23 @@ app.whenReady().then(async () => {
         try { if (img.finalImagePath) dirs.add(path.dirname(img.finalImagePath)); } catch {}
         try { if (img.tempImagePath) dirs.add(path.dirname(img.tempImagePath)); } catch {}
       });
-      dirs.forEach((d) => allowedRoots.push(d));
-      console.log(' Allowed roots (with image dirs):', allowedRoots);
+      if (dirs.size > 0) {
+        console.log(' Found', dirs.size, 'unique directories from images:', Array.from(dirs));
+        dirs.forEach((d) => allowedRoots.push(d));
+      } else {
+        console.log(' No image directories found to add');
+      }
+      console.log(' FINAL allowed roots count:', allowedRoots.length);
+      console.log(' FINAL allowed roots:', allowedRoots);
+      console.log('===============================================\n');
     } catch (e2) {
       console.warn(' Could not load dynamic roots from images:', e2.message);
+      console.log(' FINAL allowed roots (without images):', allowedRoots);
+      console.log('===============================================\n');
     }
   } catch (e) {
     console.warn(' Failed to initialize JobConfiguration for allowed roots:', e.message);
+    console.log('===============================================\n');
   }
 
   // Set up protocol handler for local files AFTER app is ready
@@ -235,6 +269,60 @@ app.whenReady().then(async () => {
       console.error(' Protocol handler error:', err);
       callback(500);
     }
+  });
+
+  // Add IPC handler to refresh allowed roots when settings change
+  ipcMain.handle('refresh-allowed-roots', async () => {
+    try {
+      const desktopPath = app.getPath('desktop');
+      const hardcodedDesktopPaths = [
+        path.join(desktopPath, 'gen-image-factory'),
+        path.join(desktopPath, 'gen-image-factory', 'pictures'),
+        path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload'),
+        path.join(desktopPath, 'gen-image-factory', 'pictures', 'generated')
+      ];
+      
+      // Reset with hardcoded paths
+      allowedRoots = [...hardcodedDesktopPaths];
+      
+      // Add saved settings
+      const jobConfig = new JobConfiguration();
+      const { settings } = await jobConfig.getSettings('default');
+      const saved = settings?.filePaths || {};
+      [saved.outputDirectory, saved.tempDirectory]
+        .filter(Boolean)
+        .forEach((p) => {
+          if (!allowedRoots.includes(p)) {
+            allowedRoots.push(p);
+          }
+        });
+      
+      // Add image directories
+      const gi = new GeneratedImage();
+      const res = await gi.getAllGeneratedImages(500);
+      const images = res && res.success ? res.images : Array.isArray(res) ? res : [];
+      const dirs = new Set();
+      images.forEach((img) => {
+        try { if (img.finalImagePath) dirs.add(path.dirname(img.finalImagePath)); } catch {}
+        try { if (img.tempImagePath) dirs.add(path.dirname(img.tempImagePath)); } catch {}
+      });
+      dirs.forEach((d) => {
+        if (!allowedRoots.includes(d)) {
+          allowedRoots.push(d);
+        }
+      });
+      
+      console.log(' Allowed roots refreshed:', allowedRoots.length, 'paths');
+      return { success: true, count: allowedRoots.length, roots: allowedRoots };
+    } catch (error) {
+      console.error(' Failed to refresh allowed roots:', error);
+      return { success: false, error: error.message };
+    }
+  });
+  
+  // Add debug IPC handler to check allowed roots
+  ipcMain.handle('debug:get-allowed-roots', () => {
+    return { allowedRoots, count: allowedRoots.length };
   });
   
   // Initialize Backend Adapter only once
