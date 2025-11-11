@@ -286,8 +286,9 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       setError(null);
 
       // Do not send UI-only fields to backend
-      const { hasPendingRetries, ...backendFilters } = (filters as UIJobFilters);
-      const result = await window.electronAPI.jobManagement.getJobExecutionsWithFilters(backendFilters as JobFilters, currentPage, pageSize);
+      const { hasPendingRetries, ...backendFilters} = (filters as UIJobFilters);
+      // Fetch all jobs without pagination - we'll paginate on the frontend
+      const result = await window.electronAPI.jobManagement.getJobExecutionsWithFilters(backendFilters as JobFilters, 1, 10000);
       
       if (result.success) {
         // Accept multiple possible response shapes
@@ -620,7 +621,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
   }
 
   return (
-    <div className="min-h-screen bg-[--background] text-[--foreground] flex flex-col overflow-hidden">
+    <div className="h-screen bg-[--background] text-[--foreground] flex flex-col overflow-hidden">
       {/* Header */}
       <header className="job-management-header relative py-3 md:py-4">
         <div className="header-content relative">
@@ -687,7 +688,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       <div className="px-6 py-4 space-y-4 border-b border-[--border] shrink-0">
         <div className="job-filters-row flex flex-wrap items-center gap-x-8 gap-y-4">
           {/* Status Filter */}
-          <div className="relative flex-none mr-4">
+          <div className="relative flex items-center gap-2 flex-none mr-4">
+            <label className="text-sm font-medium text-[--muted-foreground] whitespace-nowrap">By Status:</label>
             {(() => {
               const options: DropdownOption<string>[] = [
                 { value: 'all', label: 'All Status' },
@@ -751,31 +753,34 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
           </div>
 
           {/* Search Input */}
-          <div className="relative flex-[1_1_24rem] min-w-[16rem] max-w-[42rem] h-10 ml-6">
-            <input 
-              type="text" 
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Search jobs..." 
-              className="w-full h-10 bg-[--background] border border-[--border] rounded-lg px-4 pl-10 pr-10 focus:outline-none focus:ring-2 focus:ring-[--ring]"
-            />
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[--muted-foreground]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            {searchQuery && (
-              <button 
-                onClick={() => handleSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[--muted-foreground] hover:text-[--foreground]"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
+          <div className="flex items-center gap-2 flex-[1_1_24rem] min-w-[16rem] max-w-[42rem] ml-6">
+            <label className="text-sm font-medium text-[--muted-foreground] whitespace-nowrap">Search:</label>
+            <div className="relative flex-1 h-10">
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Search jobs..." 
+                className="w-full h-10 bg-[--background] border border-[--border] rounded-lg px-4 pl-10 pr-10 focus:outline-none focus:ring-2 focus:ring-[--ring]"
+              />
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[--muted-foreground]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              {searchQuery && (
+                <button 
+                  onClick={() => handleSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[--muted-foreground] hover:text-[--foreground]"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Filter Summary and Presets */}
+        {/* Filter Summary and Batch Actions */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm">
@@ -790,10 +795,92 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 Clear all
               </button>
             </div>
-            <div className="h-4 border-r border-[--border]"></div>
-            <div className="flex items-center gap-2">
-              {/* Save as preset removed per requirements */}
-            </div>
+            
+            {/* Batch Actions - shown when jobs are selected */}
+            {selectedJobs.size > 0 && (
+              <>
+                <div className="h-4 border-r border-[--border]"></div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-[--muted-foreground]">
+                    {selectedJobs.size} selected
+                  </span>
+                  <button 
+                    onClick={handleBulkRerun}
+                    disabled={isProcessing}
+                    className="bg-[--action-rerun] text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Rerun Selected
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setExportType('bulk');
+                      setExportJobId(null);
+                      setShowExportDialog(true);
+                    }}
+                    disabled={isProcessing}
+                    className="bg-[--action-export] text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export Selected
+                  </button>
+                  <button 
+                    onClick={handleBulkDelete}
+                    disabled={isProcessing}
+                    className="bg-[--action-delete] text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete Selected
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Top Pagination Controls */}
+      <div className="border-y border-[--border] px-4 py-2 shrink-0 bg-[--secondary]/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="p-2 hover:bg-[--secondary] rounded-lg transition-colors disabled:opacity-50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span className="text-sm text-[--muted-foreground]">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button 
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="p-2 hover:bg-[--secondary] rounded-lg transition-colors disabled:opacity-50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+          <div className="flex items-center gap-4">
+            <select 
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              className="bg-[--background] border border-[--border] rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[--ring]"
+            >
+              <option value={25}>25 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+            </select>
           </div>
         </div>
       </div>
@@ -985,104 +1072,6 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
               ))}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* Batch Operations Toolbar following exact design specification */}
-      {selectedJobs.size > 0 && (
-        <div className="border-t border-[--border] p-4 shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-[--muted-foreground]">
-                Selected: {selectedJobs.size} ({Math.round((selectedJobs.size / paginatedJobs.length) * 100)}%)
-              </span>
-              <button 
-                onClick={() => setSelectedJobs(new Set())}
-                className="text-[--primary] hover:underline text-sm"
-              >
-                Clear
-              </button>
-            </div>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={handleBulkRerun}
-                disabled={isProcessing}
-                className="bg-[--action-rerun] text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Rerun Selected
-              </button>
-              <button 
-                onClick={() => {
-                  setExportType('bulk');
-                  setExportJobId(null);
-                  setShowExportDialog(true);
-                }}
-                disabled={isProcessing}
-                className="bg-[--action-export] text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Export Selected
-              </button>
-              <button 
-                onClick={handleBulkDelete}
-                disabled={isProcessing}
-                className="bg-[--action-delete] text-white px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Delete Selected
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Pagination Controls following exact design specification */}
-      <div className="border-t border-[--border] p-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="p-2 hover:bg-[--secondary] rounded-lg transition-colors disabled:opacity-50"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <span className="text-sm text-[--muted-foreground]">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button 
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="p-2 hover:bg-[--secondary] rounded-lg transition-colors disabled:opacity-50"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-          <div className="flex items-center gap-4">
-            <select 
-              value={pageSize}
-              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-              className="bg-[--background] border border-[--border] rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[--ring]"
-            >
-              <option value={25}>25 per page</option>
-              <option value={50}>50 per page</option>
-              <option value={100}>100 per page</option>
-            </select>
-            <span className="text-sm text-[--muted-foreground]">
-              Total: {totalJobs} jobs
-            </span>
-          </div>
         </div>
       </div>
 

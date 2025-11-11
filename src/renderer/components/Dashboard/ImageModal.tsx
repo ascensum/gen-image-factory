@@ -328,12 +328,12 @@ const ImageModal: React.FC<ImageModalProps> = ({
           )}
 
           {/* Modal Content */}
-          <div className="flex flex-col xl:flex-row h-[calc(90vh-80px)]">
+          <div className="flex flex-row h-[calc(90vh-80px)] overflow-hidden">
             
             {/* Image Display - Left Side */}
             <div
               ref={containerRef}
-              className="relative flex-1 flex items-center justify-center bg-gray-50 p-4 min-h-[300px]"
+              className="relative w-1/2 xl:w-2/3 flex items-center justify-center bg-gray-50 p-4 h-full"
               onWheel={handleWheel}
               onDoubleClick={fitToContainer}
             >
@@ -403,7 +403,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
             </div>
 
             {/* Metadata Panel - Right Side */}
-            <div className="w-full xl:w-96 xl:border-l border-gray-200 flex flex-col xl:min-w-[384px]">
+            <div className="w-1/2 xl:w-96 border-l border-gray-200 flex flex-col h-full overflow-hidden xl:min-w-[384px]">
               
               {/* Tab Navigation */}
               <div className="flex border-b border-gray-200">

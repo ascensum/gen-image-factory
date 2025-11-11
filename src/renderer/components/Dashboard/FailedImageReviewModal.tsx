@@ -289,10 +289,10 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
         {/* Content */}
         <div 
           data-testid="modal-content"
-          className="flex flex-col xl:flex-row h-[calc(90vh-80px)] overflow-hidden"
+          className="flex flex-row h-[calc(90vh-80px)] overflow-hidden"
         >
           {/* Left Panel - Image Display with pan/zoom/center */}
-          <div className="xl:w-2/3 p-6 bg-gray-50 flex flex-col h-full min-h-[300px]">
+          <div className="w-1/2 xl:w-2/3 p-6 bg-gray-50 flex flex-col h-full">
             <div 
               data-testid="image-container"
               className="relative flex-1 h-full min-h-0"
@@ -300,7 +300,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
               {(image.finalImagePath || image.tempImagePath) ? (
                 <div
                   ref={containerRef}
-                  className="relative w-full h-full overflow-hidden rounded bg-white border"
+                  className="relative w-full h-full overflow-hidden rounded"
                   onWheel={handleWheel}
                   onDoubleClick={fitToContainer}
                 >
@@ -378,9 +378,9 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
           </div>
 
           {/* Right Panel - Tabs and Actions */}
-          <div className="w-full xl:w-1/3 p-6 overflow-hidden xl:border-l border-gray-200 flex flex-col min-h-0 xl:min-w-[400px]">
+          <div className="w-1/2 xl:w-1/3 border-l border-gray-200 flex flex-col h-full overflow-hidden xl:min-w-[400px]">
             {/* Tabs */}
-            <div className="flex border-b border-gray-200 mb-4">
+            <div className="flex border-b border-gray-200">
               {(['details','metadata','processing'] as TabType[]).map(tab => (
                 <button
                   key={tab}
@@ -394,8 +394,8 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
               ))}
             </div>
 
-            {/* Tab Content */}
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            {/* Tab Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-4">
               {activeTab === 'details' && (
                 <div className="space-y-6">
                   {/* Details: Job Id, Image Id */}
