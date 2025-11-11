@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settingsObject) => ipcRenderer.invoke('save-settings', settingsObject),
   refreshProtocolRoots: (extraPaths) => ipcRenderer.invoke('protocol:refresh-roots', extraPaths),
+  requestFileAccess: (filePath) => ipcRenderer.invoke('protocol:request-access', filePath),
   getConfiguration: () => ipcRenderer.invoke('settings:get-configuration'),
   
   // API Key Management

@@ -2,10 +2,24 @@ console.log(' MAIN PROCESS: main.js file is being executed!');
 console.log(' MAIN PROCESS: Node.js version:', process.version);
 console.log(' MAIN PROCESS: Electron version:', process.versions.electron);
 
-const { app, BrowserWindow, ipcMain, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const isDev = process.env.NODE_ENV === 'development';
+
+// Register custom protocol as privileged (MUST be done before app.ready)
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'local-file',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: false,
+      bypassCSP: false
+    }
+  }
+]);
 
 // Initialize Backend Adapter
 const { BackendAdapter } = require('../src/adapter/backendAdapter');
@@ -15,44 +29,150 @@ const { JobConfiguration } = require('../src/database/models/JobConfiguration');
 const { GeneratedImage } = require('../src/database/models/GeneratedImage');
 
 let mainWindow;
-let allowedRoots = [];
+
+// In-memory allowlist of directories we can serve files from (normalized absolute paths)
+let allowedRoots = new Set();
+let promptingRoots = new Set(); // throttle permission prompts by directory
+
+function toAbsoluteDir(p) {
+  try {
+    const stat = fs.statSync(p);
+    return stat.isDirectory() ? path.resolve(p) : path.resolve(path.dirname(p));
+  } catch {
+    return path.resolve(path.dirname(p));
+  }
+}
+
+function isUnderAllowedRoots(filePath) {
+  const abs = path.resolve(filePath);
+  for (const root of allowedRoots) {
+    // Ensure trailing separator match to avoid prefix tricks
+    const normalizedRoot = root.endsWith(path.sep) ? root : root + path.sep;
+    if (abs.startsWith(normalizedRoot)) return true;
+    // Also allow exact file path when root equals file's parent
+    if (abs === root) return true;
+  }
+  return false;
+}
+
 async function refreshAllowedRoots(extraPaths = []) {
   try {
-    const jobConfig = new JobConfiguration();
-    const defaults = jobConfig.getDefaultSettings();
-    const nextRoots = new Set();
-    // Defaults
-    [defaults?.filePaths?.outputDirectory, defaults?.filePaths?.tempDirectory]
-      .filter(Boolean)
-      .forEach((p) => nextRoots.add(p));
-    // Saved settings
+    const initial = new Set();
+    // Common user folders that may be used by defaults
     try {
-      const { settings } = await jobConfig.getSettings('default');
-      const saved = settings?.filePaths || {};
-      [saved.outputDirectory, saved.tempDirectory]
-        .filter(Boolean)
-        .forEach((p) => nextRoots.add(p));
+      const desktop = app.getPath('desktop');
+      const documents = app.getPath('documents');
+      initial.add(path.resolve(desktop));
+      initial.add(path.resolve(documents));
     } catch {}
-    // Extra paths provided from renderer (e.g., newly saved per-job paths)
-    (Array.isArray(extraPaths) ? extraPaths : [extraPaths])
-      .filter(Boolean)
-      .forEach((p) => nextRoots.add(p));
-    // Recent image directories
+
+    // Load current configured paths from settings if available
+    try {
+      const jc = new JobConfiguration();
+      const res = await jc.getSettings('default').catch(() => null);
+      if (res && res.success && res.settings && res.settings.filePaths) {
+        const { outputDirectory, tempDirectory, systemPromptFile, keywordsFile, qualityCheckPromptFile, metadataPromptFile } = res.settings.filePaths;
+        [outputDirectory, tempDirectory, systemPromptFile, keywordsFile, qualityCheckPromptFile, metadataPromptFile]
+          .filter(Boolean)
+          .map(toAbsoluteDir)
+          .forEach((dir) => initial.add(dir));
+      } else {
+        const defaults = (new JobConfiguration()).getDefaultSettings();
+        if (defaults && defaults.filePaths) {
+          const { outputDirectory, tempDirectory } = defaults.filePaths;
+          [outputDirectory, tempDirectory].filter(Boolean).map(toAbsoluteDir).forEach((dir) => initial.add(dir));
+        }
+      }
+    } catch {}
+
+    // Include a few recent image parent directories (best effort)
     try {
       const gi = new GeneratedImage();
-      const res = await gi.getAllGeneratedImages(500);
-      const images = res && res.success ? res.images : Array.isArray(res) ? res : [];
-      const pathDirs = new Set();
-      images.forEach((img) => {
-        try { if (img.finalImagePath) pathDirs.add(path.dirname(img.finalImagePath)); } catch {}
-        try { if (img.tempImagePath) pathDirs.add(path.dirname(img.tempImagePath)); } catch {}
-      });
-      pathDirs.forEach((d) => nextRoots.add(d));
+      const recent = await gi.getAllGeneratedImages(50).catch(() => null);
+      if (recent && recent.success && Array.isArray(recent.images)) {
+        recent.images.forEach((img) => {
+          const p = img.finalImagePath || img.tempImagePath;
+          if (p) initial.add(toAbsoluteDir(p));
+        });
+      }
     } catch {}
-    allowedRoots = Array.from(nextRoots);
-    console.log(' Allowed roots (refreshed):', allowedRoots);
+
+    // Merge caller-provided extra paths
+    (extraPaths || []).filter(Boolean).map(toAbsoluteDir).forEach((dir) => initial.add(dir));
+
+    // Commit to global allowlist
+    allowedRoots = new Set(Array.from(initial).map((d) => path.resolve(d)));
+    console.log(' Allowed protocol roots:', Array.from(allowedRoots));
   } catch (e) {
-    console.warn(' Failed to refresh allowed roots:', e.message);
+    console.warn('refreshAllowedRoots failed:', e.message);
+  }
+}
+
+async function ensureAccessToPath(filePath) {
+  const dir = toAbsoluteDir(filePath);
+  // If already allowed, no need to prompt
+  if (isUnderAllowedRoots(filePath)) {
+    try {
+      fs.accessSync(filePath, fs.constants.R_OK);
+      return true;
+    } catch (e) {
+      // proceed to prompt if on macOS and access is denied
+      if (process.platform !== 'darwin') return false;
+    }
+  }
+
+  // On macOS, privacy (TCC) may block Desktop/Documents/etc. Prompt once to grant access.
+  if (process.platform === 'darwin') {
+    const key = path.resolve(dir);
+    if (promptingRoots.has(key)) {
+      // Another prompt in progress; wait a short moment and recheck access
+      await new Promise((r) => setTimeout(r, 500));
+      try {
+        fs.accessSync(filePath, fs.constants.R_OK);
+        allowedRoots.add(key);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    promptingRoots.add(key);
+    try {
+      const result = await dialog.showOpenDialog(mainWindow || null, {
+        title: 'Grant Folder Access for Images',
+        defaultPath: key,
+        properties: ['openDirectory', 'dontAddToRecent'],
+        message: 'macOS needs your permission to allow the app to read images in this folder.'
+      });
+      if (!result.canceled && Array.isArray(result.filePaths) && result.filePaths[0]) {
+        const selectedDir = path.resolve(result.filePaths[0]);
+        allowedRoots.add(selectedDir);
+        console.log(' Granted access to directory:', selectedDir);
+        try {
+          fs.accessSync(filePath, fs.constants.R_OK);
+          return true;
+        } catch {
+          // Even after selection, may still fail if different parent; allow parent(s)
+          allowedRoots.add(toAbsoluteDir(filePath));
+          try {
+            fs.accessSync(filePath, fs.constants.R_OK);
+            return true;
+          } catch {
+            return false;
+          }
+        }
+      }
+      return false;
+    } finally {
+      promptingRoots.delete(key);
+    }
+  }
+
+  // Non-macOS: fall back to standard access check
+  try {
+    fs.accessSync(filePath, fs.constants.R_OK);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -139,190 +259,96 @@ app.whenReady().then(async () => {
       let img = null;
       if (fs.existsSync(icnsPath)) {
         img = nativeImage.createFromPath(icnsPath);
-        console.log('️ Attempting to set macOS dock icon from ICNS:', icnsPath, 'empty:', img.isEmpty());
+        console.log('Attempting to set macOS dock icon from ICNS:', icnsPath, 'empty:', img.isEmpty());
       }
       if (!img || img.isEmpty()) {
         if (fs.existsSync(pngFallbackPath)) {
           img = nativeImage.createFromPath(pngFallbackPath);
-          console.log('️ Fallback: setting macOS dock icon from PNG:', pngFallbackPath, 'empty:', img.isEmpty());
+          console.log('Fallback: setting macOS dock icon from PNG:', pngFallbackPath, 'empty:', img.isEmpty());
         } else {
-          console.warn('️ No valid icon found at ICNS or PNG fallback paths');
+          console.warn('No valid icon found at ICNS or PNG fallback paths');
         }
       }
       if (img && !img.isEmpty() && app.dock && typeof app.dock.setIcon === 'function') {
         app.dock.setIcon(img);
-        console.log('️ macOS dock icon applied');
+        console.log('macOS dock icon applied');
       }
     } catch (e) {
-      console.warn('️ Failed to set macOS dock icon:', e.message);
+      console.warn('Failed to set macOS dock icon:', e.message);
     }
   }
-  // Precompute dynamic allowed roots from defaults and saved settings
-  try {
-    console.log('\n========== INITIALIZING ALLOWED ROOTS ==========');
-    
-    // HARDCODED: Always allow Desktop paths (NEVER REMOVE THIS!)
-    const desktopPath = app.getPath('desktop');
-    const hardcodedDesktopPaths = [
-      path.join(desktopPath, 'gen-image-factory'),
-      path.join(desktopPath, 'gen-image-factory', 'pictures'),
-      path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload'),
-      path.join(desktopPath, 'gen-image-factory', 'pictures', 'generated')
-    ];
-    console.log(' HARDCODED Desktop paths:', hardcodedDesktopPaths);
-    
-    const jobConfig = new JobConfiguration();
-    const defaults = jobConfig.getDefaultSettings();
-    console.log(' Default settings loaded:', {
-      outputDirectory: defaults?.filePaths?.outputDirectory,
-      tempDirectory: defaults?.filePaths?.tempDirectory
-    });
-    
-    const defaultRoots = [
-      defaults?.filePaths?.outputDirectory,
-      defaults?.filePaths?.tempDirectory
-    ].filter(Boolean);
-
-    // Start with hardcoded paths FIRST to ensure Desktop is always allowed
-    allowedRoots = [
-      ...hardcodedDesktopPaths,
-      // app userData child folders we may use
-      path.join(app.getPath('userData'), 'exports'),
-      path.join(app.getPath('userData'), 'generated'),
-      ...defaultRoots
-    ];
-    console.log(' Initial allowed roots (HARDCODED + defaults + userData):', allowedRoots);
-
-    // Pull current saved settings synchronously before protocol registration
-    try {
-      const { settings } = await jobConfig.getSettings('default');
-      const saved = settings?.filePaths || {};
-      const savedPaths = [saved.outputDirectory, saved.tempDirectory].filter(Boolean);
-      if (savedPaths.length > 0) {
-        savedPaths.forEach((p) => allowedRoots.push(p));
-        console.log(' Added saved settings paths:', savedPaths);
-      } else {
-        console.log(' No saved settings paths found');
-      }
-      console.log(' Allowed roots (with saved):', allowedRoots);
-    } catch (_e) {
-      console.log(' Using default allowed roots only (no saved settings)');
-    }
-
-    console.log(' Allowed roots before image scan:', allowedRoots);
-
-    // Add dynamic roots from recent generated images (final and temp directories)
-    try {
-      const gi = new GeneratedImage();
-      const res = await gi.getAllGeneratedImages(500);
-      const images = res && res.success ? res.images : Array.isArray(res) ? res : [];
-      const dirs = new Set();
-      images.forEach((img) => {
-        try { if (img.finalImagePath) dirs.add(path.dirname(img.finalImagePath)); } catch {}
-        try { if (img.tempImagePath) dirs.add(path.dirname(img.tempImagePath)); } catch {}
-      });
-      if (dirs.size > 0) {
-        console.log(' Found', dirs.size, 'unique directories from images:', Array.from(dirs));
-        dirs.forEach((d) => allowedRoots.push(d));
-      } else {
-        console.log(' No image directories found to add');
-      }
-      console.log(' FINAL allowed roots count:', allowedRoots.length);
-      console.log(' FINAL allowed roots:', allowedRoots);
-      console.log('===============================================\n');
-    } catch (e2) {
-      console.warn(' Could not load dynamic roots from images:', e2.message);
-      console.log(' FINAL allowed roots (without images):', allowedRoots);
-      console.log('===============================================\n');
-    }
-  } catch (e) {
-    console.warn(' Failed to initialize JobConfiguration for allowed roots:', e.message);
-    console.log('===============================================\n');
-  }
-
-  // Set up protocol handler for local files AFTER app is ready
-  protocol.registerFileProtocol('local-file', (request, callback) => {
-    try {
-      const rawUrl = request.url || '';
-      console.log(' Protocol handler called for:', rawUrl);
-      const stripped = rawUrl.replace('local-file://', '');
-      const decodedPath = decodeURI(stripped);
-      const filePath = path.normalize(decodedPath);
-      console.log(' Normalized file path:', filePath);
-
-      const isAllowed = allowedRoots.some((root) => {
-        try {
-          if (!root) return false;
-          const normRoot = path.normalize(root + path.sep);
-          return filePath.startsWith(normRoot);
-        } catch { return false; }
-      });
-
-      if (isAllowed && fs.existsSync(filePath)) {
-        console.log(' File exists and allowed, serving:', filePath);
-        callback(filePath);
-      } else {
-        console.warn(' Blocked access to file:', filePath, 'exists:', fs.existsSync(filePath), 'allowed:', isAllowed, 'roots:', allowedRoots);
-        callback(404);
-      }
-    } catch (err) {
-      console.error(' Protocol handler error:', err);
-      callback(500);
-    }
-  });
-
-  // Add IPC handler to refresh allowed roots when settings change
-  ipcMain.handle('refresh-allowed-roots', async () => {
-    try {
-      const desktopPath = app.getPath('desktop');
-      const hardcodedDesktopPaths = [
-        path.join(desktopPath, 'gen-image-factory'),
-        path.join(desktopPath, 'gen-image-factory', 'pictures'),
-        path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload'),
-        path.join(desktopPath, 'gen-image-factory', 'pictures', 'generated')
-      ];
-      
-      // Reset with hardcoded paths
-      allowedRoots = [...hardcodedDesktopPaths];
-      
-      // Add saved settings
-      const jobConfig = new JobConfiguration();
-      const { settings } = await jobConfig.getSettings('default');
-      const saved = settings?.filePaths || {};
-      [saved.outputDirectory, saved.tempDirectory]
-        .filter(Boolean)
-        .forEach((p) => {
-          if (!allowedRoots.includes(p)) {
-            allowedRoots.push(p);
-          }
-        });
-      
-      // Add image directories
-      const gi = new GeneratedImage();
-      const res = await gi.getAllGeneratedImages(500);
-      const images = res && res.success ? res.images : Array.isArray(res) ? res : [];
-      const dirs = new Set();
-      images.forEach((img) => {
-        try { if (img.finalImagePath) dirs.add(path.dirname(img.finalImagePath)); } catch {}
-        try { if (img.tempImagePath) dirs.add(path.dirname(img.tempImagePath)); } catch {}
-      });
-      dirs.forEach((d) => {
-        if (!allowedRoots.includes(d)) {
-          allowedRoots.push(d);
-        }
-      });
-      
-      console.log(' Allowed roots refreshed:', allowedRoots.length, 'paths');
-      return { success: true, count: allowedRoots.length, roots: allowedRoots };
-    } catch (error) {
-      console.error(' Failed to refresh allowed roots:', error);
-      return { success: false, error: error.message };
-    }
-  });
   
-  // Add debug IPC handler to check allowed roots
-  ipcMain.handle('debug:get-allowed-roots', () => {
-    return { allowedRoots, count: allowedRoots.length };
+  // Initialize allowed roots before registering protocol
+  await refreshAllowedRoots();
+
+  // Register custom protocol for local file access
+  // This is required in dev mode where browser security prevents file:// access
+  protocol.registerFileProtocol('local-file', (request, callback) => {
+    console.log('Protocol handler called:', request.url);
+    try {
+      // Use URL API to parse properly - this handles cross-platform paths correctly
+      const url = new URL(request.url);
+      const host = url.hostname;
+      
+      // Get the pathname and decode it
+      let filePath = decodeURIComponent(url.pathname);
+      // Windows: strip leading slash from "/C:/..." and normalize
+      if (process.platform === 'win32' && /^\/[a-zA-Z]:\//.test(filePath)) {
+        filePath = filePath.slice(1);
+      }
+      // macOS/Linux: if a host segment exists (e.g., local-file://users/...), prepend it to pathname
+      if (process.platform !== 'win32' && host) {
+        filePath = `/${host}${filePath}`;
+      }
+      filePath = path.normalize(filePath);
+      
+      // On Windows, URL pathname will be like "/C:/Users/..." - keep as is
+      // On Unix (macOS/Linux), it will be like "/Users/..." or "/home/..." - keep as is
+      
+      console.log('   → Parsed pathname:', filePath);
+      console.log('   → File exists:', fs.existsSync(filePath));
+      console.log('   → Under allowed roots:', isUnderAllowedRoots(filePath));
+      if (host) {
+        console.log('   → URL host segment:', host);
+      }
+      
+      // Serve only if path is under an allowed root and is readable
+      const serveFile = async () => {
+        try {
+          fs.accessSync(filePath, fs.constants.R_OK);
+        } catch (e) {
+          // Try to grant access (especially on macOS after privacy reset)
+          const granted = await ensureAccessToPath(filePath);
+          if (!granted) {
+            console.warn('Access denied for file:', filePath, e.code || e.message);
+            callback({ error: -10 }); // ACCESS_DENIED
+            return;
+          }
+        }
+        console.log('Serving file');
+        callback({ path: filePath });
+      };
+
+      if (fs.existsSync(filePath)) {
+        if (isUnderAllowedRoots(filePath)) {
+          serveFile();
+        } else {
+          // Try to add the parent directory and serve
+          const parent = toAbsoluteDir(filePath);
+          allowedRoots.add(parent);
+          console.log(' Added parent to allowed roots:', parent);
+          serveFile();
+        }
+      } else {
+        console.warn('File not found:', filePath);
+        console.warn('   Original URL:', request.url);
+        console.warn('   Platform:', process.platform);
+        callback({ error: -6 }); // FILE_NOT_FOUND
+      }
+    } catch (error) {
+      console.error('Protocol handler error:', error);
+      callback({ error: -2 }); // FAILED
+    }
   });
   
   // Initialize Backend Adapter only once
@@ -361,7 +387,17 @@ app.whenReady().then(async () => {
   // Hot-refresh protocol roots on demand (no restart required)
   ipcMain.handle('protocol:refresh-roots', async (event, extraPaths = []) => {
     await refreshAllowedRoots(extraPaths);
-    return { success: true, roots: allowedRoots };
+    return { success: true, roots: Array.from(allowedRoots) };
+  });
+
+  // Manually request access to a specific file/folder and add to allowed roots
+  ipcMain.handle('protocol:request-access', async (_event, targetPath) => {
+    try {
+      const granted = await ensureAccessToPath(targetPath);
+      return { success: granted, roots: Array.from(allowedRoots) };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   });
   
   createWindow();
