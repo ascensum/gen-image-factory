@@ -534,6 +534,27 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     }
   };
 
+  // Refresh Image Gallery after retry job completes (so approved images appear immediately)
+  useEffect(() => {
+    try {
+      const api: any = (window as any).electronAPI;
+      if (!api || typeof api.onRetryCompleted !== 'function') return;
+      const onRetryCompleted = async () => {
+        try {
+          await loadGeneratedImages();
+        } catch {}
+      };
+      api.onRetryCompleted(onRetryCompleted);
+      return () => {
+        try {
+          if (typeof api.removeRetryCompleted === 'function') {
+            api.removeRetryCompleted(onRetryCompleted);
+          }
+        } catch {}
+      };
+    } catch {}
+  }, []);
+
   // Compute header statistics from local data as a fallback/enhancement
   const computedStatistics = React.useMemo(() => {
     const jobs = Array.isArray(jobHistory) ? jobHistory : [];

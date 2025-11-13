@@ -420,7 +420,7 @@ class RetryExecutor extends EventEmitter {
       await this.updateImageStatus(imageId, 'processing');
 
       // Run post-processing with correct paths
-      const processingResult = await this.runPostProcessing(sourcePath, processingSettings, includeMetadata, jobConfiguration);
+      const processingResult = await this.runPostProcessing(sourcePath, processingSettings, includeMetadata, jobConfiguration, useOriginalSettings);
       
       if (processingResult.success) {
         // Processing successful
@@ -651,7 +651,7 @@ class RetryExecutor extends EventEmitter {
    * @param {Object} jobConfiguration - Original job configuration (optional)
    * @returns {Promise<Object>} Processing result
    */
-  async runPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration = null) {
+  async runPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration = null, useOriginalSettings = false) {
     try {
       console.log(` RetryExecutor: Starting real image processing for: ${sourcePath}`);
       console.log(` RetryExecutor: Processing settings keys:`, Object.keys(settings)); // Sanitized
@@ -858,6 +858,24 @@ class RetryExecutor extends EventEmitter {
           
           const existingImage = existingImageData.image;
           
+          // Build a processing settings snapshot that reflects the effective retry settings
+          const processingSnapshot = (() => {
+            const s = processingConfig || {};
+            return {
+              imageEnhancement: !!s.imageEnhancement,
+              sharpening: Number.isFinite(Number(s.sharpening)) ? Number(s.sharpening) : 0,
+              saturation: Number.isFinite(Number(s.saturation)) ? Number(s.saturation) : 1.0,
+              imageConvert: !!s.imageConvert,
+              convertToJpg: !!s.convertToJpg,
+              jpgQuality: Number.isFinite(Number(s.jpgQuality)) ? Number(s.jpgQuality) : 100,
+              pngQuality: Number.isFinite(Number(s.pngQuality)) ? Number(s.pngQuality) : 100,
+              removeBg: !!s.removeBg,
+              trimTransparentBackground: !!s.trimTransparentBackground,
+              jpgBackground: s.jpgBackground || 'white',
+              removeBgSize: s.removeBgSize || 'auto'
+            };
+          })();
+          
           // Create update object with all required fields preserved
           const updateData = {
             executionId: existingImage.executionId,
@@ -877,7 +895,7 @@ class RetryExecutor extends EventEmitter {
               };
               return merged;
             })(),
-            processingSettings: existingImage.processingSettings
+            processingSettings: useOriginalSettings ? (existingImage.processingSettings || null) : processingSnapshot
           };
           
           console.log(` RetryExecutor: Updating image with all required fields preserved`);

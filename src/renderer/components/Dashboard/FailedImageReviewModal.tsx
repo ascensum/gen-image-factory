@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { buildLocalFileUrl } from '../../utils/urls';
 import './FailedImageReviewModal.css';
 import StatusBadge from '../Common/StatusBadge';
 import type { GeneratedImage } from '../../../types/generatedImage';
@@ -30,9 +31,9 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
   onNext,
   onDelete
 }) => {
-  if (!isOpen) return null;
-
   const [activeTab, setActiveTab] = useState<TabType>('details');
+  // Prefer execution snapshot processing settings when available (as-run)
+  const [snapshotProcessing, setSnapshotProcessing] = useState<any | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [scale, setScale] = useState<number>(1);
@@ -82,6 +83,29 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
       // Component unmounting
     };
   }, []);
+  
+  // Load execution snapshot for processing display
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchSnap() {
+      try {
+        const api: any = (window as any).electronAPI;
+        if (!api || typeof api.getJobExecutionByImageId !== 'function' || !(image as any)?.id) return;
+        const res = await api.getJobExecutionByImageId((image as any).id);
+        const exec = (res && res.success && res.execution) ? res.execution : null;
+        const proc = exec?.configurationSnapshot?.processing || null;
+        if (!cancelled) setSnapshotProcessing(proc);
+      } catch {
+        // ignore
+      }
+    }
+    if (isOpen && image) {
+      fetchSnap();
+    } else {
+      setSnapshotProcessing(null);
+    }
+    return () => { cancelled = true; };
+  }, [isOpen, (image as any)?.id]);
   
   useEffect(() => {
     if (isOpen) {
@@ -175,6 +199,9 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
   };
 
   const endPan = () => setIsPanning(false);
+
+  // Guard after hooks to keep hook order stable across renders
+  if (!isOpen) return null;
 
   return (
     <div 
@@ -306,7 +333,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
                 >
                   <img
                     ref={imgRef}
-                    src={`local-file://${image.finalImagePath || image.tempImagePath || ''}`}
+                    src={buildLocalFileUrl(image.finalImagePath || image.tempImagePath || '')}
                     alt="Failed image"
                     className={`${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
                     style={{
@@ -500,7 +527,7 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
               {activeTab === 'processing' && (
                 <div className="space-y-4">
                   {(() => {
-                    const ps = (image as any).processingSettings || {};
+                    const ps = snapshotProcessing ?? ((image as any).processingSettings || {});
                     return (
                       <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -541,7 +568,13 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Trim Transparent</label>
-                          <p className="text-sm text-gray-900">{ps.trimTransparentBackground ? 'Yes' : 'No'}</p>
+                          <p className="text-sm text-gray-900">
+                            {ps.trimTransparentBackground
+                              ? 'Yes'
+                              : (ps.removeBg
+                                  ? 'No'
+                                  : <span className="text-gray-500 italic">Not applied (Remove Background OFF)</span>)}
+                          </p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">JPG Background Colour</label>

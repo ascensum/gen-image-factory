@@ -584,7 +584,34 @@ class JobRunner extends EventEmitter {
             successfulImages: 0,
             failedImages: 0,
             errorMessage: null,
-            label: providedLabel !== '' ? providedLabel : fallbackLabel
+            label: providedLabel !== '' ? providedLabel : fallbackLabel,
+            // Persist execution-level snapshot of effective settings (without API keys)
+            configurationSnapshot: (() => {
+              try {
+                const { apiKeys, ...sanitized } = (config || {});
+                if (sanitized && sanitized.parameters) {
+                  const adv = sanitized.parameters.runwareAdvanced || {};
+                  const flag = sanitized.parameters.runwareAdvancedEnabled;
+                  const advEnabled = (flag === true)
+                    ? true
+                    : (flag === false)
+                      ? false
+                      : Boolean(
+                          adv && (
+                            adv.CFGScale != null ||
+                            adv.steps != null ||
+                            (adv.scheduler && String(adv.scheduler).trim() !== '') ||
+                            adv.checkNSFW === true ||
+                            (Array.isArray(adv.lora) && adv.lora.length > 0)
+                          )
+                        );
+                  sanitized.parameters.runwareAdvancedEnabled = advEnabled;
+                }
+                return sanitized || null;
+              } catch {
+                return null;
+              }
+            })()
           };
           // Remember the label we persisted so later updates do not clear it
           this.persistedLabel = jobExecution.label;
@@ -686,17 +713,17 @@ class JobRunner extends EventEmitter {
   validateConfiguration(config) {
     console.log(' validateConfiguration called');
     // Never log raw API keys
-    console.log(' config.apiKeys: [REDACTED]');
+    // do not log apiKeys presence explicitly
     console.log(' config.filePaths:', config.filePaths);
     console.log(' config.parameters:', config.parameters);
     
     // Check required API keys
     if (!config.apiKeys || !config.apiKeys.openai) {
-      console.log(' OpenAI API key missing or invalid');
+      console.log(' Required credential missing: openai');
       return { valid: false, error: 'OpenAI API key is required' };
     }
     if (!config.apiKeys.runware) {
-      console.log(' Runware API key missing');
+      console.log(' Required credential missing: runware');
       return { valid: false, error: 'Runware API key is required' };
     }
 
@@ -721,23 +748,21 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Job configuration
    */
   setEnvironmentFromConfig(config) {
-    // Never log raw API keys
-    console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
-    console.log('  - RUNWARE_API_KEY:', process.env.RUNWARE_API_KEY ? 'SET' : 'NOT SET');
-    console.log('  - REMOVE_BG_API_KEY:', process.env.REMOVE_BG_API_KEY ? 'SET' : 'NOT SET');
+    // Never log raw API keys or even variable presence details
+    console.log(' Credentials checked');
     
     // Set API keys
     if (config.apiKeys.openai) {
       process.env.OPENAI_API_KEY = config.apiKeys.openai;
-      console.log(' OpenAI API key set');
+      console.log(' Provider initialized: openai');
     }
     if (config.apiKeys.runware) {
       process.env.RUNWARE_API_KEY = config.apiKeys.runware;
-      console.log(' Runware API key set');
+      console.log(' Provider initialized: runware');
     }
     if (config.apiKeys.removeBg) {
       process.env.REMOVE_BG_API_KEY = config.apiKeys.removeBg;
-      console.log(' RemoveBG API key set');
+      console.log(' Provider initialized: remove.bg');
     }
 
     // Set other environment variables as needed
@@ -746,9 +771,7 @@ class JobRunner extends EventEmitter {
       console.log(' Debug mode enabled');
     }
     
-    console.log('  - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
-    console.log('  - RUNWARE_API_KEY:', process.env.RUNWARE_API_KEY ? 'SET' : 'NOT SET');
-    console.log('  - REMOVE_BG_API_KEY:', process.env.REMOVE_BG_API_KEY ? 'SET' : 'NOT SET');
+    console.log(' Environment credentials finalized');
   }
 
   /**
@@ -844,6 +867,7 @@ class JobRunner extends EventEmitter {
                 
             const rawPrompt = image.metadata?.prompt || 'Generated image';
             const displayPrompt = sanitizePromptForRunware(rawPrompt);
+                const effectiveProc = (this.jobConfiguration && this.jobConfiguration.processing) ? this.jobConfiguration.processing : (config.processing || {});
                 const generatedImage = {
                   imageMappingId: image.mappingId || `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   executionId: executionId,
@@ -857,17 +881,18 @@ class JobRunner extends EventEmitter {
                   processingSettings: JSON.stringify({
                     aspectRatio: image.aspectRatio || '16:9',
                     status: image.status,
-                    // Include user's processing settings
-                    sharpening: config.processing?.sharpening || 0,
-                    saturation: config.processing?.saturation || 1.0,
-                    imageEnhancement: config.processing?.imageEnhancement || false,
-                    imageConvert: config.processing?.imageConvert || false,
-                    convertToJpg: config.processing?.convertToJpg || false,
-                    jpgQuality: config.processing?.jpgQuality || 100,
-                    pngQuality: config.processing?.pngQuality || 100,
-                    removeBg: config.processing?.removeBg || false,
-                    trimTransparentBackground: config.processing?.trimTransparentBackground || false,
-                    jpgBackground: config.processing?.jpgBackground || 'white'
+                    // Include user's processing settings (from effective job configuration)
+                    sharpening: Number.isFinite(Number(effectiveProc.sharpening)) ? Number(effectiveProc.sharpening) : 0,
+                    saturation: Number.isFinite(Number(effectiveProc.saturation)) ? Number(effectiveProc.saturation) : 1.0,
+                    imageEnhancement: !!effectiveProc.imageEnhancement,
+                    imageConvert: !!effectiveProc.imageConvert,
+                    convertToJpg: !!effectiveProc.convertToJpg,
+                    jpgQuality: Number.isFinite(Number(effectiveProc.jpgQuality)) ? Number(effectiveProc.jpgQuality) : 100,
+                    pngQuality: Number.isFinite(Number(effectiveProc.pngQuality)) ? Number(effectiveProc.pngQuality) : 100,
+                    removeBg: !!effectiveProc.removeBg,
+                    trimTransparentBackground: !!effectiveProc.trimTransparentBackground,
+                    jpgBackground: effectiveProc.jpgBackground || 'white',
+                    removeBgSize: effectiveProc.removeBgSize || 'auto'
                   })
                 };
                 
@@ -1019,6 +1044,15 @@ class JobRunner extends EventEmitter {
         }
       } catch (qcErr) {
         console.error(' QC/move phase error:', qcErr);
+      }
+      
+      // Finalize QC: wait until all images leave transient QC states before marking job completed
+      try {
+        if (this.jobConfiguration?.ai?.runQualityCheck && this.backendAdapter && this.databaseExecutionId) {
+          await this.waitForQCToSettle(this.databaseExecutionId);
+        }
+      } catch (qcWaitErr) {
+        console.warn('️ QC finalize wait skipped or timed out:', qcWaitErr?.message || qcWaitErr);
       }
       
       // Mark image generation/QC as complete and update progress
@@ -1466,12 +1500,30 @@ class JobRunner extends EventEmitter {
       // For now, we'll create a basic implementation
       const imgNameBase = `job_${Date.now()}`;
       
-      // Create settings object with API keys and prompt
+      // Create settings object that includes full configuration so downstream module
+      // can read parameters (e.g., runwareAdvancedEnabled) and processing controls.
+      // Sanitize advanced params at execution time: if toggle is not explicitly ON,
+      // do not pass any advanced parameters downstream.
+      const sanitizedParameters = { ...(config.parameters || {}) };
+      if (sanitizedParameters.runwareAdvancedEnabled !== true) {
+        // Ensure downstream sees toggle as false and advanced payload cleared
+        sanitizedParameters.runwareAdvancedEnabled = false;
+        if (sanitizedParameters.runwareAdvanced) {
+          sanitizedParameters.runwareAdvanced = {};
+        }
+      }
       const settings = {
+        ...config,
+        parameters: sanitizedParameters,
         prompt: parameters.prompt,
-        promptContext: parameters.promptContext,
-        apiKeys: config.apiKeys  // Pass API keys in settings
+        promptContext: parameters.promptContext
       };
+      try {
+        console.log('JobRunner: settings gate before module call:', {
+          enabledFlag: settings?.parameters?.runwareAdvancedEnabled,
+          advancedKeys: settings?.parameters?.runwareAdvanced ? Object.keys(settings.parameters.runwareAdvanced) : []
+        });
+      } catch {}
       
       this._logStructured({
         level: 'info',
@@ -1970,6 +2022,44 @@ class JobRunner extends EventEmitter {
   }
 
   /**
+   * Wait until QC transitions finish for an execution (no images in transient QC states)
+   * Transient states considered: 'processing', 'retry_pending'
+   * @param {number} executionId
+   * @param {number} timeoutMs
+   * @param {number} intervalMs
+   */
+  async waitForQCToSettle(executionId, timeoutMs = 30000, intervalMs = 500) {
+    if (!this.backendAdapter || !executionId) {
+      throw new Error('Missing backendAdapter or executionId for QC finalize');
+    }
+    const start = Date.now();
+    const normalize = (resp) => {
+      if (resp && typeof resp === 'object' && Object.prototype.hasOwnProperty.call(resp, 'success')) {
+        return resp.images || [];
+      }
+      return Array.isArray(resp) ? resp : [];
+    };
+    while (Date.now() - start < timeoutMs) {
+      let images;
+      try {
+        const resp = await this.backendAdapter.getGeneratedImagesByExecution(executionId);
+        images = normalize(resp);
+      } catch (_e) {
+        images = [];
+      }
+      const unsettled = images.some((img) => {
+        const status = String(img.qcStatus || '').toLowerCase();
+        return status === 'processing' || status === 'retry_pending';
+      });
+      if (!unsettled) {
+        return true;
+      }
+      await new Promise((r) => setTimeout(r, intervalMs));
+    }
+    throw new Error('QC finalize timeout reached');
+  }
+
+  /**
    * Generate metadata for images
    * @param {Array} images - List of image paths
    * @param {Object} config - Job configuration
@@ -2224,6 +2314,7 @@ class JobRunner extends EventEmitter {
       currentJob: this.currentJob ? {
         id: this.jobState.id,
         status: this.jobState.status,
+        label: this.persistedLabel || null,
         startTime: this.jobState.startTime,
         progress: this.jobState.progress,
         currentStep: currentStepIndex + 1,

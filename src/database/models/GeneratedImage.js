@@ -224,10 +224,24 @@ class GeneratedImage {
 
           const executionIdColumn = columns.find(col => col.name === 'execution_id');
           const mappingIdColumn = columns.find(col => col.name === 'image_mapping_id');
+          const tempPathColumn = columns.find(col => col.name === 'temp_image_path');
           
           if ((executionIdColumn && executionIdColumn.notnull === 1) || !mappingIdColumn) {
             console.log(' Migrating generated_images table to add image_mapping_id and allow nullable execution_id...');
             this.migrateTable().then(resolve).catch(reject);
+          } else if (!tempPathColumn) {
+            // Lightweight migration: add missing temp_image_path column if absent
+            console.log(' Adding missing column temp_image_path to generated_images...');
+            this.db.run("ALTER TABLE generated_images ADD COLUMN temp_image_path VARCHAR(500)", (alterErr) => {
+              if (alterErr) {
+                console.error(' Failed to add temp_image_path column:', alterErr);
+                // Do not reject; continue to avoid breaking app in production
+                resolve();
+              } else {
+                console.log(' temp_image_path column added successfully');
+                resolve();
+              }
+            });
           } else {
             resolve();
           }

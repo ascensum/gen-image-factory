@@ -144,6 +144,7 @@ class JobExecution {
           failed_images INTEGER DEFAULT 0,
           error_message TEXT,
           label TEXT,
+          configuration_snapshot TEXT,
           FOREIGN KEY (configuration_id) REFERENCES job_configurations(id) ON DELETE CASCADE
         )
       `;
@@ -188,7 +189,7 @@ class JobExecution {
           }
         });
 
-        // Migrate existing table to allow nullable configuration_id
+        // Migrate existing table to allow nullable configuration_id and add configuration_snapshot if missing
         this.migrateTable().then(() => {
           // Wait for all operations to complete
           this.db.wait((err) => {
@@ -239,6 +240,7 @@ class JobExecution {
                 failed_images INTEGER DEFAULT 0,
                 error_message TEXT,
                 label TEXT,
+                configuration_snapshot TEXT,
                 FOREIGN KEY (configuration_id) REFERENCES job_configurations(id) ON DELETE CASCADE
               )
             `;
@@ -253,7 +255,7 @@ class JobExecution {
                 }
 
                 // Copy data from old table
-                this.db.run('INSERT INTO job_executions_new SELECT * FROM job_executions', (err) => {
+                this.db.run('INSERT INTO job_executions_new SELECT id, configuration_id, started_at, completed_at, status, total_images, successful_images, failed_images, error_message, label, NULL as configuration_snapshot FROM job_executions', (err) => {
                   if (err) {
                     console.error('Error copying data:', err);
                     resolve(); // Continue anyway
@@ -282,7 +284,19 @@ class JobExecution {
               });
             });
           } else {
-            resolve(); // No migration needed
+            // Ensure configuration_snapshot column exists; add if missing
+            const hasSnapshot = columns.some(col => col.name === 'configuration_snapshot');
+            if (!hasSnapshot) {
+              console.log('Adding configuration_snapshot column to job_executions...');
+              this.db.run('ALTER TABLE job_executions ADD COLUMN configuration_snapshot TEXT', (err) => {
+                if (err) {
+                  console.warn('Failed to add configuration_snapshot column (may already exist):', err.message);
+                }
+                resolve();
+              });
+            } else {
+              resolve(); // No migration needed
+            }
           }
         });
       });
@@ -293,8 +307,8 @@ class JobExecution {
     return new Promise((resolve, reject) => {
       const sql = `
         INSERT INTO job_executions 
-        (configuration_id, started_at, completed_at, status, total_images, successful_images, failed_images, error_message, label)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (configuration_id, started_at, completed_at, status, total_images, successful_images, failed_images, error_message, label, configuration_snapshot)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const params = [
@@ -306,7 +320,8 @@ class JobExecution {
         execution.successfulImages || 0,
         execution.failedImages || 0,
         execution.errorMessage || null,
-        execution.label || null
+        execution.label || null,
+        execution.configurationSnapshot ? JSON.stringify(execution.configurationSnapshot) : null
       ];
 
       this.db.run(sql, params, function(err) {
@@ -341,7 +356,8 @@ class JobExecution {
             successfulImages: row.successful_images,
             failedImages: row.failed_images,
             errorMessage: row.error_message,
-            label: row.label
+            label: row.label,
+            configurationSnapshot: row.configuration_snapshot ? JSON.parse(row.configuration_snapshot) : null
           };
           resolve({ success: true, execution });
         } else {
@@ -384,7 +400,8 @@ class JobExecution {
       const sql = `
         UPDATE job_executions 
         SET configuration_id = ?, started_at = ?, completed_at = ?, status = ?, 
-            total_images = ?, successful_images = ?, failed_images = ?, error_message = ?, label = ?
+            total_images = ?, successful_images = ?, failed_images = ?, error_message = ?, label = ?,
+            configuration_snapshot = COALESCE(?, configuration_snapshot)
         WHERE id = ?
       `;
 
@@ -398,6 +415,7 @@ class JobExecution {
         execution.failedImages,
         execution.errorMessage,
         execution.label,
+        execution.configurationSnapshot ? JSON.stringify(execution.configurationSnapshot) : null,
         id
       ];
 

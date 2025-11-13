@@ -252,7 +252,16 @@ async function producePictureModule(
   const variations = Math.max(1, Math.min(20, Number(config?.variations || settings?.parameters?.variations || 1)));
   const providerFormat = (settings?.parameters?.runwareFormat || 'png').toLowerCase(); // png|jpg|webp
   const outputFormat = providerFormat === 'jpeg' ? 'jpg' : providerFormat;
-  const advanced = settings?.parameters?.runwareAdvanced || {};
+  const advancedEnabled = settings?.parameters?.runwareAdvancedEnabled === true;
+  const advanced = advancedEnabled ? (settings?.parameters?.runwareAdvanced || {}) : {};
+  try {
+    console.log('RunwareAdvanced gate (module):', {
+      enabledFlag: settings?.parameters?.runwareAdvancedEnabled,
+      effectiveEnabled: advancedEnabled,
+      advancedKeys: advanced ? Object.keys(advanced) : [],
+      rawAdvanced: advanced
+    });
+  } catch {}
 
   const body = {
     taskType: 'imageInference',
@@ -272,7 +281,16 @@ async function producePictureModule(
   };
 
   // Explicit debug for variations request
-  try { logDebug(`Runware request params: numberResults=${String(variations)} width=${String(width)} height=${String(height)} model=${String(runwareModel)}`); } catch {}
+  try {
+    logDebug(`Runware request params: numberResults=${String(variations)} width=${String(width)} height=${String(height)} model=${String(runwareModel)}`);
+    console.log('Runware payload fields (module):', {
+      hasCFGScale: Object.prototype.hasOwnProperty.call(body, 'CFGScale'),
+      hasSteps: Object.prototype.hasOwnProperty.call(body, 'steps'),
+      hasScheduler: Object.prototype.hasOwnProperty.call(body, 'scheduler'),
+      hasCheckNSFW: Object.prototype.hasOwnProperty.call(body, 'checkNSFW'),
+      hasLoras: Object.prototype.hasOwnProperty.call(body, 'loras')
+    });
+  } catch {}
 
   // Timeouts: reuse pollingTimeout (minutes) as HTTP timeout (ms) if provided
   const httpTimeoutMs = (config?.pollingTimeout ? Number(config.pollingTimeout) * 60 * 1000 : 30000);
@@ -360,23 +378,35 @@ async function producePictureModule(
       const mappingId = generateImageMappingId(imageUrl, i + 1, imgNameBase);
       logDebug(`Generated mapping ID for image ${i + 1}: ${mappingId}`);
       
-      // Use settings path instead of hardcoded relative path
+      // Use settings path for temp writes
       const tempDir = config.tempDirectory || './pictures/generated';
-      const inputImagePath = path.resolve(path.join(tempDir, `${imgNameBase}${imageSuffix}.png`));
 
       // Download the image
       try {
-        await axios
-          .get(imageUrl, { responseType: 'arraybuffer' })
-          .then(async (response) => {
-            await fs.mkdir(path.dirname(inputImagePath), { recursive: true });
-            await fs.writeFile(inputImagePath, response.data);
-            logDebug(`Image downloaded and saved to ${inputImagePath}`); // Use global logDebug
-          })
-          .catch((error) => {
-            console.error('Error downloading image:', error);
-            throw error;
-          });
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+        // Infer extension from URL or content-type header
+        let inferredExt = '';
+        try {
+          const urlPath = new URL(imageUrl).pathname;
+          const fromUrl = path.extname(urlPath).toLowerCase();
+          if (fromUrl && ['.png', '.jpg', '.jpeg', '.webp'].includes(fromUrl)) {
+            inferredExt = fromUrl;
+          }
+        } catch {}
+        if (!inferredExt) {
+          const ct = String(response.headers?.['content-type'] || '').toLowerCase();
+          if (ct.includes('image/png')) inferredExt = '.png';
+          else if (ct.includes('image/jpeg') || ct.includes('image/jpg')) inferredExt = '.jpg';
+          else if (ct.includes('image/webp')) inferredExt = '.webp';
+        }
+        if (!inferredExt) {
+          // Fallback to png if unknown
+          inferredExt = '.png';
+        }
+        const inputImagePath = path.resolve(path.join(tempDir, `${imgNameBase}${imageSuffix}${inferredExt}`));
+        await fs.mkdir(path.dirname(inputImagePath), { recursive: true });
+        await fs.writeFile(inputImagePath, response.data);
+        logDebug(`Image downloaded and saved to ${inputImagePath}`); // Use global logDebug
 
         // Quality checks are now handled by JobRunner after images are saved to database
         // This ensures we have proper database IDs for QC status updates
@@ -542,10 +572,21 @@ async function processImage(inputImagePath, imgName, config = {}) {
   }
 
   // 4. Determine Final Format and Path
-  // Align behavior with retryExecutor: require both imageConvert AND convertToJpg to convert
-  const shouldConvertToJpg = !!imageConvert && !!convertToJpg;
-  const finalExtension = shouldConvertToJpg ? ".jpg" : ".png";
-  console.log(` processImage: Final extension determined: ${finalExtension} (convertToJpg: ${convertToJpg}, imageConvert: ${imageConvert})`);
+  // Conversion rules:
+  // - If imageConvert is true:
+  //    - convertToJpg === true  => force JPG
+  //    - convertToJpg === false => force PNG
+  // - If imageConvert is false: preserve original extension when known, else default to PNG
+  const originalExt = path.extname(inputImagePath).toLowerCase();
+  let finalExtension = '.png';
+  if (imageConvert === true) {
+    finalExtension = convertToJpg === true ? '.jpg' : '.png';
+  } else if (['.png', '.jpg', '.jpeg', '.webp'].includes(originalExt)) {
+    finalExtension = (originalExt === '.jpeg') ? '.jpg' : originalExt;
+  } else {
+    finalExtension = '.png';
+  }
+  console.log(` processImage: Final extension determined: ${finalExtension} (convertToJpg: ${convertToJpg}, imageConvert: ${imageConvert}, originalExt: ${originalExt})`);
   
   // Use settings path instead of hardcoded relative path
   console.log(` processImage: DEBUG - config.outputDirectory:`, config.outputDirectory);
@@ -555,7 +596,7 @@ async function processImage(inputImagePath, imgName, config = {}) {
   console.log(` processImage: DEBUG - final outputDir:`, outputDir);
   
   // Normalize imgName to avoid double extensions like .png.jpg
-  const baseName = imgName.replace(/\.(png|jpg|jpeg)$/i, '');
+  const baseName = imgName.replace(/\.(png|jpg|jpeg|webp)$/i, '');
   const outputPath = path.resolve(path.join(outputDir, `${baseName}${finalExtension}`));
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
@@ -570,6 +611,10 @@ async function processImage(inputImagePath, imgName, config = {}) {
         .flatten({ background: backgroundColor })
         .jpeg({ quality: jpgQuality, chromaSubsampling: '4:4:4' })
         .toFile(outputPath);
+    } else if (finalExtension === '.webp') {
+      const webpQuality = Number.isFinite(Number(config.webpQuality)) ? Number(config.webpQuality) : (Number.isFinite(Number(config.pngQuality)) ? Number(config.pngQuality) : 90);
+      console.log(` processImage: Saving as WEBP with quality: ${webpQuality}`);
+      await sharpInstance.webp({ quality: webpQuality }).toFile(outputPath);
     } else {
       console.log(` processImage: Saving as PNG with quality: ${pngQuality}`);
       await sharpInstance.png({ quality: pngQuality }).toFile(outputPath);

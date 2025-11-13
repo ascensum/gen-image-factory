@@ -39,6 +39,7 @@ interface SettingsObject extends SharedSettingsObject {
       CFGScale?: number;
       steps?: number;
     };
+      runwareAdvancedEnabled?: boolean;
     label?: string;
     pollingTimeout: number;
     pollingInterval: number;
@@ -113,6 +114,7 @@ const defaultSettings: SettingsObject = {
     runwareDimensionsCsv: '',
     runwareFormat: 'png',
     variations: 1,
+      runwareAdvancedEnabled: false,
     label: '',
     pollingTimeout: 15,
     pollingInterval: 1,
@@ -178,7 +180,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   });
   const [showError, setShowError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showRunwareAdvanced, setShowRunwareAdvanced] = useState(false);
+  // Runware Advanced visibility is persisted in settings via parameters.runwareAdvancedEnabled
   const [showResetDialog, setShowResetDialog] = useState(false);
   
   // Refs to maintain focus
@@ -581,13 +583,13 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <div className="flex items-center justify-between">
             <h4 className="text-md font-medium text-gray-800">Runware Advanced Controls</h4>
             <Toggle
-              checked={showRunwareAdvanced}
-              onChange={(checked) => setShowRunwareAdvanced(checked)}
+              checked={!!form.parameters.runwareAdvancedEnabled}
+              onChange={handleToggleChange('parameters', 'runwareAdvancedEnabled')}
             />
           </div>
           <p className="text-xs text-gray-600">Note: Check Runware model docs for valid ranges and supported fields. Defaults may be used if fields are empty. Not all models support these settings.</p>
 
-          {showRunwareAdvanced && (
+          {form.parameters.runwareAdvancedEnabled && (
           <div>
             {/* LoRA list (simple textarea for MVP) */}
             <div>

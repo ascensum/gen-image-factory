@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { buildLocalFileUrl } from '../../utils/urls';
 import { flushSync } from 'react-dom';
 import StatusBadge from '../Common/StatusBadge';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
@@ -257,7 +258,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                     </div>
                     {(image.finalImagePath || image.tempImagePath) ? (
                       <img
-                        src={`local-file://${image.finalImagePath || image.tempImagePath}`}
+                        src={buildLocalFileUrl(image.finalImagePath || image.tempImagePath)}
                         alt={image.generationPrompt}
                         className="w-full h-full object-cover cursor-pointer"
                         onClick={() => { setModalImageCache(image); setShowImageModal(image.id); }}
@@ -434,7 +435,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                         <div className="col-span-2">
                           <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
                             <img
-                              src={(image.finalImagePath || image.tempImagePath) ? `local-file://${image.finalImagePath || image.tempImagePath}` : ''}
+                              src={(image.finalImagePath || image.tempImagePath) ? buildLocalFileUrl(image.finalImagePath || image.tempImagePath) : ''}
                               alt={(() => {
                                 const meta = parseMetadata(image.metadata);
                                 const t = (meta?.title && typeof meta.title === 'object' ? meta.title.en : meta?.title) || 'Generated Image';

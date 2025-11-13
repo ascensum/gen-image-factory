@@ -83,6 +83,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Configuration
   getConfiguration: () => ipcRenderer.invoke('settings:get-configuration'),
   getJobConfigurationById: (id) => ipcRenderer.invoke('job-configuration:get-by-id', id),
+  getJobConfigurationForImage: (imageId) => ipcRenderer.invoke('job-configuration:get-by-image-id', imageId),
+  getJobExecutionByImageId: (imageId) => ipcRenderer.invoke('job-execution:get-by-image-id', imageId),
   updateJobConfiguration: (id, settingsObject) => ipcRenderer.invoke('job-configuration:update', id, settingsObject),
   updateJobConfigurationName: (id, newName) => ipcRenderer.invoke('job-configuration:update-name', id, newName),
   openExportsFolder: () => ipcRenderer.invoke('open-exports-folder'),
@@ -179,6 +181,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'get-job-executions-count',
       'settings:get-configuration',
       'job-configuration:get-by-id',
+      'job-configuration:get-by-image-id',
+      'job-execution:get-by-image-id',
       'job-configuration:update',
       'job-configuration:update-name',
       'open-exports-folder',

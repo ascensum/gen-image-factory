@@ -30,6 +30,8 @@ export interface SettingsObject {
       CFGScale?: number;
       steps?: number;
     };
+    /** Master toggle to include/exclude advanced params in Runware requests */
+    runwareAdvancedEnabled?: boolean;
     /** Optional job label to apply at creation time */
     label?: string;
     pollingTimeout: number;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { buildLocalFileUrl } from '../../utils/urls';
 import type { GeneratedImage } from '../../../types/generatedImage';
 import StatusBadge from '../Common/StatusBadge';
 
@@ -61,7 +62,7 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
       <div className="relative aspect-square" onClick={() => onAction('view', String(image.id))}>
         {(image.finalImagePath || image.tempImagePath) ? (
           <img 
-            src={`local-file://${image.finalImagePath || image.tempImagePath || ''}`} 
+            src={buildLocalFileUrl(image.finalImagePath || image.tempImagePath || '')} 
             alt={`Failed image ${image.id}`}
             className="w-full h-full object-cover"
             onError={(e) => {

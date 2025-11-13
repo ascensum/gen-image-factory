@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { buildLocalFileUrl } from '../../utils/urls';
 import { flushSync } from 'react-dom';
 import type { GeneratedImage } from '../../../types/generatedImage';
 import FailedImageCard from './FailedImageCard';
@@ -906,7 +907,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                 {retryQueueStatus.isProcessing && (
                   <svg className="ml-1 w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V2A10 10 0 002 12h2zm2 5.291A7.962 7.962 0 04 12H2c0 3.042 1.135 5.824 3 7.938l1-0.647z"></path>
+                    <path className="opacity-75" fill="currentColor" d="M12 2a10 10 0 00-10 10h2a8 8 0 018-8V2z"></path>
                   </svg>
                 )}
               </button>
@@ -1010,7 +1011,7 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                           })()}>
                             {(image.finalImagePath || image.tempImagePath) ? (
                               <img
-                                src={`local-file://${image.finalImagePath || image.tempImagePath}`}
+                                src={buildLocalFileUrl(image.finalImagePath || image.tempImagePath)}
                                 alt="thumb"
                                 className="w-full h-full object-cover"
                                 onError={(e) => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { buildLocalFileUrl } from '../../utils/urls';
 import type { SettingsObject } from '../../../types/settings';
 import { JobExecution } from '../../../types/job';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
@@ -30,6 +31,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [imageFilter, setImageFilter] = useState('all');
+  const labelUpdateTimerRef = useRef<number | null>(null);
   
   // Inline label editing removed — edit via Edit Settings modal only
   const [editedLabel, setEditedLabel] = useState('');
@@ -60,10 +62,14 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
-  const [showRunwareAdvanced, setShowRunwareAdvanced] = useState(false);
   
   // Job configuration state
   const [jobConfiguration, setJobConfiguration] = useState<any>(null);
+  
+  // Use execution snapshot for as‑run overview (fallback to current configuration if missing)
+  const overviewSettings = useMemo(() => {
+    return (job as any)?.configurationSnapshot || jobConfiguration?.settings || null;
+  }, [job, jobConfiguration]);
   
   // Export dialog state
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -71,6 +77,37 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   useEffect(() => {
     loadJobData();
   }, [jobId]);
+
+  // While running, fetch live status to hydrate label immediately (e.g., rerun label)
+  useEffect(() => {
+    async function tick() {
+      try {
+        const status: any = await (window as any).electronAPI?.jobManagement?.getJobStatus?.();
+        const live = status?.currentJob;
+        if (live && String(live?.executionId || '') === String(job?.id || '')) {
+          const lbl = String(live?.label || '').trim();
+          if (lbl) {
+            setJob((prev) => prev ? ({ ...prev, label: lbl }) as JobExecution : prev);
+          }
+        }
+      } catch {}
+    }
+    // Start polling only when job is running
+    if (job && String(job.status).toLowerCase() === 'running') {
+      // immediate tick to avoid delay
+      tick();
+      // then poll lightly
+      const id = window.setInterval(tick, 1500);
+      labelUpdateTimerRef.current = id as unknown as number;
+      return () => {
+        if (labelUpdateTimerRef.current) {
+          window.clearInterval(labelUpdateTimerRef.current);
+          labelUpdateTimerRef.current = null;
+        }
+      };
+    }
+    return;
+  }, [job?.id, job?.status]);
 
   const loadJobData = async () => {
     console.log(' SingleJobView: loadJobData called');
@@ -212,9 +249,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
   }, []);
   
   const handleRerun = useCallback(() => {
-    console.log(' DEBUG RERUN: SingleJobView rerun button clicked for jobId:', jobId);
-    console.log(' DEBUG RERUN: Timestamp:', new Date().toISOString());
-    console.log(' DEBUG RERUN: Stack trace:', new Error().stack);
+    console.log(' DEBUG RERUN: SingleJobView rerun button clicked for jobId:', jobId, 'at', new Date().toISOString());
     onRerun(jobId);
   }, [onRerun, jobId]);
   
@@ -377,8 +412,19 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     setSettingsSaveError(null);
     
     try {
+      // Prepare payload and sanitize Runware Advanced when toggle is OFF
+      const payload: any = JSON.parse(JSON.stringify(editedSettings));
+      try {
+        const params = (payload.parameters || {});
+        if (params.runwareAdvancedEnabled !== true) {
+          params.runwareAdvancedEnabled = false;
+          params.runwareAdvanced = {};
+          payload.parameters = params;
+        }
+      } catch {}
+      
       // Save to job-specific configuration
-      const result = await window.electronAPI.updateJobConfiguration(job.configurationId, editedSettings);
+      const result = await window.electronAPI.updateJobConfiguration(job.configurationId, payload);
       
       if (result.success) {
         // Refresh local configuration so subsequent edits show latest values
@@ -684,47 +730,71 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <h3>Model Configuration</h3>
                       <div className="setting-details">
                         <div>• Provider: Runware</div>
-                        <div>• Runware Model: {jobConfiguration.settings?.parameters?.runwareModel || 'Not specified'}</div>
-                        <div>• Generations: {jobConfiguration.settings?.parameters?.count ?? 'Not specified'}</div>
-                        <div>• Variations: {jobConfiguration.settings?.parameters?.variations ?? 'Not specified'}</div>
+                        <div>• Runware Model: {overviewSettings?.parameters?.runwareModel || 'Not specified'}</div>
+                        <div>• Generations: {overviewSettings?.parameters?.count ?? 'Not specified'}</div>
+                        <div>• Variations: {overviewSettings?.parameters?.variations ?? 'Not specified'}</div>
                       </div>
                     </div>
                     <div className="setting-group">
                       <h3>Image Settings</h3>
                       <div className="setting-details">
-                        <div>• Dimensions: {jobConfiguration.settings?.parameters?.runwareDimensionsCsv || 'Not specified'}</div>
-                        <div>• Format: {jobConfiguration.settings?.parameters?.runwareFormat || 'Not specified'}</div>
-                        <div>• Convert to JPG: {jobConfiguration.settings?.processing?.convertToJpg ? 'Yes' : 'No'}</div>
+                        <div>• Dimensions: {overviewSettings?.parameters?.runwareDimensionsCsv || 'Not specified'}</div>
+                        <div>• Format: {overviewSettings?.parameters?.runwareFormat || 'Not specified'}</div>
+                        <div>• Convert to JPG: {overviewSettings?.processing?.convertToJpg ? 'Yes' : 'No'}</div>
                       </div>
                     </div>
-                    {(jobConfiguration.settings?.parameters?.runwareAdvanced) && (
+                    {(() => {
+                      const adv = overviewSettings?.parameters?.runwareAdvanced || {};
+                      const flag = overviewSettings?.parameters?.runwareAdvancedEnabled;
+                      const enabled = (flag === false)
+                        ? false
+                        : (flag === true)
+                          ? true
+                          : Boolean(
+                              adv && (
+                                adv.CFGScale != null ||
+                                adv.steps != null ||
+                                (adv.scheduler && String(adv.scheduler).trim() !== '') ||
+                                adv.checkNSFW === true ||
+                                (Array.isArray(adv.lora) && adv.lora.length > 0)
+                              )
+                            );
+                      if (!enabled) return null;
+                      return (
                       <div className="setting-group">
                         <h3>Runware Advanced</h3>
                         <div className="setting-details">
-                          <div>• CFG Scale: {jobConfiguration.settings?.parameters?.runwareAdvanced?.CFGScale ?? 'Not specified'}</div>
-                          <div>• Steps: {jobConfiguration.settings?.parameters?.runwareAdvanced?.steps ?? 'Not specified'}</div>
-                          <div>• Scheduler: {jobConfiguration.settings?.parameters?.runwareAdvanced?.scheduler || 'Not specified'}</div>
-                          <div>• NSFW Check: {jobConfiguration.settings?.parameters?.runwareAdvanced?.checkNSFW ? 'Enabled' : 'Disabled'}</div>
-                          <div>• LoRA: {Array.isArray(jobConfiguration.settings?.parameters?.runwareAdvanced?.lora) ? `${jobConfiguration.settings?.parameters?.runwareAdvanced?.lora?.length} configured` : 'None'}</div>
+                          <div>• CFG Scale: {adv.CFGScale ?? 'Not specified'}</div>
+                          <div>• Steps: {adv.steps ?? 'Not specified'}</div>
+                          <div>• Scheduler: {adv.scheduler || 'Not specified'}</div>
+                          <div>• NSFW Check: {adv.checkNSFW ? 'Enabled' : 'Disabled'}</div>
+                          <div>• LoRA: {Array.isArray(adv.lora) ? `${adv.lora.length} configured` : 'None'}</div>
                         </div>
                       </div>
-                    )}
+                      );
+                    })()}
                     <div className="setting-group">
                       <h3>Processing Options</h3>
                       <div className="setting-details">
-                        <div>• Remove Background: {jobConfiguration.settings?.processing?.removeBg ? 'Yes' : 'No'}</div>
-                        <div>• Remove.bg Size: {jobConfiguration.settings?.processing?.removeBg ? (jobConfiguration.settings?.processing?.removeBgSize || 'auto') : 'Not applied (Remove Background OFF)'}</div>
-                        <div>• Image Enhancement: {jobConfiguration.settings?.processing?.imageEnhancement ? 'Yes' : 'No'}</div>
-                        <div>• Sharpening: {jobConfiguration.settings?.processing?.imageEnhancement ? (jobConfiguration.settings?.processing?.sharpening || 0) : 'Not applied (Image Enhancement OFF)'}</div>
-                        <div>• Saturation: {jobConfiguration.settings?.processing?.imageEnhancement ? (jobConfiguration.settings?.processing?.saturation || 1.4) : 'Not applied (Image Enhancement OFF)'}</div>
-                        <div>• Image Convert: {jobConfiguration.settings?.processing?.imageConvert ? 'Yes' : 'No'}</div>
-                        <div>• Convert Format: {jobConfiguration.settings?.processing?.imageConvert ? (jobConfiguration.settings?.processing?.convertToJpg ? 'JPG' : 'PNG') : 'Not applied (Image Convert OFF)'}</div>
-                        <div>• JPG Quality: {jobConfiguration.settings?.processing?.imageConvert && jobConfiguration.settings?.processing?.convertToJpg ? (jobConfiguration.settings?.processing?.jpgQuality || 100) : 'Not applied (Convert Format is not JPG)'}</div>
-                        <div>• PNG Quality: {jobConfiguration.settings?.processing?.imageConvert && !jobConfiguration.settings?.processing?.convertToJpg ? (jobConfiguration.settings?.processing?.pngQuality || 100) : 'Not applied (Convert Format is not PNG)'}</div>
-                        <div>• Trim Transparent: {jobConfiguration.settings?.processing?.trimTransparentBackground ? 'Yes' : 'No'}</div>
-                        <div>• JPG Background Colour: {jobConfiguration.settings?.processing?.imageConvert && jobConfiguration.settings?.processing?.convertToJpg && jobConfiguration.settings?.processing?.removeBg ? (jobConfiguration.settings?.processing?.jpgBackground || 'white') : 'Not applied (Remove Background, Image Convert are set to OFF and Convert Format is not JPG)'}</div>
-                        <div>• Quality Check: {jobConfiguration.settings?.ai?.runQualityCheck ? 'Yes' : 'No'}</div>
-                        <div>• Metadata Generation: {jobConfiguration.settings?.ai?.runMetadataGen ? 'Yes' : 'No'}</div>
+                        <div>• Remove Background: {overviewSettings?.processing?.removeBg ? 'Yes' : 'No'}</div>
+                        <div>• Remove.bg Size: {overviewSettings?.processing?.removeBg ? (overviewSettings?.processing?.removeBgSize || 'auto') : 'Not applied (Remove Background OFF)'}</div>
+                        <div>• Image Enhancement: {overviewSettings?.processing?.imageEnhancement ? 'Yes' : 'No'}</div>
+                        <div>• Sharpening: {overviewSettings?.processing?.imageEnhancement ? (overviewSettings?.processing?.sharpening || 0) : 'Not applied (Image Enhancement OFF)'}</div>
+                        <div>• Saturation: {overviewSettings?.processing?.imageEnhancement ? (overviewSettings?.processing?.saturation || 1.4) : 'Not applied (Image Enhancement OFF)'}</div>
+                        <div>• Image Convert: {overviewSettings?.processing?.imageConvert ? 'Yes' : 'No'}</div>
+                        <div>• Convert Format: {overviewSettings?.processing?.imageConvert ? (overviewSettings?.processing?.convertToJpg ? 'JPG' : 'PNG') : 'Not applied (Image Convert OFF)'}</div>
+                        <div>• JPG Quality: {overviewSettings?.processing?.imageConvert && overviewSettings?.processing?.convertToJpg ? (overviewSettings?.processing?.jpgQuality || 100) : 'Not applied (Convert Format is not JPG)'}</div>
+                        <div>• PNG Quality: {overviewSettings?.processing?.imageConvert && !overviewSettings?.processing?.convertToJpg ? (overviewSettings?.processing?.pngQuality || 100) : 'Not applied (Convert Format is not PNG)'}</div>
+                        <div>• Trim Transparent: {overviewSettings?.processing?.trimTransparentBackground ? 'Yes' : 'No'}</div>
+                        {/* Helper text for Trim Transparent applicability */}
+                        {!overviewSettings?.processing?.removeBg && (
+                          <div className="setting-note text-gray-500 italic" style={{ marginTop: '-6px' }}>
+                            Not applied (Remove Background OFF)
+                          </div>
+                        )}
+                        <div>• JPG Background Colour: {overviewSettings?.processing?.imageConvert && overviewSettings?.processing?.convertToJpg && overviewSettings?.processing?.removeBg ? (overviewSettings?.processing?.jpgBackground || 'white') : 'Not applied (Remove Background, Image Convert are set to OFF and Convert Format is not JPG)'}</div>
+                        <div>• Quality Check: {overviewSettings?.ai?.runQualityCheck ? 'Yes' : 'No'}</div>
+                        <div>• Metadata Generation: {overviewSettings?.ai?.runMetadataGen ? 'Yes' : 'No'}</div>
                       </div>
                     </div>
                   </>
@@ -795,7 +865,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <div className="relative aspect-square rounded overflow-hidden">
                         {(image.finalImagePath || image.tempImagePath) ? (
                           <img 
-                            src={`local-file://${image.finalImagePath || image.tempImagePath}`} 
+                            src={buildLocalFileUrl(image.finalImagePath || image.tempImagePath)} 
                             alt={`Generated image ${image.id}`}
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -848,7 +918,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                         <div className="thumbnail">
                           {(image.finalImagePath || image.tempImagePath) ? (
                             <img 
-                              src={`local-file://${image.finalImagePath || image.tempImagePath}`} 
+                              src={buildLocalFileUrl(image.finalImagePath || image.tempImagePath)} 
                               alt={`Generated image ${image.id}`}
                               className="w-16 h-16 object-cover rounded-lg"
                               onError={(e) => {
@@ -1164,11 +1234,11 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <p className="setting-description">Show advanced Runware generation controls</p>
                     </div>
                     <Toggle
-                      checked={showRunwareAdvanced}
-                      onChange={(checked) => setShowRunwareAdvanced(checked)}
+                      checked={!!editedSettings.parameters?.runwareAdvancedEnabled}
+                      onChange={(checked) => handleSettingChange('parameters', 'runwareAdvancedEnabled', checked)}
                     />
                   </div>
-                  {showRunwareAdvanced && (
+                  {editedSettings.parameters?.runwareAdvancedEnabled && (
                     <>
                       <div className="setting-row">
                         <label>Runware Advanced: CFG Scale</label>

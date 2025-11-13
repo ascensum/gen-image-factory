@@ -304,6 +304,34 @@ class BackendAdapter {
       _ipc.handle('job-configuration:get-by-id', async (event, id) => {
         return await this.getJobConfigurationById(id);
       });
+      
+      // Fetch job configuration by generated image id (for up-to-date processing display)
+      _ipc.handle('job-configuration:get-by-image-id', async (event, imageId) => {
+        try {
+          await this.ensureInitialized();
+          const cfg = await this.getJobConfigurationForImage(imageId);
+          return cfg;
+        } catch (error) {
+          console.error('Error getting job configuration for image:', error);
+          return { success: false, error: error.message };
+        }
+      });
+      
+      // Fetch job execution by generated image id (to access execution snapshot)
+      _ipc.handle('job-execution:get-by-image-id', async (event, imageId) => {
+        try {
+          await this.ensureInitialized();
+          const imageRes = await this.generatedImage.getGeneratedImage(imageId);
+          if (!imageRes || !imageRes.success || !imageRes.image) {
+            return { success: false, error: 'Image not found' };
+          }
+          const execRes = await this.jobExecution.getJobExecution(imageRes.image.executionId);
+          return execRes;
+        } catch (error) {
+          console.error('Error getting job execution for image:', error);
+          return { success: false, error: error.message };
+        }
+      });
 
       _ipc.handle('job-configuration:update', async (event, id, settingsObject) => {
         return await this.updateJobConfiguration(id, settingsObject);
@@ -693,6 +721,34 @@ class BackendAdapter {
             };
           }
 
+          // Persist snapshot for rerun execution using CURRENT configuration settings (without API keys)
+          try {
+            const cfg = configResult?.configuration?.settings || null;
+            if (cfg) {
+              const { apiKeys, ...sanitized } = cfg;
+              if (sanitized && sanitized.parameters) {
+                const adv = sanitized.parameters.runwareAdvanced || {};
+                const advEnabled = Boolean(
+                  adv && (
+                    adv.CFGScale != null ||
+                    adv.steps != null ||
+                    (adv.scheduler && String(adv.scheduler).trim() !== '') ||
+                    adv.checkNSFW === true ||
+                    (Array.isArray(adv.lora) && adv.lora.length > 0)
+                  )
+                );
+                sanitized.parameters.runwareAdvancedEnabled = advEnabled;
+              }
+              await this.jobExecution.updateJobExecution(newExecution.id, {
+                configurationId: jobData.execution.configurationId,
+                status: 'running',
+                configurationSnapshot: sanitized || null
+              });
+            }
+          } catch (e) {
+            console.warn(' Rerun snapshot persistence failed (non-fatal):', e.message);
+          }
+
           // Ensure JobRunner carries forward the label for DB updates on completion/error
           this.jobRunner.persistedLabel = newExecutionData.label;
           
@@ -710,8 +766,23 @@ class BackendAdapter {
           this.jobRunner.configurationId = jobData.execution.configurationId;
           this.jobRunner.databaseExecutionId = newExecution.id; // Set the execution ID for database operations
           this.jobRunner.isRerun = true; // Set rerun flag to prevent duplicate database saves
-
-          const jobResult = await this.jobRunner.startJob(configResult.configuration.settings);
+          // Sanitize advanced params at execution time based on explicit toggle
+          let settingsForRun = configResult.configuration.settings || {};
+          try {
+            const params = settingsForRun.parameters || {};
+            if (params.runwareAdvancedEnabled !== true) {
+              params.runwareAdvancedEnabled = false;
+              if (params.runwareAdvanced) params.runwareAdvanced = {};
+              settingsForRun.parameters = params;
+            }
+          } catch {}
+          try {
+            console.log('Rerun (single) starting with parameters gate:', {
+              enabledFlag: settingsForRun?.parameters?.runwareAdvancedEnabled,
+              advancedKeys: settingsForRun?.parameters?.runwareAdvanced ? Object.keys(settingsForRun.parameters.runwareAdvanced) : []
+            });
+          } catch {}
+          const jobResult = await this.jobRunner.startJob(settingsForRun);
           
           if (jobResult.success) {
             return { 
@@ -938,6 +1009,15 @@ class BackendAdapter {
   async updateJobConfiguration(id, settingsObject) {
     try {
       await this.ensureInitialized();
+      // Normalize Runware Advanced: if toggle is not explicitly ON, clear advanced payload
+      try {
+        const params = (settingsObject && settingsObject.parameters) ? settingsObject.parameters : {};
+        if (params.runwareAdvancedEnabled !== true) {
+          params.runwareAdvancedEnabled = false;
+          if (params.runwareAdvanced) params.runwareAdvanced = {};
+          settingsObject.parameters = params;
+        }
+      } catch (_) {}
       const result = await this.jobConfig.updateConfiguration(id, settingsObject);
       return result;
     } catch (error) {
@@ -962,6 +1042,16 @@ class BackendAdapter {
       // Ensure database is initialized
       await this.ensureInitialized();
       
+      // Normalize Runware Advanced at settings level as well
+      try {
+        const params = (settingsObject && settingsObject.parameters) ? settingsObject.parameters : {};
+        if (params.runwareAdvancedEnabled !== true) {
+          params.runwareAdvancedEnabled = false;
+          if (params.runwareAdvanced) params.runwareAdvanced = {};
+          settingsObject.parameters = params;
+        }
+      } catch (_) {}
+
       // Save API keys to secure storage
       for (const [service, apiKey] of Object.entries(settingsObject.apiKeys)) {
         const accountName = ACCOUNT_NAMES[service.toUpperCase()];
@@ -1099,8 +1189,21 @@ class BackendAdapter {
         return { success: false, error: 'Job is already running' };
       }
       
-      // Normalize file paths before saving - use custom paths if set, otherwise use fallback paths
+      // Normalize file paths before saving - use custom paths if set, otherwise use fallback paths.
+      // If UI didn't provide filePaths, merge current saved settings' filePaths so standard runs honor configured paths.
       const normalizedConfig = { ...config };
+      try {
+        if (!normalizedConfig.filePaths) {
+          const currentSettings = await this.getSettings();
+          const settingsFilePaths = currentSettings?.settings?.filePaths;
+          if (settingsFilePaths && (settingsFilePaths.outputDirectory || settingsFilePaths.tempDirectory)) {
+            normalizedConfig.filePaths = { ...settingsFilePaths };
+            console.log(' DEBUG - Injected filePaths from saved settings:', JSON.stringify(normalizedConfig.filePaths, null, 2));
+          }
+        }
+      } catch (e) {
+        console.warn(' WARN - Failed to merge saved settings filePaths:', e.message);
+      }
       if (normalizedConfig.filePaths) {
         const defaultSettings = this.jobConfig.getDefaultSettings();
         const defaultFilePaths = defaultSettings.filePaths;
@@ -1536,7 +1639,9 @@ class BackendAdapter {
       }
 
       // Merge settings into the same Job Summary sheet (no separate sheet)
-      if (jobConfig && jobConfig.settings) {
+      // Prefer execution snapshot when available to reflect as-run configuration
+      const effectiveSettings = job.configurationSnapshot || (jobConfig && jobConfig.settings) || null;
+      if (effectiveSettings) {
         const formatSettingLabel = (key) => {
           const mapping = {
             // Runware-specific parameters
@@ -1592,7 +1697,7 @@ class BackendAdapter {
           return result;
         };
 
-        const flattenedSettings = flattenSettings(jobConfig.settings)
+        const flattenedSettings = flattenSettings(effectiveSettings)
           .filter(([key]) => !key.startsWith('apiKeys.'))
           // Drop MJ-only fields from exports when using Runware
           .filter(([key]) => !['parameters.mjVersion', 'parameters.aspectRatios', 'parameters.openaiModel', 'parameters.processMode'].includes(key))
@@ -2600,12 +2705,54 @@ class BackendAdapter {
         console.warn('Bulk rerun: failed to merge runtime API keys into configuration:', e.message);
       }
 
+      // Persist snapshot for first rerun in bulk queue (without API keys)
+      try {
+        const cfg = firstJob?.configuration || null;
+        if (cfg) {
+          const { apiKeys, ...sanitized } = cfg;
+          if (sanitized && sanitized.parameters) {
+            const adv = sanitized.parameters.runwareAdvanced || {};
+            const advEnabled = Boolean(
+              adv && (
+                adv.CFGScale != null ||
+                adv.steps != null ||
+                (adv.scheduler && String(adv.scheduler).trim() !== '') ||
+                adv.checkNSFW === true ||
+                (Array.isArray(adv.lora) && adv.lora.length > 0)
+              )
+            );
+            sanitized.parameters.runwareAdvancedEnabled = advEnabled;
+          }
+          await this.jobExecution.updateJobExecution(newExecution.id, {
+            configurationId: firstJob.configurationId,
+            status: 'running',
+            configurationSnapshot: sanitized || null
+          });
+        }
+      } catch (e) {
+        console.warn(' Bulk rerun snapshot persistence failed (non-fatal):', e.message);
+      }
       // Configure JobRunner for rerun mode (same as individual reruns)
       this.jobRunner.configurationId = firstJob.configurationId;
       this.jobRunner.databaseExecutionId = newExecution.id; // Set the execution ID for database operations
       this.jobRunner.isRerun = true; // Set rerun flag to prevent duplicate database saves
       this.jobRunner.persistedLabel = newExecutionData.label; // ensure completion keeps the right label
       
+      // Sanitize advanced params based on explicit toggle for bulk rerun
+      try {
+        const params = (firstJob.configuration?.parameters || {});
+        if (params.runwareAdvancedEnabled !== true) {
+          params.runwareAdvancedEnabled = false;
+          if (params.runwareAdvanced) params.runwareAdvanced = {};
+          firstJob.configuration.parameters = params;
+        }
+      } catch {}
+      try {
+        console.log('Rerun (bulk first) starting with parameters gate:', {
+          enabledFlag: firstJob?.configuration?.parameters?.runwareAdvancedEnabled,
+          advancedKeys: firstJob?.configuration?.parameters?.runwareAdvanced ? Object.keys(firstJob.configuration.parameters.runwareAdvanced) : []
+        });
+      } catch {}
       const jobResult = await this.jobRunner.startJob(firstJob.configuration);
       
       if (jobResult.success) {
@@ -2730,6 +2877,21 @@ class BackendAdapter {
       this.jobRunner.isRerun = true;
       this.jobRunner.persistedLabel = newExecutionData.label; // keep label through completion
 
+      // Sanitize advanced params for queued job as well
+      try {
+        const params = (nextJob.configuration?.parameters || {});
+        if (params.runwareAdvancedEnabled !== true) {
+          params.runwareAdvancedEnabled = false;
+          if (params.runwareAdvanced) params.runwareAdvanced = {};
+          nextJob.configuration.parameters = params;
+        }
+      } catch {}
+      try {
+        console.log('Rerun (bulk queued) starting with parameters gate:', {
+          enabledFlag: nextJob?.configuration?.parameters?.runwareAdvancedEnabled,
+          advancedKeys: nextJob?.configuration?.parameters?.runwareAdvanced ? Object.keys(nextJob.configuration.parameters.runwareAdvanced) : []
+        });
+      } catch {}
       // Start the job
       const jobResult = await this.jobRunner.startJob(nextJob.configuration);
       if (jobResult.success) {

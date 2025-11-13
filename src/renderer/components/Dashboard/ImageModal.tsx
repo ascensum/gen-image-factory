@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { buildLocalFileUrl } from '../../utils/urls';
 import './FailedImageReviewModal.css';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import StatusBadge from '../Common/StatusBadge';
@@ -205,8 +206,34 @@ const ImageModal: React.FC<ImageModalProps> = ({
     try { console.log('ImageModal - Final metadata object:', metadata); } catch {}
   }
   
+  // Prefer execution snapshot processing settings for as-run display when available
+  const [snapshotProcessing, setSnapshotProcessing] = useState<any | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchExecutionSnapshot() {
+      try {
+        const api: any = (window as any).electronAPI;
+        if (!api || typeof api.getJobExecutionByImageId !== 'function' || !image?.id) return;
+        const res = await api.getJobExecutionByImageId(image.id);
+        try { console.log('ImageModal: getJobExecutionByImageId result keys:', res ? Object.keys(res) : 'none'); } catch {}
+        const exec = (res && res.success && res.execution) ? res.execution : null;
+        try { console.log('ImageModal: execution id:', exec?.id, 'hasSnapshot:', !!exec?.configurationSnapshot); } catch {}
+        const proc = exec?.configurationSnapshot?.processing || null;
+        try { console.log('ImageModal: snapshotProcessing keys:', proc ? Object.keys(proc) : 'null'); } catch {}
+        if (!cancelled) setSnapshotProcessing(proc);
+      } catch {}
+    }
+    if (isOpen && image?.id) {
+      fetchExecutionSnapshot();
+    } else {
+      setSnapshotProcessing(null);
+    }
+    return () => { cancelled = true; };
+  }, [isOpen, image?.id]);
+  
   // Ensure processingSettings is always defined for the Processing tab
-  const processingSettings: any = (image as any)?.processingSettings ?? {};
+  // Prefer per-image snapshot first (includes retry customizations), then fall back to execution snapshot
+  const processingSettings: any = (image as any)?.processingSettings ?? snapshotProcessing ?? {};
 
 
   return (
@@ -340,7 +367,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
               <div className="relative w-full h-full overflow-hidden rounded">
                 <img
                   ref={imgRef}
-                  src={`local-file://${image.finalImagePath || image.tempImagePath || ''}`}
+                  src={buildLocalFileUrl(image.finalImagePath || image.tempImagePath || '')}
                   alt="Generated image"
                   className={`${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
                   style={{
@@ -568,6 +595,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
                 {/* Processing Settings Tab */}
                 {activeTab === 'processing' && (
                   <div className="space-y-4">
+                    <div className="text-base font-medium text-gray-900">As‑run settings</div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Image Enhancement</label>
@@ -646,7 +674,13 @@ const ImageModal: React.FC<ImageModalProps> = ({
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Trim Transparent</label>
-                        <p className="text-sm text-gray-900">{processingSettings.trimTransparentBackground ? 'Yes' : 'No'}</p>
+                        <p className="text-sm text-gray-900">
+                          {processingSettings.trimTransparentBackground
+                            ? 'Yes'
+                            : (processingSettings.removeBg
+                                ? 'No'
+                                : <span className="text-gray-500 italic">Not applied (Remove Background OFF)</span>)}
+                        </p>
                       </div>
                       
                       <div>

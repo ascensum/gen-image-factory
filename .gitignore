@@ -10,12 +10,14 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+debug-logs/
 *_flows_logs.txt
 retry_flows_logs.txt
 backend.log
 backend-*.log
 debug.log
 debug-*.log
+runware-advanced-*.log
 console.log
 console-*.log
 app.log
