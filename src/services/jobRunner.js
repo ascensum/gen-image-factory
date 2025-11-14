@@ -866,11 +866,13 @@ class JobRunner extends EventEmitter {
         message: ' Step 1: Initialization - generating parameters...'
       });
       
-      // Apply initialization timeout using the same Generation Timeout control (pollingTimeout, minutes)
-      const initTimeoutMinutes = (config?.parameters?.enablePollingTimeout === true)
-        ? (Number(config?.parameters?.pollingTimeout) || 15)
-        : 1; // fallback to 1 minute if disabled, to avoid indefinite hangs
-      const initTimeoutMs = Math.max(30_000, initTimeoutMinutes * 60 * 1000);
+      // Apply initialization timeout using the same Generation Timeout (pollingTimeout, minutes)
+      // - If enabled: use exact user value (minutes) with safe fallback to 30s if missing/NaN
+      // - If disabled: default to 30s (no extra cap)
+      const pollingTimeoutMinutes = Number(config?.parameters?.pollingTimeout);
+      const initTimeoutMs = (config?.parameters?.enablePollingTimeout === true)
+        ? (Number.isFinite(pollingTimeoutMinutes) ? pollingTimeoutMinutes * 60 * 1000 : 30_000)
+        : 30_000;
       const parameters = await this.withTimeout(
         this.generateParameters({ ...config, __abortSignal: this.abortController?.signal }),
         initTimeoutMs,
