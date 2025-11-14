@@ -574,13 +574,14 @@ async function processImage(inputImagePath, imgName, config = {}) {
   // 4. Determine Final Format and Path
   // Conversion rules:
   // - If imageConvert is true:
-  //    - convertToJpg === true  => force JPG
-  //    - convertToJpg === false => force PNG
+  //    - convertToWebp === true => force WEBP
+  //    - else if convertToJpg === true  => force JPG
+  //    - else                           => force PNG
   // - If imageConvert is false: preserve original extension when known, else default to PNG
   const originalExt = path.extname(inputImagePath).toLowerCase();
   let finalExtension = '.png';
   if (imageConvert === true) {
-    finalExtension = convertToJpg === true ? '.jpg' : '.png';
+    finalExtension = (config.convertToWebp === true) ? '.webp' : (convertToJpg === true ? '.jpg' : '.png');
   } else if (['.png', '.jpg', '.jpeg', '.webp'].includes(originalExt)) {
     finalExtension = (originalExt === '.jpeg') ? '.jpg' : originalExt;
   } else {
@@ -612,12 +613,12 @@ async function processImage(inputImagePath, imgName, config = {}) {
         .jpeg({ quality: jpgQuality, chromaSubsampling: '4:4:4' })
         .toFile(outputPath);
     } else if (finalExtension === '.webp') {
-      const webpQuality = Number.isFinite(Number(config.webpQuality)) ? Number(config.webpQuality) : (Number.isFinite(Number(config.pngQuality)) ? Number(config.pngQuality) : 90);
+      const webpQuality = Number.isFinite(Number(config.webpQuality)) ? Number(config.webpQuality) : 85;
       console.log(` processImage: Saving as WEBP with quality: ${webpQuality}`);
       await sharpInstance.webp({ quality: webpQuality }).toFile(outputPath);
     } else {
-      console.log(` processImage: Saving as PNG with quality: ${pngQuality}`);
-      await sharpInstance.png({ quality: pngQuality }).toFile(outputPath);
+      console.log(` processImage: Saving as PNG (lossless)`);
+      await sharpInstance.png().toFile(outputPath);
     }
     logDebug('Final image saved to:', outputPath);
   } catch (error) {

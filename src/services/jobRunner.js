@@ -251,6 +251,7 @@ class JobRunner extends EventEmitter {
       removeBg: processingEnabled ? (config.processing?.removeBg || false) : false,
       imageConvert: processingEnabled ? (config.processing?.imageConvert || false) : false,
       convertToJpg: processingEnabled ? (config.processing?.convertToJpg || false) : false,
+      convertToWebp: processingEnabled ? (config.processing?.convertToWebp || false) : false,
       trimTransparentBackground: processingEnabled ? (config.processing?.trimTransparentBackground || false) : false,
       aspectRatios: Array.isArray(parameters.aspectRatios) ? parameters.aspectRatios : (Array.isArray(config.parameters?.aspectRatios) ? config.parameters.aspectRatios : (typeof config.parameters?.aspectRatios === 'string' ? [config.parameters.aspectRatios] : ['1:1'])),
       pollingTimeout: config.parameters?.enablePollingTimeout ? (config.parameters?.pollingTimeout || 15) : null,
@@ -263,8 +264,9 @@ class JobRunner extends EventEmitter {
       sharpening: processingEnabled ? (config.processing?.sharpening || 0) : 0,
       saturation: processingEnabled ? (config.processing?.saturation || 1) : 1,
       jpgBackground: processingEnabled ? (config.processing?.jpgBackground || 'white') : 'white',
-      jpgQuality: processingEnabled ? (config.processing?.jpgQuality || 90) : 90,
+      jpgQuality: processingEnabled ? (config.processing?.jpgQuality || 85) : 85,
       pngQuality: processingEnabled ? (config.processing?.pngQuality || 100) : 100,
+      webpQuality: processingEnabled ? (config.processing?.webpQuality || 85) : 85,
       outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
       tempDirectory: config.filePaths?.tempDirectory || './pictures/generated'
     };
@@ -887,8 +889,10 @@ class JobRunner extends EventEmitter {
                     imageEnhancement: !!effectiveProc.imageEnhancement,
                     imageConvert: !!effectiveProc.imageConvert,
                     convertToJpg: !!effectiveProc.convertToJpg,
+                    convertToWebp: !!effectiveProc.convertToWebp,
                     jpgQuality: Number.isFinite(Number(effectiveProc.jpgQuality)) ? Number(effectiveProc.jpgQuality) : 100,
                     pngQuality: Number.isFinite(Number(effectiveProc.pngQuality)) ? Number(effectiveProc.pngQuality) : 100,
+                    webpQuality: Number.isFinite(Number(effectiveProc.webpQuality)) ? Number(effectiveProc.webpQuality) : 85,
                     removeBg: !!effectiveProc.removeBg,
                     trimTransparentBackground: !!effectiveProc.trimTransparentBackground,
                     jpgBackground: effectiveProc.jpgBackground || 'white',
@@ -1016,14 +1020,16 @@ class JobRunner extends EventEmitter {
                     removeBg: !!proc.removeBg,
                     imageConvert: !!proc.imageConvert,
                     convertToJpg: !!proc.convertToJpg,
+                    convertToWebp: !!proc.convertToWebp,
                     trimTransparentBackground: !!proc.trimTransparentBackground,
                     imageEnhancement: !!proc.imageEnhancement,
                     sharpening: proc.sharpening ?? 0,
                     saturation: proc.saturation ?? 1,
                     jpgBackground: proc.jpgBackground || 'white',
                     removeBgSize: proc.removeBgSize || 'preview',
-                    jpgQuality: proc.jpgQuality ?? 90,
-                    pngQuality: proc.pngQuality ?? 100
+                    jpgQuality: proc.jpgQuality ?? 85,
+                    pngQuality: proc.pngQuality ?? 100,
+                    webpQuality: proc.webpQuality ?? 85
                   };
                   const sourceFileName = pathMod.basename(sourcePath);
                   const processedImagePath = await producePictureModule.processImage(sourcePath, sourceFileName, processingConfig);

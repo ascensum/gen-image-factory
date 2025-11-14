@@ -739,8 +739,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <h3>Image Settings</h3>
                       <div className="setting-details">
                         <div>• Dimensions: {overviewSettings?.parameters?.runwareDimensionsCsv || 'Not specified'}</div>
-                        <div>• Format: {overviewSettings?.parameters?.runwareFormat || 'Not specified'}</div>
-                        <div>• Convert to JPG: {overviewSettings?.processing?.convertToJpg ? 'Yes' : 'No'}</div>
+                        <div>• Format: {(overviewSettings?.parameters?.runwareFormat || 'Not specified')?.toString().toUpperCase()}</div>
                       </div>
                     </div>
                     {(() => {
@@ -782,16 +781,15 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                         <div>• Sharpening: {overviewSettings?.processing?.imageEnhancement ? (overviewSettings?.processing?.sharpening || 0) : 'Not applied (Image Enhancement OFF)'}</div>
                         <div>• Saturation: {overviewSettings?.processing?.imageEnhancement ? (overviewSettings?.processing?.saturation || 1.4) : 'Not applied (Image Enhancement OFF)'}</div>
                         <div>• Image Convert: {overviewSettings?.processing?.imageConvert ? 'Yes' : 'No'}</div>
-                        <div>• Convert Format: {overviewSettings?.processing?.imageConvert ? (overviewSettings?.processing?.convertToJpg ? 'JPG' : 'PNG') : 'Not applied (Image Convert OFF)'}</div>
-                        <div>• JPG Quality: {overviewSettings?.processing?.imageConvert && overviewSettings?.processing?.convertToJpg ? (overviewSettings?.processing?.jpgQuality || 100) : 'Not applied (Convert Format is not JPG)'}</div>
-                        <div>• PNG Quality: {overviewSettings?.processing?.imageConvert && !overviewSettings?.processing?.convertToJpg ? (overviewSettings?.processing?.pngQuality || 100) : 'Not applied (Convert Format is not PNG)'}</div>
-                        <div>• Trim Transparent: {overviewSettings?.processing?.trimTransparentBackground ? 'Yes' : 'No'}</div>
-                        {/* Helper text for Trim Transparent applicability */}
-                        {!overviewSettings?.processing?.removeBg && (
-                          <div className="setting-note text-gray-500 italic" style={{ marginTop: '-6px' }}>
-                            Not applied (Remove Background OFF)
-                          </div>
+                        <div>• Convert Format: {overviewSettings?.processing?.imageConvert ? ((overviewSettings?.processing as any)?.convertToWebp ? 'WEBP' : (overviewSettings?.processing?.convertToJpg ? 'JPG' : 'PNG')) : 'Not applied (Image Convert OFF)'}</div>
+                        {overviewSettings?.processing?.imageConvert && overviewSettings?.processing?.convertToJpg && (
+                          <div>• JPG Quality: {overviewSettings?.processing?.jpgQuality || 85}</div>
                         )}
+                        {(overviewSettings?.processing as any)?.convertToWebp && overviewSettings?.processing?.imageConvert && (
+                          <div>• WEBP Quality: {(overviewSettings?.processing as any)?.webpQuality ?? 85}</div>
+                        )}
+                        <div>• Trim Transparent: {overviewSettings?.processing?.removeBg ? (overviewSettings?.processing?.trimTransparentBackground ? 'Yes' : 'No') : 'Not applied (Remove Background OFF)'}</div>
+                        {/* Helper text removed to avoid duplication with line above when Remove Background is OFF */}
                         <div>• JPG Background Colour: {overviewSettings?.processing?.imageConvert && overviewSettings?.processing?.convertToJpg && overviewSettings?.processing?.removeBg ? (overviewSettings?.processing?.jpgBackground || 'white') : 'Not applied (Remove Background, Image Convert are set to OFF and Convert Format is not JPG)'}</div>
                         <div>• Quality Check: {overviewSettings?.ai?.runQualityCheck ? 'Yes' : 'No'}</div>
                         <div>• Metadata Generation: {overviewSettings?.ai?.runMetadataGen ? 'Yes' : 'No'}</div>
@@ -1335,12 +1333,18 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <div className="setting-row">
                       <label>Convert Format</label>
                       <select
-                        value={editedSettings.processing?.convertToJpg ? 'jpg' : 'png'}
-                        onChange={(e) => handleSettingChange('processing', 'convertToJpg', e.target.value === 'jpg')}
+                        value={(editedSettings.processing as any)?.convertToWebp ? 'webp' : (editedSettings.processing?.convertToJpg ? 'jpg' : 'png')}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          // Mutually exclusive flags
+                          handleSettingChange('processing', 'convertToWebp' as any, val === 'webp');
+                          handleSettingChange('processing', 'convertToJpg', val === 'jpg');
+                        }}
                         className="ui-select"
                       >
                         <option value="png">PNG</option>
                         <option value="jpg">JPG</option>
+                        <option value="webp">WEBP</option>
                       </select>
                     </div>
                   )}
@@ -1348,26 +1352,30 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   {/* Quality Settings - conditional */}
                   {editedSettings.processing?.imageConvert && (
                     <>
-                      <div className="setting-row">
-                        <label>JPG Quality (1-100)</label>
-                        <input
-                          type="number"
-                          value={editedSettings.processing?.jpgQuality || 100}
-                          onChange={(e) => handleSettingChange('processing', 'jpgQuality', parseInt(e.target.value))}
-                          min="1"
-                          max="100"
-                        />
-                      </div>
-                      <div className="setting-row">
-                        <label>PNG Quality (1-100)</label>
-                        <input
-                          type="number"
-                          value={editedSettings.processing?.pngQuality || 100}
-                          onChange={(e) => handleSettingChange('processing', 'pngQuality', parseInt(e.target.value))}
-                          min="1"
-                          max="100"
-                        />
-                      </div>
+                      {editedSettings.processing?.convertToJpg && (
+                        <div className="setting-row">
+                          <label>JPG Quality (1-100)</label>
+                          <input
+                            type="number"
+                            value={editedSettings.processing?.jpgQuality || 85}
+                            onChange={(e) => handleSettingChange('processing', 'jpgQuality', parseInt(e.target.value))}
+                            min="1"
+                            max="100"
+                          />
+                        </div>
+                      )}
+                      {(editedSettings.processing as any)?.convertToWebp && (
+                        <div className="setting-row">
+                          <label>WebP Quality (1-100)</label>
+                          <input
+                            type="number"
+                            value={(editedSettings.processing as any)?.webpQuality ?? 85}
+                            onChange={(e) => handleSettingChange('processing', 'webpQuality' as any, parseInt(e.target.value))}
+                            min="1"
+                            max="100"
+                          />
+                        </div>
+                      )}
                     </>
                   )}
 
@@ -1391,7 +1399,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                   <div className="setting-row toggle-row">
                     <div>
                       <label>Trim Transparent Background</label>
-                      <p className="setting-description">Remove transparent areas from images (PNG only)</p>
+                      <p className="setting-description">Remove transparent areas from images (PNG/WebP only)</p>
                     </div>
                     <Toggle
                       checked={editedSettings.processing?.trimTransparentBackground || false}

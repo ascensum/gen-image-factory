@@ -588,8 +588,10 @@ class RetryExecutor extends EventEmitter {
         saturation: originalSettings.saturation || 1.0,
         imageConvert: originalSettings.imageConvert || false,
         convertToJpg: originalSettings.convertToJpg || false,
+        convertToWebp: originalSettings.convertToWebp || false,
         jpgQuality: originalSettings.jpgQuality || 100,
         pngQuality: originalSettings.pngQuality || 100,
+        webpQuality: originalSettings.webpQuality || 85,
         removeBg: originalSettings.removeBg || false,
         removeBgSize: originalSettings.removeBgSize || 'auto',
         trimTransparentBackground: originalSettings.trimTransparentBackground || false,
@@ -604,8 +606,10 @@ class RetryExecutor extends EventEmitter {
         saturation: 1.0,
       imageConvert: false,
         convertToJpg: false,
+        convertToWebp: false,
         jpgQuality: 100,
         pngQuality: 100,
+        webpQuality: 85,
       removeBg: false,
       removeBgSize: 'auto',
       trimTransparentBackground: false,
@@ -747,7 +751,12 @@ class RetryExecutor extends EventEmitter {
       let finalOutputPath;
       let finalExtension;
       
-      if (settings.convertToJpg && settings.imageConvert) {
+      if (settings.imageConvert && (settings.convertToWebp === true)) {
+        // Converting to WEBP
+        finalExtension = '.webp';
+        finalOutputPath = path.join(outputDirectory, `${sourceFileName}.webp`);
+        console.log(` RetryExecutor: Converting to WEBP, final path: ${finalOutputPath}`);
+      } else if (settings.convertToJpg && settings.imageConvert) {
         // Converting to JPG
         finalExtension = '.jpg';
         // Final path should be in the configured output directory
@@ -867,8 +876,10 @@ class RetryExecutor extends EventEmitter {
               saturation: Number.isFinite(Number(s.saturation)) ? Number(s.saturation) : 1.0,
               imageConvert: !!s.imageConvert,
               convertToJpg: !!s.convertToJpg,
+              convertToWebp: !!s.convertToWebp,
               jpgQuality: Number.isFinite(Number(s.jpgQuality)) ? Number(s.jpgQuality) : 100,
               pngQuality: Number.isFinite(Number(s.pngQuality)) ? Number(s.pngQuality) : 100,
+              webpQuality: Number.isFinite(Number(s.webpQuality)) ? Number(s.webpQuality) : 85,
               removeBg: !!s.removeBg,
               trimTransparentBackground: !!s.trimTransparentBackground,
               jpgBackground: s.jpgBackground || 'white',

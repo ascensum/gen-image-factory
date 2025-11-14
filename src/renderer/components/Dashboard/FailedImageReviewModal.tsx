@@ -573,16 +573,22 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Convert Format</label>
-                          <p className="text-sm text-gray-900">{ps.imageConvert ? (ps.convertToJpg ? 'JPG' : 'PNG') : <span className="text-gray-500 italic">Not applied (Image Convert OFF)</span>}</p>
+                          <p className="text-sm text-gray-900">
+                            {ps.imageConvert ? (ps.convertToWebp ? 'WEBP' : (ps.convertToJpg ? 'JPG' : 'PNG')) : <span className="text-gray-500 italic">Not applied (Image Convert OFF)</span>}
+                          </p>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">JPG Quality</label>
-                          <p className="text-sm text-gray-900">{ps.imageConvert && ps.convertToJpg ? (ps.jpgQuality || 100) : <span className="text-gray-500 italic">Not applied (Convert Format is not JPG)</span>}</p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">PNG Quality</label>
-                          <p className="text-sm text-gray-900">{ps.imageConvert && !ps.convertToJpg ? (ps.pngQuality || 100) : <span className="text-gray-500 italic">Not applied (Convert Format is not PNG)</span>}</p>
-                        </div>
+                        {ps.imageConvert && ps.convertToJpg && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">JPG Quality</label>
+                            <p className="text-sm text-gray-900">{ps.jpgQuality || 85}</p>
+                          </div>
+                        )}
+                        {ps.imageConvert && ps.convertToWebp && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">WebP Quality</label>
+                            <p className="text-sm text-gray-900">{ps.webpQuality || 85}</p>
+                          </div>
+                        )}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Remove Background</label>
                           <p className="text-sm text-gray-900">{ps.removeBg ? 'Yes' : 'No'}</p>

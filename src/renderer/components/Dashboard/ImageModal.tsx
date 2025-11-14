@@ -655,31 +655,29 @@ const ImageModal: React.FC<ImageModalProps> = ({
                         <label className="block text-sm font-medium text-gray-700 mb-1">Convert Format</label>
                         <p className="text-sm text-gray-900">
                           {processingSettings.imageConvert ? 
-                            (processingSettings.convertToJpg ? 'JPG' : 'PNG') : 
+                            (processingSettings.convertToWebp ? 'WEBP' : (processingSettings.convertToJpg ? 'JPG' : 'PNG')) : 
                             <span className="text-gray-500 italic">Not applied (Image Convert OFF)</span>
                           }
                         </p>
                       </div>
                       
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">JPG Quality</label>
-                        <p className="text-sm text-gray-900">
-                          {processingSettings.imageConvert && processingSettings.convertToJpg ? 
-                            (processingSettings.jpgQuality || 100) : 
-                            <span className="text-gray-500 italic">Not applied (Convert Format is not JPG)</span>
-                          }
-                        </p>
-                      </div>
+                      {processingSettings.imageConvert && processingSettings.convertToJpg && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">JPG Quality</label>
+                          <p className="text-sm text-gray-900">
+                            {processingSettings.jpgQuality || 85}
+                          </p>
+                        </div>
+                      )}
                       
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">PNG Quality</label>
-                        <p className="text-sm text-gray-900">
-                          {processingSettings.imageConvert && !processingSettings.convertToJpg ? 
-                            (processingSettings.pngQuality || 100) : 
-                            <span className="text-gray-500 italic">Not applied (Convert Format is not PNG)</span>
-                          }
-                        </p>
-                      </div>
+                      {processingSettings.imageConvert && processingSettings.convertToWebp && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">WebP Quality</label>
+                          <p className="text-sm text-gray-900">
+                            {processingSettings.webpQuality || 85}
+                          </p>
+                        </div>
+                      )}
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Remove Background</label>

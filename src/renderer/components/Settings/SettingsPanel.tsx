@@ -56,10 +56,12 @@ interface SettingsObject extends SharedSettingsObject {
     sharpening: number; // New: Sharpening intensity (0-10)
     saturation: number; // New: Saturation level (0-2)
     convertToJpg: boolean;
+    convertToWebp?: boolean;
     trimTransparentBackground: boolean;
     jpgBackground: string;
     jpgQuality: number;
-    pngQuality: number;
+    pngQuality: number; // deprecated UI; kept for backward compatibility
+    webpQuality?: number;
     removeBgSize: string;
   };
   ai: {
@@ -131,10 +133,12 @@ const defaultSettings: SettingsObject = {
     sharpening: 5, // Sharpening intensity (0-10)
     saturation: 1.4, // Saturation level (0-2)
     convertToJpg: false,
+    convertToWebp: false,
     trimTransparentBackground: false,
     jpgBackground: 'white',
-    jpgQuality: 100,
+    jpgQuality: 85,
     pngQuality: 100,
+    webpQuality: 85,
     removeBgSize: 'auto',
   },
   ai: {
@@ -916,12 +920,16 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </label>
                 <select
                   id="convert-format"
-                  value={form.processing.convertToJpg ? 'jpg' : 'png'}
+                  value={form.processing.convertToWebp ? 'webp' : (form.processing.convertToJpg ? 'jpg' : 'png')}
                   onChange={(e) => {
-                    const isJpg = e.target.value === 'jpg';
+                    const val = e.target.value;
                     setForm(prev => ({
                       ...prev,
-                      processing: { ...prev.processing, convertToJpg: isJpg }
+                      processing: { 
+                        ...prev.processing, 
+                        convertToWebp: val === 'webp',
+                        convertToJpg: val === 'jpg'
+                      }
                     }));
                     setHasUnsavedChanges(true);
                   }}
@@ -929,6 +937,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 >
                   <option value="png">PNG</option>
                   <option value="jpg">JPG</option>
+                  <option value="webp">WEBP</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">Convert images to this format</p>
               </div>
@@ -937,37 +946,41 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             {/* Quality Settings - only show when Image Convert is enabled */}
             {showQualitySettings && (
               <div className="space-y-4">
-                <div>
-                  <label htmlFor="jpg-quality" className="block text-sm font-medium text-gray-700 mb-2">
-                    JPG Quality (1-100)
-                  </label>
-                  <input
-                    id="jpg-quality"
-                    type="number"
-                    value={form.processing.jpgQuality}
-                    onChange={handleInputChange('processing', 'jpgQuality')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    min="1"
-                    max="100"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Quality setting for JPG conversion</p>
-                </div>
+                {form.processing.convertToJpg && (
+                  <div>
+                    <label htmlFor="jpg-quality" className="block text-sm font-medium text-gray-700 mb-2">
+                      JPG Quality (1-100)
+                    </label>
+                    <input
+                      id="jpg-quality"
+                      type="number"
+                      value={form.processing.jpgQuality}
+                      onChange={handleInputChange('processing', 'jpgQuality')}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      min="1"
+                      max="100"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Quality setting for JPG conversion</p>
+                  </div>
+                )}
 
-                <div>
-                  <label htmlFor="png-quality" className="block text-sm font-medium text-gray-700 mb-2">
-                    PNG Quality (1-100)
-                  </label>
-                  <input
-                    id="png-quality"
-                    type="number"
-                    value={form.processing.pngQuality}
-                    onChange={handleInputChange('processing', 'pngQuality')}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    min="1"
-                    max="100"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Quality setting for PNG conversion</p>
-                </div>
+                {form.processing.convertToWebp && (
+                  <div>
+                    <label htmlFor="webp-quality" className="block text-sm font-medium text-gray-700 mb-2">
+                      WebP Quality (1-100)
+                    </label>
+                    <input
+                      id="webp-quality"
+                      type="number"
+                      value={form.processing.webpQuality ?? 90}
+                      onChange={handleInputChange('processing', 'webpQuality')}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      min="1"
+                      max="100"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Quality setting for WebP conversion</p>
+                  </div>
+                )}
 
                 {/* JPG Background Color - only show when Remove.Bg is on, Image Convert is on, and set to JPG */}
                 {showJpgBackground && (

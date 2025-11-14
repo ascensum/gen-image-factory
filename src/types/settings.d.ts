@@ -47,10 +47,12 @@ export interface SettingsObject {
     sharpening: number;
     saturation: number;
     convertToJpg: boolean;
+    convertToWebp?: boolean;
     trimTransparentBackground: boolean;
     jpgBackground: string;
     jpgQuality: number;
     pngQuality: number;
+    webpQuality?: number;
     removeBgSize: string;
   };
   ai: {

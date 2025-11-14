@@ -4,8 +4,10 @@ export interface ProcessingSettings {
   saturation: number;
   imageConvert: boolean;
   convertToJpg: boolean;
+  convertToWebp?: boolean;
   jpgQuality: number;
   pngQuality: number;
+  webpQuality?: number;
   removeBg: boolean;
   removeBgSize: string;
   trimTransparentBackground: boolean;

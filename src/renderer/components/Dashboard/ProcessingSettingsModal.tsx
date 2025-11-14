@@ -25,6 +25,8 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
     convertToJpg: true, // Convert to JPG by default
     jpgQuality: 85, // Set to 85% quality as requested
     pngQuality: 100,
+    convertToWebp: false,
+    webpQuality: 85,
     removeBg: false,
     removeBgSize: 'auto',
     trimTransparentBackground: false,
@@ -75,7 +77,7 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
   const showConvertFormat = batchSettings.imageConvert;
   const showQualitySettings = batchSettings.imageConvert;
   const showJpgQuality = batchSettings.imageConvert && batchSettings.convertToJpg;
-  const showPngQuality = batchSettings.imageConvert && !batchSettings.convertToJpg;
+  const showWebpQuality = batchSettings.imageConvert && (batchSettings as any).convertToWebp === true;
   const showTrimTransparent = batchSettings.removeBg;
   const showJpgBackground = batchSettings.removeBg && batchSettings.imageConvert && batchSettings.convertToJpg;
 
@@ -321,15 +323,17 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                     <select
                       id="convert-format"
                       aria-label="Convert Format"
-                      value={batchSettings.convertToJpg ? 'jpg' : 'png'}
+                      value={(batchSettings as any).convertToWebp ? 'webp' : (batchSettings.convertToJpg ? 'jpg' : 'png')}
                       onChange={(e) => {
-                        const isJpg = e.target.value === 'jpg';
-                        updateSetting('convertToJpg', isJpg);
+                        const val = e.target.value;
+                        updateSetting('convertToWebp' as any, val === 'webp');
+                        updateSetting('convertToJpg', val === 'jpg');
                       }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="png">PNG</option>
                       <option value="jpg">JPG</option>
+                      <option value="webp">WEBP</option>
                     </select>
                     <p className="text-xs text-gray-500 mt-1">Convert images to this format</p>
                   </div>
@@ -357,22 +361,22 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                       </div>
                     )}
 
-                    {/* PNG Quality - only show when converting to PNG */}
-                    {showPngQuality && (
+                {/* WebP Quality - only show when converting to WEBP */}
+                {showWebpQuality && (
                       <div>
-                        <label htmlFor="png-quality" className="block text-sm font-medium text-gray-700 mb-2">
-                          PNG Quality (1-100)
+                    <label htmlFor="webp-quality" className="block text-sm font-medium text-gray-700 mb-2">
+                      WebP Quality (1-100)
                         </label>
                         <input
-                          id="png-quality"
+                      id="webp-quality"
                           type="number"
-                          value={batchSettings.pngQuality}
-                          onChange={(e) => updateSetting('pngQuality', parseInt(e.target.value))}
+                      value={(batchSettings as any).webpQuality ?? 90}
+                      onChange={(e) => updateSetting('webpQuality' as any, parseInt(e.target.value))}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           min="1"
                           max="100"
                         />
-                        <p className="text-xs text-gray-500 mt-1">PNG quality setting used by sharp (1=lowest, 100=highest)</p>
+                    <p className="text-xs text-gray-500 mt-1">Quality setting for WebP conversion</p>
                       </div>
                     )}
                   </div>

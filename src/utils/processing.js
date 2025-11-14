@@ -8,8 +8,10 @@ function normalizeProcessingSettings(input) {
     'saturation',
     'imageConvert',
     'convertToJpg',
+    'convertToWebp',
     'jpgQuality',
     'pngQuality',
+    'webpQuality',
     'removeBg',
     'removeBgSize',
     'trimTransparentBackground',
@@ -26,6 +28,10 @@ function normalizeProcessingSettings(input) {
       case 'trimTransparentBackground':
         out[k] = Boolean(v);
         break;
+      case 'convertToWebp': {
+        out[k] = Boolean(v);
+        break;
+      }
       case 'sharpening': {
         let num = Number(v);
         if (!Number.isFinite(num)) num = 0;
@@ -40,13 +46,20 @@ function normalizeProcessingSettings(input) {
       }
       case 'jpgQuality': {
         let num = Number(v);
-        if (!Number.isFinite(num)) num = 90;
+        if (!Number.isFinite(num)) num = 85;
         out[k] = Math.max(1, Math.min(100, Math.round(num)));
         break;
       }
       case 'pngQuality': {
+        // Deprecated: kept for backward compatibility, no longer used for PNG
         let num = Number(v);
         if (!Number.isFinite(num)) num = 100;
+        out[k] = Math.max(1, Math.min(100, Math.round(num)));
+        break;
+      }
+      case 'webpQuality': {
+        let num = Number(v);
+        if (!Number.isFinite(num)) num = 85;
         out[k] = Math.max(1, Math.min(100, Math.round(num)));
         break;
       }
@@ -64,6 +77,11 @@ function normalizeProcessingSettings(input) {
   }
   // Enforce dependent flags: if imageConvert is false, convertToJpg must be false
   if (Object.prototype.hasOwnProperty.call(out, 'imageConvert') && out.imageConvert === false) {
+    out.convertToJpg = false;
+    out.convertToWebp = false;
+  }
+  // Mutually exclusive convert flags; prefer explicit WEBP over JPG when both provided
+  if (out.convertToWebp) {
     out.convertToJpg = false;
   }
   return out;
