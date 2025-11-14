@@ -1137,7 +1137,16 @@ class JobRunner extends EventEmitter {
       // Finalize QC: wait until all images leave transient QC states before marking job completed
       try {
         if (this.jobConfiguration?.ai?.runQualityCheck && this.backendAdapter && this.databaseExecutionId) {
-          await this.waitForQCToSettle(this.databaseExecutionId);
+          // Dynamic finalize window: 5s per image
+          let imagesCount = 0;
+          try {
+            const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
+            if (Array.isArray(savedImages)) {
+              imagesCount = savedImages.length;
+            }
+          } catch (_e) {}
+          const qcFinalizeTimeoutMs = Math.max(5000, imagesCount * 5000);
+          await this.waitForQCToSettle(this.databaseExecutionId, qcFinalizeTimeoutMs);
         }
       } catch (qcWaitErr) {
         console.warn('️ QC finalize wait skipped or timed out:', qcWaitErr?.message || qcWaitErr);
