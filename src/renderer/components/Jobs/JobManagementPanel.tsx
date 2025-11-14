@@ -287,8 +287,16 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
 
       // Do not send UI-only fields to backend
       const { hasPendingRetries, ...backendFilters} = (filters as UIJobFilters);
+      // Normalize date-only selections:
+      // If only one bound is provided, treat it as a single-day filter (exact date)
+      const effectiveFilters: JobFilters = { ...(backendFilters as JobFilters) };
+      if (effectiveFilters.dateFrom && !effectiveFilters.dateTo) {
+        effectiveFilters.dateTo = effectiveFilters.dateFrom;
+      } else if (!effectiveFilters.dateFrom && effectiveFilters.dateTo) {
+        effectiveFilters.dateFrom = effectiveFilters.dateTo;
+      }
       // Fetch all jobs without pagination - we'll paginate on the frontend
-      const result = await window.electronAPI.jobManagement.getJobExecutionsWithFilters(backendFilters as JobFilters, 1, 10000);
+      const result = await window.electronAPI.jobManagement.getJobExecutionsWithFilters(effectiveFilters, 1, 10000);
       
       if (result.success) {
         // Accept multiple possible response shapes

@@ -232,8 +232,32 @@ const ImageModal: React.FC<ImageModalProps> = ({
   }, [isOpen, image?.id]);
   
   // Ensure processingSettings is always defined for the Processing tab
-  // Prefer per-image snapshot first (includes retry customizations), then fall back to execution snapshot
-  const processingSettings: any = (image as any)?.processingSettings ?? snapshotProcessing ?? {};
+  // Logic: if per-image settings differ from execution snapshot, treat as "retry with custom settings" and prefer per-image.
+  // Otherwise prefer execution snapshot (as-run) for regular flow.
+  const toObject = (val: any) => {
+    if (!val) return null;
+    if (typeof val === 'string') {
+      try { return JSON.parse(val); } catch { return null; }
+    }
+    if (typeof val === 'object') return val;
+    return null;
+  };
+  const pickProcessingKeys = (obj: any) => {
+    if (!obj || typeof obj !== 'object') return null;
+    const keys = [
+      'imageEnhancement','sharpening','saturation','imageConvert','convertToJpg',
+      'jpgQuality','pngQuality','removeBg','trimTransparentBackground','jpgBackground','removeBgSize'
+    ];
+    const out: any = {};
+    keys.forEach(k => { if (k in obj) out[k] = obj[k]; });
+    return out;
+  };
+  const perImageProc = pickProcessingKeys(toObject((image as any)?.processingSettings));
+  const snapshotProc = pickProcessingKeys(snapshotProcessing);
+  const isCustomRetry = !!(perImageProc && snapshotProc && JSON.stringify(perImageProc) !== JSON.stringify(snapshotProc));
+  const processingSettings: any = isCustomRetry
+    ? (toObject((image as any)?.processingSettings) || snapshotProcessing || {})
+    : (snapshotProcessing || toObject((image as any)?.processingSettings) || {});
 
 
   return (
@@ -675,11 +699,9 @@ const ImageModal: React.FC<ImageModalProps> = ({
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Trim Transparent</label>
                         <p className="text-sm text-gray-900">
-                          {processingSettings.trimTransparentBackground
-                            ? 'Yes'
-                            : (processingSettings.removeBg
-                                ? 'No'
-                                : <span className="text-gray-500 italic">Not applied (Remove Background OFF)</span>)}
+                          {processingSettings.removeBg
+                            ? (processingSettings.trimTransparentBackground ? 'Yes' : 'No')
+                            : <span className="text-gray-500 italic">Not applied (Remove Background OFF)</span>}
                         </p>
                       </div>
                       
