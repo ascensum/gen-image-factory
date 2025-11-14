@@ -51,6 +51,30 @@ class JobRunner extends EventEmitter {
   }
 
   /**
+   * Utility: wrap a promise with a timeout to avoid indefinite hangs
+   * @param {Promise<any>} promise
+   * @param {number} timeoutMs
+   * @param {string} message
+   * @returns {Promise<any>}
+   */
+  async withTimeout(promise, timeoutMs, message = 'Operation timed out') {
+    if (!Number.isFinite(Number(timeoutMs)) || timeoutMs <= 0) {
+      return promise;
+    }
+    let timer;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  /**
    * Per-generation orchestration to support partial success
    */
   async _generateImagesPerGeneration(config, parameters, generations) {
@@ -673,9 +697,26 @@ class JobRunner extends EventEmitter {
   async stopJob() {
     if (this.jobState.status === 'running') {
       this.isStopping = true;
-      this.jobState.status = 'stopped';
+      this.jobState.status = 'failed';
       this.jobState.endTime = new Date();
-      
+      // Persist failure to DB immediately
+      try {
+        if (this.backendAdapter && this.databaseExecutionId) {
+          await this.backendAdapter.updateJobExecution(this.databaseExecutionId, {
+            configurationId: this.configurationId,
+            startedAt: this.jobState.startTime,
+            completedAt: this.jobState.endTime,
+            status: 'failed',
+            totalImages: this.jobState.totalImages || 0,
+            successfulImages: this.jobState.generatedImages || 0,
+            failedImages: this.jobState.failedImages || 0,
+            errorMessage: 'Stopped by user',
+            label: this.persistedLabel || null
+          });
+        }
+      } catch (e) {
+        console.warn('️ Failed to persist stop status:', e?.message || e);
+      }
       this.emitProgress('stopped', 100, 'Job stopped by user');
       
       // Clean up any running processes
@@ -692,10 +733,27 @@ class JobRunner extends EventEmitter {
    */
   async forceStopAll() {
     this.isStopping = true;
-    this.jobState.status = 'stopped';
+    this.jobState.status = 'failed';
     this.jobState.endTime = new Date();
     this.currentJob = null;
-    
+    // Persist failure to DB immediately
+    try {
+      if (this.backendAdapter && this.databaseExecutionId) {
+        await this.backendAdapter.updateJobExecution(this.databaseExecutionId, {
+          configurationId: this.configurationId,
+          startedAt: this.jobState.startTime,
+          completedAt: this.jobState.endTime,
+          status: 'failed',
+          totalImages: this.jobState.totalImages || 0,
+          successfulImages: this.jobState.generatedImages || 0,
+          failedImages: this.jobState.failedImages || 0,
+          errorMessage: 'Force-stopped by user',
+          label: this.persistedLabel || null
+        });
+      }
+    } catch (e) {
+      console.warn('️ Failed to persist force-stop status:', e?.message || e);
+    }
     this.emitProgress('force_stopped', 100, 'All jobs force stopped');
   }
 
@@ -795,7 +853,16 @@ class JobRunner extends EventEmitter {
         message: ' Step 1: Initialization - generating parameters...'
       });
       
-      const parameters = await this.generateParameters(config);
+      // Apply initialization timeout using the same Generation Timeout control (pollingTimeout, minutes)
+      const initTimeoutMinutes = (config?.parameters?.enablePollingTimeout === true)
+        ? (Number(config?.parameters?.pollingTimeout) || 15)
+        : 1; // fallback to 1 minute if disabled, to avoid indefinite hangs
+      const initTimeoutMs = Math.max(30_000, initTimeoutMinutes * 60 * 1000);
+      const parameters = await this.withTimeout(
+        this.generateParameters(config),
+        initTimeoutMs,
+        'Initialization (parameter generation) timed out'
+      );
       this._logStructured({
         level: 'info',
         stepName: 'initialization',
