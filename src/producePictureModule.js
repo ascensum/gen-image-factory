@@ -18,7 +18,7 @@ async function pause(isLong = false, seconds) {
   return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
-async function removeBg(inputPath, removeBgSize) {
+async function removeBg(inputPath, removeBgSize, signal) {
   try {
     const FormData = require('form-data');
     const form = new FormData();
@@ -34,7 +34,8 @@ async function removeBg(inputPath, removeBgSize) {
     const response = await axios.post('https://api.remove.bg/v1.0/removebg', form, {
       headers,
       responseType: 'arraybuffer',
-      timeout: 60000
+      timeout: 60000,
+      signal
     });
 
     if (response.status === 200 && response.data) {
@@ -48,10 +49,10 @@ async function removeBg(inputPath, removeBgSize) {
 }
 
 // Retry mechanism for removeBg
-async function retryRemoveBg(inputPath, retries = 3, delay = 2000, removeBgSize) {
+async function retryRemoveBg(inputPath, retries = 3, delay = 2000, removeBgSize, signal) {
   for (let i = 0; i < retries; i++) {
     try {
-      return await removeBg(inputPath, removeBgSize);
+      return await removeBg(inputPath, removeBgSize, signal);
     } catch (error) {
       const isRetryable = !error.response || (error.response.status >= 500) || error.code === 'ECONNABORTED' || error.response?.status === 429;
       console.warn(`Attempt ${i + 1} for removeBg failed: ${error.message}. ${isRetryable && i < retries - 1 ? `Retrying in ${delay / 1000} seconds...` : 'Not retryable or no attempts left.'}`);
@@ -218,6 +219,7 @@ async function producePictureModule(
     removeBgSize,
     runQualityCheck,
     runMetadataGen,
+    abortSignal,
   } = config;
 
   // Removed local debug mode variables, use imported ones directly
@@ -310,7 +312,7 @@ async function producePictureModule(
     rwResponse = await axios.post(
       'https://api.runware.ai/v1/images/generate',
       payload,
-      { headers: rwHeaders, timeout: httpTimeoutMs }
+      { headers: rwHeaders, timeout: httpTimeoutMs, signal: abortSignal }
     );
   } catch (err) {
     // Surface provider error details if present
@@ -344,7 +346,7 @@ async function producePictureModule(
         const extraResp = await axios.post(
           'https://api.runware.ai/v1/images/generate',
           [extraBody],
-          { headers: rwHeaders, timeout: httpTimeoutMs }
+          { headers: rwHeaders, timeout: httpTimeoutMs, signal: abortSignal }
         );
         const extraUrls = extractRunwareImageUrls(extraResp?.data);
         if (Array.isArray(extraUrls) && extraUrls.length > 0) {
@@ -384,7 +386,7 @@ async function producePictureModule(
       // Download the image
       try {
         // Reuse HTTP timeout to ensure network loss doesn't hang job in 'running'
-        const response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: httpTimeoutMs });
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: httpTimeoutMs, signal: abortSignal });
         // Infer extension from URL or content-type header
         let inferredExt = '';
         try {
@@ -530,7 +532,7 @@ async function processImage(inputImagePath, imgName, config = {}) {
   if (removeBg) {
     logDebug('Removing background with remove.bg...');
     try {
-      imageBuffer = await retryRemoveBg(inputImagePath, 3, 2000, removeBgSize);
+      imageBuffer = await retryRemoveBg(inputImagePath, 3, 2000, removeBgSize, config.abortSignal);
       logDebug('Background removal successful');
     } catch (error) {
       console.error('Background removal failed:', error);

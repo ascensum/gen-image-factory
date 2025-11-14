@@ -736,6 +736,12 @@ class JobRunner extends EventEmitter {
     this.jobState.status = 'failed';
     this.jobState.endTime = new Date();
     this.currentJob = null;
+    // Abort in-flight operations immediately
+    try {
+      if (this.abortController && typeof this.abortController.abort === 'function') {
+        this.abortController.abort(new Error('Force-stopped by user'));
+      }
+    } catch (_e) {}
     // Persist failure to DB immediately
     try {
       if (this.backendAdapter && this.databaseExecutionId) {
@@ -844,6 +850,13 @@ class JobRunner extends EventEmitter {
     try {
       console.log(' Starting job execution with clean 2-step workflow...');
       
+      // Create AbortController to support immediate abort on force stop
+      try {
+        this.abortController = new (global.AbortController || require('abort-controller'))();
+      } catch {
+        this.abortController = new AbortController();
+      }
+      
             // Step 1: Initialization (includes parameter generation)
       if (this.isStopping) return;
       this._logStructured({
@@ -859,7 +872,7 @@ class JobRunner extends EventEmitter {
         : 1; // fallback to 1 minute if disabled, to avoid indefinite hangs
       const initTimeoutMs = Math.max(30_000, initTimeoutMinutes * 60 * 1000);
       const parameters = await this.withTimeout(
-        this.generateParameters(config),
+        this.generateParameters({ ...config, __abortSignal: this.abortController?.signal }),
         initTimeoutMs,
         'Initialization (parameter generation) timed out'
       );
@@ -887,7 +900,7 @@ class JobRunner extends EventEmitter {
       
       let images;
       try {
-        images = await this.generateImages(config, parameters);
+        images = await this.generateImages({ ...config, __abortSignal: this.abortController?.signal }, parameters);
         this._logStructured({
           level: 'info',
           stepName: 'image_generation',
@@ -1284,6 +1297,7 @@ class JobRunner extends EventEmitter {
   async generateParameters(config) {
     const startTime = Date.now();
     try {
+      const abortSignal = config?.__abortSignal;
       this._logStructured({
         level: 'info',
         stepName: 'initialization',
@@ -1432,7 +1446,8 @@ class JobRunner extends EventEmitter {
           mjVersion: mjVersion,
           // Do not append MJ flags for non-Midjourney provider (Runware)
           appendMjVersion: false,
-          openaiModel: config.parameters?.openaiModel || 'gpt-4o'
+          openaiModel: config.parameters?.openaiModel || 'gpt-4o',
+          signal: abortSignal
         }
       );
       
@@ -1485,6 +1500,7 @@ class JobRunner extends EventEmitter {
   async generateImages(config, parameters) {
     const startTime = Date.now();
     try {
+      const abortSignal = config?.__abortSignal;
       // If multiple generations requested, run per-generation orchestration to allow partial success
       const __genCount = Math.max(1, Number(config?.parameters?.count || 1));
       if (__genCount > 1) {
@@ -1547,6 +1563,9 @@ class JobRunner extends EventEmitter {
         tempDirectory: config.filePaths?.tempDirectory || './pictures/generated',
         variations: effectiveVariations
       };
+      if (abortSignal) {
+        moduleConfig.abortSignal = abortSignal;
+      }
       
       console.log(` JobRunner: DEBUG - moduleConfig (initial write path):`, {
         outputDirectory: moduleConfig.outputDirectory,

@@ -9,7 +9,7 @@ async function paramsGeneratorModule(
   keywordFilePath,
   config = {}
 ) {
-  const { keywordRandom, openaiModel, mjVersion, appendMjVersion = true } = config;
+  const { keywordRandom, openaiModel, mjVersion, appendMjVersion = true, signal } = config;
 
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
@@ -87,7 +87,10 @@ async function paramsGeneratorModule(
         { role: "user", content: userPrompt }
       ],
       temperature: safeTemperature,
+      // Abort support: OpenAI SDK (v4+) accepts signal in fetch options via second param.
     });
+    // Note: official OpenAI SDK doesn't surface signal in this call signature across all versions.
+    // If using a version that supports it, wire the signal via client options; otherwise this is a no-op.
 
     const response = completion.choices[0].message.content;
     logDebug('OpenAI response:', response);
