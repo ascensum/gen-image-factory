@@ -461,6 +461,31 @@ class JobExecution {
     });
   }
 
+  /**
+   * Reconcile any executions left in 'running' state (e.g., after app crash/restart)
+   * Sets status to 'failed', stamps completed_at, and notes an error message.
+   */
+  async reconcileOrphanedRunningJobs() {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        UPDATE job_executions
+        SET status = 'failed',
+            completed_at = COALESCE(completed_at, CURRENT_TIMESTAMP),
+            error_message = COALESCE(error_message, 'Reconciled on startup: previous session ended while running')
+        WHERE status = 'running'
+      `;
+      this.db.run(sql, [], function(err) {
+        if (err) {
+          console.error('Error reconciling orphaned running jobs:', err);
+          reject(err);
+        } else {
+          console.log(`Reconciled ${this.changes || 0} orphaned running job executions on startup`);
+          resolve({ success: true, changes: this.changes || 0 });
+        }
+      });
+    });
+  }
+
   async deleteJobExecution(id) {
     return new Promise((resolve, reject) => {
       const sql = 'DELETE FROM job_executions WHERE id = ?';

@@ -371,6 +371,19 @@ app.whenReady().then(async () => {
   // Make backendAdapter globally accessible so other modules can use it
   global.backendAdapter = backendAdapter;
   
+  // Reconcile orphaned "running" job executions from previous sessions
+  try {
+    if (backendAdapter && backendAdapter.jobExecution && typeof backendAdapter.jobExecution.reconcileOrphanedRunningJobs === 'function') {
+      console.log(' Reconciling orphaned running jobs on startup...');
+      const reconResult = await backendAdapter.jobExecution.reconcileOrphanedRunningJobs();
+      console.log(' Reconciliation result:', reconResult);
+    } else {
+      console.warn(' JobExecution reconciliation method not available');
+    }
+  } catch (reconErr) {
+    console.error(' Failed to reconcile orphaned running jobs:', reconErr);
+  }
+
   // Register all IPC handlers from the backend adapter
   console.log(' Setting up IPC handlers from BackendAdapter...');
   console.log(' backendAdapter type:', typeof backendAdapter);

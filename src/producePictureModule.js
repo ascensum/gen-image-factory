@@ -383,7 +383,8 @@ async function producePictureModule(
 
       // Download the image
       try {
-        const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+        // Reuse HTTP timeout to ensure network loss doesn't hang job in 'running'
+        const response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: httpTimeoutMs });
         // Infer extension from URL or content-type header
         let inferredExt = '';
         try {
