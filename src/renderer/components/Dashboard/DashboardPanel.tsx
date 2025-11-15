@@ -385,6 +385,20 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     }
   }, [jobStatus.state]);
 
+  // Auto-reconcile Job History if it shows "running" while no job is actually running
+  useEffect(() => {
+    const interval = setInterval(() => {
+      try {
+        const hasRunningInHistory = Array.isArray(jobHistory) && jobHistory.some(j => String(j.status).toLowerCase() === 'running');
+        if (hasRunningInHistory && jobStatus.state !== 'running') {
+          loadJobHistory();
+          loadStatistics();
+        }
+      } catch {}
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [jobStatus.state, jobHistory]);
+
   const loadJobHistory = async () => {
     try {
       setIsLoading(true);
