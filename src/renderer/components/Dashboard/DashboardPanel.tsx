@@ -391,7 +391,8 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       try {
         const hasRunningInHistory = Array.isArray(jobHistory) && jobHistory.some(j => String(j.status).toLowerCase() === 'running');
         if (hasRunningInHistory && jobStatus.state !== 'running') {
-          loadJobHistory();
+          // Silent refresh to avoid UI flicker
+          loadJobHistory(true);
           loadStatistics();
         }
       } catch {}
@@ -399,9 +400,9 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     return () => clearInterval(interval);
   }, [jobStatus.state, jobHistory]);
 
-  const loadJobHistory = async () => {
+  const loadJobHistory = async (silent?: boolean) => {
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       setError(null);
           const jobApi = (window as any).electronAPI?.jobManagement as any;
       const jobsResponse = await jobApi.getJobHistory();
@@ -477,7 +478,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       setError('Failed to load job history');
       setJobHistory([]);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
