@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface JobControlsProps {
-  jobStatus: 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'stopped';
+  jobStatus: 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'stopped' | 'error';
   onStartJob: () => void;
   onStopJob: () => void;
   onRefresh: () => void;
@@ -15,8 +15,10 @@ const JobControls: React.FC<JobControlsProps> = ({
   onRefresh,
   isLoading
 }) => {
-  const isJobRunning = jobStatus === 'running' || jobStatus === 'starting';
-  const canStartJob = jobStatus === 'idle' || jobStatus === 'completed' || jobStatus === 'failed' || jobStatus === 'stopped';
+  // Normalize 'error' to 'failed' for consistent UI behavior
+  const normalizedStatus = (jobStatus === 'error' ? 'failed' : jobStatus) as 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'stopped';
+  const isJobRunning = normalizedStatus === 'running' || normalizedStatus === 'starting';
+  const canStartJob = normalizedStatus === 'idle' || normalizedStatus === 'completed' || normalizedStatus === 'failed' || normalizedStatus === 'stopped';
   const canStopJob = isJobRunning;
 
   return (
@@ -37,7 +39,7 @@ const JobControls: React.FC<JobControlsProps> = ({
         }`}
         aria-label="Start job"
       >
-        {isLoading && jobStatus === 'starting' ? (
+        {isLoading && normalizedStatus === 'starting' ? (
           <>
             <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -71,7 +73,7 @@ const JobControls: React.FC<JobControlsProps> = ({
         }`}
         aria-label="Stop job"
       >
-        {isLoading && (jobStatus === 'running' || jobStatus === 'stopping') ? (
+        {isLoading && (normalizedStatus === 'running' || normalizedStatus === 'stopping') ? (
           <>
             <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -118,27 +120,27 @@ const JobControls: React.FC<JobControlsProps> = ({
       {/* Job Status Indicator */}
       <div className="flex items-center space-x-2">
         <div className={`w-2 h-2 rounded-full ${
-          jobStatus === 'idle' ? 'bg-gray-400' :
-          jobStatus === 'starting' ? 'bg-yellow-400' :
-          jobStatus === 'running' ? 'bg-green-400' :
-          jobStatus === 'completed' ? 'bg-blue-400' :
-          jobStatus === 'failed' ? 'bg-red-400' :
+          normalizedStatus === 'idle' ? 'bg-gray-400' :
+          normalizedStatus === 'starting' ? 'bg-yellow-400' :
+          normalizedStatus === 'running' ? 'bg-green-400' :
+          normalizedStatus === 'completed' ? 'bg-blue-400' :
+          normalizedStatus === 'failed' ? 'bg-red-400' :
           'bg-gray-400'
         }`} />
         <span className={`text-sm ${
-          jobStatus === 'idle' ? 'bg-green-100 text-green-800 px-2 py-1 rounded-full' :
-          jobStatus === 'starting' ? 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full' :
-          jobStatus === 'running' ? 'bg-blue-100 text-blue-800 px-2 py-1 rounded-full' :
-          jobStatus === 'completed' ? 'bg-green-100 text-green-800 px-2 py-1 rounded-full' :
-          jobStatus === 'failed' ? 'bg-red-100 text-red-800 px-2 py-1 rounded-full' :
+          normalizedStatus === 'idle' ? 'bg-green-100 text-green-800 px-2 py-1 rounded-full' :
+          normalizedStatus === 'starting' ? 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full' :
+          normalizedStatus === 'running' ? 'bg-blue-100 text-blue-800 px-2 py-1 rounded-full' :
+          normalizedStatus === 'completed' ? 'bg-green-100 text-green-800 px-2 py-1 rounded-full' :
+          normalizedStatus === 'failed' ? 'bg-red-100 text-red-800 px-2 py-1 rounded-full' :
           'bg-gray-100 text-gray-800 px-2 py-1 rounded-full'
         }`}>
-          {jobStatus === 'idle' && 'Ready'}
-          {jobStatus === 'starting' && 'Starting...'}
-          {jobStatus === 'running' && 'Running'}
-          {jobStatus === 'completed' && 'Completed'}
-          {jobStatus === 'failed' && 'Failed'}
-          {jobStatus === 'stopped' && 'Stopped'}
+          {normalizedStatus === 'idle' && 'Ready'}
+          {normalizedStatus === 'starting' && 'Starting...'}
+          {normalizedStatus === 'running' && 'Running'}
+          {normalizedStatus === 'completed' && 'Completed'}
+          {normalizedStatus === 'failed' && 'Failed'}
+          {normalizedStatus === 'stopped' && 'Stopped'}
         </span>
       </div>
     </div>

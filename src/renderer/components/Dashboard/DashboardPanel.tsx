@@ -284,6 +284,21 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         const status = await window.electronAPI.jobManagement.getJobStatus();
         // UI guard: if backend reports progress ~100% but state not flipped, treat as completed for display
         const normalized = { ...status } as any;
+        // Normalize backend 'error' to 'failed' for consistent UI semantics
+        if (normalized && normalized.state === 'error') {
+          normalized.state = 'failed';
+        }
+        // If UI sees 'running' but Job History has no running items, reconcile to failed (orphan protection)
+        try {
+          const hasRunningInHistory = Array.isArray(jobHistory) && jobHistory.some(j => String(j.status).toLowerCase() === 'running');
+          if (normalized && normalized.state === 'running' && !hasRunningInHistory) {
+            normalized.state = 'failed';
+            // reset transient fields for clarity
+            normalized.currentJob = null;
+            normalized.progress = 0;
+            normalized.currentStep = 1;
+          }
+        } catch {}
         if (normalized && normalized.state === 'running' && typeof normalized.progress === 'number' && normalized.progress >= 0.999) {
           normalized.state = 'completed';
         }
@@ -297,7 +312,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     pollJobStatus(); // Initial call
 
     return () => clearInterval(interval);
-  }, []);
+  }, [jobHistory]);
 
   // Load job configuration for dynamic progress steps
   const loadJobConfiguration = async () => {
