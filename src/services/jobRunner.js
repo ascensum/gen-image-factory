@@ -2184,15 +2184,25 @@ class JobRunner extends EventEmitter {
         }
       });
       
+      // Apply a timeout per-image to avoid hangs on network loss
+      const pollingTimeoutMinutes = Number(config?.parameters?.pollingTimeout);
+      const metadataTimeoutMs = (config?.parameters?.enablePollingTimeout === true)
+        ? (Number.isFinite(pollingTimeoutMinutes) ? pollingTimeoutMinutes * 60 * 1000 : 30_000)
+        : 30_000;
+      
       for (const image of images) {
         if (this.isStopping) return;
         
         // Call the real metadata generation from aiVision module with correct signature
-        const result = await aiVision.generateMetadata(
-          image.path,
-          image.metadata?.prompt || 'default image',
-          config.ai?.metadataPrompt || null,  // Fixed: use metadataPrompt, not runMetadataGen
-          config.parameters?.openaiModel || 'gpt-4o'
+        const result = await this.withTimeout(
+          aiVision.generateMetadata(
+            image.path,
+            image.metadata?.prompt || 'default image',
+            config.ai?.metadataPrompt || null,  // Fixed: use metadataPrompt, not runMetadataGen
+            config.parameters?.openaiModel || 'gpt-4o'
+          ),
+          metadataTimeoutMs,
+          'Metadata generation timed out'
         );
         
         if (result) {

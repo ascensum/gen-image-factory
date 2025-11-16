@@ -718,30 +718,17 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
           await loadStatistics();
           break;
         case 'rerun':
-          console.log(' DEBUG RERUN: DashboardPanel rerun case triggered for jobId:', jobId);
-          console.log(' DEBUG RERUN: Timestamp:', new Date().toISOString());
-          console.log(' DEBUG RERUN: Stack trace:', new Error().stack);
-          
           try {
-            // Use the same rerun logic as Job Management to prevent duplicate jobs
-            console.log(' DEBUG RERUN: About to call rerunJobExecution...');
             const rerunResult = await window.electronAPI.jobManagement.rerunJobExecution(jobId);
-            console.log(' DEBUG RERUN: rerunJobExecution result:', rerunResult);
-            
             if (rerunResult && rerunResult.success) {
-              console.log(' DEBUG RERUN: Rerun successful, waiting for job registration...');
-              // Add a small delay to ensure the job is fully registered, then refresh UI
               setTimeout(async () => {
-                console.log(' Refreshing UI after rerun...');
                 await loadJobHistory();
                 await loadStatistics();
               }, 1000);
             } else {
-              console.error(' DEBUG RERUN: Rerun failed:', rerunResult);
               setError(`Failed to rerun job: ${rerunResult?.error || 'Unknown error'}`);
             }
           } catch (error: any) {
-            console.error(' DEBUG RERUN: Exception during rerun:', error);
             setError(`Failed to rerun job: ${error?.message ?? String(error)}`);
           }
           break;
