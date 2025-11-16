@@ -283,7 +283,8 @@ class JobRunner extends EventEmitter {
       processMode: config.parameters?.processMode || 'single',
       removeBgSize: processingEnabled ? (config.processing?.removeBgSize || 'preview') : 'preview',
       runQualityCheck: config.ai?.runQualityCheck || false,
-      runMetadataGen: config.ai?.runMetadataGen || false,
+      // Always handle metadata in JobRunner after images are persisted
+      runMetadataGen: false,
       imageEnhancement: processingEnabled ? (config.processing?.imageEnhancement || false) : false,
       sharpening: processingEnabled ? (config.processing?.sharpening || 0) : 0,
       saturation: processingEnabled ? (config.processing?.saturation || 1) : 1,
@@ -1058,8 +1059,16 @@ class JobRunner extends EventEmitter {
         console.warn("️ No backendAdapter available or no images - generated images will not be saved to database");
       }
       
-      // Note: producePictureModule already handles metadata generation if enabled
-      // No additional metadata processing needed here
+      // After images are saved (and QC pass/moves), run metadata if enabled at the job level
+      try {
+        const savedImages = await this.getSavedImagesForExecution(this.databaseExecutionId);
+        if (Array.isArray(savedImages) && savedImages.length > 0 && (this.jobConfiguration?.ai?.runMetadataGen === true)) {
+          await this.generateMetadata(savedImages, this.jobConfiguration);
+        }
+      } catch (metadataErr) {
+        console.warn('️ Metadata generation step reported failures or timed out:', metadataErr?.message || metadataErr);
+        // Continue; job status handling will be done below
+      }
       
       // Run QC if enabled (QC-first flow) and then move passing images to final
       try {
@@ -2189,21 +2198,50 @@ class JobRunner extends EventEmitter {
       const metadataTimeoutMs = (config?.parameters?.enablePollingTimeout === true)
         ? (Number.isFinite(pollingTimeoutMinutes) ? pollingTimeoutMinutes * 60 * 1000 : 30_000)
         : 30_000;
-      
+      let hadFailures = false;
+
       for (const image of images) {
         if (this.isStopping) return;
-        
-        // Call the real metadata generation from aiVision module with correct signature
-        const result = await this.withTimeout(
-          aiVision.generateMetadata(
-            image.path,
-            image.metadata?.prompt || 'default image',
-            config.ai?.metadataPrompt || null,  // Fixed: use metadataPrompt, not runMetadataGen
-            config.parameters?.openaiModel || 'gpt-4o'
-          ),
-          metadataTimeoutMs,
-          'Metadata generation timed out'
-        );
+        let result = null;
+        try {
+          // Resolve a usable local path for the saved image
+          const localPath = image.finalImagePath || image.tempImagePath || image.path;
+          // Call the real metadata generation from aiVision with timeout
+          result = await this.withTimeout(
+            aiVision.generateMetadata(
+              localPath,
+              image.metadata?.prompt || 'default image',
+              config.ai?.metadataPrompt || null,
+              config.parameters?.openaiModel || 'gpt-4o'
+            ),
+            metadataTimeoutMs,
+            'Metadata generation timed out'
+          );
+        } catch (metaErr) {
+          hadFailures = true;
+          // Classify per-image failure and persist qc_failed (even if QC is OFF)
+          const mappingId = image.imageMappingId || image.mappingId;
+          if (this.backendAdapter && mappingId) {
+            try {
+              await this.backendAdapter.updateQCStatusByMappingId(mappingId, 'qc_failed', 'processing_failed:metadata');
+              // Merge failure details into metadata
+              const failureDetails = {
+                failure: {
+                  stage: 'metadata',
+                  vendor: 'openai',
+                  message: String(metaErr && metaErr.message || metaErr),
+                }
+              };
+              await this.backendAdapter.updateGeneratedImageByMappingId(mappingId, {
+                metadata: {
+                  ...(image.metadata || {}),
+                  ...(failureDetails)
+                }
+              });
+            } catch (_e) {}
+          }
+          continue;
+        }
         
         if (result) {
           this._logStructured({
@@ -2329,6 +2367,10 @@ class JobRunner extends EventEmitter {
           failedMetadata: images.filter(img => img.metadata?.error).length
         }
       });
+
+      if (hadFailures) {
+        throw new Error('One or more images failed metadata generation');
+      }
       
       
     } catch (error) {
