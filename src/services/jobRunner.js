@@ -233,6 +233,52 @@ class JobRunner extends EventEmitter {
           this.jobState.totalImages = (this.jobState.totalImages || 0) + 1;
           this.jobState.generatedImages = (this.jobState.generatedImages || 0) + 1;
           this.jobState.gensDone = Math.max(this.jobState.gensDone || 0, genIndex + 1);
+        } else if (result && typeof result === 'object' && Array.isArray(result.processedImages)) {
+          // New structured result: { processedImages, failedItems }
+          const processedImages = result.processedImages.map((item, index) => this._buildImageObject(item, genParameters, index, genIndex, result.processedImages.length));
+          allProcessed.push(...processedImages);
+          this.jobState.totalImages = (this.jobState.totalImages || 0) + processedImages.length;
+          this.jobState.generatedImages = (this.jobState.generatedImages || 0) + processedImages.length;
+          this.jobState.gensDone = Math.max(this.jobState.gensDone || 0, genIndex + 1);
+          // Persist per-image failures so they appear in review even if job later fails
+          try {
+            const failures = Array.isArray(result.failedItems) ? result.failedItems : [];
+            if (this.backendAdapter && this.databaseExecutionId && failures.length > 0) {
+              const effectiveProc = (this.jobConfiguration && this.jobConfiguration.processing) ? this.jobConfiguration.processing : (config.processing || {});
+              for (const f of failures) {
+                if (!f || !f.mappingId) continue;
+                const generatedImage = {
+                  imageMappingId: f.mappingId,
+                  executionId: this.databaseExecutionId,
+                  generationPrompt: genParameters.prompt || 'Generated image',
+                  seed: null,
+                  qcStatus: 'qc_failed',
+                  qcReason: `processing_failed:${f.stage || 'processing'}`,
+                  tempImagePath: null,
+                  finalImagePath: null,
+                  metadata: JSON.stringify({ failure: { stage: f.stage, vendor: f.vendor, message: f.message } }),
+                  processingSettings: JSON.stringify({
+                    sharpening: Number.isFinite(Number(effectiveProc.sharpening)) ? Number(effectiveProc.sharpening) : 0,
+                    saturation: Number.isFinite(Number(effectiveProc.saturation)) ? Number(effectiveProc.saturation) : 1.0,
+                    imageEnhancement: !!effectiveProc.imageEnhancement,
+                    imageConvert: !!effectiveProc.imageConvert,
+                    convertToJpg: !!effectiveProc.convertToJpg,
+                    convertToWebp: !!effectiveProc.convertToWebp,
+                    jpgQuality: Number.isFinite(Number(effectiveProc.jpgQuality)) ? Number(effectiveProc.jpgQuality) : 100,
+                    pngQuality: Number.isFinite(Number(effectiveProc.pngQuality)) ? Number(effectiveProc.pngQuality) : 100,
+                    webpQuality: Number.isFinite(Number(effectiveProc.webpQuality)) ? Number(effectiveProc.webpQuality) : 85,
+                    removeBg: !!effectiveProc.removeBg,
+                    trimTransparentBackground: !!effectiveProc.trimTransparentBackground,
+                    jpgBackground: effectiveProc.jpgBackground || 'white',
+                    removeBgSize: effectiveProc.removeBgSize || 'auto'
+                  })
+                };
+                await this.backendAdapter.saveGeneratedImage(generatedImage);
+              }
+            }
+          } catch (_persistFailureErr) {
+            // Non-fatal: continue
+          }
         } else {
           // Treat entire generation as failed for this gen's expected variations
           this.jobState.failedImages = (this.jobState.failedImages || 0) + effectiveVariationsForGen;

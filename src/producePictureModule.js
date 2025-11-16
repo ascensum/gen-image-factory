@@ -371,6 +371,7 @@ async function producePictureModule(
     // Process each image URL
     const processedImages = [];
     const successfulItems = [];
+    const failedItems = [];
 
     for (let i = 0; i < imageUrls.length; i++) {
       const imageUrl = imageUrls[i];
@@ -386,7 +387,18 @@ async function producePictureModule(
       // Download the image
       try {
         // Reuse HTTP timeout to ensure network loss doesn't hang job in 'running'
-        const response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: httpTimeoutMs, signal: abortSignal });
+        let response;
+        try {
+          response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: httpTimeoutMs, signal: abortSignal });
+        } catch (err) {
+          failedItems.push({
+            mappingId,
+            stage: 'download',
+            vendor: 'runware',
+            message: String(err && err.message || err)
+          });
+          throw err;
+        }
         // Infer extension from URL or content-type header
         let inferredExt = '';
         try {
@@ -414,44 +426,24 @@ async function producePictureModule(
         // Quality checks are now handled by JobRunner after images are saved to database
         // This ensures we have proper database IDs for QC status updates
 
-        // --- Conditionally run Metadata Generation ---
+        // Metadata generation is handled by JobRunner after persistence
         let updatedSettings = { ...settings }; // Create a local copy to modify
-        if (runMetadataGen) {
-          const metadataResult = await aiVision.generateMetadata(
-            inputImagePath,
-            promptContext,
-            customMetadataPrompt,
-            config.openaiModel
-          );
-          
-          // Log the metadata result for debugging
-          console.log(' Metadata result from aiVision with keys:', metadataResult ? Object.keys(metadataResult) : 'none');
-          
-          // Update settings with new metadata
-          if (metadataResult.new_title) {
-            // Ensure nested objects exist before assignment
-            updatedSettings.title = updatedSettings.title || {};
-            updatedSettings.title.title = { en: metadataResult.new_title };
-            console.log(' Added title to settings:', metadataResult.new_title);
-          }
-          if (metadataResult.new_description) {
-            updatedSettings.title = updatedSettings.title || {};
-            updatedSettings.title.description = { en: metadataResult.new_description };
-            console.log(' Added description to settings:', metadataResult.new_description);
-          }
-          if (metadataResult.uploadTags) {
-            updatedSettings.uploadTags = { en: metadataResult.uploadTags };
-            console.log(' Added uploadTags to settings:', metadataResult.uploadTags);
-          }
-          
-          // Log the final updated settings
-          console.log(' Final updatedSettings with keys:', Object.keys(updatedSettings));
-        }
 
         // PROCESS IMAGE
         logDebug('Processing image...');
         // The processImage function now handles everything and returns the final path in /toupload
-        const outputPath = await processImage(inputImagePath, imgNameBase + imageSuffix, config);
+        let outputPath;
+        try {
+          outputPath = await processImage(inputImagePath, imgNameBase + imageSuffix, config);
+        } catch (procErr) {
+          failedItems.push({
+            mappingId,
+            stage: 'processing',
+            vendor: 'local',
+            message: String(procErr && procErr.message || procErr)
+          });
+          throw procErr;
+        }
 
         processedImages.push({
           outputPath,
@@ -467,15 +459,15 @@ async function producePictureModule(
       }
     }
 
-    if (processedImages.length === 0) {
+    if (processedImages.length === 0 && failedItems.length === 0) {
       throw new Error('No images were successfully generated.');
     }
 
     // Cleanup if no pending tasks
     // await cleanupServerAndTunnel(); // Removed cleanupServerAndTunnel
 
-    // Return the list of processed images and updated settings
-    return processedImages;
+    // Return the list of processed images and failures for per-image persistence
+    return { processedImages, failedItems };
   } catch (error) {
     console.error('Error during image generation:', error);
     // Cleanup in case of error
