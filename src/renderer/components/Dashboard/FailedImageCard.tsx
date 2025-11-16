@@ -37,6 +37,15 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
       <StatusBadge 
         variant="qc" 
         status={image.qcStatus}
+        labelOverride={(() => {
+          try {
+            // Lazy import to avoid circular deps in tests
+            const { formatQcLabel } = require('../../utils/qc');
+            return formatQcLabel((image as any)?.qcStatus, (image as any)?.qcReason);
+          } catch {
+            return undefined;
+          }
+        })()}
       />
     </div>
   );

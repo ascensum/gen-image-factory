@@ -216,7 +216,17 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-semibold text-gray-900">Image Details</h2>
             <div className="inline-flex items-center">
-              <StatusBadge variant="qc" status={(image as any)?.qcStatus || 'qc_failed'} />
+              {
+                (() => {
+                  try {
+                    const { formatQcLabel } = require('../../utils/qc');
+                    const label = formatQcLabel((image as any)?.qcStatus, (image as any)?.qcReason);
+                    return <StatusBadge variant="qc" status={(image as any)?.qcStatus || 'qc_failed'} labelOverride={label} />;
+                  } catch {
+                    return <StatusBadge variant="qc" status={(image as any)?.qcStatus || 'qc_failed'} />;
+                  }
+                })()
+              }
             </div>
           </div>
           <div className="flex items-center gap-2">

@@ -1026,9 +1026,27 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                           </div>
                         </td>
                         <td className="w-28 px-4 py-2 align-top">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-red-50 text-red-700 border-red-200">
-                            {String(image.qcStatus) === 'qc_failed' ? 'QC failed' : String(image.qcStatus) === 'retry_failed' ? 'Retry failed' : String(image.qcStatus) === 'retry_pending' ? 'Pending retry' : String(image.qcStatus) === 'processing' ? 'Processing' : String(image.qcStatus)}
-                          </span>
+                          <div className="inline-flex">
+                            {
+                              (() => {
+                                try {
+                                  const { formatQcLabel } = require('../../utils/qc');
+                                  const label = formatQcLabel((image as any)?.qcStatus, (image as any)?.qcReason);
+                                  const StatusBadge = require('../Common/StatusBadge').default;
+                                  return (
+                                    <StatusBadge
+                                      variant="qc"
+                                      status={(image as any)?.qcStatus}
+                                      labelOverride={label}
+                                    />
+                                  );
+                                } catch {
+                                  const StatusBadge = require('../Common/StatusBadge').default;
+                                  return <StatusBadge variant="qc" status={(image as any)?.qcStatus} />;
+                                }
+                              })()
+                            }
+                          </div>
                         </td>
                         <td className="w-[40%] px-4 py-2 text-sm text-gray-700 whitespace-normal break-words align-top">{image.qcReason || '-'}</td>
                         <td className="w-[18%] px-4 py-2 text-sm text-gray-700 align-top">{jobIdToLabel[String(image.executionId)] || `Job ${image.executionId}`}</td>
