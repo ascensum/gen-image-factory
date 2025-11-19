@@ -500,7 +500,8 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
 
   // Build dynamic reason filters from available images (e.g., Metadata failed, Download failed)
   const qcReasonFilters = useMemo(() => {
-    const map = new Map<string, string>();
+    const keyToLabel = new Map<string, string>();
+    const seenLabels = new Set<string>(); // avoid duplicate-visible labels like two distinct keys both labeled "QC Failed"
     for (const img of images as any[]) {
       const s = String(img?.qcStatus || '').toLowerCase();
       if (s === 'approved' || s === 'complete' || s === 'completed' || s === 'processing') continue;
@@ -508,9 +509,13 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
       if (!r) continue;
       const key = r.split(':').slice(0, 2).join(':'); // e.g., processing_failed:metadata
       const label = formatQcLabel(s, r) || 'QC Failed';
-      if (key && !map.has(key)) map.set(key, label);
+      // Skip adding another entry if we already surfaced the same visible label
+      if (key && !keyToLabel.has(key) && !seenLabels.has(label)) {
+        keyToLabel.set(key, label);
+        seenLabels.add(label);
+      }
     }
-    return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
+    return Array.from(keyToLabel.entries()).map(([value, label]) => ({ value, label }));
   }, [images]);
 
   const filteredImages = useMemo(() => {
