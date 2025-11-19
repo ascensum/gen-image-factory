@@ -463,6 +463,7 @@ class RetryExecutor extends EventEmitter {
         if (stage === 'remove_bg') qcReason = 'processing_failed:remove_bg';
         else if (stage === 'trim') qcReason = 'processing_failed:trim';
         else if (stage === 'enhancement') qcReason = 'processing_failed:enhancement';
+        else if (stage === 'metadata') qcReason = 'processing_failed:metadata';
         else if (stage === 'convert') qcReason = 'processing_failed:convert';
         else if (stage === 'save_final') qcReason = 'processing_failed:save_final';
         await this.updateImageStatus(imageId, 'retry_failed', qcReason);
@@ -903,7 +904,13 @@ class RetryExecutor extends EventEmitter {
           const enabled = !!(failOptions && failOptions.enabled);
           const steps = Array.isArray(failOptions?.steps) ? failOptions.steps.map(s => String(s).toLowerCase()) : [];
           if (enabled && steps.includes('metadata')) {
-            throw new Error(`Metadata generation failed: ${metadataError?.message || metadataError}`);
+            // Ensure downstream failure mapping tags this as a metadata failure
+            const err = new Error(`Metadata generation failed: ${metadataError?.message || metadataError}`);
+            // @ts-ignore
+            err.stage = 'metadata';
+            // @ts-ignore
+            err.name = 'MetadataError';
+            throw err;
           }
           console.warn(` RetryExecutor: Metadata generation failed, continuing without metadata:`, metadataError);
         }
@@ -1069,12 +1076,21 @@ class RetryExecutor extends EventEmitter {
       console.error(` RetryExecutor: Image processing failed:`, error);
       try {
         const stage = String((error && error.stage) || '').toLowerCase();
+        const name = String((error && error.name) || '').toLowerCase();
+        const message = String((error && error.message) || '');
         let qcReason = 'processing_failed:qc';
         if (stage === 'remove_bg') qcReason = 'processing_failed:remove_bg';
         else if (stage === 'trim') qcReason = 'processing_failed:trim';
         else if (stage === 'enhancement') qcReason = 'processing_failed:enhancement';
+        else if (stage === 'metadata') qcReason = 'processing_failed:metadata';
         else if (stage === 'convert') qcReason = 'processing_failed:convert';
         else if (stage === 'save_final') qcReason = 'processing_failed:save_final';
+        // Heuristic fallback if stage not set
+        if (qcReason === 'processing_failed:qc') {
+          if (name === 'metadataerror' || /metadata generation failed/i.test(message)) {
+            qcReason = 'processing_failed:metadata';
+          }
+        }
         return {
           success: false,
           error: error.message,

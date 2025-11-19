@@ -89,10 +89,10 @@ describe('SingleJobView - Statistics (focused)', () => {
     expect(approvedRow).toBeTruthy();
     const approvedValue = approvedRow.parentElement?.querySelector('.breakdown-value') as HTMLElement;
     expect(approvedValue.textContent?.trim()).toBe('2');
-    const qcFailedRow = Array.from(successCard.querySelectorAll('.breakdown-item .breakdown-label')).find(el => el.textContent?.includes('QC Failed:')) as HTMLElement;
-    expect(qcFailedRow).toBeTruthy();
-    const qcFailedValue = qcFailedRow.parentElement?.querySelector('.breakdown-value') as HTMLElement;
-    expect(qcFailedValue.textContent?.trim()).toBe('1');
+    const failedProcessingRow = Array.from(successCard.querySelectorAll('.breakdown-item .breakdown-label')).find(el => el.textContent?.includes('Failed Processing:')) as HTMLElement;
+    expect(failedProcessingRow).toBeTruthy();
+    const failedProcessingValue = failedProcessingRow.parentElement?.querySelector('.breakdown-value') as HTMLElement;
+    expect(failedProcessingValue.textContent?.trim()).toBe('1');
   });
 });
 
