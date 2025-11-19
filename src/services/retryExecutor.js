@@ -58,7 +58,7 @@ class RetryExecutor extends EventEmitter {
     try {
       console.log(` RetryExecutor: addBatchRetryJob called with job type: ${batchRetryJob.type}`);
       
-      const { imageIds, useOriginalSettings, modifiedSettings, includeMetadata } = batchRetryJob;
+      const { imageIds, useOriginalSettings, modifiedSettings, includeMetadata, failOptions } = batchRetryJob;
       
       console.log(` RetryExecutor: Processing batch retry job:`);
       console.log(`  - imageIds: ${imageIds}`);
@@ -75,9 +75,13 @@ class RetryExecutor extends EventEmitter {
       const retryJobs = imageIds.map(imageId => ({
         id: `retry_${imageId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         imageId,
-      useOriginalSettings,
-      modifiedSettings,
-      includeMetadata,
+        useOriginalSettings,
+        modifiedSettings,
+        includeMetadata,
+        failOptions: {
+          enabled: !!(failOptions && failOptions.enabled),
+          steps: Array.isArray(failOptions?.steps) ? failOptions.steps : []
+        },
         status: 'pending',
         createdAt: new Date()
       }));
@@ -345,7 +349,7 @@ class RetryExecutor extends EventEmitter {
    */
   async processSingleImage(job) {
     try {
-      const { imageId, useOriginalSettings, modifiedSettings, includeMetadata } = job;
+      const { imageId, useOriginalSettings, modifiedSettings, includeMetadata, failOptions } = job;
       this.currentImageId = imageId; // Track current image being processed
       
       console.log(` RetryExecutor: Starting to process image ${imageId}`);
@@ -416,11 +420,22 @@ class RetryExecutor extends EventEmitter {
         console.log(` RetryExecutor: Using modified settings keys:`, Object.keys(processingSettings));
       }
 
+      // Ensure provider credentials are present for retry processing (e.g., remove.bg)
+      try {
+        const rbKey = jobConfiguration?.settings?.apiKeys?.removeBg;
+        if (rbKey && String(rbKey).trim() !== '') {
+          process.env.REMOVE_BG_API_KEY = String(rbKey);
+          console.log(' RetryExecutor: remove.bg credentials initialized for retry');
+        }
+      } catch (e) {
+        // non-fatal
+      }
+
       // Update image status to processing
       await this.updateImageStatus(imageId, 'processing');
 
       // Run post-processing with correct paths
-      const processingResult = await this.runPostProcessing(sourcePath, processingSettings, includeMetadata, jobConfiguration, useOriginalSettings);
+      const processingResult = await this.runPostProcessing(sourcePath, processingSettings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions);
       
       if (processingResult.success) {
         // Processing successful
@@ -428,7 +443,11 @@ class RetryExecutor extends EventEmitter {
         console.log(` RetryExecutor: Image ${imageId} processed successfully:`, processingResult.message);
       } else {
         // Processing failed
-        await this.updateImageStatus(imageId, 'failed_retry', processingResult.error);
+        // Prefer structured qcReason when provided; fallback to error string
+        const failReason = (processingResult && processingResult.qcReason)
+          ? String(processingResult.qcReason)
+          : String(processingResult.error || 'processing_failed:qc');
+        await this.updateImageStatus(imageId, 'retry_failed', failReason);
         console.error(` RetryExecutor: Image ${imageId} processing failed:`, processingResult.error);
       }
       
@@ -438,7 +457,18 @@ class RetryExecutor extends EventEmitter {
       console.error(` RetryExecutor: Error processing image ${imageId}:`, error);
       
       // Update image status to failed
-      await this.updateImageStatus(imageId, 'failed_retry', error.message);
+      try {
+        const stage = String((error && error.stage) || '').toLowerCase();
+        let qcReason = 'processing_failed:qc';
+        if (stage === 'remove_bg') qcReason = 'processing_failed:remove_bg';
+        else if (stage === 'trim') qcReason = 'processing_failed:trim';
+        else if (stage === 'enhancement') qcReason = 'processing_failed:enhancement';
+        else if (stage === 'convert') qcReason = 'processing_failed:convert';
+        else if (stage === 'save_final') qcReason = 'processing_failed:save_final';
+        await this.updateImageStatus(imageId, 'retry_failed', qcReason);
+      } catch {
+        await this.updateImageStatus(imageId, 'retry_failed', 'processing_failed:qc');
+      }
       
       return {
         success: false,
@@ -655,7 +685,7 @@ class RetryExecutor extends EventEmitter {
    * @param {Object} jobConfiguration - Original job configuration (optional)
    * @returns {Promise<Object>} Processing result
    */
-  async runPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration = null, useOriginalSettings = false) {
+  async runPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration = null, useOriginalSettings = false, failOptions = { enabled: false, steps: [] }) {
     try {
       console.log(` RetryExecutor: Starting real image processing for: ${sourcePath}`);
       console.log(` RetryExecutor: Processing settings keys:`, Object.keys(settings)); // Sanitized
@@ -714,7 +744,11 @@ class RetryExecutor extends EventEmitter {
       const processingConfig = {
         tempDirectory: tempProcessingDir,
         outputDirectory: processOutputDir,
-        ...sanitizedSettings
+        ...sanitizedSettings,
+        // Preserve the original source file during retry; cleanup is handled below with guards
+        preserveInput: true,
+        failRetryEnabled: !!(failOptions && failOptions.enabled),
+        failOnSteps: Array.isArray(failOptions?.steps) ? failOptions.steps : []
       };
 
       // Normalize/clamp processing fields to expected ranges
@@ -726,9 +760,52 @@ class RetryExecutor extends EventEmitter {
         // Non-fatal if normalizer not available
       }
       
+      // Debug: print effective background-processing flags before processing
+      try {
+        console.log(' RetryExecutor: EFFECTIVE processingConfig (bg/trim/convert):', {
+          removeBg: !!processingConfig.removeBg,
+          removeBgSize: processingConfig.removeBgSize,
+          trimTransparentBackground: !!processingConfig.trimTransparentBackground,
+          imageConvert: !!processingConfig.imageConvert,
+          convertToJpg: !!processingConfig.convertToJpg,
+          convertToWebp: !!processingConfig.convertToWebp
+        });
+      } catch {}
+      
       // Process the image using the real processing pipeline
       console.log(` RetryExecutor: Calling processImage with config keys:`, Object.keys(processingConfig)); // Sanitized
-      const processedImagePath = await processImage(sourcePath, sourceFileName, processingConfig);
+      let processedImagePath;
+      try {
+        processedImagePath = await processImage(sourcePath, sourceFileName, processingConfig);
+      } catch (procErr) {
+        const stage = String((procErr && procErr.stage) || '').toLowerCase();
+        const enabled = !!(failOptions && failOptions.enabled);
+        const steps = Array.isArray(failOptions?.steps) ? failOptions.steps.map(s => String(s).toLowerCase()) : [];
+        if (stage === 'convert') {
+          if (enabled && steps.includes('convert')) {
+            throw procErr;
+          } else {
+            console.warn(' RetryExecutor: Convert/Save failed but not selected to hard-fail. Falling back to original source.');
+            processedImagePath = sourcePath;
+          }
+        } else if (stage === 'trim') {
+          if (enabled && steps.includes('trim')) {
+            throw procErr;
+          } else {
+            console.warn(' RetryExecutor: Trim failed but not selected to hard-fail. Continuing without trim.');
+            processedImagePath = sourcePath; // safe fallback; subsequent steps will proceed
+          }
+        } else if (stage === 'enhancement') {
+          if (enabled && steps.includes('enhancement')) {
+            throw procErr;
+          } else {
+            console.warn(' RetryExecutor: Enhancement failed but not selected to hard-fail. Continuing without enhancement.');
+            processedImagePath = sourcePath;
+          }
+        } else {
+          throw procErr;
+        }
+      }
       console.log(` RetryExecutor: Image processing completed: ${processedImagePath}`);
       
       // Determine the final destination path (Toupload folder)
@@ -823,6 +900,11 @@ class RetryExecutor extends EventEmitter {
           );
           console.log(` RetryExecutor: Metadata generation completed:`, metadataResult);
         } catch (metadataError) {
+          const enabled = !!(failOptions && failOptions.enabled);
+          const steps = Array.isArray(failOptions?.steps) ? failOptions.steps.map(s => String(s).toLowerCase()) : [];
+          if (enabled && steps.includes('metadata')) {
+            throw new Error(`Metadata generation failed: ${metadataError?.message || metadataError}`);
+          }
           console.warn(` RetryExecutor: Metadata generation failed, continuing without metadata:`, metadataError);
         }
       }
@@ -830,25 +912,57 @@ class RetryExecutor extends EventEmitter {
       // CRITICAL: Move the processed image to final destination (Toupload folder)
       console.log(` RetryExecutor: Moving processed image to final destination: ${finalOutputPath}`);
       
-      // If final destination already exists, delete it first
+      // Move the processed image to final destination (safe copy-first strategy)
       try {
-        await fs.access(finalOutputPath);
-        console.log(` RetryExecutor: Final destination exists, deleting old file: ${finalOutputPath}`);
-        await fs.unlink(finalOutputPath);
-      } catch (error) {
-        // File doesn't exist, which is fine
-        console.log(` RetryExecutor: Final destination doesn't exist yet, proceeding with move`);
+        // Copy ensures we don't destroy an existing final file unless copy succeeds
+        await fs.copyFile(processedImagePath, finalOutputPath);
+        console.log(` RetryExecutor: Successfully copied processed image to: ${finalOutputPath}`);
+        // Best-effort cleanup of processed temp file
+        try {
+          await fs.unlink(processedImagePath);
+        } catch (cleanupTempErr) {
+          console.warn(` RetryExecutor: Failed to cleanup temp processed file:`, cleanupTempErr.message);
+        }
+      } catch (moveError) {
+        const enabled = !!(failOptions && failOptions.enabled);
+        const steps = Array.isArray(failOptions?.steps) ? failOptions.steps.map(s => String(s).toLowerCase()) : [];
+        const convertSelected = steps.includes('convert');
+        if (enabled && convertSelected) {
+          // Hard-fail when explicitly selected
+          const err = new Error(`processing_failed:save_final: ${moveError?.message || moveError}`);
+          // @ts-ignore
+          err.stage = 'save_final';
+          throw err;
+        }
+        // Soft-fail: fallback to original source path; do not move
+        console.warn(` RetryExecutor: Move to final output failed but not selected to hard-fail. Falling back to source: ${sourcePath}`);
+        finalOutputPath = sourcePath;
       }
-      
-      // Move the processed image to final destination
-      await fs.rename(processedImagePath, finalOutputPath);
-      console.log(` RetryExecutor: Successfully moved processed image to: ${finalOutputPath}`);
       
       // CRITICAL: Now delete the original source file from generated folder
       try {
-        console.log(` RetryExecutor: Deleting original source file: ${sourcePath}`);
-        await fs.unlink(sourcePath);
-        console.log(` RetryExecutor: Original source file deleted successfully`);
+        const resolvedSource = path.resolve(sourcePath);
+        const resolvedFinal = path.resolve(finalOutputPath);
+        // Only delete if the source is inside the temp/generated directory to avoid
+        // removing files that already live in the final output directory (legacy images).
+        const tempDirForGuard =
+          (jobConfiguration && jobConfiguration.settings && jobConfiguration.settings.filePaths && jobConfiguration.settings.filePaths.tempDirectory)
+            ? jobConfiguration.settings.filePaths.tempDirectory
+            : this.tempDirectory;
+        const resolvedTempRoot = path.resolve(tempDirForGuard || '');
+        const isInsideTemp =
+          resolvedTempRoot &&
+          (resolvedSource === resolvedTempRoot || resolvedSource.startsWith(resolvedTempRoot + path.sep));
+
+        if (resolvedSource !== resolvedFinal && isInsideTemp) {
+          console.log(` RetryExecutor: Deleting original source file (inside temp): ${resolvedSource}`);
+          await fs.unlink(resolvedSource);
+          console.log(` RetryExecutor: Original source file deleted successfully`);
+        } else if (resolvedSource === resolvedFinal) {
+          console.log(` RetryExecutor: Skipping delete - source and final paths are the same (${resolvedSource})`);
+        } else {
+          console.log(` RetryExecutor: Skipping delete - source is not inside temp directory (${resolvedSource})`);
+        }
       } catch (cleanupError) {
         console.warn(` RetryExecutor: Failed to delete original source file:`, cleanupError.message);
         // Don't throw error here, as the main processing was successful
@@ -953,10 +1067,26 @@ class RetryExecutor extends EventEmitter {
       
     } catch (error) {
       console.error(` RetryExecutor: Image processing failed:`, error);
-      return {
-        success: false,
-        error: error.message
-      };
+      try {
+        const stage = String((error && error.stage) || '').toLowerCase();
+        let qcReason = 'processing_failed:qc';
+        if (stage === 'remove_bg') qcReason = 'processing_failed:remove_bg';
+        else if (stage === 'trim') qcReason = 'processing_failed:trim';
+        else if (stage === 'enhancement') qcReason = 'processing_failed:enhancement';
+        else if (stage === 'convert') qcReason = 'processing_failed:convert';
+        else if (stage === 'save_final') qcReason = 'processing_failed:save_final';
+        return {
+          success: false,
+          error: error.message,
+          qcReason
+        };
+      } catch {
+        return {
+          success: false,
+          error: String(error && error.message || error) || 'processing_failed:qc',
+          qcReason: 'processing_failed:qc'
+        };
+      }
     }
   }
 

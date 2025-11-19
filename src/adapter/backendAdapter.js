@@ -537,8 +537,8 @@ class BackendAdapter {
       });
 
       // Batch retry handler
-      _ipc.handle('failed-image:retry-batch', async (event, { imageIds, useOriginalSettings, modifiedSettings, includeMetadata }) => {
-        return await this.retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings, includeMetadata);
+      _ipc.handle('failed-image:retry-batch', async (event, { imageIds, useOriginalSettings, modifiedSettings, includeMetadata, failOptions }) => {
+        return await this.retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings, includeMetadata, failOptions);
       });
 
       // Get retry queue status
@@ -2083,13 +2083,14 @@ class BackendAdapter {
   }
 
   // Failed Images Review Methods - Batch Processing
-  async retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings = null, includeMetadata = false) {
+  async retryFailedImagesBatch(imageIds, useOriginalSettings, modifiedSettings = null, includeMetadata = false, failOptions = { enabled: false, steps: [] }) {
     try {
       console.log(' BackendAdapter: retryFailedImagesBatch called');
       console.log(' BackendAdapter: imageIds:', imageIds);
       console.log(' BackendAdapter: useOriginalSettings:', useOriginalSettings);
       console.log(' BackendAdapter: modifiedSettings keys:', modifiedSettings ? Object.keys(modifiedSettings) : 'null');
       console.log(' BackendAdapter: includeMetadata:', includeMetadata);
+      console.log(' BackendAdapter: failOptions:', failOptions);
       
       await this.ensureInitialized();
       
@@ -2183,6 +2184,10 @@ class BackendAdapter {
         useOriginalSettings,
         modifiedSettings: sanitizedSettings,
         includeMetadata,
+        failOptions: {
+          enabled: !!(failOptions && failOptions.enabled),
+          steps: Array.isArray(failOptions?.steps) ? failOptions.steps : []
+        },
         createdAt: new Date(),
         status: 'pending'
       };

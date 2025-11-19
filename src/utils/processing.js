@@ -64,7 +64,7 @@ function normalizeProcessingSettings(input) {
         break;
       }
       case 'removeBgSize': {
-        const allowed = new Set(['auto', 'full', '4k']);
+        const allowed = new Set(['auto', 'preview', 'full', '4k']);
         const val = String(v || 'auto').toLowerCase();
         out[k] = allowed.has(val) ? val : 'auto';
         break;

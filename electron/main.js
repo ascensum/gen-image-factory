@@ -301,6 +301,10 @@ app.whenReady().then(async () => {
         filePath = `/${host}${filePath}`;
       }
       filePath = path.normalize(filePath);
+      // macOS: correct lowercased home root when coming from malformed URLs ("/users/..." -> "/Users/...")
+      if (process.platform === 'darwin' && filePath.startsWith('/users/')) {
+        filePath = '/Users/' + filePath.slice('/users/'.length);
+      }
       
       // On Windows, URL pathname will be like "/C:/Users/..." - keep as is
       // On Unix (macOS/Linux), it will be like "/Users/..." or "/home/..." - keep as is

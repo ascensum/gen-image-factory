@@ -5,7 +5,7 @@ import type { ProcessingSettings } from '../../../types/processing';
 interface ProcessingSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onRetry: (useOriginalSettings: boolean, modifiedSettings?: ProcessingSettings, includeMetadata?: boolean) => void;
+  onRetry: (useOriginalSettings: boolean, modifiedSettings?: ProcessingSettings, includeMetadata?: boolean, failOptions?: { enabled: boolean; steps: string[] }) => void;
   selectedCount: number;
 }
 
@@ -17,6 +17,8 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
 }) => {
   const [useOriginalSettings, setUseOriginalSettings] = useState(true);
   const [includeMetadata, setIncludeMetadata] = useState(false);
+  const [failRetryEnabled, setFailRetryEnabled] = useState(false);
+  const [failOnSteps, setFailOnSteps] = useState<string[]>([]);
   const [batchSettings, setBatchSettings] = useState<ProcessingSettings>({
     imageEnhancement: false,
     sharpening: 5,
@@ -51,14 +53,16 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
     console.log(' ProcessingSettingsModal: handleRetry called');
     console.log(' ProcessingSettingsModal: useOriginalSettings:', useOriginalSettings);
     console.log(' ProcessingSettingsModal: includeMetadata:', includeMetadata);
+    console.log(' ProcessingSettingsModal: failRetryEnabled:', failRetryEnabled);
+    console.log(' ProcessingSettingsModal: failOnSteps:', failOnSteps);
     console.log(' ProcessingSettingsModal: batchSettings keys:', Object.keys(batchSettings));
     
     if (useOriginalSettings) {
       console.log(' ProcessingSettingsModal: Retrying with original settings');
-      onRetry(true, undefined, includeMetadata);
+      onRetry(true, undefined, includeMetadata, { enabled: failRetryEnabled, steps: failOnSteps });
     } else {
       console.log(' ProcessingSettingsModal: Retrying with modified settings keys:', Object.keys(batchSettings));
-      onRetry(false, batchSettings, includeMetadata);
+      onRetry(false, batchSettings, includeMetadata, { enabled: failRetryEnabled, steps: failOnSteps });
     }
   };
 
@@ -204,6 +208,44 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
           {/* Modified Settings Configuration */}
           {!useOriginalSettings && (
             <div ref={configSectionRef} className="space-y-8 scroll-mt-4">
+              {/* Fail Retry Controls */}
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <div className="flex items-start justify-between">
+                  <div className="pr-4">
+                    <h4 className="text-sm font-medium text-gray-800">Fail Retry</h4>
+                    <p className="text-xs text-gray-600 mt-1">
+                      When ON, selected steps will hard-fail the retry if they error. Unselected steps will soft-fail and continue. If no steps are selected, all steps soft-fail.
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      When OFF, defaults apply: Remove.bg soft, Trim hard, Convert/Save hard, Metadata soft, Enhancement soft (hard only if encode/save fails).
+                    </p>
+                  </div>
+                  <Toggle ariaLabel="Enable Fail Retry" checked={failRetryEnabled} onChange={setFailRetryEnabled} />
+                </div>
+                {failRetryEnabled && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Steps that should hard-fail retry
+                    </label>
+                    <select
+                      multiple
+                      value={failOnSteps}
+                      onChange={(e) => {
+                        const options = Array.from(e.target.selectedOptions).map(o => o.value);
+                        setFailOnSteps(options);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      size={5}
+                    >
+                      <option value="remove_bg">Remove Background</option>
+                      <option value="trim">Trim Transparent</option>
+                      <option value="enhancement">Enhancement</option>
+                      <option value="convert">Convert / Save</option>
+                      <option value="metadata">Metadata</option>
+                    </select>
+                  </div>
+                )}
+              </div>
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-start">
                   <svg className="w-5 h-5 text-yellow-400 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

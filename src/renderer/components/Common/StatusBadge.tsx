@@ -99,7 +99,7 @@ function getJobStyle(status: string) {
       return { classes: 'bg-green-100 text-green-800 border-green-200', label: 'Completed' };
     case 'processing':
     case 'running':
-      return { classes: 'bg-blue-100 text-blue-800 border-blue-200', label: 'In Progress' };
+      return { classes: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Processing' };
     case 'failed':
       return { classes: 'bg-red-100 text-red-800 border-red-200', label: 'Failed' };
     case 'pending':

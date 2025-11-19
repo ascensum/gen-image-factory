@@ -8,6 +8,7 @@ import { Toggle } from '../Settings/Toggle';
 import './SingleJobView.css';
 import StatusBadge from '../Common/StatusBadge';
 import LogViewer from '../Dashboard/LogViewer';
+import { formatQcLabel } from '../../utils/qc';
 
 interface SingleJobViewProps {
   jobId: string | number;
@@ -497,9 +498,64 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     return title && title.trim() !== '' ? title : `Image ${img?.id}`;
   }, []);
 
+  // Build dynamic reason filters from available images (e.g., Metadata failed, Download failed)
+  const qcReasonFilters = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const img of images as any[]) {
+      const s = String(img?.qcStatus || '').toLowerCase();
+      if (s === 'approved' || s === 'complete' || s === 'completed' || s === 'processing') continue;
+      const r = String(img?.qcReason || '').toLowerCase();
+      if (!r) continue;
+      const key = r.split(':').slice(0, 2).join(':'); // e.g., processing_failed:metadata
+      const label = formatQcLabel(s, r) || 'QC Failed';
+      if (key && !map.has(key)) map.set(key, label);
+    }
+    return Array.from(map.entries()).map(([value, label]) => ({ value, label }));
+  }, [images]);
+
   const filteredImages = useMemo(() => {
     if (imageFilter === 'all') return images;
-    return images.filter(img => getImageUiStatus((img as any).qcStatus) === imageFilter);
+    if (imageFilter === 'approved') {
+      return images.filter((img: any) => {
+        const s = String(img?.qcStatus || '').toLowerCase();
+        return s === 'approved' || s === 'complete' || s === 'completed';
+      });
+    }
+    // Failed (All): qc_failed + retry_failed
+    if (imageFilter === 'failed_all' || imageFilter === 'qc_failed') {
+      return images.filter((img: any) => {
+        const s = String(img?.qcStatus || '').toLowerCase();
+        return s === 'qc_failed' || s === 'retry_failed';
+      });
+    }
+    // Failed – QC: genuine QC model failures (no technical processing_failed:* reason or explicitly :qc)
+    if (imageFilter === 'failed_qc') {
+      return images.filter((img: any) => {
+        const s = String(img?.qcStatus || '').toLowerCase();
+        if (!(s === 'qc_failed' || s === 'retry_failed')) return false;
+        const r = String(img?.qcReason || '').toLowerCase();
+        if (!r) return true; // genuine QC without mapped reason
+        if (!r.startsWith('processing_failed:')) return true; // model-provided explanation
+        return r.startsWith('processing_failed:qc'); // explicit QC bucket
+      });
+    }
+    // Failed – Technical: processing pipeline failures that are not QC
+    if (imageFilter === 'failed_tech') {
+      return images.filter((img: any) => {
+        const s = String(img?.qcStatus || '').toLowerCase();
+        if (!(s === 'qc_failed' || s === 'retry_failed')) return false;
+        const r = String(img?.qcReason || '').toLowerCase();
+        return r.startsWith('processing_failed:') && !r.startsWith('processing_failed:qc');
+      });
+    }
+    // Filter by specific qcReason family (e.g., processing_failed:metadata)
+    const reasonPrefix = String(imageFilter || '');
+    return images.filter((img: any) => {
+      const s = String(img?.qcStatus || '').toLowerCase();
+      if (s === 'approved' || s === 'complete' || s === 'completed') return false;
+      const r = String(img?.qcReason || '').toLowerCase();
+      return r.startsWith(reasonPrefix);
+    });
   }, [images, imageFilter, getImageUiStatus]);
 
   const formatDate = (dateString: string | Date) => {
@@ -678,7 +734,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       <span className="breakdown-value">{(job as any).approvedImages || 0}</span>
                     </div>
                     <div className="breakdown-item qc-failed">
-                      <span className="breakdown-label">QC Failed:</span>
+                      <span className="breakdown-label">Failed Processing:</span>
                       <span className="breakdown-value">{(job as any).qcFailedImages || 0}</span>
                     </div>
                   </div>
@@ -818,12 +874,17 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
               <div className="filter-controls">
                 <select 
                   value={imageFilter}
-                  onChange={(e) => setImageFilter(e.target.value as 'all' | 'approved' | 'qc_failed')}
+                  onChange={(e) => setImageFilter(e.target.value)}
                   className="filter-select"
                 >
                   <option value="all">All</option>
                   <option value="approved">Approved</option>
-                  <option value="qc_failed">QC Failed</option>
+                  <option value="failed_all">Failed (All)</option>
+                  <option value="failed_qc">Failed – QC</option>
+                  <option value="failed_tech">Failed – Technical</option>
+                  {qcReasonFilters.map(({ value, label }) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
                 </select>
               </div>
               <div className="view-controls">
@@ -882,6 +943,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                           <StatusBadge
                             variant="qc"
                             status={(getImageUiStatus((image as any).qcStatus) === 'approved') ? 'approved' : (String((image as any).qcStatus || '').toLowerCase() === 'processing' ? 'processing' : 'qc_failed')}
+                            labelOverride={(getImageUiStatus((image as any).qcStatus) === 'qc_failed') ? (formatQcLabel(String((image as any).qcStatus || ''), String((image as any).qcReason || '')) || undefined) : undefined}
                           />
                         </div>
                       </div>
@@ -937,6 +999,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                         <StatusBadge
                           variant="qc"
                           status={(getImageUiStatus((image as any).qcStatus) === 'approved') ? 'approved' : (String((image as any).qcStatus || '').toLowerCase() === 'processing' ? 'processing' : 'qc_failed')}
+                          labelOverride={(getImageUiStatus((image as any).qcStatus) === 'qc_failed') ? (formatQcLabel(String((image as any).qcStatus || ''), String((image as any).qcReason || '')) || undefined) : undefined}
                         />
                       </td>
                       <td>{(image as any)?.createdAt ? new Date((image as any).createdAt).toLocaleDateString() : ''}</td>

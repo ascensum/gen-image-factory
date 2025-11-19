@@ -1483,12 +1483,13 @@ class JobRunner extends EventEmitter {
       
       const mjVersion = config.parameters?.mjVersion || '6';
       
+      // Reduced verbosity: avoid legacy Midjourney-style log spam in dashboard
       this._logStructured({
         level: 'debug',
         stepName: 'parameter_generation',
         subStep: 'extract',
-        message: `Extracted configuration: keywords="${keywords}", aspectRatios=${JSON.stringify(aspectRatios)}, mjVersion=${mjVersion}`,
-        metadata: { keywords, aspectRatios, mjVersion }
+        message: `Configuration extracted for parameter generation`,
+        metadata: { keywords, aspectRatiosCount: Array.isArray(aspectRatios) ? aspectRatios.length : 0 }
       });
       
       // Call the real paramsGeneratorModule with correct signature
@@ -1864,6 +1865,50 @@ class JobRunner extends EventEmitter {
         });
         
               return processedImages;  // Return array of image objects
+      } else if (result && typeof result === 'object' && Array.isArray(result.processedImages)) {
+        // Structured result: { processedImages, failedItems }
+        const items = result.processedImages;
+        const processedImages = items.map((item) => {
+          const imagePath = item.outputPath || item.path || item;
+          const aspectRatio = parameters.aspectRatios?.[0] || '1:1';
+          
+          const imageObject = {
+            path: imagePath,
+            aspectRatio,
+            status: 'generated',
+            metadata: {
+              prompt: parameters.prompt,
+              ...(item.settings?.title?.title && { title: item.settings.title.title }),
+              ...(item.settings?.title?.description && { description: item.settings.title.description }),
+              ...(item.settings?.uploadTags && { uploadTags: item.settings.uploadTags })
+            },
+            mappingId: item.mappingId || `img_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+          };
+          
+          // Update job state counts
+          this.jobState.totalImages = (this.jobState.totalImages || 0) + 1;
+          this.jobState.generatedImages = (this.jobState.generatedImages || 0) + 1;
+          
+          return imageObject;
+        });
+        
+        const duration = Date.now() - startTime;
+        this._logStructured({
+          level: 'info',
+          stepName: 'image_generation',
+          subStep: 'complete',
+          message: `Image generation completed successfully: ${processedImages.length} images`,
+          durationMs: duration,
+          updateProgress: true,
+          metadata: { 
+            totalImages: processedImages.length,
+            generatedImages: processedImages.length,
+            failedImages: 0,
+            allMappingIds: processedImages.map(img => img.mappingId)
+          }
+        });
+        
+        return processedImages;
       } else if (result && typeof result === 'string') {
         // Fallback: single string path
         this._logStructured({

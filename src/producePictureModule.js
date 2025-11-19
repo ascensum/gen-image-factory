@@ -18,7 +18,7 @@ async function pause(isLong = false, seconds) {
   return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
-async function removeBg(inputPath, removeBgSize, signal) {
+async function removeBg(inputPath, removeBgSize, signal, timeoutMs) {
   try {
     const FormData = require('form-data');
     const form = new FormData();
@@ -34,7 +34,7 @@ async function removeBg(inputPath, removeBgSize, signal) {
     const response = await axios.post('https://api.remove.bg/v1.0/removebg', form, {
       headers,
       responseType: 'arraybuffer',
-      timeout: 60000,
+      timeout: Number.isFinite(Number(timeoutMs)) ? Number(timeoutMs) : 60000,
       signal
     });
 
@@ -43,19 +43,38 @@ async function removeBg(inputPath, removeBgSize, signal) {
     }
     throw new Error(`Failed to remove background: ${response.status} ${response.statusText}`);
   } catch (error) {
-    console.error('Error in removeBg:', error);
+    try {
+      const status = error?.response?.status;
+      const statusText = error?.response?.statusText;
+      let body = '';
+      if (error?.response?.data) {
+        try {
+          if (Buffer.isBuffer(error.response.data)) {
+            body = error.response.data.toString('utf8').slice(0, 500);
+          } else if (typeof error.response.data === 'string') {
+            body = String(error.response.data).slice(0, 500);
+          } else {
+            body = JSON.stringify(error.response.data).slice(0, 500);
+          }
+        } catch {}
+      }
+      console.error('Error in removeBg:', { status, statusText, body });
+    } catch {
+      console.error('Error in removeBg:', error);
+    }
     throw error;
   }
 }
 
 // Retry mechanism for removeBg
-async function retryRemoveBg(inputPath, retries = 3, delay = 2000, removeBgSize, signal) {
+async function retryRemoveBg(inputPath, retries = 3, delay = 2000, removeBgSize, signal, timeoutMs) {
   for (let i = 0; i < retries; i++) {
     try {
-      return await removeBg(inputPath, removeBgSize, signal);
+      return await removeBg(inputPath, removeBgSize, signal, timeoutMs);
     } catch (error) {
-      const isRetryable = !error.response || (error.response.status >= 500) || error.code === 'ECONNABORTED' || error.response?.status === 429;
-      console.warn(`Attempt ${i + 1} for removeBg failed: ${error.message}. ${isRetryable && i < retries - 1 ? `Retrying in ${delay / 1000} seconds...` : 'Not retryable or no attempts left.'}`);
+      const status = error?.response?.status;
+      const isRetryable = !error.response || (status >= 500) || error.code === 'ECONNABORTED' || status === 429;
+      console.warn(`Attempt ${i + 1} for removeBg failed: ${error.message}${status ? ` (status ${status})` : ''}. ${isRetryable && i < retries - 1 ? `Retrying in ${delay / 1000} seconds...` : 'Not retryable or no attempts left.'}`);
       if (isRetryable && i < retries - 1) {
         await new Promise(resolve => setTimeout(resolve, delay));
         delay = Math.min(delay * 2, 15000);
@@ -438,9 +457,9 @@ async function producePictureModule(
         } catch (procErr) {
           failedItems.push({
             mappingId,
-            stage: 'processing',
+            stage: (procErr && procErr.stage) ? String(procErr.stage) : 'processing',
             vendor: 'local',
-            message: String(procErr && procErr.message || procErr)
+            message: String((procErr && procErr.message) || procErr)
           });
           throw procErr;
         }
@@ -486,6 +505,7 @@ async function processImage(inputImagePath, imgName, config = {}) {
   console.log(` processImage: Received config keys:`, Object.keys(config));
   
   const {
+    preserveInput,
     removeBg,
     imageConvert,
     imageEnhancement,
@@ -497,6 +517,8 @@ async function processImage(inputImagePath, imgName, config = {}) {
     removeBgSize,
     jpgQuality,
     pngQuality,
+    failRetryEnabled,
+    failOnSteps,
   } = config;
 
   console.log(` processImage: Extracted settings:`);
@@ -524,12 +546,22 @@ async function processImage(inputImagePath, imgName, config = {}) {
   if (removeBg) {
     logDebug('Removing background with remove.bg...');
     try {
-      imageBuffer = await retryRemoveBg(inputImagePath, 3, 2000, removeBgSize, config.abortSignal);
+      const removeBgTimeoutMs = (config && config.pollingTimeout) ? Number(config.pollingTimeout) * 60 * 1000 : 30000;
+      imageBuffer = await retryRemoveBg(inputImagePath, 3, 2000, removeBgSize, config.abortSignal, removeBgTimeoutMs);
       logDebug('Background removal successful');
     } catch (error) {
       console.error('Background removal failed:', error);
-      logDebug('Using original image as fallback for subsequent steps.');
-      imageBuffer = await fs.readFile(inputImagePath);
+      const enabled = !!failRetryEnabled;
+      const steps = Array.isArray(failOnSteps) ? failOnSteps.map(s => String(s).toLowerCase()) : [];
+      if (enabled && steps.includes('remove_bg')) {
+        const err = new Error('processing_failed:remove_bg');
+        // @ts-ignore
+        err.stage = 'remove_bg';
+        throw err;
+      } else {
+        logDebug('Using original image as fallback for subsequent steps.');
+        imageBuffer = await fs.readFile(inputImagePath);
+      }
     }
   } else {
     imageBuffer = await fs.readFile(inputImagePath);
@@ -545,7 +577,20 @@ async function processImage(inputImagePath, imgName, config = {}) {
       console.warn("Warning: --trimTransparentBackground has no effect when converting to JPG. Skipping trim.");
     } else {
       logDebug('Trimming transparent background...');
-      sharpInstance = sharpInstance.trim({ threshold: 50 });
+      try {
+        sharpInstance = sharpInstance.trim({ threshold: 50 });
+      } catch (e) {
+        const enabled = !!failRetryEnabled;
+        const steps = Array.isArray(failOnSteps) ? failOnSteps.map(s => String(s).toLowerCase()) : [];
+        if (enabled && steps.includes('trim')) {
+          const err = new Error(`Trim failed: ${String(e && e.message || e)}`);
+          // @ts-ignore
+          err.stage = 'trim';
+          throw err;
+        } else {
+          console.warn(' processImage: Trim failed but not selected to hard-fail. Continuing without trim.');
+        }
+      }
     }
   }
 
@@ -563,6 +608,19 @@ async function processImage(inputImagePath, imgName, config = {}) {
     if (saturation !== 1) {
       logDebug(`Applying saturation adjustment: ${saturation}`);
       sharpInstance = sharpInstance.modulate({ saturation: saturation });
+    }
+    // Validate enhancement if configured to hard-fail
+    try {
+      const enabled = !!failRetryEnabled;
+      const steps = Array.isArray(failOnSteps) ? failOnSteps.map(s => String(s).toLowerCase()) : [];
+      if (enabled && steps.includes('enhancement')) {
+        await sharpInstance.clone().toBuffer();
+      }
+    } catch (e) {
+      const err = new Error(`Enhancement failed: ${String(e && e.message || e)}`);
+      // @ts-ignore
+      err.stage = 'enhancement';
+      throw err;
     }
   }
 
@@ -618,17 +676,21 @@ async function processImage(inputImagePath, imgName, config = {}) {
     logDebug('Final image saved to:', outputPath);
   } catch (error) {
     console.error(`Error saving final image to ${outputPath}:`, error);
-    throw error;
+    const err = new Error(String(error && error.message || error));
+    // Distinguish conversion/write phase broadly as "convert"
+    // @ts-ignore
+    err.stage = 'convert';
+    throw err;
   }
 
   // 6. Cleanup Original Downloaded Image (only if different from output)
   try {
     const samePath = path.resolve(inputImagePath) === path.resolve(outputPath);
-    if (!samePath) {
+    if (!samePath && !preserveInput) {
       await fs.unlink(inputImagePath);
       logDebug('Cleaned up original downloaded image.');
     } else {
-      logDebug('Skipped cleanup: inputImagePath equals outputPath');
+      logDebug('Skipped cleanup: preserveInput is true or inputImagePath equals outputPath');
     }
   } catch (error) {
     console.error(`Error deleting original downloaded image ${inputImagePath}:`, error);

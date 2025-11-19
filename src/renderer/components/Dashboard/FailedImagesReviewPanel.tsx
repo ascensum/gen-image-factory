@@ -6,6 +6,8 @@ import FailedImageCard from './FailedImageCard';
 import FailedImageModalContainer from './FailedImageModalContainer';
 import ProcessingSettingsModal from './ProcessingSettingsModal';
 import type { ProcessingSettings } from '../../../types/processing';
+import StatusBadge from '../Common/StatusBadge';
+import { formatQcLabel, formatQcFailureReason } from '../../utils/qc';
 
 interface FailedImagesReviewPanelProps {
   onBack: () => void;
@@ -398,11 +400,12 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
     }
   };
 
-  const handleRetryWithSettings = async (useOriginalSettings: boolean, modifiedSettings?: ProcessingSettings, includeMetadata?: boolean) => {
+  const handleRetryWithSettings = async (useOriginalSettings: boolean, modifiedSettings?: ProcessingSettings, includeMetadata?: boolean, failOptions?: { enabled: boolean; steps: string[] }) => {
     console.log(' FailedImagesReviewPanel: handleRetryWithSettings called');
     console.log(' FailedImagesReviewPanel: useOriginalSettings:', useOriginalSettings);
     console.log(' FailedImagesReviewPanel: modifiedSettings keys:', modifiedSettings ? Object.keys(modifiedSettings) : 'undefined');
     console.log(' FailedImagesReviewPanel: includeMetadata:', includeMetadata);
+    console.log(' FailedImagesReviewPanel: failOptions:', failOptions);
     console.log(' FailedImagesReviewPanel: selectedImages count:', selectedImages.size);
     
     if (selectedImages.size === 0) return;
@@ -418,7 +421,8 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
         imageIds, 
         useOriginalSettings, 
         useOriginalSettings ? null : (modifiedSettings || processingSettings),
-        includeMetadata
+        includeMetadata,
+        failOptions || { enabled: false, steps: [] }
       );
       
       console.log(' FailedImagesReviewPanel: retryFailedImagesBatch result:', result);
@@ -1027,28 +1031,21 @@ const FailedImagesReviewPanel: React.FC<FailedImagesReviewPanelProps> = ({ onBac
                         </td>
                         <td className="w-28 px-4 py-2 align-top">
                           <div className="inline-flex">
-                            {
-                              (() => {
-                                try {
-                                  const { formatQcLabel } = require('../../utils/qc');
-                                  const label = formatQcLabel((image as any)?.qcStatus, (image as any)?.qcReason);
-                                  const StatusBadge = require('../Common/StatusBadge').default;
-                                  return (
-                                    <StatusBadge
-                                      variant="qc"
-                                      status={(image as any)?.qcStatus}
-                                      labelOverride={label}
-                                    />
-                                  );
-                                } catch {
-                                  const StatusBadge = require('../Common/StatusBadge').default;
-                                  return <StatusBadge variant="qc" status={(image as any)?.qcStatus} />;
-                                }
-                              })()
-                            }
+                            <StatusBadge
+                              variant="qc"
+                            status={(() => {
+                              const s = String(((image as any)?.qcStatus) || '').toLowerCase();
+                              if (s === 'approved' || s === 'complete' || s === 'completed') return 'approved';
+                              if (s === 'processing') return 'processing';
+                              return 'qc_failed';
+                            })()}
+                              labelOverride={formatQcLabel((image as any)?.qcStatus, (image as any)?.qcReason)}
+                            />
                           </div>
                         </td>
-                        <td className="w-[40%] px-4 py-2 text-sm text-gray-700 whitespace-normal break-words align-top">{image.qcReason || '-'}</td>
+                        <td className="w-[40%] px-4 py-2 text-sm text-gray-700 whitespace-normal break-words align-top">
+                          {formatQcFailureReason((image as any)?.qcStatus, (image as any)?.qcReason) || (image as any)?.qcReason || '-'}
+                        </td>
                         <td className="w-[18%] px-4 py-2 text-sm text-gray-700 align-top">{jobIdToLabel[String(image.executionId)] || `Job ${image.executionId}`}</td>
                         <td className="w-28 px-4 py-2 text-sm text-gray-700 align-top">{image.createdAt ? new Date(image.createdAt as any).toLocaleDateString() : '-'}</td>
                         <td className="w-28 px-4 py-2 align-top">

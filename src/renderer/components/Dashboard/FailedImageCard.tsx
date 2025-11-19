@@ -2,6 +2,7 @@ import React from 'react';
 import { buildLocalFileUrl } from '../../utils/urls';
 import type { GeneratedImage } from '../../../types/generatedImage';
 import StatusBadge from '../Common/StatusBadge';
+import { formatQcLabel, formatQcFailureReason } from '../../utils/qc';
 
 interface FailedImageCardProps {
   image: GeneratedImage;
@@ -36,16 +37,13 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
     <div className="absolute top-2 left-2">
       <StatusBadge 
         variant="qc" 
-        status={image.qcStatus}
-        labelOverride={(() => {
-          try {
-            // Lazy import to avoid circular deps in tests
-            const { formatQcLabel } = require('../../utils/qc');
-            return formatQcLabel((image as any)?.qcStatus, (image as any)?.qcReason);
-          } catch {
-            return undefined;
-          }
+        status={(() => {
+          const s = String((image.qcStatus || '')).toLowerCase();
+          if (s === 'approved' || s === 'complete' || s === 'completed') return 'approved';
+          if (s === 'processing') return 'processing';
+          return 'qc_failed';
         })()}
+        labelOverride={formatQcLabel((image as any)?.qcStatus, (image as any)?.qcReason)}
       />
     </div>
   );
@@ -149,9 +147,9 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
         </div>
 
         {/* Failure Reason */}
-        {image.qcReason && (
+        {(image as any)?.qcReason && (
           <div className="text-xs text-red-600 mb-2 p-2 bg-red-50 rounded border border-red-200">
-            <strong>Failure:</strong> {image.qcReason}
+            <strong>Failure:</strong> {formatQcFailureReason((image as any)?.qcStatus, (image as any)?.qcReason) || (image as any)?.qcReason}
           </div>
         )}
 

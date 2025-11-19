@@ -3,6 +3,7 @@ import { buildLocalFileUrl } from '../../utils/urls';
 import './FailedImageReviewModal.css';
 import StatusBadge from '../Common/StatusBadge';
 import type { GeneratedImage } from '../../../types/generatedImage';
+import { formatQcLabel, formatQcFailureReason } from '../../utils/qc';
 
 type TabType = 'details' | 'metadata' | 'processing';
 
@@ -216,17 +217,16 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-semibold text-gray-900">Image Details</h2>
             <div className="inline-flex items-center">
-              {
-                (() => {
-                  try {
-                    const { formatQcLabel } = require('../../utils/qc');
-                    const label = formatQcLabel((image as any)?.qcStatus, (image as any)?.qcReason);
-                    return <StatusBadge variant="qc" status={(image as any)?.qcStatus || 'qc_failed'} labelOverride={label} />;
-                  } catch {
-                    return <StatusBadge variant="qc" status={(image as any)?.qcStatus || 'qc_failed'} />;
-                  }
-                })()
-              }
+              <StatusBadge
+                variant="qc"
+                status={(() => {
+                  const s = String(((image as any)?.qcStatus) || '').toLowerCase();
+                  if (s === 'approved' || s === 'complete' || s === 'completed') return 'approved';
+                  if (s === 'processing') return 'processing';
+                  return 'qc_failed';
+                })()}
+                labelOverride={formatQcLabel((image as any)?.qcStatus, (image as any)?.qcReason)}
+              />
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -457,7 +457,11 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
                         </svg>
                         <div>
                           <h4 className={`text-sm font-medium ${image.qcReason ? 'text-red-800' : 'text-yellow-800'}`}>{image.qcReason ? 'Failure Reason' : 'No Specific Reason'}</h4>
-                          <p className={`${image.qcReason ? 'text-red-700' : 'text-yellow-700'} text-sm mt-1`}>{image.qcReason || 'Image failed quality check but no specific reason provided.'}</p>
+                          <p className={`${image.qcReason ? 'text-red-700' : 'text-yellow-700'} text-sm mt-1 whitespace-normal break-words`}>
+                            {image.qcReason
+                              ? (formatQcFailureReason((image as any)?.qcStatus, (image as any)?.qcReason) || (image as any)?.qcReason)
+                              : 'Image failed quality check but no specific reason provided.'}
+                          </p>
                         </div>
                       </div>
                     </div>

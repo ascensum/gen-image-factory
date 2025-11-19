@@ -514,6 +514,20 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
       console.log('Generated images loaded:', images);
       // Ensure images is always an array
       if (images && Array.isArray(images)) {
+        // Proactively refresh protocol roots for directories of approved images (ensures read access after app restart)
+        try {
+          const dirs = Array.from(new Set(
+            images
+              .filter(img => img && (img.finalImagePath || img.tempImagePath))
+              .map(img => String(img.finalImagePath || img.tempImagePath))
+              .map(p => p.replace(/\\[^/]*$/, '').replace(/\/[^/]*$/, ''))
+          ));
+          if (dirs.length > 0 && (window as any).electronAPI?.refreshProtocolRoots) {
+            await (window as any).electronAPI.refreshProtocolRoots(dirs);
+          }
+        } catch (e) {
+          console.warn('️ Failed to refresh protocol roots on images load (dashboard):', (e as any)?.message || e);
+        }
         // Filter to show only approved images on main dashboard
         const approvedImages = images.filter(img => img.qcStatus === 'approved');
         setGeneratedImages(approvedImages);
@@ -569,8 +583,18 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
     try {
       const api: any = (window as any).electronAPI;
       if (!api || typeof api.onRetryCompleted !== 'function') return;
-      const onRetryCompleted = async () => {
+      const onRetryCompleted = async (data?: any) => {
         try {
+          // Proactively refresh protocol roots for the new output directory
+          try {
+            const newPath: string | undefined = data?.result?.newPath || data?.result?.processedImagePath;
+            if (newPath && (window as any).electronAPI?.refreshProtocolRoots) {
+              const dir = newPath.replace(/\\[^/]*$/, '').replace(/\/[^/]*$/, '');
+              await (window as any).electronAPI.refreshProtocolRoots([dir]);
+            }
+          } catch (e) {
+            console.warn('️ Failed to refresh protocol roots after retry-completed (dashboard):', (e as any)?.message || e);
+          }
           await loadGeneratedImages();
         } catch {}
       };
