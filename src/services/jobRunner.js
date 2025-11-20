@@ -83,6 +83,12 @@ class JobRunner extends EventEmitter {
       // Compute expected variations per generation dynamically; no fixed "4 per gen" legacy
       const allProcessed = [];
       let expectedTotalAcrossGens = 0;
+      // Derive per-call timeout: enabled -> minutes to ms, else default 30s
+      const enableTimeoutFlag = config?.parameters?.enablePollingTimeout === true;
+      const timeoutMinutesRaw = Number(config?.parameters?.pollingTimeout);
+      const perCallTimeoutMs = enableTimeoutFlag && Number.isFinite(timeoutMinutesRaw)
+        ? Math.max(1000, timeoutMinutesRaw * 60 * 1000)
+        : 30_000;
 
       for (let genIndex = 0; genIndex < generations; genIndex += 1) {
         // Determine expected variations for this generation (clamped)
@@ -95,7 +101,12 @@ class JobRunner extends EventEmitter {
         let genParameters;
         try {
           const cfgForGen = { ...config, __forceSequentialIndex: genIndex, __perGen: true };
-          genParameters = await this.generateParameters(cfgForGen);
+          // Enforce timeout on per-generation parameter generation to avoid orphaned runs on network loss
+          genParameters = await this.withTimeout(
+            this.generateParameters(cfgForGen),
+            perCallTimeoutMs,
+            `Parameter generation (gen ${genIndex + 1}) timed out`
+          );
           this._logStructured({
             level: 'info',
             stepName: 'initialization',
