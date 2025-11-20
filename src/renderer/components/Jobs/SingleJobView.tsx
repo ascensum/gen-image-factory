@@ -518,6 +518,19 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
     return Array.from(keyToLabel.entries()).map(([value, label]) => ({ value, label }));
   }, [images]);
 
+  // UI-derived count: all failed processing images (includes qc_failed and retry_failed)
+  const failedProcessingCount = useMemo(() => {
+    if ((images as any[]) && (images as any[]).length > 0) {
+      let count = 0;
+      for (const img of images as any[]) {
+        const s = String(img?.qcStatus || '').toLowerCase();
+        if (s === 'qc_failed' || s === 'retry_failed') count++;
+      }
+      return count;
+    }
+    return Number((job as any)?.qcFailedImages || 0);
+  }, [images, job]);
+
   const filteredImages = useMemo(() => {
     if (imageFilter === 'all') return images;
     if (imageFilter === 'approved') {
@@ -740,7 +753,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     </div>
                     <div className="breakdown-item qc-failed">
                       <span className="breakdown-label">Failed Processing:</span>
-                      <span className="breakdown-value">{(job as any).qcFailedImages || 0}</span>
+                      <span className="breakdown-value">{failedProcessingCount}</span>
                     </div>
                   </div>
                 )}
