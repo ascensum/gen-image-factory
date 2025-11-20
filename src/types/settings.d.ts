@@ -46,6 +46,8 @@ export interface SettingsObject {
   };
   processing: {
     removeBg: boolean;
+    /** On remove.bg failure: 'soft' (approve) or 'fail' (mark technical failed) */
+    removeBgFailureMode?: 'soft' | 'fail';
     imageConvert: boolean;
     imageEnhancement: boolean;
     sharpening: number;

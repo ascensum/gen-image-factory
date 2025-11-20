@@ -465,6 +465,8 @@ async function producePictureModule(
         // The processImage function now handles everything and returns the final path in /toupload
         let outputPath;
         try {
+          // Reset per-image soft failure bucket
+          try { (config)._softFailures = []; } catch {}
           outputPath = await processImage(inputImagePath, imgNameBase + imageSuffix, config);
         } catch (procErr) {
           failedItems.push({
@@ -480,6 +482,7 @@ async function producePictureModule(
           outputPath,
           settings: updatedSettings, // Push the modified settings
           mappingId: mappingId, // Include the unique mapping ID
+          ...(Array.isArray((config)._softFailures) && (config)._softFailures.length > 0 ? { softFailures: [...(config)._softFailures] } : {})
         });
       } catch (error) {
         console.error('Error during image processing steps:', error);
@@ -570,13 +573,24 @@ async function processImage(inputImagePath, imgName, config = {}) {
       console.error('Background removal failed:', error);
       const enabled = !!failRetryEnabled;
       const steps = Array.isArray(failOnSteps) ? failOnSteps.map(s => String(s).toLowerCase()) : [];
-      if (enabled && steps.includes('remove_bg')) {
+      const failureMode = String(config?.removeBgFailureMode || 'soft').toLowerCase();
+      const hardFail = (enabled && steps.includes('remove_bg')) || failureMode === 'fail';
+      if (hardFail) {
         const err = new Error('processing_failed:remove_bg');
         // @ts-ignore
         err.stage = 'remove_bg';
         throw err;
       } else {
         logDebug('Using original image as fallback for subsequent steps.');
+        try {
+          if (Array.isArray((config)._softFailures)) {
+            (config)._softFailures.push({
+              stage: 'remove_bg',
+              vendor: 'remove.bg',
+              message: String(error && error.message || error)
+            });
+          }
+        } catch {}
         imageBuffer = await fs.readFile(inputImagePath);
       }
     }

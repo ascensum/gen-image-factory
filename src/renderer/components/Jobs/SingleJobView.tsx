@@ -1442,6 +1442,20 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                       </select>
                     </div>
                   )}
+                  {/* Remove.bg Failure Mode - conditional */}
+                  {editedSettings.processing?.removeBg && (
+                    <div className="setting-row">
+                      <label>On remove.bg failure</label>
+                      <select
+                        value={String((editedSettings.processing as any)?.removeBgFailureMode || 'soft')}
+                        onChange={(e) => handleSettingChange('processing', 'removeBgFailureMode' as any, e.target.value === 'fail' ? 'fail' : 'soft')}
+                        className="ui-select"
+                      >
+                        <option value="soft">Approve (soft)</option>
+                        <option value="fail">Mark Failed (Technical)</option>
+                      </select>
+                    </div>
+                  )}
 
                   {/* Image Conversion */}
                   <div className="setting-row toggle-row">

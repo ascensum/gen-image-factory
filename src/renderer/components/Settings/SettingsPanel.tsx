@@ -53,6 +53,7 @@ interface SettingsObject extends SharedSettingsObject {
   };
   processing: {
     removeBg: boolean;
+    removeBgFailureMode?: 'soft' | 'fail';
     imageConvert: boolean; // Master switch for image conversion
     imageEnhancement: boolean; // New: Image enhancement toggle
     sharpening: number; // New: Sharpening intensity (0-10)
@@ -131,6 +132,7 @@ const defaultSettings: SettingsObject = {
   },
   processing: {
     removeBg: false,
+    removeBgFailureMode: 'soft',
     imageConvert: false, // Master switch for image conversion
     imageEnhancement: false, // Image enhancement toggle
     sharpening: 5, // Sharpening intensity (0-10)
@@ -902,6 +904,34 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   <option value="50MP">50MP</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">Size setting for Remove.bg API</p>
+              </div>
+            )}
+            {/* Remove.bg Failure Mode - only show when Remove Background is enabled */}
+            {showRemoveBgSize && (
+              <div>
+                <label htmlFor="remove-bg-failure-mode" className="block text-sm font-medium text-gray-700 mb-2">
+                  On remove.bg failure
+                </label>
+                <select
+                  id="remove-bg-failure-mode"
+                  value={(form.processing as any).removeBgFailureMode || 'soft'}
+                  onChange={(e) => {
+                    const val = e.target.value === 'fail' ? 'fail' : 'soft';
+                    setForm(prev => ({
+                      ...prev,
+                      processing: { 
+                        ...prev.processing,
+                        removeBgFailureMode: val as 'soft' | 'fail'
+                      }
+                    }));
+                    setHasUnsavedChanges(true);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="soft">Approve (soft)</option>
+                  <option value="fail">Mark Failed (Technical)</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Choose whether images should be auto-approved or marked failed if remove.bg fails.</p>
               </div>
             )}
 

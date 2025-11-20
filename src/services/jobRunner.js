@@ -368,7 +368,7 @@ class JobRunner extends EventEmitter {
       aspectRatio = parameters.aspectRatios.length === 1 ? parameters.aspectRatios[0] : parameters.aspectRatios[index % parameters.aspectRatios.length];
     }
 
-    return {
+    const obj = {
       path: imagePath,
       aspectRatio,
       status: 'generated',
@@ -380,6 +380,13 @@ class JobRunner extends EventEmitter {
       },
       mappingId: item.mappingId || `img_${Date.now()}_${genIndex}_${index}`
     };
+    try {
+      const soft = Array.isArray(item.softFailures) ? item.softFailures : [];
+      if (soft.length > 0) {
+        obj.metadata = { ...(obj.metadata || {}), failure: soft[0] };
+      }
+    } catch {}
+    return obj;
   }
     /**
    * Get enabled progress steps - simplified for 2-step structure
@@ -1612,6 +1619,7 @@ class JobRunner extends EventEmitter {
       const effectiveVariations = Math.min(requestedVariations, 20);
       const moduleConfig = {
         removeBg: processingEnabled ? (config.processing?.removeBg || false) : false,
+        removeBgFailureMode: processingEnabled ? ((config.processing && (config.processing).removeBgFailureMode) || 'soft') : 'soft',
         imageConvert: processingEnabled ? (config.processing?.imageConvert || false) : false,
         convertToJpg: processingEnabled ? (config.processing?.convertToJpg || false) : false,
         trimTransparentBackground: processingEnabled ? (config.processing?.trimTransparentBackground || false) : false,
