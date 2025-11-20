@@ -807,6 +807,17 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                         <div>• Runware Model: {overviewSettings?.parameters?.runwareModel || 'Not specified'}</div>
                         <div>• Generations: {overviewSettings?.parameters?.count ?? 'Not specified'}</div>
                         <div>• Variations: {overviewSettings?.parameters?.variations ?? 'Not specified'}</div>
+                          {(() => {
+                            const loraEnabled = overviewSettings?.parameters?.loraEnabled === true;
+                            const list = Array.isArray((overviewSettings?.parameters as any)?.lora) ? ((overviewSettings?.parameters as any).lora as Array<{ model: string; weight?: number }>) : [];
+                            const listStr = list.length > 0 ? list.map(l => `${l.model}:${l.weight ?? 1}`).join(', ') : (loraEnabled ? 'None' : 'Not Applied as LoRA Models disabled');
+                            return (
+                              <>
+                                <div>• LoRA Models: {loraEnabled ? 'Yes' : 'No'}</div>
+                                <div>• LoRA list: {listStr}</div>
+                              </>
+                            );
+                          })()}
                       </div>
                     </div>
                     <div className="setting-group">
@@ -841,7 +852,6 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                           <div>• Steps: {adv.steps ?? 'Not specified'}</div>
                           <div>• Scheduler: {adv.scheduler || 'Not specified'}</div>
                           <div>• NSFW Check: {adv.checkNSFW ? 'Enabled' : 'Disabled'}</div>
-                          <div>• LoRA: {Array.isArray(adv.lora) ? `${adv.lora.length} configured` : 'None'}</div>
                         </div>
                       </div>
                       );
@@ -1280,6 +1290,42 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                         />
                       </div>
                     </>
+                  )}
+                  {/* LoRA Models */}
+                  <div className="setting-row toggle-row">
+                    <div>
+                      <label>LoRA Models</label>
+                      <p className="setting-description">
+                        Note: Check Runware model list for valid LoRA AIR ID:LoRA weight and valid weight ranges. LoRA weight defaults to 1 if no other valid number set. Not all models support LoRAs!
+                      </p>
+                    </div>
+                    <Toggle
+                      checked={!!editedSettings.parameters?.loraEnabled}
+                      onChange={(checked) => handleSettingChange('parameters', 'loraEnabled', checked)}
+                    />
+                  </div>
+                  {editedSettings.parameters?.loraEnabled && (
+                    <div className="setting-row">
+                      <label>LoRA list (model:weight per line)</label>
+                      <textarea
+                        value={Array.isArray((editedSettings.parameters as any)?.lora)
+                          ? ((editedSettings.parameters as any).lora as Array<{ model: string; weight?: number }>)
+                              .map(l => `${l.model}:${l.weight ?? 1}`).join('\n')
+                          : (Array.isArray(editedSettings.parameters?.runwareAdvanced?.lora)
+                              ? editedSettings.parameters!.runwareAdvanced!.lora!.map(l => `${l.model}:${l.weight ?? 1}`).join('\n')
+                              : '')}
+                        onChange={(e) => {
+                          const lines = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
+                          const lora = lines.map(line => {
+                            const [model, weightStr] = line.split(':').map(s => s.trim());
+                            return model ? { model, weight: Number(weightStr) || 1 } : null;
+                          }).filter(Boolean) as Array<{ model: string; weight?: number }>;
+                          handleSettingChange('parameters', 'lora' as any, lora);
+                        }}
+                        rows={4}
+                        placeholder={"flux-lora:0.8\nartist-style:0.5"}
+                      />
+                    </div>
                   )}
                   {/* Generation retry configuration */}
                   <div className="setting-row">

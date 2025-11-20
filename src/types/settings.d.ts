@@ -30,6 +30,10 @@ export interface SettingsObject {
       CFGScale?: number;
       steps?: number;
     };
+    /** Enable sending LoRA adapters with Runware requests */
+    loraEnabled?: boolean;
+    /** LoRA adapters list (first-class param, independent of Advanced toggle) */
+    lora?: Array<{ model: string; weight?: number }>;
     /** Master toggle to include/exclude advanced params in Runware requests */
     runwareAdvancedEnabled?: boolean;
     /** Optional job label to apply at creation time */

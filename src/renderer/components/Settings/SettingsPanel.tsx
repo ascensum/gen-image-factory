@@ -39,6 +39,8 @@ interface SettingsObject extends SharedSettingsObject {
       CFGScale?: number;
       steps?: number;
     };
+    loraEnabled?: boolean;
+    lora?: Array<{ model: string; weight?: number }>;
       runwareAdvancedEnabled?: boolean;
     label?: string;
     pollingTimeout: number;
@@ -117,6 +119,7 @@ const defaultSettings: SettingsObject = {
     runwareFormat: 'png',
     variations: 1,
       runwareAdvancedEnabled: false,
+      loraEnabled: false,
     label: '',
     pollingTimeout: 15,
     pollingInterval: 1,
@@ -516,6 +519,52 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
             <p className="text-xs text-gray-500 mt-1">Processing conversions support JPG/PNG only in this story.</p>
           </div>
 
+          {/* LoRA Models */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  LoRA Models
+                </label>
+                <p className="text-xs text-gray-500">
+                  Note: Check Runware model list for valid LoRA AIR ID:LoRA weight and valid weight ranges. LoRA weight defaults to 1 if no other valid number set. Not all models support LoRAs!
+                </p>
+              </div>
+              <Toggle
+                checked={!!form.parameters.loraEnabled}
+                onChange={handleToggleChange('parameters', 'loraEnabled')}
+              />
+            </div>
+            {form.parameters.loraEnabled && (
+              <div>
+                <label htmlFor="lora-list" className="block text-sm font-medium text-gray-700 mb-2">
+                  LoRA list (model:weight per line)
+                </label>
+                <textarea
+                  id="lora-list"
+                  defaultValue={Array.isArray((form.parameters as any)?.lora)
+                    ? ((form.parameters as any).lora as Array<{ model: string; weight?: number }>)
+                        .map(l => `${l.model}:${l.weight ?? 1}`).join('\n')
+                    : (Array.isArray(form.parameters.runwareAdvanced?.lora)
+                        ? form.parameters.runwareAdvanced!.lora!.map(l => `${l.model}:${l.weight ?? 1}`).join('\n')
+                        : '')}
+                  onBlur={(e) => {
+                    const lines = e.currentTarget.value.split('\n').map(s => s.trim()).filter(Boolean);
+                    const lora = lines.map(line => {
+                      const [model, weightStr] = line.split(':').map(s => s.trim());
+                      return model ? { model, weight: Number(weightStr) || 1 } : null;
+                    }).filter(Boolean) as Array<{ model: string; weight?: number }>;
+                    setForm(prev => ({ ...prev, parameters: { ...prev.parameters, lora } }));
+                    setHasUnsavedChanges(true);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  rows={4}
+                  placeholder={"flux-lora:0.8\nartist-style:0.5"}
+                />
+              </div>
+            )}
+          </div>
+
           {/* Variations moved to Generation Settings */}
         </div>
 
@@ -595,30 +644,6 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
           {form.parameters.runwareAdvancedEnabled && (
           <div>
-            {/* LoRA list (simple textarea for MVP) */}
-            <div>
-            <label htmlFor="runware-lora" className="block text-sm font-medium text-gray-700 mb-2">
-              LoRA list (model:weight per line)
-            </label>
-            <textarea
-              id="runware-lora"
-              defaultValue={Array.isArray(form.parameters.runwareAdvanced?.lora)
-                ? form.parameters.runwareAdvanced!.lora!.map(l => `${l.model}:${l.weight ?? 1}`).join('\n')
-                : ''}
-              onBlur={(e) => {
-                const lines = e.currentTarget.value.split('\n').map(s => s.trim()).filter(Boolean);
-                const lora = lines.map(line => {
-                  const [model, weightStr] = line.split(':').map(s => s.trim());
-                  return model ? { model, weight: Number(weightStr) || 1 } : null;
-                }).filter(Boolean) as Array<{ model: string; weight?: number }>;
-                setForm(prev => ({ ...prev, parameters: { ...prev.parameters, runwareAdvanced: { ...(prev.parameters.runwareAdvanced || {}), lora } } }));
-                setHasUnsavedChanges(true);
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              rows={4}
-              placeholder={"flux-lora:0.8\nartist-style:0.5"}
-            />
-            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>

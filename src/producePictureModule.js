@@ -285,6 +285,7 @@ async function producePictureModule(
   } catch {}
 
   // Build LoRA payload from top-level parameters first, fallback to advanced.lora (for backward compatibility)
+  const loraEnabled = settings?.parameters?.loraEnabled === true;
   const loraList = Array.isArray(settings?.parameters?.lora)
     ? settings.parameters.lora
     : (Array.isArray(advanced?.lora) ? advanced.lora : []);
@@ -299,7 +300,7 @@ async function producePictureModule(
     outputFormat,
     width,
     height,
-    ...(Array.isArray(loraList) && loraList.length > 0
+    ...(loraEnabled && Array.isArray(loraList) && loraList.length > 0
       ? { lora: loraList.filter(x => x && x.model).map(x => ({ model: x.model, weight: Number(x.weight) || 1 })) }
       : {}),
     ...(typeof advanced.checkNSFW === 'boolean' ? { checkNSFW: !!advanced.checkNSFW } : {}),
