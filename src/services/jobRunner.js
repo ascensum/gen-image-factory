@@ -201,7 +201,8 @@ class JobRunner extends EventEmitter {
               metadata: { generationIndex: genIndex, attempt, maxRetries }
             });
             if (isLast) {
-              this.jobState.failedImages = (this.jobState.failedImages || 0) + imagesPerTask;
+              // Count the entire generation as failed for the expected variations of this gen
+              this.jobState.failedImages = (this.jobState.failedImages || 0) + effectiveVariationsForGen;
             } else {
               continue;
             }
