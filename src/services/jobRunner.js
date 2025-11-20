@@ -1665,6 +1665,11 @@ class JobRunner extends EventEmitter {
       // do not pass any advanced parameters downstream.
       const sanitizedParameters = { ...(config.parameters || {}) };
       if (sanitizedParameters.runwareAdvancedEnabled !== true) {
+        // Preserve LoRA (not an advanced-only control) by lifting it to top-level before clearing
+        const adv = sanitizedParameters.runwareAdvanced || {};
+        if (!Array.isArray(sanitizedParameters.lora) && Array.isArray(adv.lora) && adv.lora.length > 0) {
+          sanitizedParameters.lora = adv.lora;
+        }
         // Ensure downstream sees toggle as false and advanced payload cleared
         sanitizedParameters.runwareAdvancedEnabled = false;
         if (sanitizedParameters.runwareAdvanced) {

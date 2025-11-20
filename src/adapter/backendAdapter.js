@@ -771,6 +771,11 @@ class BackendAdapter {
           try {
             const params = settingsForRun.parameters || {};
             if (params.runwareAdvancedEnabled !== true) {
+              // Preserve LoRA from advanced by lifting to top-level parameters
+              const adv = params.runwareAdvanced || {};
+              if (!Array.isArray(params.lora) && Array.isArray(adv.lora) && adv.lora.length > 0) {
+                params.lora = adv.lora;
+              }
               params.runwareAdvancedEnabled = false;
               if (params.runwareAdvanced) params.runwareAdvanced = {};
               settingsForRun.parameters = params;
@@ -1013,6 +1018,11 @@ class BackendAdapter {
       try {
         const params = (settingsObject && settingsObject.parameters) ? settingsObject.parameters : {};
         if (params.runwareAdvancedEnabled !== true) {
+          // Preserve LoRA by lifting it to top-level before clearing advanced
+          const adv = params.runwareAdvanced || {};
+          if (!Array.isArray(params.lora) && Array.isArray(adv.lora) && adv.lora.length > 0) {
+            params.lora = adv.lora;
+          }
           params.runwareAdvancedEnabled = false;
           if (params.runwareAdvanced) params.runwareAdvanced = {};
           settingsObject.parameters = params;
@@ -2747,6 +2757,10 @@ class BackendAdapter {
       try {
         const params = (firstJob.configuration?.parameters || {});
         if (params.runwareAdvancedEnabled !== true) {
+          const adv = params.runwareAdvanced || {};
+          if (!Array.isArray(params.lora) && Array.isArray(adv.lora) && adv.lora.length > 0) {
+            params.lora = adv.lora;
+          }
           params.runwareAdvancedEnabled = false;
           if (params.runwareAdvanced) params.runwareAdvanced = {};
           firstJob.configuration.parameters = params;
@@ -2886,6 +2900,10 @@ class BackendAdapter {
       try {
         const params = (nextJob.configuration?.parameters || {});
         if (params.runwareAdvancedEnabled !== true) {
+          const adv = params.runwareAdvanced || {};
+          if (!Array.isArray(params.lora) && Array.isArray(adv.lora) && adv.lora.length > 0) {
+            params.lora = adv.lora;
+          }
           params.runwareAdvancedEnabled = false;
           if (params.runwareAdvanced) params.runwareAdvanced = {};
           nextJob.configuration.parameters = params;

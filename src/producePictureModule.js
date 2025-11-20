@@ -284,6 +284,11 @@ async function producePictureModule(
     });
   } catch {}
 
+  // Build LoRA payload from top-level parameters first, fallback to advanced.lora (for backward compatibility)
+  const loraList = Array.isArray(settings?.parameters?.lora)
+    ? settings.parameters.lora
+    : (Array.isArray(advanced?.lora) ? advanced.lora : []);
+
   const body = {
     taskType: 'imageInference',
     taskUUID: randomUUID(),
@@ -294,7 +299,9 @@ async function producePictureModule(
     outputFormat,
     width,
     height,
-    ...(Array.isArray(advanced?.lora) && advanced.lora.length > 0 ? { loras: advanced.lora.filter(x => x && x.model).map(x => ({ model: x.model, weight: Number(x.weight) || 1 })) } : {}),
+    ...(Array.isArray(loraList) && loraList.length > 0
+      ? { lora: loraList.filter(x => x && x.model).map(x => ({ model: x.model, weight: Number(x.weight) || 1 })) }
+      : {}),
     ...(typeof advanced.checkNSFW === 'boolean' ? { checkNSFW: !!advanced.checkNSFW } : {}),
     ...(advanced.scheduler ? { scheduler: String(advanced.scheduler) } : {}),
     ...(Number.isFinite(Number(advanced.CFGScale)) ? { CFGScale: Number(advanced.CFGScale) } : {}),
@@ -309,7 +316,7 @@ async function producePictureModule(
       hasSteps: Object.prototype.hasOwnProperty.call(body, 'steps'),
       hasScheduler: Object.prototype.hasOwnProperty.call(body, 'scheduler'),
       hasCheckNSFW: Object.prototype.hasOwnProperty.call(body, 'checkNSFW'),
-      hasLoras: Object.prototype.hasOwnProperty.call(body, 'loras')
+      hasLora: Object.prototype.hasOwnProperty.call(body, 'lora')
     });
   } catch {}
 
