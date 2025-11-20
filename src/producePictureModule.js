@@ -321,8 +321,12 @@ async function producePictureModule(
     });
   } catch {}
 
-  // Timeouts: reuse pollingTimeout (minutes) as HTTP timeout (ms) if provided
-  const httpTimeoutMs = (config?.pollingTimeout ? Number(config.pollingTimeout) * 60 * 1000 : 30000);
+  // Timeouts: only use custom Generation Timeout when explicitly enabled
+  const enableTimeoutFlag = (config && config.enablePollingTimeout === true) || (settings?.parameters?.enablePollingTimeout === true);
+  const timeoutMinutesRaw = Number.isFinite(Number(config?.pollingTimeout)) ? Number(config.pollingTimeout) : (Number.isFinite(Number(settings?.parameters?.pollingTimeout)) ? Number(settings.parameters.pollingTimeout) : undefined);
+  const httpTimeoutMs = enableTimeoutFlag && Number.isFinite(Number(timeoutMinutesRaw))
+    ? Math.max(1000, Number(timeoutMinutesRaw) * 60 * 1000)
+    : 30000;
   const rwHeaders = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${process.env.RUNWARE_API_KEY || ''}`
@@ -554,7 +558,11 @@ async function processImage(inputImagePath, imgName, config = {}) {
   if (removeBg) {
     logDebug('Removing background with remove.bg...');
     try {
-      const removeBgTimeoutMs = (config && config.pollingTimeout) ? Number(config.pollingTimeout) * 60 * 1000 : 30000;
+      const enableTimeoutFlagRb = (config && config.enablePollingTimeout === true) || (settings?.parameters?.enablePollingTimeout === true);
+      const timeoutMinutesRawRb = Number.isFinite(Number(config?.pollingTimeout)) ? Number(config.pollingTimeout) : (Number.isFinite(Number(settings?.parameters?.pollingTimeout)) ? Number(settings.parameters.pollingTimeout) : undefined);
+      const removeBgTimeoutMs = enableTimeoutFlagRb && Number.isFinite(Number(timeoutMinutesRawRb))
+        ? Math.max(1000, Number(timeoutMinutesRawRb) * 60 * 1000)
+        : 30000;
       imageBuffer = await retryRemoveBg(inputImagePath, 3, 2000, removeBgSize, config.abortSignal, removeBgTimeoutMs);
       logDebug('Background removal successful');
     } catch (error) {
