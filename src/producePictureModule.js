@@ -558,9 +558,10 @@ async function processImage(inputImagePath, imgName, config = {}) {
   if (removeBg) {
     logDebug('Removing background with remove.bg...');
     try {
-      const enableTimeoutFlagRb = (config && config.enablePollingTimeout === true) || (settings?.parameters?.enablePollingTimeout === true);
-      const timeoutMinutesRawRb = Number.isFinite(Number(config?.pollingTimeout)) ? Number(config.pollingTimeout) : (Number.isFinite(Number(settings?.parameters?.pollingTimeout)) ? Number(settings.parameters.pollingTimeout) : undefined);
-      const removeBgTimeoutMs = enableTimeoutFlagRb && Number.isFinite(Number(timeoutMinutesRawRb))
+      // In processImage we rely solely on module config; infer enable by presence of a numeric pollingTimeout
+      const timeoutMinutesRawRb = Number.isFinite(Number(config?.pollingTimeout)) ? Number(config.pollingTimeout) : undefined;
+      const enableTimeoutFlagRb = Number.isFinite(timeoutMinutesRawRb);
+      const removeBgTimeoutMs = enableTimeoutFlagRb
         ? Math.max(1000, Number(timeoutMinutesRawRb) * 60 * 1000)
         : 30000;
       imageBuffer = await retryRemoveBg(inputImagePath, 3, 2000, removeBgSize, config.abortSignal, removeBgTimeoutMs);
