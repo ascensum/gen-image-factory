@@ -914,22 +914,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </label>
                 <select
                   id="remove-bg-failure-mode"
-                  value={(form.processing as any).removeBgFailureMode || 'soft'}
-                  onChange={(e) => {
-                    const val = e.target.value === 'fail' ? 'fail' : 'soft';
-                    setForm(prev => ({
-                      ...prev,
-                      processing: { 
-                        ...prev.processing,
-                        removeBgFailureMode: val as 'soft' | 'fail'
-                      }
-                    }));
-                    setHasUnsavedChanges(true);
-                  }}
+                  value={(form.processing as any).removeBgFailureMode || 'approve'}
+                  onChange={(e) => setForm(prev => ({
+                    ...prev,
+                    processing: {
+                      ...prev.processing,
+                      removeBgFailureMode: e.target.value as any
+                    }
+                  }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="soft">Approve (soft)</option>
-                  <option value="fail">Mark Failed (Technical)</option>
+                  <option value="mark_failed">Mark Failed (technical fail)</option>
+                  <option value="approve">Approve (soft fail)</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">Choose whether images should be auto-approved or marked failed if remove.bg fails.</p>
               </div>

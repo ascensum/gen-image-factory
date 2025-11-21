@@ -1447,12 +1447,12 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                     <div className="setting-row">
                       <label>On remove.bg failure</label>
                       <select
-                        value={String((editedSettings.processing as any)?.removeBgFailureMode || 'soft')}
-                        onChange={(e) => handleSettingChange('processing', 'removeBgFailureMode' as any, e.target.value === 'fail' ? 'fail' : 'soft')}
+                        value={String((editedSettings.processing as any)?.removeBgFailureMode || 'approve')}
+                        onChange={(e) => handleSettingChange('processing', 'removeBgFailureMode' as any, e.target.value)}
                         className="ui-select"
                       >
-                        <option value="soft">Approve (soft)</option>
-                        <option value="fail">Mark Failed (Technical)</option>
+                        <option value="mark_failed">Mark Failed (technical fail)</option>
+                        <option value="approve">Approve (soft fail)</option>
                       </select>
                     </div>
                   )}
