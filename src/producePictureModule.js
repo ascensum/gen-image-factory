@@ -590,6 +590,10 @@ async function processImage(inputImagePath, imgName, config = {}) {
         : 30000;
       imageBuffer = await retryRemoveBg(inputImagePath, 3, 2000, removeBgSize, config.abortSignal, removeBgTimeoutMs);
       logDebug('Background removal successful');
+      try {
+        // Signal to caller that remove.bg actually applied
+        config._removeBgApplied = true;
+      } catch {}
     } catch (error) {
       console.error('Background removal failed:', error);
       const enabled = !!failRetryEnabled;

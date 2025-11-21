@@ -1272,6 +1272,22 @@ class JobRunner extends EventEmitter {
                   const sourceFileName = pathMod.basename(sourcePath);
                   const processedImagePath = await producePictureModule.processImage(sourcePath, sourceFileName, processingConfig);
                   if (processedImagePath) {
+                    // If Mark Failed is selected and remove.bg did NOT actually apply, force fail
+                    try {
+                      const applied = !!processingConfig._removeBgApplied;
+                      if (processingConfig.removeBg === true && processingConfig.removeBgFailureMode === 'mark_failed' && applied === false && this.backendAdapter) {
+                        const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
+                        this._logStructured({
+                          level: 'info',
+                          stepName: 'image_generation',
+                          subStep: 'qc_pass_processing_not_applied_mark_failed',
+                          message: 'remove.bg did not apply while Mark Failed is selected; marking image qc_failed',
+                          metadata: { imageMappingId: mappingKey }
+                        });
+                        await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                        continue;
+                      }
+                    } catch {}
                     pathForFinal = processedImagePath;
                   }
                   // If remove.bg produced a soft-failure but mode requires mark_failed, enforce fail here
