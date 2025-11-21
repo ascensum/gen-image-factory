@@ -2058,6 +2058,12 @@ class JobRunner extends EventEmitter {
 
 
       
+      // Derive a per-image QC timeout: use Generation Timeout when enabled, otherwise default 30s
+      const pollingTimeoutMinutesQC = Number(config?.parameters?.pollingTimeout);
+      const qcTimeoutMs = (config?.parameters?.enablePollingTimeout === true)
+        ? (Number.isFinite(pollingTimeoutMinutesQC) ? pollingTimeoutMinutesQC * 60 * 1000 : 30_000)
+        : 30_000;
+      
       for (const image of images) {
         if (this.isStopping) return;
         
@@ -2082,10 +2088,15 @@ class JobRunner extends EventEmitter {
           if (!qcInputPath) {
             throw new Error('QC input path is missing');
           }
-          result = await aiVision.runQualityCheck(
-            qcInputPath, // Use finalImagePath when available, otherwise tempImagePath
-            config.parameters?.openaiModel || "gpt-4o",
-            config.ai?.qualityCheckPrompt || null
+          // Wrap QC call with timeout so network/DNS issues don't stall the entire job for too long
+          result = await this.withTimeout(
+            aiVision.runQualityCheck(
+              qcInputPath, // Use finalImagePath when available, otherwise tempImagePath
+              config.parameters?.openaiModel || "gpt-4o",
+              config.ai?.qualityCheckPrompt || null
+            ),
+            qcTimeoutMs,
+            'Quality check timed out'
           );
         } catch (aiError) {
           throw aiError;
