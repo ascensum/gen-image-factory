@@ -1266,6 +1266,10 @@ class JobRunner extends EventEmitter {
                         metadata: { imageMappingId: mappingKey }
                       });
                       await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                      try {
+                        this._markFailedMappingIds = this._markFailedMappingIds || new Set();
+                        this._markFailedMappingIds.add(mappingKey);
+                      } catch {}
                       continue;
                     }
                   } catch {}
@@ -1285,6 +1289,10 @@ class JobRunner extends EventEmitter {
                           metadata: { imageMappingId: mappingKey }
                         });
                         await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                        try {
+                          this._markFailedMappingIds = this._markFailedMappingIds || new Set();
+                          this._markFailedMappingIds.add(mappingKey);
+                        } catch {}
                         continue;
                       }
                     } catch {}
@@ -1304,6 +1312,10 @@ class JobRunner extends EventEmitter {
                       });
                       await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
                       // Skip moving to final when marked failed
+                      try {
+                        this._markFailedMappingIds = this._markFailedMappingIds || new Set();
+                        this._markFailedMappingIds.add(mappingKey);
+                      } catch {}
                       continue;
                     }
                   } catch {}
@@ -1337,6 +1349,10 @@ class JobRunner extends EventEmitter {
                         }
                       });
                       await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                      try {
+                        this._markFailedMappingIds = this._markFailedMappingIds || new Set();
+                        this._markFailedMappingIds.add(mappingKey);
+                      } catch {}
                       try {
                         this._logStructured({
                           level: 'info',
@@ -1420,6 +1436,12 @@ class JobRunner extends EventEmitter {
               const hasFinal = !!(img.finalImagePath || img.final_image_path);
               const approved = String(img.qcStatus || img.qc_status) === 'approved';
               const candidatePath = img.finalImagePath || img.final_image_path || img.tempImagePath || img.temp_image_path || img.path;
+              // If this image was locally marked failed during QC-pass processing, skip reconciliation
+              try {
+                if (this._markFailedMappingIds && this._markFailedMappingIds.has(mappingKey)) {
+                  continue;
+                }
+              } catch {}
               if (approved && !hasFinal && candidatePath && typeof candidatePath === 'string') {
                 try {
                   this._logStructured({
