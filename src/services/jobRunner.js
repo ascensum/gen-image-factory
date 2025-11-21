@@ -1197,6 +1197,7 @@ class JobRunner extends EventEmitter {
                   const processingConfig = {
                     tempDirectory: tempProcessingDir,
                     outputDirectory: tempProcessingDir,
+                    _softFailures: [],
                     removeBg: !!(perImageProcessing?.removeBg ?? proc.removeBg),
                     imageConvert: !!(perImageProcessing?.imageConvert ?? proc.imageConvert),
                     convertToJpg: !!(perImageProcessing?.convertToJpg ?? proc.convertToJpg),
@@ -1257,6 +1258,23 @@ class JobRunner extends EventEmitter {
                   if (processedImagePath) {
                     pathForFinal = processedImagePath;
                   }
+                  // If remove.bg produced a soft-failure but mode requires mark_failed, enforce fail here
+                  try {
+                    const hadSoftRemoveBg = Array.isArray(processingConfig._softFailures) && processingConfig._softFailures.some(f => f && f.stage === 'remove_bg');
+                    if (processingConfig.removeBgFailureMode === 'mark_failed' && hadSoftRemoveBg && this.backendAdapter) {
+                      const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
+                      this._logStructured({
+                        level: 'info',
+                        stepName: 'image_generation',
+                        subStep: 'qc_pass_processing_soft_removebg_mark_failed',
+                        message: 'Detected soft remove.bg failure with Mark Failed mode; marking image qc_failed',
+                        metadata: { imageMappingId: mappingKey }
+                      });
+                      await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                      // Skip moving to final when marked failed
+                      continue;
+                    }
+                  } catch {}
                 } catch (procErr) {
                   try {
                     this._logStructured({
