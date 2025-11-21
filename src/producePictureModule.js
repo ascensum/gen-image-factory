@@ -573,7 +573,11 @@ async function processImage(inputImagePath, imgName, config = {}) {
       console.error('Background removal failed:', error);
       const enabled = !!failRetryEnabled;
       const steps = Array.isArray(failOnSteps) ? failOnSteps.map(s => String(s).toLowerCase()) : [];
-      const failureMode = String(config?.removeBgFailureMode || 'soft').toLowerCase();
+      // Normalize failure mode from settings:
+      // - UI/Job config uses 'approve' | 'mark_failed'
+      // - Retry flow may still pass 'soft' | 'fail'
+      const rawMode = String(config?.removeBgFailureMode || 'approve').toLowerCase();
+      const failureMode = (rawMode === 'mark_failed') ? 'fail' : (rawMode === 'approve' ? 'soft' : rawMode);
       const hardFail = (enabled && steps.includes('remove_bg')) || failureMode === 'fail';
       if (hardFail) {
         const err = new Error('processing_failed:remove_bg');
