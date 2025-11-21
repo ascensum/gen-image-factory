@@ -1325,6 +1325,33 @@ class JobRunner extends EventEmitter {
                     metadata: { imageMappingId: dbImg.imageMappingId || dbImg.mappingId || dbImg.id, finalPath: movedFinal }
                   });
                 } catch {}
+              } else {
+                // Fallback: if the processed path already points to a valid file, persist it as final
+                try {
+                  const fsSync = require('fs');
+                  if (pathForFinal && typeof pathForFinal === 'string' && fsSync.existsSync(pathForFinal)) {
+                    await this.updateImagePaths(dbImg.imageMappingId || dbImg.mappingId || dbImg.id, null, pathForFinal);
+                    try {
+                      this._logStructured({
+                        level: 'info',
+                        stepName: 'image_generation',
+                        subStep: 'move_to_final_fallback_db_update',
+                        message: 'Move to final returned empty; persisted existing processed path as final',
+                        metadata: { imageMappingId: dbImg.imageMappingId || dbImg.mappingId || dbImg.id, finalPath: pathForFinal }
+                      });
+                    } catch {}
+                  } else {
+                    try {
+                      this._logStructured({
+                        level: 'warn',
+                        stepName: 'image_generation',
+                        subStep: 'move_to_final_failed',
+                        message: 'Move to final failed and no valid processed path available; final path remains unset',
+                        metadata: { imageMappingId: dbImg.imageMappingId || dbImg.mappingId || dbImg.id }
+                      });
+                    } catch {}
+                  }
+                } catch {}
               }
             }
           }
