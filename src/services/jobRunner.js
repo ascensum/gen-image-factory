@@ -914,6 +914,48 @@ class JobRunner extends EventEmitter {
     console.log(' Environment credentials finalized');
   }
 
+  async _verifyQCStatus(dbImg, expectedStatus, expectedReason) {
+    if (!this.backendAdapter || !dbImg || !dbImg.id) return;
+    try {
+      const check = await this.backendAdapter.getGeneratedImage(dbImg.id);
+      if (check && check.success && check.image) {
+        if (check.image.qcStatus !== expectedStatus) {
+          this._logStructured({
+            level: 'error',
+            stepName: 'image_generation',
+            subStep: 'qc_status_mismatch',
+            message: `QC status verification failed! Expected ${expectedStatus}, got ${check.image.qcStatus}`,
+            metadata: { 
+              id: dbImg.id, 
+              mappingKey: dbImg.imageMappingId,
+              dbStatus: check.image.qcStatus,
+              dbReason: check.image.qcReason
+            }
+          });
+          // Force update by ID
+          await this.backendAdapter.updateQCStatus(dbImg.id, expectedStatus, expectedReason);
+          this._logStructured({
+            level: 'info',
+            stepName: 'image_generation',
+            subStep: 'qc_status_correction',
+            message: `Forced QC status update by ID ${dbImg.id}`,
+            metadata: { id: dbImg.id, status: expectedStatus }
+          });
+        } else {
+           this._logStructured({
+            level: 'info',
+            stepName: 'image_generation',
+            subStep: 'qc_status_verified',
+            message: `QC status verified: ${expectedStatus}`,
+            metadata: { id: dbImg.id }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to verify QC status:', e);
+    }
+  }
+
   /**
    * Execute the job with the given configuration
    * @param {Object} config - Job configuration
@@ -1271,7 +1313,7 @@ class JobRunner extends EventEmitter {
                         level: 'info',
                         stepName: 'image_generation',
                         subStep: 'qc_pass_processing_missing_key_mark_failed',
-                        message: 'REMOVE_BG_API_KEY missing while Mark Failed is selected; marking image qc_failed',
+                        message: 'REMOVE_BG_API_KEY missing while Mark Failed is selected; marking image qc_failed [v4]',
                         metadata: { imageMappingId: mappingKey }
                       });
                       // Update by mappingId with fallback to numeric id if needed
@@ -1282,6 +1324,11 @@ class JobRunner extends EventEmitter {
                             await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
                           } catch {}
                         }
+                        
+                        // Use try-catch to prevent verification logic from failing the entire block
+                        try {
+                          await this._verifyQCStatus(dbImg, "qc_failed", "processing_failed:remove_bg");
+                        } catch {}
                       } catch {}
                       try {
                         this._markFailedMappingIds = this._markFailedMappingIds || new Set();
@@ -1306,18 +1353,23 @@ class JobRunner extends EventEmitter {
                           level: 'info',
                           stepName: 'image_generation',
                           subStep: 'qc_pass_processing_not_applied_mark_failed',
-                          message: 'remove.bg did not apply while Mark Failed is selected; marking image qc_failed',
+                          message: 'remove.bg did not apply while Mark Failed is selected; marking image qc_failed [v4]',
                           metadata: { imageMappingId: mappingKey }
                         });
-                        // Update by mappingId with fallback to numeric id if needed
+                      // Update by mappingId with fallback to numeric id if needed
+                      try {
+                        const res = await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                        if (!(res && res.success && res.changes > 0) && /^(\d+)$/.test(String(mappingKey))) {
+                          try {
+                            await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
+                          } catch {}
+                        }
+                        
+                        // Use try-catch to prevent verification logic from failing the entire block
                         try {
-                          const res = await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
-                          if (!(res && res.success && res.changes > 0) && /^(\d+)$/.test(String(mappingKey))) {
-                            try {
-                              await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
-                            } catch {}
-                          }
+                          await this._verifyQCStatus(dbImg, "qc_failed", "processing_failed:remove_bg");
                         } catch {}
+                      } catch {}
                         try {
                           this._markFailedMappingIds = this._markFailedMappingIds || new Set();
                           this._markFailedMappingIds.add(mappingKey);
@@ -1346,7 +1398,7 @@ class JobRunner extends EventEmitter {
                         level: 'info',
                         stepName: 'image_generation',
                         subStep: 'qc_pass_processing_soft_removebg_mark_failed',
-                        message: 'Detected soft remove.bg failure with Mark Failed mode; marking image qc_failed',
+                        message: 'Detected soft remove.bg failure with Mark Failed mode; marking image qc_failed [v4]',
                         metadata: { imageMappingId: mappingKey }
                       });
                       // Update by mappingId with fallback to numeric id if needed
@@ -1357,6 +1409,11 @@ class JobRunner extends EventEmitter {
                             await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
                           } catch {}
                         }
+                        
+                        // Use try-catch to prevent verification logic from failing the entire block
+                        try {
+                          await this._verifyQCStatus(dbImg, "qc_failed", "processing_failed:remove_bg");
+                        } catch {}
                       } catch {}
                       // Skip moving to final when marked failed
                       try {
@@ -1395,7 +1452,7 @@ class JobRunner extends EventEmitter {
                         level: 'info',
                         stepName: 'image_generation',
                         subStep: 'qc_pass_processing_mark_failed',
-                        message: 'QC-pass processing failed at remove.bg with Mark Failed mode; marking image qc_failed',
+                        message: 'QC-pass processing failed at remove.bg with Mark Failed mode; marking image qc_failed [v4]',
                         metadata: {
                           imageMappingId: mappingKey,
                           error: String(procErr && procErr.message || procErr)
@@ -1409,6 +1466,11 @@ class JobRunner extends EventEmitter {
                             await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
                           } catch {}
                         }
+                        
+                        // Use try-catch to prevent verification logic from failing the entire block
+                        try {
+                          await this._verifyQCStatus(dbImg, "qc_failed", "processing_failed:remove_bg");
+                        } catch {}
                       } catch {}
                       try {
                         this._markFailedMappingIds = this._markFailedMappingIds || new Set();
@@ -1445,6 +1507,7 @@ class JobRunner extends EventEmitter {
                               await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
                             } catch {}
                           }
+                          await this._verifyQCStatus(dbImg, "qc_failed", "processing_failed:remove_bg");
                           try {
                             this._markFailedMappingIds = this._markFailedMappingIds || new Set();
                             this._markFailedMappingIds.add(mappingKey);
@@ -1459,7 +1522,7 @@ class JobRunner extends EventEmitter {
                         level: 'info',
                         stepName: 'image_generation',
                         subStep: 'qc_pass_processing_skip_move_guard',
-                        message: 'Guard active: Mark Failed mode; skipping move to final',
+                        message: 'Guard active: Mark Failed mode; skipping move to final [v4]',
                         metadata: { imageMappingId: mappingKey }
                       });
                       continue;
@@ -1480,7 +1543,7 @@ class JobRunner extends EventEmitter {
                       level: 'info',
                       stepName: 'image_generation',
                       subStep: 'qc_pass_processing_consolidated_override',
-                      message: 'Consolidated override: Forcing qc_failed due to Mark Failed remove.bg failure',
+                      message: 'Consolidated override: Forcing qc_failed due to Mark Failed remove.bg failure [v4]',
                       metadata: { imageMappingId: mappingKey, removeBgProcessingThrew, hadSoftRemoveBg, applied }
                     });
                   } catch {}
@@ -1492,6 +1555,7 @@ class JobRunner extends EventEmitter {
                           await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
                         } catch {}
                       }
+                      await this._verifyQCStatus(dbImg, "qc_failed", "processing_failed:remove_bg");
                     } catch {}
                   }
                   try {
@@ -1518,6 +1582,7 @@ class JobRunner extends EventEmitter {
                           await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
                         } catch {}
                       }
+                      await this._verifyQCStatus(dbImg, "qc_failed", "processing_failed:remove_bg");
                       try {
                         this._markFailedMappingIds = this._markFailedMappingIds || new Set();
                         this._markFailedMappingIds.add(mappingKey);
@@ -1532,7 +1597,7 @@ class JobRunner extends EventEmitter {
                     level: 'info',
                     stepName: 'image_generation',
                     subStep: 'qc_pass_processing_skip_move_guard_post',
-                    message: 'Guard active (post-QC): Mark Failed mode; skipping move to final',
+                    message: 'Guard active (post-QC): Mark Failed mode; skipping move to final [v4]',
                     metadata: { imageMappingId: mappingKey }
                   });
                   continue;
@@ -1613,14 +1678,34 @@ class JobRunner extends EventEmitter {
               // Global guard: if job is configured with Mark Failed for remove.bg, never reconcile approved images into final
               try {
                 const proc = this.jobConfiguration?.processing || {};
-                if (proc && proc.removeBg === true && String(proc.removeBgFailureMode || 'approve') === 'mark_failed') {
+                // Only apply this guard if the image does NOT already have a final path
+                // If it has a final path (hasFinal is true), it was successfully processed and moved, so we should NOT fail it.
+                if (!hasFinal && proc && proc.removeBg === true && String(proc.removeBgFailureMode || 'approve') === 'mark_failed') {
                   this._logStructured({
                     level: 'info',
                     stepName: 'image_generation',
                     subStep: 'approved_no_final_move_skip_mark_failed',
-                    message: 'Skipping approved reconcile due to Mark Failed mode',
+                    message: 'Skipping approved reconcile due to Mark Failed mode [v5]',
                     metadata: { imageMappingId: mappingKey }
                   });
+                  
+                  // CRITICAL FIX: Also force qc_failed status here because if we are skipping reconcile,
+                  // the image is effectively failed but might be marked approved by runQualityChecks.
+                  try {
+                    if (this.backendAdapter) {
+                      const failureReason = "processing_failed:remove_bg";
+                      const res = await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", failureReason);
+                      if (!(res && res.success && res.changes > 0) && /^(\d+)$/.test(String(mappingKey))) {
+                        try {
+                          await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", failureReason);
+                        } catch {}
+                      }
+                      try {
+                        await this._verifyQCStatus(img, "qc_failed", failureReason);
+                      } catch {}
+                    }
+                  } catch {}
+                  
                   continue;
                 }
               } catch {}
