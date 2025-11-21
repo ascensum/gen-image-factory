@@ -1170,6 +1170,11 @@ class JobRunner extends EventEmitter {
                   await fsP.mkdir(tempProcessingDir, { recursive: true });
 
                   const proc = this.jobConfiguration?.processing || {};
+                  const paramsCfg = this.jobConfiguration?.parameters || {};
+                  const enableTimeoutCfg = paramsCfg?.enablePollingTimeout === true;
+                  const timeoutMinutesCfg = enableTimeoutCfg && Number.isFinite(Number(paramsCfg?.pollingTimeout))
+                    ? Number(paramsCfg.pollingTimeout)
+                    : undefined;
                   const processingConfig = {
                     tempDirectory: tempProcessingDir,
                     outputDirectory: tempProcessingDir,
@@ -1188,6 +1193,17 @@ class JobRunner extends EventEmitter {
                     pngQuality: proc.pngQuality ?? 100,
                     webpQuality: proc.webpQuality ?? 85
                   };
+                  if (Number.isFinite(timeoutMinutesCfg)) {
+                    processingConfig.pollingTimeout = timeoutMinutesCfg;
+                  }
+                  try {
+                    this._logStructured({
+                      level: 'debug',
+                      stepName: 'image_generation',
+                      subStep: 'qc_pass_processing_flags',
+                      message: `QC-pass flags removeBg=${String(processingConfig.removeBg)} mode=${String(processingConfig.removeBgFailureMode)} timeoutMin=${String(timeoutMinutesCfg ?? 'default_0.5')}`,
+                    });
+                  } catch {}
                   // Structured log to verify effective QC-pass processing config (especially removeBgFailureMode)
                   try {
                     this._logStructured({
