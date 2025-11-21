@@ -699,6 +699,14 @@ class JobRunner extends EventEmitter {
                         );
                   sanitized.parameters.runwareAdvancedEnabled = advEnabled;
                 }
+                // Ensure processing.removeBgFailureMode is persisted in execution snapshot
+                try {
+                  if (!sanitized.processing) sanitized.processing = {};
+                  const modeFromConfig = (config && config.processing && config.processing.removeBgFailureMode) ? String(config.processing.removeBgFailureMode) : undefined;
+                  const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
+                  const mode = modeFromConfig || existing;
+                  sanitized.processing.removeBgFailureMode = (mode === 'mark_failed' || mode === 'approve') ? mode : (mode ? mode : 'approve');
+                } catch {}
                 return sanitized || null;
               } catch {
                 return null;

@@ -739,6 +739,14 @@ class BackendAdapter {
                 );
                 sanitized.parameters.runwareAdvancedEnabled = advEnabled;
               }
+              // Ensure processing.removeBgFailureMode is present in rerun snapshot
+              try {
+                if (!sanitized.processing) sanitized.processing = {};
+                const modeFromCfg = (cfg.processing && cfg.processing.removeBgFailureMode) ? String(cfg.processing.removeBgFailureMode) : undefined;
+                const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
+                const mode = modeFromCfg || existing;
+                sanitized.processing.removeBgFailureMode = (mode === 'mark_failed' || mode === 'approve') ? mode : (mode ? mode : 'approve');
+              } catch {}
               await this.jobExecution.updateJobExecution(newExecution.id, {
                 configurationId: jobData.execution.configurationId,
                 status: 'running',
@@ -2738,6 +2746,16 @@ class BackendAdapter {
             );
             sanitized.parameters.runwareAdvancedEnabled = advEnabled;
           }
+          // Ensure processing.removeBgFailureMode is present in bulk rerun first job snapshot
+          try {
+            if (!sanitized.processing) sanitized.processing = {};
+            const modeFromCfg = (firstJob.configuration && firstJob.configuration.processing && firstJob.configuration.processing.removeBgFailureMode)
+              ? String(firstJob.configuration.processing.removeBgFailureMode)
+              : undefined;
+            const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
+            const mode = modeFromCfg || existing;
+            sanitized.processing.removeBgFailureMode = (mode === 'mark_failed' || mode === 'approve') ? mode : (mode ? mode : 'approve');
+          } catch {}
           await this.jobExecution.updateJobExecution(newExecution.id, {
             configurationId: firstJob.configurationId,
             status: 'running',
