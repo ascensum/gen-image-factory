@@ -611,6 +611,16 @@ async function processImage(inputImagePath, imgName, config = {}) {
       } catch {}
       // Respect user mode: only hard-fail when explicitly requested or fail-retry selects the step
       const hardFail = (enabled && steps.includes('remove_bg')) || failureMode === 'fail';
+      try {
+        logDebug('processImage: remove.bg failure decision', {
+          rawMode,
+          failureMode,
+          failRetryEnabled: enabled,
+          stepsIncludeRemoveBg: steps.includes('remove_bg'),
+          unauthorized,
+          hardFail
+        });
+      } catch {}
       if (hardFail) {
         try { logDebug('processImage: remove.bg failure treated as HARD-FAIL', { failureMode, unauthorized }); } catch {}
         const err = new Error('processing_failed:remove_bg');

@@ -1258,6 +1258,20 @@ class JobRunner extends EventEmitter {
                     pathForFinal = processedImagePath;
                   }
                 } catch (procErr) {
+                  try {
+                    this._logStructured({
+                      level: 'warn',
+                      stepName: 'image_generation',
+                      subStep: 'qc_pass_processing_catch',
+                      message: 'QC-pass processing threw; evaluating failure mode',
+                      metadata: {
+                        imageMappingId: dbImg.imageMappingId || dbImg.mappingId || dbImg.id,
+                        error: String(procErr && procErr.message || procErr),
+                        stage: procErr && procErr.stage ? procErr.stage : undefined,
+                        removeBgFailureMode: processingConfig.removeBgFailureMode
+                      }
+                    });
+                  } catch {}
                   // Honor the effective mode we actually used for QC-pass processing
                   if (processingConfig.removeBgFailureMode === 'mark_failed' && this.backendAdapter) {
                     try {
@@ -1273,6 +1287,15 @@ class JobRunner extends EventEmitter {
                         }
                       });
                       await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                      try {
+                        this._logStructured({
+                          level: 'info',
+                          stepName: 'image_generation',
+                          subStep: 'qc_pass_processing_skip_move',
+                          message: 'Skipping move to final due to mark_failed handling',
+                          metadata: { imageMappingId: mappingKey }
+                        });
+                      } catch {}
                       // Skip moving to final when marked failed
                       continue;
                     } catch (_e) {}
@@ -1281,9 +1304,27 @@ class JobRunner extends EventEmitter {
                 }
               }
 
+              try {
+                this._logStructured({
+                  level: 'info',
+                  stepName: 'image_generation',
+                  subStep: 'move_to_final_start',
+                  message: 'Moving image to final location',
+                  metadata: { imageMappingId: dbImg.imageMappingId || dbImg.mappingId || dbImg.id, pathForFinal }
+                });
+              } catch {}
               const movedFinal = await this.moveImageToFinalLocation(pathForFinal, dbImg.imageMappingId || dbImg.mappingId || dbImg.id);
               if (movedFinal) {
                 await this.updateImagePaths(dbImg.imageMappingId || dbImg.mappingId || dbImg.id, null, movedFinal);
+                try {
+                  this._logStructured({
+                    level: 'info',
+                    stepName: 'image_generation',
+                    subStep: 'move_to_final_done',
+                    message: 'Image moved and DB updated with final path',
+                    metadata: { imageMappingId: dbImg.imageMappingId || dbImg.mappingId || dbImg.id, finalPath: movedFinal }
+                  });
+                } catch {}
               }
             }
           }
