@@ -1188,6 +1188,24 @@ class JobRunner extends EventEmitter {
                     pngQuality: proc.pngQuality ?? 100,
                     webpQuality: proc.webpQuality ?? 85
                   };
+                  // Structured log to verify effective QC-pass processing config (especially removeBgFailureMode)
+                  try {
+                    this._logStructured({
+                      level: 'info',
+                      stepName: 'image_generation',
+                      subStep: 'qc_pass_processing_start',
+                      message: 'QC-pass processing config resolved',
+                      metadata: {
+                        imageMappingId: dbImg.imageMappingId || dbImg.mappingId || dbImg.id,
+                        removeBg: processingConfig.removeBg,
+                        removeBgFailureMode: processingConfig.removeBgFailureMode,
+                        convertToJpg: processingConfig.convertToJpg,
+                        convertToWebp: processingConfig.convertToWebp,
+                        trimTransparentBackground: processingConfig.trimTransparentBackground,
+                        imageEnhancement: processingConfig.imageEnhancement
+                      }
+                    });
+                  } catch {}
                   const sourceFileName = pathMod.basename(sourcePath);
                   const processedImagePath = await producePictureModule.processImage(sourcePath, sourceFileName, processingConfig);
                   if (processedImagePath) {
@@ -1198,6 +1216,16 @@ class JobRunner extends EventEmitter {
                   if (proc.removeBgFailureMode === 'mark_failed' && this.backendAdapter) {
                     try {
                       const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
+                      this._logStructured({
+                        level: 'warn',
+                        stepName: 'image_generation',
+                        subStep: 'qc_pass_processing_mark_failed',
+                        message: 'QC-pass processing failed at remove.bg with Mark Failed mode; marking image qc_failed',
+                        metadata: {
+                          imageMappingId: mappingKey,
+                          error: String(procErr && procErr.message || procErr)
+                        }
+                      });
                       await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
                       // Skip moving to final when marked failed
                       continue;
