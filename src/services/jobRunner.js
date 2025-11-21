@@ -1253,6 +1253,22 @@ class JobRunner extends EventEmitter {
                       }
                     });
                   } catch {}
+                  // Explicit guard: if Mark Failed selected and remove.bg key is missing, fail immediately
+                  try {
+                    const missingKey = !process.env.REMOVE_BG_API_KEY || String(process.env.REMOVE_BG_API_KEY).trim() === '';
+                    if (processingConfig.removeBg === true && processingConfig.removeBgFailureMode === 'mark_failed' && missingKey && this.backendAdapter) {
+                      const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
+                      this._logStructured({
+                        level: 'info',
+                        stepName: 'image_generation',
+                        subStep: 'qc_pass_processing_missing_key_mark_failed',
+                        message: 'REMOVE_BG_API_KEY missing while Mark Failed is selected; marking image qc_failed',
+                        metadata: { imageMappingId: mappingKey }
+                      });
+                      await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                      continue;
+                    }
+                  } catch {}
                   const sourceFileName = pathMod.basename(sourcePath);
                   const processedImagePath = await producePictureModule.processImage(sourcePath, sourceFileName, processingConfig);
                   if (processedImagePath) {
