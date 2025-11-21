@@ -599,8 +599,19 @@ async function processImage(inputImagePath, imgName, config = {}) {
       // - Retry flow may still pass 'soft' | 'fail'
       const rawMode = String(config?.removeBgFailureMode || 'approve').toLowerCase();
       const failureMode = (rawMode === 'mark_failed') ? 'fail' : (rawMode === 'approve' ? 'soft' : rawMode);
-      const hardFail = (enabled && steps.includes('remove_bg')) || failureMode === 'fail';
+      // Treat missing/invalid key or explicit auth errors as hard-fail safeguards
+      let unauthorized = false;
+      try {
+        const status = error?.response?.status;
+        const body = error?.response?.data;
+        const msg = String(error && error.message || '');
+        unauthorized = (!process.env.REMOVE_BG_API_KEY) || status === 401 || status === 403 ||
+          /unauthorized|forbidden|x-api-key|invalid api key/i.test(msg) ||
+          (typeof body === 'string' && /unauthorized|forbidden|x-api-key|invalid api key/i.test(body));
+      } catch {}
+      const hardFail = unauthorized || (enabled && steps.includes('remove_bg')) || failureMode === 'fail';
       if (hardFail) {
+        try { logDebug('processImage: remove.bg failure treated as HARD-FAIL', { failureMode, unauthorized }); } catch {}
         const err = new Error('processing_failed:remove_bg');
         // @ts-ignore
         err.stage = 'remove_bg';

@@ -1175,23 +1175,33 @@ class JobRunner extends EventEmitter {
                   const timeoutMinutesCfg = enableTimeoutCfg && Number.isFinite(Number(paramsCfg?.pollingTimeout))
                     ? Number(paramsCfg.pollingTimeout)
                     : undefined;
+                  // Prefer per-image snapshot for processing settings when available
+                  let perImageProcessing = undefined;
+                  try {
+                    if (dbImg && typeof dbImg.processingSettings === 'string' && dbImg.processingSettings.trim().startsWith('{')) {
+                      perImageProcessing = JSON.parse(dbImg.processingSettings);
+                    }
+                  } catch {}
+                  const effectiveRemoveBgFailureMode = (perImageProcessing && perImageProcessing.removeBgFailureMode)
+                    ? perImageProcessing.removeBgFailureMode
+                    : (proc.removeBgFailureMode || 'approve');
                   const processingConfig = {
                     tempDirectory: tempProcessingDir,
                     outputDirectory: tempProcessingDir,
-                    removeBg: !!proc.removeBg,
-                    imageConvert: !!proc.imageConvert,
-                    convertToJpg: !!proc.convertToJpg,
-                    convertToWebp: !!proc.convertToWebp,
-                    trimTransparentBackground: !!proc.trimTransparentBackground,
-                    imageEnhancement: !!proc.imageEnhancement,
-                    sharpening: proc.sharpening ?? 0,
-                    saturation: proc.saturation ?? 1,
-                    jpgBackground: proc.jpgBackground || 'white',
-                    removeBgSize: proc.removeBgSize || 'preview',
-                    removeBgFailureMode: proc.removeBgFailureMode || 'approve',
-                    jpgQuality: proc.jpgQuality ?? 85,
-                    pngQuality: proc.pngQuality ?? 100,
-                    webpQuality: proc.webpQuality ?? 85
+                    removeBg: !!(perImageProcessing?.removeBg ?? proc.removeBg),
+                    imageConvert: !!(perImageProcessing?.imageConvert ?? proc.imageConvert),
+                    convertToJpg: !!(perImageProcessing?.convertToJpg ?? proc.convertToJpg),
+                    convertToWebp: !!(perImageProcessing?.convertToWebp ?? proc.convertToWebp),
+                    trimTransparentBackground: !!(perImageProcessing?.trimTransparentBackground ?? proc.trimTransparentBackground),
+                    imageEnhancement: !!(perImageProcessing?.imageEnhancement ?? proc.imageEnhancement),
+                    sharpening: (perImageProcessing && typeof perImageProcessing.sharpening !== 'undefined') ? perImageProcessing.sharpening : (proc.sharpening ?? 0),
+                    saturation: (perImageProcessing && typeof perImageProcessing.saturation !== 'undefined') ? perImageProcessing.saturation : (proc.saturation ?? 1),
+                    jpgBackground: (perImageProcessing && perImageProcessing.jpgBackground) ? perImageProcessing.jpgBackground : (proc.jpgBackground || 'white'),
+                    removeBgSize: (perImageProcessing && perImageProcessing.removeBgSize) ? perImageProcessing.removeBgSize : (proc.removeBgSize || 'preview'),
+                    removeBgFailureMode: effectiveRemoveBgFailureMode,
+                    jpgQuality: (perImageProcessing && typeof perImageProcessing.jpgQuality !== 'undefined') ? perImageProcessing.jpgQuality : (proc.jpgQuality ?? 85),
+                    pngQuality: (perImageProcessing && typeof perImageProcessing.pngQuality !== 'undefined') ? perImageProcessing.pngQuality : (proc.pngQuality ?? 100),
+                    webpQuality: (perImageProcessing && typeof perImageProcessing.webpQuality !== 'undefined') ? perImageProcessing.webpQuality : (proc.webpQuality ?? 85)
                   };
                   if (Number.isFinite(timeoutMinutesCfg)) {
                     processingConfig.pollingTimeout = timeoutMinutesCfg;
@@ -1202,6 +1212,17 @@ class JobRunner extends EventEmitter {
                       stepName: 'image_generation',
                       subStep: 'qc_pass_processing_flags',
                       message: `QC-pass flags removeBg=${String(processingConfig.removeBg)} mode=${String(processingConfig.removeBgFailureMode)} timeoutMin=${String(timeoutMinutesCfg ?? 'default_0.5')}`,
+                    });
+                    this._logStructured({
+                      level: 'debug',
+                      stepName: 'image_generation',
+                      subStep: 'qc_pass_processing_source',
+                      message: 'QC-pass processing source of removeBgFailureMode',
+                      metadata: {
+                        source: perImageProcessing && perImageProcessing.removeBgFailureMode ? 'per_image_processingSettings' : 'job_processing_snapshot',
+                        perImageHasMode: !!(perImageProcessing && perImageProcessing.removeBgFailureMode),
+                        jobHasMode: !!proc.removeBgFailureMode
+                      }
                     });
                   } catch {}
                   // Structured log to verify effective QC-pass processing config (especially removeBgFailureMode)
