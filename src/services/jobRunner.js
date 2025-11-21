@@ -1050,6 +1050,7 @@ class JobRunner extends EventEmitter {
                     pngQuality: Number.isFinite(Number(effectiveProc.pngQuality)) ? Number(effectiveProc.pngQuality) : 100,
                     webpQuality: Number.isFinite(Number(effectiveProc.webpQuality)) ? Number(effectiveProc.webpQuality) : 85,
                     removeBg: !!effectiveProc.removeBg,
+                    removeBgFailureMode: (typeof effectiveProc.removeBgFailureMode === 'string' ? effectiveProc.removeBgFailureMode : 'approve'),
                     trimTransparentBackground: !!effectiveProc.trimTransparentBackground,
                     jpgBackground: effectiveProc.jpgBackground || 'white',
                     removeBgSize: effectiveProc.removeBgSize || 'auto'
