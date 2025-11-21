@@ -1191,7 +1191,7 @@ class JobRunner extends EventEmitter {
                   // Structured log to verify effective QC-pass processing config (especially removeBgFailureMode)
                   try {
                     this._logStructured({
-                      level: 'info',
+                      level: 'debug',
                       stepName: 'image_generation',
                       subStep: 'qc_pass_processing_start',
                       message: 'QC-pass processing config resolved',
@@ -1217,7 +1217,7 @@ class JobRunner extends EventEmitter {
                     try {
                       const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
                       this._logStructured({
-                        level: 'warn',
+                        level: 'debug',
                         stepName: 'image_generation',
                         subStep: 'qc_pass_processing_mark_failed',
                         message: 'QC-pass processing failed at remove.bg with Mark Failed mode; marking image qc_failed',

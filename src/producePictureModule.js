@@ -516,8 +516,24 @@ async function producePictureModule(
 }
 
 async function processImage(inputImagePath, imgName, config = {}) {
-  console.log(` processImage: Starting with inputImagePath: ${inputImagePath}, imgName: ${imgName}`);
-  console.log(` processImage: Received config keys:`, Object.keys(config));
+  logDebug(`processImage: Starting with inputImagePath: ${inputImagePath}, imgName: ${imgName}`);
+  try {
+    logDebug('processImage: Received config keys:', Object.keys(config));
+    logDebug('processImage: Key settings snapshot', {
+      removeBg: !!config.removeBg,
+      removeBgFailureMode: String(config.removeBgFailureMode || 'approve'),
+      trimTransparentBackground: !!config.trimTransparentBackground,
+      imageConvert: !!config.imageConvert,
+      convertToJpg: !!config.convertToJpg,
+      convertToWebp: !!config.convertToWebp,
+      webpQuality: Number.isFinite(Number(config.webpQuality)) ? Number(config.webpQuality) : undefined,
+      jpgQuality: Number.isFinite(Number(config.jpgQuality)) ? Number(config.jpgQuality) : undefined,
+      removeBgSize: config.removeBgSize || 'preview',
+      preserveInput: !!config.preserveInput,
+      outputDirectory: config.outputDirectory || '',
+      tempDirectory: config.tempDirectory || ''
+    });
+  } catch {}
   
   const {
     preserveInput,
@@ -536,18 +552,23 @@ async function processImage(inputImagePath, imgName, config = {}) {
     failOnSteps,
   } = config;
 
-  console.log(` processImage: Extracted settings:`);
-  console.log(`  - removeBg: ${removeBg}`);
-  console.log(`  - imageConvert: ${imageConvert}`);
-  console.log(`  - imageEnhancement: ${imageEnhancement}`);
-  console.log(`  - sharpening: ${sharpening}`);
-  console.log(`  - saturation: ${saturation}`);
-  console.log(`  - convertToJpg: ${convertToJpg}`);
-  console.log(`  - trimTransparentBackground: ${trimTransparentBackground}`);
-  console.log(`  - jpgBackground: ${jpgBackground}`);
-  console.log(`  - removeBgSize: ${removeBgSize}`);
-  console.log(`  - jpgQuality: ${jpgQuality}`);
-  console.log(`  - pngQuality: ${pngQuality}`);
+  try {
+    logDebug('processImage: Extracted settings snapshot', {
+      removeBg: !!removeBg,
+      imageConvert: !!imageConvert,
+      imageEnhancement: !!imageEnhancement,
+      sharpening,
+      saturation,
+      convertToJpg: !!convertToJpg,
+      trimTransparentBackground: !!trimTransparentBackground,
+      jpgBackground,
+      removeBgSize,
+      jpgQuality,
+      pngQuality,
+      removeBgFailureMode: String(config?.removeBgFailureMode || 'approve'),
+      convertToWebp: !!config?.convertToWebp
+    });
+  } catch {}
 
   let imageBuffer;
   try {
@@ -675,21 +696,21 @@ async function processImage(inputImagePath, imgName, config = {}) {
   } else {
     finalExtension = '.png';
   }
-  console.log(` processImage: Final extension determined: ${finalExtension} (convertToJpg: ${convertToJpg}, imageConvert: ${imageConvert}, originalExt: ${originalExt})`);
+  logDebug(`processImage: Final extension determined: ${finalExtension} (convertToJpg: ${convertToJpg}, imageConvert: ${imageConvert}, originalExt: ${originalExt})`);
   
   // Use settings path instead of hardcoded relative path
-  console.log(` processImage: DEBUG - config.outputDirectory:`, config.outputDirectory);
-  console.log(` processImage: DEBUG - config keys:`, Object.keys(config));
+  logDebug(`processImage: DEBUG - config.outputDirectory: ${String(config.outputDirectory || '')}`);
+  try { logDebug('processImage: DEBUG - config keys:', Object.keys(config)); } catch {}
   
   const outputDir = config.outputDirectory || './pictures/toupload';
-  console.log(` processImage: DEBUG - final outputDir:`, outputDir);
+  logDebug(`processImage: DEBUG - final outputDir: ${outputDir}`);
   
   // Normalize imgName to avoid double extensions like .png.jpg
   const baseName = imgName.replace(/\.(png|jpg|jpeg|webp)$/i, '');
   const outputPath = path.resolve(path.join(outputDir, `${baseName}${finalExtension}`));
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
 
-  console.log(` processImage: Output path: ${outputPath}`);
+  logDebug(`processImage: Output path: ${outputPath}`);
 
   // 5. Encode to Final Format and Save
   try {
@@ -731,7 +752,7 @@ async function processImage(inputImagePath, imgName, config = {}) {
     console.error(`Error deleting original downloaded image ${inputImagePath}:`, error);
   }
 
-  console.log(` processImage: Completed successfully. Output: ${outputPath}`);
+  logDebug(`processImage: Completed successfully. Output: ${outputPath}`);
   return outputPath;
 }
 
