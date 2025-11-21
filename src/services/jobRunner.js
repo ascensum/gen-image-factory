@@ -1216,13 +1216,13 @@ class JobRunner extends EventEmitter {
                   }
                   try {
                     this._logStructured({
-                      level: 'debug',
+                      level: 'info',
                       stepName: 'image_generation',
                       subStep: 'qc_pass_processing_flags',
                       message: `QC-pass flags removeBg=${String(processingConfig.removeBg)} mode=${String(processingConfig.removeBgFailureMode)} timeoutMin=${String(timeoutMinutesCfg ?? 'default_0.5')}`,
                     });
                     this._logStructured({
-                      level: 'debug',
+                      level: 'info',
                       stepName: 'image_generation',
                       subStep: 'qc_pass_processing_source',
                       message: 'QC-pass processing source of removeBgFailureMode',
@@ -1236,7 +1236,7 @@ class JobRunner extends EventEmitter {
                   // Structured log to verify effective QC-pass processing config (especially removeBgFailureMode)
                   try {
                     this._logStructured({
-                      level: 'debug',
+                      level: 'info',
                       stepName: 'image_generation',
                       subStep: 'qc_pass_processing_start',
                       message: 'QC-pass processing config resolved',
@@ -1262,7 +1262,7 @@ class JobRunner extends EventEmitter {
                     try {
                       const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
                       this._logStructured({
-                        level: 'debug',
+                        level: 'info',
                         stepName: 'image_generation',
                         subStep: 'qc_pass_processing_mark_failed',
                         message: 'QC-pass processing failed at remove.bg with Mark Failed mode; marking image qc_failed',
@@ -2174,9 +2174,9 @@ class JobRunner extends EventEmitter {
           // Wrap QC call with timeout so network/DNS issues don't stall the entire job for too long
           result = await this.withTimeout(
             aiVision.runQualityCheck(
-              qcInputPath, // Use finalImagePath when available, otherwise tempImagePath
-              config.parameters?.openaiModel || "gpt-4o",
-              config.ai?.qualityCheckPrompt || null
+            qcInputPath, // Use finalImagePath when available, otherwise tempImagePath
+            config.parameters?.openaiModel || "gpt-4o",
+            config.ai?.qualityCheckPrompt || null
             ),
             qcTimeoutMs,
             'Quality check timed out'
@@ -2409,7 +2409,7 @@ class JobRunner extends EventEmitter {
         ? (Number.isFinite(pollingTimeoutMinutes) ? pollingTimeoutMinutes * 60 * 1000 : 30_000)
         : 30_000;
       let hadFailures = false;
-
+      
       for (const image of images) {
         if (this.isStopping) return;
         let result = null;
@@ -2420,9 +2420,9 @@ class JobRunner extends EventEmitter {
           result = await this.withTimeout(
             aiVision.generateMetadata(
               localPath,
-              image.metadata?.prompt || 'default image',
+          image.metadata?.prompt || 'default image',
               config.ai?.metadataPrompt || null,
-              config.parameters?.openaiModel || 'gpt-4o'
+          config.parameters?.openaiModel || 'gpt-4o'
             ),
             metadataTimeoutMs,
             'Metadata generation timed out'
