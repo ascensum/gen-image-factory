@@ -1255,6 +1255,8 @@ class JobRunner extends EventEmitter {
                   } catch {}
                   // Guard flag: in Mark Failed mode with remove.bg enabled, do not move to final unless remove.bg applied successfully
                   let skipFinalDueToMarkFailed = false;
+                  // Track if processing threw, for a consolidated override later
+                  let removeBgProcessingThrew = false;
                   try {
                     if (processingConfig.removeBg === true && String(processingConfig.removeBgFailureMode || 'approve') === 'mark_failed') {
                       skipFinalDueToMarkFailed = true;
@@ -1272,10 +1274,22 @@ class JobRunner extends EventEmitter {
                         message: 'REMOVE_BG_API_KEY missing while Mark Failed is selected; marking image qc_failed',
                         metadata: { imageMappingId: mappingKey }
                       });
-                      await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                      // Update by mappingId with fallback to numeric id if needed
+                      try {
+                        const res = await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                        if (!(res && res.success && res.changes > 0) && /^(\d+)$/.test(String(mappingKey))) {
+                          try {
+                            await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
+                          } catch {}
+                        }
+                      } catch {}
                       try {
                         this._markFailedMappingIds = this._markFailedMappingIds || new Set();
                         this._markFailedMappingIds.add(mappingKey);
+                      } catch {}
+                      try {
+                        dbImg.qcStatus = "qc_failed";
+                        dbImg.qcReason = "processing_failed:remove_bg";
                       } catch {}
                       continue;
                     }
@@ -1295,10 +1309,22 @@ class JobRunner extends EventEmitter {
                           message: 'remove.bg did not apply while Mark Failed is selected; marking image qc_failed',
                           metadata: { imageMappingId: mappingKey }
                         });
-                        await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                        // Update by mappingId with fallback to numeric id if needed
+                        try {
+                          const res = await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                          if (!(res && res.success && res.changes > 0) && /^(\d+)$/.test(String(mappingKey))) {
+                            try {
+                              await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
+                            } catch {}
+                          }
+                        } catch {}
                         try {
                           this._markFailedMappingIds = this._markFailedMappingIds || new Set();
                           this._markFailedMappingIds.add(mappingKey);
+                        } catch {}
+                        try {
+                          dbImg.qcStatus = "qc_failed";
+                          dbImg.qcReason = "processing_failed:remove_bg";
                         } catch {}
                         continue;
                       }
@@ -1323,11 +1349,23 @@ class JobRunner extends EventEmitter {
                         message: 'Detected soft remove.bg failure with Mark Failed mode; marking image qc_failed',
                         metadata: { imageMappingId: mappingKey }
                       });
-                      await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                      // Update by mappingId with fallback to numeric id if needed
+                      try {
+                        const res = await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                        if (!(res && res.success && res.changes > 0) && /^(\d+)$/.test(String(mappingKey))) {
+                          try {
+                            await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
+                          } catch {}
+                        }
+                      } catch {}
                       // Skip moving to final when marked failed
                       try {
                         this._markFailedMappingIds = this._markFailedMappingIds || new Set();
                         this._markFailedMappingIds.add(mappingKey);
+                      } catch {}
+                      try {
+                        dbImg.qcStatus = "qc_failed";
+                        dbImg.qcReason = "processing_failed:remove_bg";
                       } catch {}
                       continue;
                     }
@@ -1347,6 +1385,8 @@ class JobRunner extends EventEmitter {
                       }
                     });
                   } catch {}
+                  // Remember that processing threw for consolidated override
+                  try { removeBgProcessingThrew = true; } catch {}
                   // Honor the effective mode we actually used for QC-pass processing
                   if (processingConfig.removeBgFailureMode === 'mark_failed' && this.backendAdapter) {
                     try {
@@ -1427,6 +1467,43 @@ class JobRunner extends EventEmitter {
                   } catch {}
                 }
               }
+
+              // Consolidated override: if in Mark Failed mode and remove.bg threw or did not apply or soft-failed, force qc_failed and skip move
+              try {
+                const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
+                const hadSoftRemoveBg = Array.isArray(processingConfig._softFailures) && processingConfig._softFailures.some(f => f && f.stage === 'remove_bg');
+                const applied = !!processingConfig._removeBgApplied;
+                const markFailedMode = (processingConfig.removeBg === true && String(processingConfig.removeBgFailureMode || 'approve') === 'mark_failed');
+                if (markFailedMode && (removeBgProcessingThrew === true || hadSoftRemoveBg || applied === false)) {
+                  try {
+                    this._logStructured({
+                      level: 'info',
+                      stepName: 'image_generation',
+                      subStep: 'qc_pass_processing_consolidated_override',
+                      message: 'Consolidated override: Forcing qc_failed due to Mark Failed remove.bg failure',
+                      metadata: { imageMappingId: mappingKey, removeBgProcessingThrew, hadSoftRemoveBg, applied }
+                    });
+                  } catch {}
+                  if (this.backendAdapter) {
+                    try {
+                      const res = await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                      if (!(res && res.success && res.changes > 0) && /^(\d+)$/.test(String(mappingKey))) {
+                        try {
+                          await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
+                        } catch {}
+                      }
+                    } catch {}
+                  }
+                  try {
+                    this._markFailedMappingIds = this._markFailedMappingIds || new Set();
+                    this._markFailedMappingIds.add(mappingKey);
+                    dbImg.qcStatus = "qc_failed";
+                    dbImg.qcReason = "processing_failed:remove_bg";
+                  } catch {}
+                  // Skip moving to final
+                  continue;
+                }
+              } catch {}
 
               // Extra guard immediately before attempting to move to final
               try {

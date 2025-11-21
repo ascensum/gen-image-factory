@@ -627,6 +627,18 @@ async function processImage(inputImagePath, imgName, config = {}) {
       } catch {}
       if (hardFail) {
         try { logDebug('processImage: remove.bg failure treated as HARD-FAIL', { failureMode, unauthorized }); } catch {}
+        // Signal to caller that remove.bg did not apply in hard-fail path
+        try { config._removeBgApplied = false; } catch {}
+        // Record as soft failure as well so callers can detect via consolidated path
+        try {
+          if (Array.isArray((config)._softFailures)) {
+            (config)._softFailures.push({
+              stage: 'remove_bg',
+              vendor: 'remove.bg',
+              message: 'Hard-fail triggered'
+            });
+          }
+        } catch {}
         const err = new Error('processing_failed:remove_bg');
         // @ts-ignore
         err.stage = 'remove_bg';
