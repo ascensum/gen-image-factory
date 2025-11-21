@@ -1360,6 +1360,57 @@ class JobRunner extends EventEmitter {
         console.error(' QC/move phase error:', qcErr);
       }
       
+      // Safety reconcile: ensure approved images have a final path persisted
+      try {
+        if (this.backendAdapter && this.databaseExecutionId) {
+          const saved = await this.getSavedImagesForExecution(this.databaseExecutionId);
+          if (Array.isArray(saved)) {
+            for (const img of saved) {
+              const mappingKey = img.imageMappingId || img.mappingId || img.id;
+              const hasFinal = !!(img.finalImagePath || img.final_image_path);
+              const approved = String(img.qcStatus || img.qc_status) === 'approved';
+              const candidatePath = img.finalImagePath || img.final_image_path || img.tempImagePath || img.temp_image_path || img.path;
+              if (approved && !hasFinal && candidatePath && typeof candidatePath === 'string') {
+                try {
+                  this._logStructured({
+                    level: 'info',
+                    stepName: 'image_generation',
+                    subStep: 'approved_no_final_move_start',
+                    message: 'Approved image missing final path; attempting move',
+                    metadata: { imageMappingId: mappingKey, candidatePath }
+                  });
+                } catch {}
+                const moved = await this.moveImageToFinalLocation(candidatePath, mappingKey);
+                if (moved) {
+                  await this.updateImagePaths(mappingKey, null, moved);
+                  try {
+                    this._logStructured({
+                      level: 'info',
+                      stepName: 'image_generation',
+                      subStep: 'approved_no_final_move_done',
+                      message: 'Approved image final path reconciled',
+                      metadata: { imageMappingId: mappingKey, finalPath: moved }
+                    });
+                  } catch {}
+                } else {
+                  try {
+                    this._logStructured({
+                      level: 'warn',
+                      stepName: 'image_generation',
+                      subStep: 'approved_no_final_move_failed',
+                      message: 'Failed to reconcile final path for approved image',
+                      metadata: { imageMappingId: mappingKey }
+                    });
+                  } catch {}
+                }
+              }
+            }
+          }
+        }
+      } catch (_reconcileErr) {
+        console.warn('️ Approved-image final path reconcile skipped:', _reconcileErr?.message || _reconcileErr);
+      }
+      
       // Finalize QC: wait until all images leave transient QC states before marking job completed
       try {
         if (this.jobConfiguration?.ai?.runQualityCheck && this.backendAdapter && this.databaseExecutionId) {
