@@ -1253,6 +1253,13 @@ class JobRunner extends EventEmitter {
                       }
                     });
                   } catch {}
+                  // Guard flag: in Mark Failed mode with remove.bg enabled, do not move to final unless remove.bg applied successfully
+                  let skipFinalDueToMarkFailed = false;
+                  try {
+                    if (processingConfig.removeBg === true && String(processingConfig.removeBgFailureMode || 'approve') === 'mark_failed') {
+                      skipFinalDueToMarkFailed = true;
+                    }
+                  } catch {}
                   // Explicit guard: if Mark Failed selected and remove.bg key is missing, fail immediately
                   try {
                     const missingKey = !process.env.REMOVE_BG_API_KEY || String(process.env.REMOVE_BG_API_KEY).trim() === '';
@@ -1295,6 +1302,12 @@ class JobRunner extends EventEmitter {
                         } catch {}
                         continue;
                       }
+                      // remove.bg applied successfully, allow move to final
+                      try {
+                        if (processingConfig.removeBg === true && String(processingConfig.removeBgFailureMode || 'approve') === 'mark_failed' && applied === true) {
+                          skipFinalDueToMarkFailed = false;
+                        }
+                      } catch {}
                     } catch {}
                     pathForFinal = processedImagePath;
                   }
@@ -1348,10 +1361,22 @@ class JobRunner extends EventEmitter {
                           error: String(procErr && procErr.message || procErr)
                         }
                       });
-                      await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                      // Update by mappingId with fallback to numeric id if needed
+                      try {
+                        const res = await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                        if (!(res && res.success && res.changes > 0) && /^(\d+)$/.test(String(mappingKey))) {
+                          try {
+                            await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
+                          } catch {}
+                        }
+                      } catch {}
                       try {
                         this._markFailedMappingIds = this._markFailedMappingIds || new Set();
                         this._markFailedMappingIds.add(mappingKey);
+                      } catch {}
+                      try {
+                        dbImg.qcStatus = "qc_failed";
+                        dbImg.qcReason = "processing_failed:remove_bg";
                       } catch {}
                       try {
                         this._logStructured({
@@ -1367,9 +1392,75 @@ class JobRunner extends EventEmitter {
                     } catch (_e) {}
                   }
                   console.warn('QC-pass processing failed, using original temp image for move:', procErr?.message || procErr);
+                  // Hard guard: if Mark Failed mode was active, do not move to final even if we reached here
+                  try {
+                    if (skipFinalDueToMarkFailed === true) {
+                      const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
+                      // Force QC status to failed as a last-resort correction when in Mark Failed mode
+                      try {
+                        if (this.backendAdapter) {
+                          const res = await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                          if (!(res && res.success && res.changes > 0) && /^(\d+)$/.test(String(mappingKey))) {
+                            try {
+                              await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
+                            } catch {}
+                          }
+                          try {
+                            this._markFailedMappingIds = this._markFailedMappingIds || new Set();
+                            this._markFailedMappingIds.add(mappingKey);
+                          } catch {}
+                          try {
+                            dbImg.qcStatus = "qc_failed";
+                            dbImg.qcReason = "processing_failed:remove_bg";
+                          } catch {}
+                        }
+                      } catch {}
+                      this._logStructured({
+                        level: 'info',
+                        stepName: 'image_generation',
+                        subStep: 'qc_pass_processing_skip_move_guard',
+                        message: 'Guard active: Mark Failed mode; skipping move to final',
+                        metadata: { imageMappingId: mappingKey }
+                      });
+                      continue;
+                    }
+                  } catch {}
                 }
               }
 
+              // Extra guard immediately before attempting to move to final
+              try {
+                if (skipFinalDueToMarkFailed === true) {
+                  const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
+                  // Force QC status to failed as a last-resort correction when in Mark Failed mode
+                  try {
+                    if (this.backendAdapter) {
+                      const res = await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                      if (!(res && res.success && res.changes > 0) && /^(\d+)$/.test(String(mappingKey))) {
+                        try {
+                          await this.backendAdapter.updateQCStatus(Number(mappingKey), "qc_failed", "processing_failed:remove_bg");
+                        } catch {}
+                      }
+                      try {
+                        this._markFailedMappingIds = this._markFailedMappingIds || new Set();
+                        this._markFailedMappingIds.add(mappingKey);
+                      } catch {}
+                      try {
+                        dbImg.qcStatus = "qc_failed";
+                        dbImg.qcReason = "processing_failed:remove_bg";
+                      } catch {}
+                    }
+                  } catch {}
+                  this._logStructured({
+                    level: 'info',
+                    stepName: 'image_generation',
+                    subStep: 'qc_pass_processing_skip_move_guard_post',
+                    message: 'Guard active (post-QC): Mark Failed mode; skipping move to final',
+                    metadata: { imageMappingId: mappingKey }
+                  });
+                  continue;
+                }
+              } catch {}
               try {
                 this._logStructured({
                   level: 'info',
@@ -1439,6 +1530,20 @@ class JobRunner extends EventEmitter {
               // If this image was locally marked failed during QC-pass processing, skip reconciliation
               try {
                 if (this._markFailedMappingIds && this._markFailedMappingIds.has(mappingKey)) {
+                  continue;
+                }
+              } catch {}
+              // Global guard: if job is configured with Mark Failed for remove.bg, never reconcile approved images into final
+              try {
+                const proc = this.jobConfiguration?.processing || {};
+                if (proc && proc.removeBg === true && String(proc.removeBgFailureMode || 'approve') === 'mark_failed') {
+                  this._logStructured({
+                    level: 'info',
+                    stepName: 'image_generation',
+                    subStep: 'approved_no_final_move_skip_mark_failed',
+                    message: 'Skipping approved reconcile due to Mark Failed mode',
+                    metadata: { imageMappingId: mappingKey }
+                  });
                   continue;
                 }
               } catch {}
