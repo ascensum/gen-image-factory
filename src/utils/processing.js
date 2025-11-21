@@ -15,7 +15,8 @@ function normalizeProcessingSettings(input) {
     'removeBg',
     'removeBgSize',
     'trimTransparentBackground',
-    'jpgBackground'
+    'jpgBackground',
+    'removeBgFailureMode'
   ]);
   const out = {};
   for (const [k, v] of Object.entries(input || {})) {
@@ -71,6 +72,11 @@ function normalizeProcessingSettings(input) {
       }
       case 'jpgBackground': {
         out[k] = typeof v === 'string' ? v : '#FFFFFF';
+        break;
+      }
+      case 'removeBgFailureMode': {
+        const val = String(v || 'approve').toLowerCase();
+        out[k] = (val === 'mark_failed' || val === 'approve') ? val : 'approve';
         break;
       }
     }

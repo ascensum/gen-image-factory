@@ -609,7 +609,8 @@ async function processImage(inputImagePath, imgName, config = {}) {
           /unauthorized|forbidden|x-api-key|invalid api key/i.test(msg) ||
           (typeof body === 'string' && /unauthorized|forbidden|x-api-key|invalid api key/i.test(body));
       } catch {}
-      const hardFail = unauthorized || (enabled && steps.includes('remove_bg')) || failureMode === 'fail';
+      // Respect user mode: only hard-fail when explicitly requested or fail-retry selects the step
+      const hardFail = (enabled && steps.includes('remove_bg')) || failureMode === 'fail';
       if (hardFail) {
         try { logDebug('processImage: remove.bg failure treated as HARD-FAIL', { failureMode, unauthorized }); } catch {}
         const err = new Error('processing_failed:remove_bg');

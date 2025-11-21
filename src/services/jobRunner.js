@@ -1257,8 +1257,8 @@ class JobRunner extends EventEmitter {
                     pathForFinal = processedImagePath;
                   }
                 } catch (procErr) {
-                  const proc = this.jobConfiguration?.processing || {};
-                  if (proc.removeBgFailureMode === 'mark_failed' && this.backendAdapter) {
+                  // Honor the effective mode we actually used for QC-pass processing
+                  if (processingConfig.removeBgFailureMode === 'mark_failed' && this.backendAdapter) {
                     try {
                       const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
                       this._logStructured({
