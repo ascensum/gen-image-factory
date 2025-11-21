@@ -1183,6 +1183,7 @@ class JobRunner extends EventEmitter {
                     saturation: proc.saturation ?? 1,
                     jpgBackground: proc.jpgBackground || 'white',
                     removeBgSize: proc.removeBgSize || 'preview',
+                    removeBgFailureMode: proc.removeBgFailureMode || 'approve',
                     jpgQuality: proc.jpgQuality ?? 85,
                     pngQuality: proc.pngQuality ?? 100,
                     webpQuality: proc.webpQuality ?? 85
@@ -1193,6 +1194,15 @@ class JobRunner extends EventEmitter {
                     pathForFinal = processedImagePath;
                   }
                 } catch (procErr) {
+                  const proc = this.jobConfiguration?.processing || {};
+                  if (proc.removeBgFailureMode === 'mark_failed' && this.backendAdapter) {
+                    try {
+                      const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
+                      await this.backendAdapter.updateQCStatusByMappingId(mappingKey, "qc_failed", "processing_failed:remove_bg");
+                      // Skip moving to final when marked failed
+                      continue;
+                    } catch (_e) {}
+                  }
                   console.warn('QC-pass processing failed, using original temp image for move:', procErr?.message || procErr);
                 }
               }
