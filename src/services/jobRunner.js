@@ -1258,43 +1258,6 @@ class JobRunner extends EventEmitter {
                   if (Number.isFinite(timeoutMinutesCfg)) {
                     processingConfig.pollingTimeout = timeoutMinutesCfg;
                   }
-                  try {
-                    this._logStructured({
-                      level: 'info',
-                      stepName: 'image_generation',
-                      subStep: 'qc_pass_processing_flags',
-                      message: `QC-pass flags removeBg=${String(processingConfig.removeBg)} mode=${String(processingConfig.removeBgFailureMode)} timeoutMin=${String(timeoutMinutesCfg ?? 'default_0.5')}`,
-                    });
-                    this._logStructured({
-                      level: 'info',
-                      stepName: 'image_generation',
-                      subStep: 'qc_pass_processing_source',
-                      message: 'QC-pass processing source of removeBgFailureMode',
-                      metadata: {
-                        source: perImageProcessing && perImageProcessing.removeBgFailureMode ? 'per_image_processingSettings' : 'job_processing_snapshot',
-                        perImageHasMode: !!(perImageProcessing && perImageProcessing.removeBgFailureMode),
-                        jobHasMode: !!proc.removeBgFailureMode
-                      }
-                    });
-                  } catch {}
-                  // Structured log to verify effective QC-pass processing config (especially removeBgFailureMode)
-                  try {
-                    this._logStructured({
-                      level: 'info',
-                      stepName: 'image_generation',
-                      subStep: 'qc_pass_processing_start',
-                      message: 'QC-pass processing config resolved',
-                      metadata: {
-                        imageMappingId: dbImg.imageMappingId || dbImg.mappingId || dbImg.id,
-                        removeBg: processingConfig.removeBg,
-                        removeBgFailureMode: processingConfig.removeBgFailureMode,
-                        convertToJpg: processingConfig.convertToJpg,
-                        convertToWebp: processingConfig.convertToWebp,
-                        trimTransparentBackground: processingConfig.trimTransparentBackground,
-                        imageEnhancement: processingConfig.imageEnhancement
-                      }
-                    });
-                  } catch {}
                   // Guard flag: in Mark Failed mode with remove.bg enabled, do not move to final unless remove.bg applied successfully
                   let skipFinalDueToMarkFailed = false;
                   // Track if processing threw, for a consolidated override later
@@ -1310,10 +1273,10 @@ class JobRunner extends EventEmitter {
                     if (processingConfig.removeBg === true && processingConfig.removeBgFailureMode === 'mark_failed' && missingKey && this.backendAdapter) {
                       const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
                       this._logStructured({
-                        level: 'info',
+                        level: 'warn',
                         stepName: 'image_generation',
                         subStep: 'qc_pass_processing_missing_key_mark_failed',
-                        message: 'REMOVE_BG_API_KEY missing while Mark Failed is selected; marking image qc_failed [v4]',
+                        message: 'REMOVE_BG_API_KEY missing while Mark Failed is selected; marking image qc_failed',
                         metadata: { imageMappingId: mappingKey }
                       });
                       // Update by mappingId with fallback to numeric id if needed
@@ -1350,10 +1313,10 @@ class JobRunner extends EventEmitter {
                       if (processingConfig.removeBg === true && processingConfig.removeBgFailureMode === 'mark_failed' && applied === false && this.backendAdapter) {
                         const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
                         this._logStructured({
-                          level: 'info',
+                          level: 'warn',
                           stepName: 'image_generation',
                           subStep: 'qc_pass_processing_not_applied_mark_failed',
-                          message: 'remove.bg did not apply while Mark Failed is selected; marking image qc_failed [v4]',
+                          message: 'remove.bg did not apply while Mark Failed is selected; marking image qc_failed',
                           metadata: { imageMappingId: mappingKey }
                         });
                       // Update by mappingId with fallback to numeric id if needed
@@ -1395,10 +1358,10 @@ class JobRunner extends EventEmitter {
                     if (processingConfig.removeBgFailureMode === 'mark_failed' && hadSoftRemoveBg && this.backendAdapter) {
                       const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
                       this._logStructured({
-                        level: 'info',
+                        level: 'warn',
                         stepName: 'image_generation',
                         subStep: 'qc_pass_processing_soft_removebg_mark_failed',
-                        message: 'Detected soft remove.bg failure with Mark Failed mode; marking image qc_failed [v4]',
+                        message: 'Detected soft remove.bg failure with Mark Failed mode; marking image qc_failed',
                         metadata: { imageMappingId: mappingKey }
                       });
                       // Update by mappingId with fallback to numeric id if needed
@@ -1449,10 +1412,10 @@ class JobRunner extends EventEmitter {
                     try {
                       const mappingKey = dbImg.imageMappingId || dbImg.mappingId || dbImg.id;
                       this._logStructured({
-                        level: 'info',
+                        level: 'warn',
                         stepName: 'image_generation',
                         subStep: 'qc_pass_processing_mark_failed',
-                        message: 'QC-pass processing failed at remove.bg with Mark Failed mode; marking image qc_failed [v4]',
+                        message: 'QC-pass processing failed at remove.bg with Mark Failed mode; marking image qc_failed',
                         metadata: {
                           imageMappingId: mappingKey,
                           error: String(procErr && procErr.message || procErr)
@@ -1522,7 +1485,7 @@ class JobRunner extends EventEmitter {
                         level: 'info',
                         stepName: 'image_generation',
                         subStep: 'qc_pass_processing_skip_move_guard',
-                        message: 'Guard active: Mark Failed mode; skipping move to final [v4]',
+                        message: 'Guard active: Mark Failed mode; skipping move to final',
                         metadata: { imageMappingId: mappingKey }
                       });
                       continue;
@@ -1540,11 +1503,11 @@ class JobRunner extends EventEmitter {
                 if (markFailedMode && (removeBgProcessingThrew === true || hadSoftRemoveBg || applied === false)) {
                   try {
                     this._logStructured({
-                      level: 'info',
+                      level: 'warn',
                       stepName: 'image_generation',
                       subStep: 'qc_pass_processing_consolidated_override',
-                      message: 'Consolidated override: Forcing qc_failed due to Mark Failed remove.bg failure [v4]',
-                      metadata: { imageMappingId: mappingKey, removeBgProcessingThrew, hadSoftRemoveBg, applied }
+                      message: 'Consolidated override: Forcing qc_failed due to Mark Failed remove.bg failure',
+                      metadata: { imageMappingId: mappingKey }
                     });
                   } catch {}
                   if (this.backendAdapter) {
@@ -1597,7 +1560,7 @@ class JobRunner extends EventEmitter {
                     level: 'info',
                     stepName: 'image_generation',
                     subStep: 'qc_pass_processing_skip_move_guard_post',
-                    message: 'Guard active (post-QC): Mark Failed mode; skipping move to final [v4]',
+                    message: 'Guard active (post-QC): Mark Failed mode; skipping move to final',
                     metadata: { imageMappingId: mappingKey }
                   });
                   continue;
@@ -1682,10 +1645,10 @@ class JobRunner extends EventEmitter {
                 // If it has a final path (hasFinal is true), it was successfully processed and moved, so we should NOT fail it.
                 if (!hasFinal && proc && proc.removeBg === true && String(proc.removeBgFailureMode || 'approve') === 'mark_failed') {
                   this._logStructured({
-                    level: 'info',
+                    level: 'warn',
                     stepName: 'image_generation',
                     subStep: 'approved_no_final_move_skip_mark_failed',
-                    message: 'Skipping approved reconcile due to Mark Failed mode [v5]',
+                    message: 'Skipping approved reconcile due to Mark Failed mode',
                     metadata: { imageMappingId: mappingKey }
                   });
                   
@@ -1701,7 +1664,7 @@ class JobRunner extends EventEmitter {
                         } catch {}
                       }
                       try {
-                        await this._verifyQCStatus(img, "qc_failed", failureReason);
+                        // await this._verifyQCStatus(img, "qc_failed", failureReason);
                       } catch {}
                     }
                   } catch {}
