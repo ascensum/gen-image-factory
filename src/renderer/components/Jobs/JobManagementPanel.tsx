@@ -286,7 +286,8 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
       setError(null);
 
       // Do not send UI-only fields to backend
-      const { hasPendingRetries, ...backendFilters} = (filters as UIJobFilters);
+      const { ...backendFilters} = (filters as UIJobFilters);
+      console.log('Frontend JobManagement: sending filters to backend:', backendFilters);
       // Normalize date-only selections:
       // If only one bound is provided, treat it as a single-day filter (exact date)
       const effectiveFilters: JobFilters = { ...(backendFilters as JobFilters) };
@@ -727,7 +728,7 @@ const JobManagementPanel: React.FC<JobManagementPanelProps> = ({ onOpenSingleJob
                 onChange={(e) => handleFiltersChange({ ...filters, hasPendingRetries: e.target.checked })}
                 className="outline-none focus:outline-none ring-0 focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
               />
-              Has pending retries
+              Has pending reruns
             </label>
           </div>
 

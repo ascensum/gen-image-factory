@@ -1500,6 +1500,22 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       const result = await this.jobExecution.getAllJobExecutions(options.limit || 50);
+      
+      if (result.success && Array.isArray(result.executions)) {
+        // Enrich executions with pending rerun status from global queue
+        const pendingRerunIds = new Set();
+        if (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) {
+          global.bulkRerunQueue.forEach(item => {
+            if (item.jobId) pendingRerunIds.add(item.jobId);
+          });
+        }
+        
+        result.executions = result.executions.map(job => ({
+          ...job,
+          pendingJobs: pendingRerunIds.has(job.id) ? 1 : 0
+        }));
+      }
+
       return result;
     } catch (error) {
       console.error('Error getting all job executions:', error);
@@ -2053,6 +2069,17 @@ class BackendAdapter {
       return result;
     } catch (error) {
       console.error('Error updating generated image by mapping ID:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateMetadataById(id, newMetadata) {
+    try {
+      await this.ensureInitialized();
+      const result = await this.generatedImage.updateMetadataById(id, newMetadata);
+      return result;
+    } catch (error) {
+      console.error('Error updating metadata by ID:', error);
       return { success: false, error: error.message };
     }
   }
@@ -2844,7 +2871,47 @@ class BackendAdapter {
   async getJobExecutionsWithFilters(filters) {
     try {
       await this.ensureInitialized();
+      
+      // Handle "Has pending reruns" filter
+      if (filters.hasPendingRetries) {
+        console.log('DEBUG: Filtering for pending reruns. Queue:', global.bulkRerunQueue?.length || 0);
+        const pendingRerunIds = [];
+        if (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) {
+          global.bulkRerunQueue.forEach(item => {
+            if (item.jobId) pendingRerunIds.push(item.jobId);
+          });
+        }
+        console.log('DEBUG: Pending rerun IDs found:', pendingRerunIds);
+        
+        if (pendingRerunIds.length === 0) {
+          console.log('DEBUG: No pending reruns found, returning empty list');
+          // Filter is ON but no pending reruns -> return empty result
+          return { success: true, jobs: [] };
+        }
+        
+        // Pass specific IDs to DB
+        filters.ids = pendingRerunIds;
+      } else {
+        console.log('DEBUG: hasPendingRetries filter is OFF');
+      }
+
       const result = await this.jobExecution.getJobExecutionsWithFilters(filters);
+      
+      if (result.success && Array.isArray(result.jobs)) {
+        // Enrich jobs with pending rerun status from global queue
+        const pendingRerunIds = new Set();
+        if (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) {
+          global.bulkRerunQueue.forEach(item => {
+            if (item.jobId) pendingRerunIds.add(item.jobId);
+          });
+        }
+        
+        result.jobs = result.jobs.map(job => ({
+          ...job,
+          pendingJobs: pendingRerunIds.has(job.id) ? 1 : 0
+        }));
+      }
+      
       return result;
     } catch (error) {
       console.error('Error getting job executions with filters:', error);
@@ -2855,6 +2922,23 @@ class BackendAdapter {
   async getJobExecutionsCount(filters) {
     try {
       await this.ensureInitialized();
+
+      // Handle "Has pending reruns" filter
+      if (filters.hasPendingRetries) {
+        const pendingRerunIds = [];
+        if (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) {
+          global.bulkRerunQueue.forEach(item => {
+            if (item.jobId) pendingRerunIds.push(item.jobId);
+          });
+        }
+        
+        if (pendingRerunIds.length === 0) {
+          return { success: true, count: 0 };
+        }
+        
+        filters.ids = pendingRerunIds;
+      }
+
       const result = await this.jobExecution.getJobExecutionsCount(filters);
       return result;
     } catch (error) {

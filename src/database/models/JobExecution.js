@@ -474,15 +474,25 @@ class JobExecution {
             error_message = COALESCE(error_message, 'Reconciled on startup: previous session ended while running')
         WHERE status = 'running'
       `;
-      this.db.run(sql, [], function(err) {
-        if (err) {
-          console.error('Error reconciling orphaned running jobs:', err);
-          reject(err);
-        } else {
-          console.log(`Reconciled ${this.changes || 0} orphaned running job executions on startup`);
-          resolve({ success: true, changes: this.changes || 0 });
-        }
-      });
+      
+      const execute = (attempts = 0) => {
+        this.db.run(sql, [], function(err) {
+          if (err) {
+            if (err.code === 'SQLITE_BUSY' && attempts < 5) {
+              console.warn(`Database busy during reconciliation, retrying (${attempts + 1}/5)...`);
+              setTimeout(() => execute(attempts + 1), 200 * (attempts + 1));
+              return;
+            }
+            console.error('Error reconciling orphaned running jobs:', err);
+            reject(err);
+          } else {
+            console.log(`Reconciled ${this.changes || 0} orphaned running job executions on startup`);
+            resolve({ success: true, changes: this.changes || 0 });
+          }
+        });
+      };
+      
+      execute();
     });
   }
 
@@ -702,6 +712,12 @@ class JobExecution {
         params.push(`%${filters.label.trim()}%`);
       }
       
+      if (filters.ids && Array.isArray(filters.ids) && filters.ids.length > 0) {
+        const placeholders = filters.ids.map(() => '?').join(',');
+        sql += ` AND je.id IN (${placeholders})`;
+        params.push(...filters.ids);
+      }
+
       if (filters.dateFrom || filters.dateTo) {
         // Normalize to yyyy-mm-dd for SQLite date() comparison (time-zone safe)
         if (filters.dateFrom) {
@@ -800,6 +816,12 @@ class JobExecution {
         params.push(`%${filters.label.trim()}%`);
       }
       
+      if (filters.ids && Array.isArray(filters.ids) && filters.ids.length > 0) {
+        const placeholders = filters.ids.map(() => '?').join(',');
+        sql += ` AND je.id IN (${placeholders})`;
+        params.push(...filters.ids);
+      }
+
       if (filters.dateFrom || filters.dateTo) {
         if (filters.dateFrom) {
           const d = new Date(typeof filters.dateFrom === 'string' ? filters.dateFrom : filters.dateFrom);
