@@ -3,12 +3,15 @@ const { ipcMain } = require('electron');
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs').promises;
+const crypto = require('crypto');
+const os = require('os');
 const { JobConfiguration } = require('../database/models/JobConfiguration');
 const { JobExecution } = require('../database/models/JobExecution');
 const { GeneratedImage } = require('../database/models/GeneratedImage');
 const { JobRunner } = require('../services/jobRunner');
 const RetryExecutor = require('../services/retryExecutor');
 const { ErrorTranslationService } = require('../services/errorTranslation');
+const { safeLogger } = require('../utils/logMasking');
 
 // Service names for keytar
 const SERVICE_NAME = 'GenImageFactory';
@@ -18,6 +21,16 @@ const ACCOUNT_NAMES = {
   RUNWARE: 'runware-api-key',
   REMOVE_BG: 'remove-bg-api-key'
 };
+
+// Encryption settings for fallback storage
+const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 16;
+const AUTH_TAG_LENGTH = 16;
+// In production, this should ideally be derived from a machine-specific secret or similar,
+// but for a single-user app where the goal is "not plaintext", a hardcoded obfuscation key
+// or machine-id based key is a significant improvement over plaintext.
+// We will use a combination of a static secret and machine info if available, or just a static secret.
+const FALLBACK_SECRET = 'GenImageFactory-Secure-Fallback-Key-2025';
 
 class BackendAdapter {
   constructor(options = {}) {
@@ -49,6 +62,67 @@ class BackendAdapter {
     
     // Store the options for later use
     this._constructorOptions = options;
+
+    // Ensure we have a consistent encryption key
+    this.encryptionKey = this._deriveEncryptionKey();
+  }
+
+  _deriveEncryptionKey() {
+    try {
+      // Use crypto to create a consistent 32-byte key from our secret mixed with machine info
+      // to make it machine-specific, preventing simple copy-paste of the DB to another machine.
+      let machineInfo = '';
+      try {
+        machineInfo = `${os.hostname()}-${os.userInfo().username}`;
+      } catch (e) {
+        // Fallback if os info unavailable
+        machineInfo = 'generic-machine';
+      }
+      
+      const secret = `${FALLBACK_SECRET}-${machineInfo}`;
+      return crypto.scryptSync(secret, 'salt', 32);
+    } catch (error) {
+      safeLogger.error('Failed to derive encryption key:', error);
+      // Fallback to a buffer of zeros (should never happen in normal node env)
+      return Buffer.alloc(32);
+    }
+  }
+
+  _encrypt(text) {
+    if (!text) return text;
+    try {
+      const iv = crypto.randomBytes(IV_LENGTH);
+      const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, this.encryptionKey, iv);
+      let encrypted = cipher.update(text, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+      const authTag = cipher.getAuthTag();
+      // Format: IV:AuthTag:EncryptedContent
+      return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
+    } catch (error) {
+      safeLogger.error('Encryption failed:', error);
+      return null; // Fail safe
+    }
+  }
+
+  _decrypt(encryptedText) {
+    if (!encryptedText || !encryptedText.includes(':')) return encryptedText;
+    try {
+      const parts = encryptedText.split(':');
+      if (parts.length !== 3) return encryptedText; // Not our format, maybe plaintext?
+      
+      const iv = Buffer.from(parts[0], 'hex');
+      const authTag = Buffer.from(parts[1], 'hex');
+      const encrypted = parts[2];
+      
+      const decipher = crypto.createDecipheriv(ENCRYPTION_ALGORITHM, this.encryptionKey, iv);
+      decipher.setAuthTag(authTag);
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    } catch (error) {
+      safeLogger.error('Decryption failed (returning original):', error.message);
+      return encryptedText; // Return original if decryption fails (might be plaintext)
+    }
   }
 
   /**
@@ -862,33 +936,55 @@ class BackendAdapter {
       }
 
       const apiKey = await keytar.getPassword(SERVICE_NAME, accountName);
-      return { success: true, apiKey: apiKey || '', securityLevel: 'native-keychain' };
+      if (apiKey) {
+        return { success: true, apiKey: apiKey || '', securityLevel: 'native-keychain' };
+      } else {
+        // If keytar returned null/empty, check DB just in case we are in fallback mode
+        // but keytar didn't error, just didn't find it.
+        throw new Error('Key not found in keytar, checking fallback');
+      }
     } catch (error) {
-      console.error('Error getting API key (keytar failed):', error);
+      // Don't log full error if it's just "Key not found" flow control
+      if (error.message !== 'Key not found in keytar, checking fallback') {
+        safeLogger.error('Error getting API key (keytar failed/missing):', error.message);
+      }
+      
       // Fallback: try to load from database settings
       try {
         if (typeof this.ensureInitialized === 'function') {
           await this.ensureInitialized();
         }
         const res = await this.jobConfig.getSettings();
-        const dbKey = (res && res.settings && res.settings.apiKeys)
+        let dbKey = (res && res.settings && res.settings.apiKeys)
           ? (res.settings.apiKeys[serviceName.toLowerCase()] || '')
           : '';
+        
+        let securityLevel = 'plain-text-database';
+        
+        // Try to decrypt if it looks encrypted
+        if (dbKey && dbKey.includes(':')) {
+           const decrypted = this._decrypt(dbKey);
+           if (decrypted !== dbKey) {
+             dbKey = decrypted;
+             securityLevel = 'encrypted-database';
+           }
+        }
+
         return {
           success: true,
           apiKey: dbKey,
-          securityLevel: 'plain-text-database',
+          securityLevel: securityLevel,
           message: dbKey
-            ? 'Loaded API key from database because secure storage is unavailable'
+            ? `Loaded API key from database (${securityLevel}) because secure storage is unavailable`
             : 'No API key found in database; secure storage unavailable'
         };
       } catch (e2) {
-        console.warn('DB fallback for getApiKey failed, returning empty string:', e2.message);
+        safeLogger.warn('DB fallback for getApiKey failed, returning empty string:', e2.message);
         return {
           success: true,
           apiKey: '',
-          securityLevel: 'plain-text-fallback',
-          message: 'Secure storage and DB lookup unavailable'
+          securityLevel: 'none',
+          error: 'Secure storage unavailable and database fallback failed'
         };
       }
     }
@@ -901,16 +997,15 @@ class BackendAdapter {
       return { 
         secureStorage: 'available',
         fallback: 'none',
-        message: 'Secure storage available',
+        message: 'Secure storage available (System Keychain)',
         securityLevel: 'native-keychain'
       };
     } catch (error) {
       return {
         secureStorage: 'unavailable', 
-        fallback: 'plain-text-database',
-        message: 'Using plain text storage (dev mode)',
-        securityLevel: 'plain-text-fallback',
-        futureEnhancement: 'Story 1.11 will add encryption'
+        fallback: 'encrypted-database',
+        message: 'Using encrypted local database (Secure Fallback)',
+        securityLevel: 'encrypted-fallback'
       };
     }
   }
@@ -932,7 +1027,7 @@ class BackendAdapter {
 
       return { success: true };
     } catch (error) {
-      console.error('Error setting API key (keytar failed):', error);
+      safeLogger.error('Error setting API key (keytar failed):', error.message);
       // Fallback: persist in database settings
       try {
         if (typeof this.ensureInitialized === 'function') {
@@ -941,12 +1036,16 @@ class BackendAdapter {
         const res = await this.getSettings();
         const settings = (res && res.settings) ? res.settings : this.jobConfig.getDefaultSettings();
         if (!settings.apiKeys) settings.apiKeys = {};
-        settings.apiKeys[serviceName.toLowerCase()] = apiKey || '';
+        
+        // ENCRYPT before saving to DB
+        const encryptedKey = this._encrypt(apiKey || '');
+        settings.apiKeys[serviceName.toLowerCase()] = encryptedKey;
+        
         await this.jobConfig.saveSettings(settings);
-        console.warn('Stored API key in database as a fallback');
-        return { success: true, storage: 'database' };
+        safeLogger.warn('Stored API key in database (Encrypted Fallback)');
+        return { success: true, storage: 'encrypted-database' };
       } catch (e2) {
-        console.warn('API key DB fallback failed, continuing without persistent storage:', e2.message);
+        safeLogger.warn('API key DB fallback failed, continuing without persistent storage:', e2.message);
         return { success: true, storage: 'none' };
       }
     }

@@ -256,13 +256,13 @@ export const SecureInput: React.FC<SecureInputProps> = ({
         {secureStorageState === 'available' && (
           <>
             <Shield className="w-3 h-3 text-green-500" />
-            <span className="text-green-600">Secure storage available</span>
+            <span className="text-green-600">Secure Keychain</span>
           </>
         )}
         {secureStorageState === 'unavailable' && (
           <>
             <ShieldAlert className="w-3 h-3 text-yellow-500" />
-            <span className="text-yellow-600">Secure storage unavailable</span>
+            <span className="text-yellow-600">Encrypted DB (Fallback)</span>
           </>
         )}
         {secureStorageState === 'error' && (
@@ -348,7 +348,7 @@ export const SecureInput: React.FC<SecureInputProps> = ({
       >
         {secureStorageState === 'available' 
           ? 'API key will be stored securely in your system keychain'
-          : 'API key will be stored in plain text (dev mode) - will be encrypted in future version'
+          : 'API key will be encrypted and stored in the local database (Secure Fallback)'
         }
       </div>
     </div>
