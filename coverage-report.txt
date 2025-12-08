@@ -1,0 +1,244 @@
+
+> gen-image-factory@1.0.0 test:coverage
+> vitest run --coverage
+
+
+ RUN  v3.2.4 /Users/vjatseslavjertsalov/Development/git_repos/gen-image-factory
+      Coverage enabled with v8
+
+ ✓ src/renderer/components/Settings/__tests__/ParametersSection.test.tsx (27 tests) 3011ms
+ ✓ src/renderer/components/Dashboard/__tests__/ProcessingSettingsModal.test.tsx (53 tests) 4042ms
+ ✓ src/renderer/components/Dashboard/__tests__/FailedImagesReviewPanel.test.tsx (35 tests) 3622ms
+   ✓ FailedImagesReviewPanel > Filters and Controls > renders job filter dropdown  355ms
+ ✓ src/renderer/components/Dashboard/__tests__/DashboardPanel.test.tsx (18 tests) 3391ms
+   ✓ DashboardPanel > shows single job constraint message when job is running  449ms
+   ✓ DashboardPanel > handles job start action  418ms
+ ✓ tests/integration/backend/BackendAdapter.integration.test.ts (19 tests) 4091ms
+   ✓ BackendAdapter Integration Tests > Single Job Rerun Functionality > should reject rerun for running job  310ms
+   ✓ BackendAdapter Integration Tests > Single Job Rerun Functionality > should reject rerun for non-existent job  310ms
+   ✓ BackendAdapter Integration Tests > Path Normalization (retry/rerun) > uses custom directories when provided, else falls back  346ms
+ ✓ src/renderer/components/Jobs/__tests__/SingleJobView.test.tsx (36 tests) 4652ms
+   ✓ SingleJobView > Tab Navigation > handles tab navigation with keyboard  329ms
+   ✓ SingleJobView > Logs Tab > displays logs correctly in logs tab  541ms
+ ✓ tests/integration/api/settingsAdapter.integration.test.ts (16 tests | 2 skipped) 7045ms
+   ✓ BackendAdapter Settings API Integration Tests > getSettings() > retrieves settings from database successfully  608ms
+   ✓ BackendAdapter Settings API Integration Tests > getSettings() > returns default settings when no settings found in database  362ms
+   ✓ BackendAdapter Settings API Integration Tests > getSettings() > merges database settings with defaults per Story 1.2/1.4  697ms
+   ✓ BackendAdapter Settings API Integration Tests > saveSettings() > saves settings to database successfully  500ms
+   ✓ BackendAdapter Settings API Integration Tests > saveSettings() > handles database errors during save  363ms
+   ✓ BackendAdapter Settings API Integration Tests > selectFile() > opens file dialog with correct options  380ms
+   ✓ BackendAdapter Settings API Integration Tests > selectFile() > handles file dialog cancellation  385ms
+   ✓ BackendAdapter Settings API Integration Tests > selectFile() > handles dialog errors  354ms
+   ✓ BackendAdapter Settings API Integration Tests > selectFile() > supports save dialog mode  324ms
+   ✓ BackendAdapter Settings API Integration Tests > getApiKey() > retrieves API key from secure storage  338ms
+   ✓ BackendAdapter Settings API Integration Tests > getApiKey() > loads API keys from keytar secure storage (moved from getSettings)  382ms
+   ✓ BackendAdapter Settings API Integration Tests > setApiKey() > saves API key to secure storage  329ms
+   ✓ BackendAdapter Settings API Integration Tests > setApiKey() > handles keytar errors during save with database fallback  371ms
+   ✓ BackendAdapter Settings API Integration Tests > setApiKey() > allows empty API key for clearing  319ms
+ ✓ src/renderer/components/Dashboard/__tests__/FailedImageReviewModal.test.tsx (43 tests) 1791ms
+ ✓ src/renderer/components/Jobs/__tests__/JobTable.test.tsx (23 tests) 1510ms
+ ✓ src/renderer/components/Settings/__tests__/SettingsPanel.test.tsx (13 tests) 1513ms
+ ✓ src/renderer/components/Dashboard/__tests__/JobHistory.test.tsx (27 tests) 1659ms
+ ✓ src/renderer/components/Dashboard/__tests__/ImageGallery.test.tsx (24 tests) 1718ms
+   ✓ ImageGallery > handles select all functionality  313ms
+ ✓ src/renderer/components/Dashboard/__tests__/LogViewer.test.tsx (23 tests) 1305ms
+ ✓ tests/integration/api/FailedImagesReview.IPC.integration.test.ts (5 tests) 1390ms
+   ✓ Failed Images Review - IPC Integration > registers IPC handlers for failed images review channels  888ms
+ ✓ src/renderer/components/Jobs/__tests__/BatchOperationsToolbar.test.tsx (31 tests) 1121ms
+ ✓ src/renderer/components/Jobs/__tests__/JobFilters.test.tsx (31 tests) 1382ms
+ ✓ src/renderer/components/Settings/__tests__/SecureInput.test.tsx (22 tests) 1294ms
+ ✓ src/renderer/components/Jobs/__tests__/JobStatistics.test.tsx (23 tests) 1289ms
+ ✓ src/renderer/components/Settings/__tests__/SettingsSection.test.tsx (29 tests) 1001ms
+ ✓ tests/unit/services/RetryExecutor.test.ts (7 tests) 996ms
+   ✓ RetryExecutor Critical Regression Tests > Import and Constructor Issues > should initialize RetryExecutor with proper fallback configuration  301ms
+   ✓ RetryExecutor Critical Regression Tests > Error Handling Regression > should not crash when methods are called with invalid data  631ms
+ ✓ tests/integration/backend/ExportZip.integration.test.ts (3 tests) 599ms
+ ✓ tests/integration/backend/RetryFunctionality.integration.test.ts (4 tests) 647ms
+   ✓ Retry Functionality Integration Smoke Tests > should be able to import modules  642ms
+ ✓ src/renderer/components/Settings/__tests__/ApiKeysSection.test.tsx (10 tests) 769ms
+ ✓ src/renderer/components/Dashboard/__tests__/FailedImageCard.test.tsx (32 tests) 610ms
+ ✓ src/renderer/components/Jobs/__tests__/SingleJobView.settings-save.test.tsx (1 test) 624ms
+   ✓ SingleJobView - Settings Save (focused) > saves parameter fields; file paths are read-only and unchanged  622ms
+ ✓ tests/integration/settings/BackendAdapter-SettingsUI.integration.test.ts (4 tests) 710ms
+ ✓ tests/integration/backend/ExportExcel.integration.test.ts (1 test) 570ms
+   ✓ Export to Excel - Regression > excludes API keys and includes labeled settings in Job Summary  567ms
+ ✓ src/renderer/components/Dashboard/__tests__/ForceStopButton.test.tsx (26 tests) 592ms
+ ✓ src/renderer/components/Dashboard/__tests__/ImageModal.test.tsx (11 tests) 609ms
+ ✓ src/renderer/components/Settings/__tests__/CostIndicator.test.tsx (24 tests) 699ms
+ ✓ src/renderer/components/Dashboard/__tests__/QuickActions.test.tsx (23 tests) 485ms
+ ✓ src/renderer/components/Settings/__tests__/Parameters.behavior.test.tsx (2 tests) 532ms
+   ✓ Parameters behavior (regression guards) > Generations count clamps to 1–2500 on blur and copy is correct  360ms
+ ✓ tests/unit/backend/adapter/backendAdapterSecurity.test.js (4 tests) 489ms
+ ✓ src/renderer/components/Settings/__tests__/FileSelector.test.tsx (17 tests) 622ms
+ ✓ src/renderer/components/Jobs/__tests__/SingleJobView.retryControls.persistence.test.tsx (1 test) 488ms
+   ✓ SingleJobView - retry controls in edit modal persist > updates job configuration with retry attempts/backoff  486ms
+ ✓ src/renderer/components/Dashboard/__tests__/ProgressIndicator.test.tsx (19 tests) 482ms
+ ✓ tests/integration/backend/ExportJobExcel.integration.test.ts (1 test) 625ms
+   ✓ Job Export to Excel - Integration > creates an Excel file at a custom path using label-first filename and overwrite policy  623ms
+ ✓ src/renderer/components/Jobs/__tests__/SingleJobView.delete-refresh.test.tsx (1 test) 491ms
+   ✓ SingleJobView - Delete refresh (focused) > deletes immediately and closes the confirmation modal  489ms
+ ✓ tests/integration/backend/FailedImagesReview.integration.test.ts (4 tests) 343ms
+ ✓ src/renderer/components/Settings/__tests__/RetryControls.persistence.test.tsx (1 test) 502ms
+   ✓ SettingsPanel - retry controls persistence > saves generation retry attempts/backoff in payload  498ms
+ ✓ tests/unit/frontend/components/App.test.tsx (20 tests) 510ms
+ ✓ tests/unit/database/GeneratedImage.test.js (21 tests) 221ms
+ ✓ src/renderer/components/Dashboard/__tests__/JobControls.test.tsx (19 tests) 320ms
+ ✓ tests/integration/backend/BulkExportJobs.integration.test.ts (1 test) 410ms
+   ✓ Bulk Export Jobs - Integration > creates a ZIP at a custom path and appends number when duplicate exists  407ms
+ ✓ tests/integration/backend/SettingsLabel.integration.test.ts (1 test) 404ms
+   ✓ Settings Label Persistence > saves and loads parameters.label via IPC  402ms
+ ✓ tests/integration/backend/ManualApprove.integration.test.ts (2 tests) 216ms
+ ✓ tests/integration/backend/RerunLabelPersistence.integration.test.ts (1 test) 367ms
+   ✓ Rerun label persistence > keeps original label and appends (Rerun) for rerun execution  364ms
+ ✓ tests/integration/backend/LabelNoOverwriteOnCompletion.integration.test.ts (1 test) 205ms
+ ✓ tests/integration/database/JobConfiguration.integration.test.ts (19 tests) 230ms
+ ✓ tests/unit/database/JobExecution.test.js (13 tests) 131ms
+ ✓ tests/unit/producePictureModule.success.test.ts (1 test) 274ms
+ ✓ src/renderer/components/Settings/__tests__/Toggle.test.tsx (9 tests) 301ms
+ ✓ src/renderer/components/Settings/__tests__/FilePathsSection.test.tsx (6 tests) 212ms
+ ✓ tests/integration/backend/NewJobExecutionIsolation.integration.test.ts (1 test) 368ms
+   ✓ New job execution isolation > creates fresh execution and attaches images to that execution (not previous)  363ms
+ ✓ tests/unit/ui/JobHistoryLabelFormatting.test.tsx (2 tests) 208ms
+ ✓ src/renderer/components/Jobs/__tests__/SingleJobView.statistics.test.tsx (1 test) 318ms
+   ✓ SingleJobView - Statistics (focused) > shows correct counts, duration and success rate with QC breakdown  307ms
+ ✓ tests/integration/backend/JobLabelPropagation.integration.test.ts (1 test) 220ms
+ ✓ tests/integration/backend/RenameUpdatesConfiguration.integration.test.ts (1 test) 197ms
+ ✓ tests/unit/ui/DashboardFiltersLabelFormatting.test.tsx (1 test) 217ms
+ ✓ tests/integration/backend/FallbackLabelUnification.integration.test.ts (1 test) 235ms
+ ✓ src/renderer/components/Jobs/__tests__/JobLabelDisplay.test.tsx (1 test) 171ms
+ ✓ tests/integration/performance/app-performance.integration.test.tsx (34 tests) 175ms
+ ✓ tests/unit/ui/FailedImagesReviewFiltersLabelFormatting.test.tsx (1 test) 209ms
+ ✓ tests/integration/backend/RetryNormalization.integration.test.ts (1 test) 212ms
+ ✓ tests/unit/frontend/components/main.test.tsx (12 tests) 114ms
+ ✓ tests/unit/frontend/typescript-validation.test.ts (31 tests) 26ms
+ ✓ tests/unit/frontend/components/index.css.test.ts (12 tests) 17ms
+ ✓ tests/integration/security/ipc-security.integration.test.ts (9 tests) 30ms
+ ✓ tests/integration/api/ipc-preload.integration.test.ts (6 tests) 32ms
+ ✓ tests/unit/logic/jobManagement.logic.test.ts (36 tests) 32ms
+ ✓ tests/integration/platform/electron-main.platform.test.ts (9 tests) 24ms
+ ✓ tests/integration/api/ipc-main-process.integration.test.ts (4 tests) 24ms
+ ✓ tests/unit/services/JobRunner.rerunFlagClear.test.ts (1 test) 22ms
+ ✓ tests/unit/backend/simplePathResolution.test.js (5 tests) 11ms
+ ✓ tests/integration/development/npm-scripts.integration.test.ts (16 tests) 7ms
+ ✓ tests/integration/development/vite-dev-server.integration.test.ts (22 tests) 12ms
+ ✓ tests/unit/utils/processing.normalizer.test.ts (9 tests) 8ms
+ ✓ tests/unit/services/JobRunner.generationRetry.test.ts (1 test) 10ms
+ ✓ tests/unit/backend/pathNormalization.test.js (5 tests) 4ms
+ ✓ tests/unit/services/JobRunner.parameterRegeneration.test.ts (1 test) 5ms
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: SQLITE_MISUSE: Database handle is closed
+ ❯ src/database/models/GeneratedImage.js:177:23
+    175|             // Create indexes
+    176|             createIndexesSQL.forEach((indexSQL, index) => {
+    177|               this.db.run(indexSQL, (err) => {
+       |                       ^
+    178|                 if (err) {
+    179|                   console.error(`Error creating index ${index}:`, err);
+ ❯ src/database/models/GeneratedImage.js:176:30
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { errno: 21, code: 'SQLITE_MISUSE', __augmented: true }
+This error originated in "tests/unit/database/GeneratedImage.test.js" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  80 passed (80)
+      Tests  1030 passed | 2 skipped (1032)
+     Errors  1 error
+   Start at  09:51:16
+   Duration  37.34s (transform 10.46s, setup 11.03s, collect 43.45s, tests 66.03s, environment 73.44s, prepare 15.22s)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   51.94 |    62.41 |   50.47 |   51.94 |                   
+ src               |   34.17 |    12.22 |   46.66 |   34.17 |                   
+  aiVision.js      |   18.51 |      100 |       0 |   18.51 | 13-68,78-116      
+  index.js         |       0 |        0 |       0 |       0 | 1-432             
+  ...atorModule.js |    5.78 |      100 |       0 |    5.78 | 6-133             
+  ...tureModule.js |   60.24 |    10.46 |      70 |   60.24 | ...75,786,788-789 
+  utils.js         |       0 |        0 |       0 |       0 | 1-20              
+ src/adapter       |   49.77 |    50.74 |   55.55 |   49.77 |                   
+  ...endAdapter.js |   49.77 |    50.74 |   55.55 |   49.77 | ...3295,3334-3337 
+ src/constant      |   27.45 |        0 |       0 |   27.45 |                   
+  ...dataPrompt.js |      20 |      100 |       0 |      20 | 3-16              
+  ...heckPrompt.js |     100 |      100 |     100 |     100 |                   
+  keywords_food.js |       0 |        0 |       0 |       0 | 1-63              
+ src/database      |       0 |        0 |       0 |       0 |                   
+  backupManager.js |       0 |        0 |       0 |       0 | 1-329             
+  ...ionManager.js |       0 |        0 |       0 |       0 | 1-280             
+ ...ase/migrations |       0 |        0 |       0 |       0 |                   
+  ...ial_schema.js |       0 |        0 |       0 |       0 | 1-73              
+  ...tion_label.js |       0 |        0 |       0 |       0 | 1-37              
+  ...image_path.js |       0 |        0 |       0 |       0 | 1-45              
+  index.js         |       0 |        0 |       0 |       0 | 1-264             
+ ...atabase/models |   54.21 |    64.12 |      68 |   54.21 |                   
+  ...ratedImage.js |   59.18 |    60.83 |      68 |   59.18 | ...93-913,915-935 
+  ...figuration.js |   64.63 |       60 |      72 |   64.63 | ...16-322,405-415 
+  JobExecution.js  |   46.05 |    70.71 |      64 |   46.05 | ...1053-1072,1082 
+ src/renderer      |   59.33 |    57.14 |      15 |   59.33 |                   
+  App.jsx          |   56.73 |    57.14 |      15 |   56.73 | ...,89-98,100-129 
+  main.jsx         |     100 |      100 |     100 |     100 |                   
+ ...ponents/Common |   51.23 |    48.57 |   39.13 |   51.23 |                   
+  AppLogo.tsx      |     100 |    16.66 |     100 |     100 | 24-31             
+  ...setDialog.tsx |   65.21 |       50 |     100 |   65.21 | 22-39             
+  ExportDialog.tsx |   37.33 |    71.42 |     100 |   37.33 | ...20-137,141-196 
+  ...FileModal.tsx |   55.55 |    11.76 |    7.14 |   55.55 | ...77-118,155-166 
+  ...eDropdown.tsx |    4.28 |      100 |       0 |    4.28 | 19-93             
+  StatusBadge.tsx  |   76.92 |    65.78 |     100 |   76.92 | ...20,122,126,128 
+ ...ents/Dashboard |   75.24 |    68.03 |   53.09 |   75.24 |                   
+  ...oardPanel.tsx |   63.69 |    66.37 |   29.62 |   63.69 | ...1567,1635-1655 
+  ...tZipModal.tsx |   65.88 |        8 |    6.66 |   65.88 | ...69-109,136-141 
+  ...ImageCard.tsx |   98.44 |    62.96 |   58.33 |   98.44 | 32-33             
+  ...Container.tsx |   50.48 |    88.88 |   14.28 |   50.48 | ...19-120,124-125 
+  ...viewModal.tsx |   85.36 |    56.73 |   56.52 |   85.36 | ...98,601-604,619 
+  ...viewPanel.tsx |   59.47 |    68.22 |   56.81 |   59.47 | ...1268,1270-1274 
+  ...topButton.tsx |   94.59 |    93.33 |    87.5 |   94.59 | 125-131           
+  ImageGallery.tsx |   70.76 |     54.9 |   45.45 |   70.76 | ...53-560,565-629 
+  ImageModal.tsx   |   79.86 |    51.81 |      35 |   79.86 | ...79,691,701,710 
+  JobControls.tsx  |   93.16 |       98 |      50 |   93.16 | 64-67,98-101      
+  JobHistory.tsx   |   88.35 |       75 |   79.16 |   88.35 | ...64-366,377-379 
+  LogViewer.tsx    |   81.57 |     80.3 |   83.33 |   81.57 | ...91-394,399-413 
+  ...ingsModal.tsx |   92.28 |    87.23 |   88.23 |   92.28 | 226-246,408-422   
+  ...Indicator.tsx |   95.43 |    85.22 |     100 |   95.43 | ...59,261,263,267 
+  QuickActions.tsx |     100 |      100 |     100 |     100 |                   
+  index.ts         |     100 |      100 |     100 |     100 |                   
+ ...omponents/Jobs |   60.45 |    74.86 |   53.12 |   60.45 |                   
+  ...nsToolbar.tsx |   98.39 |    93.93 |     100 |   98.39 | 35-38             
+  JobFilters.tsx   |     100 |       94 |   84.61 |     100 | 67-68,239         
+  ...mentPanel.tsx |    0.83 |      100 |       0 |    0.83 | 18-1171           
+  ...tatistics.tsx |   98.37 |     92.1 |     100 |   98.37 | 64-67             
+  JobTable.tsx     |   94.59 |    87.14 |   63.63 |   94.59 | ...74-178,332-337 
+  ...leJobView.tsx |   72.63 |    63.52 |   30.61 |   72.63 | ...1664,1684-1685 
+  index.ts         |     100 |      100 |     100 |     100 |                   
+ ...nents/Settings |   72.37 |    72.25 |    54.1 |   72.37 |                   
+  ...ysSection.tsx |   74.92 |    64.91 |      50 |   74.92 | ...06-411,435-440 
+  ...Indicator.tsx |   76.81 |       80 |   45.45 |   76.81 | ...76-296,300-312 
+  ...hsSection.tsx |   83.54 |    53.65 |   33.33 |   83.54 | ...01-302,311-314 
+  FileSelector.tsx |   65.24 |    72.13 |    62.5 |   65.24 | ...39-345,348-354 
+  ...rsSection.tsx |   90.83 |    83.78 |   80.64 |   90.83 | ...40-748,757-760 
+  SecureInput.tsx  |   86.74 |    79.45 |     100 |   86.74 | ...60,263-266,350 
+  ...ingsPanel.tsx |   53.95 |    48.57 |   32.69 |   53.95 | ...1309,1313-1327 
+  ...gsSection.tsx |      80 |    91.48 |      75 |      80 | ...29-342,346-381 
+  Toggle.tsx       |     100 |      100 |     100 |     100 |                   
+  index.ts         |     100 |      100 |     100 |     100 |                   
+ ...renderer/utils |   32.18 |       25 |     100 |   32.18 |                   
+  qc.ts            |   27.58 |    33.33 |     100 |   27.58 | 5-15,21-32        
+  urls.ts          |   34.48 |    18.18 |     100 |   34.48 | ...53,60-66,70-72 
+ src/services      |   15.61 |    35.03 |   29.59 |   15.61 |                   
+  ...ranslation.js |   51.65 |      100 |    12.5 |   51.65 | ...31-237,247-253 
+  jobRunner.js     |      13 |    26.43 |   31.25 |      13 | ...3185,3193-3374 
+  retryExecutor.js |   15.47 |    52.56 |   30.76 |   15.47 | ...1143,1152-1156 
+ src/types         |     100 |      100 |     100 |     100 |                   
+  errors.js        |     100 |      100 |     100 |     100 |                   
+ src/utils         |   76.24 |    66.66 |   57.14 |   76.24 |                   
+  logDebug.js      |   27.27 |       50 |     100 |   27.27 | 5-20              
+  logMasking.js    |   78.46 |       60 |      40 |   78.46 | ...49,57-59,62-64 
+  processing.js    |   86.17 |    68.75 |     100 |   86.17 | ...62-66,78-81,91 
+-------------------|---------|----------|---------|---------|-------------------
