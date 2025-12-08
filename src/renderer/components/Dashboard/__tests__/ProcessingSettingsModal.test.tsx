@@ -220,7 +220,8 @@ describe('ProcessingSettingsModal', () => {
         />
       );
 
-      expect(screen.getByText(/original job settings \(QC, metadata, processing\)/i)).toBeInTheDocument();
+      // Component renders "Process all images with their original job settings (Metadata, processing)"
+      expect(screen.getByText(/Process all images with their original job settings/i)).toBeInTheDocument();
     });
 
     it('shows description for modified settings', () => {
@@ -459,11 +460,13 @@ describe('ProcessingSettingsModal', () => {
       // Initially JPG Quality is visible
       expect(screen.getByText('JPG Quality (1-100)')).toBeInTheDocument();
       
-      // Switch Convert Format to PNG to reveal PNG Quality
+      // Switch Convert Format to PNG - PNG is lossless, so no quality control is shown
       const convertFormatSelect = screen.getByLabelText('Convert Format') as HTMLSelectElement;
       fireEvent.change(convertFormatSelect, { target: { value: 'png' } });
       
-      expect(screen.getByText('PNG Quality (1-100)')).toBeInTheDocument();
+      // PNG Quality is not shown (PNG is lossless)
+      expect(screen.queryByText('PNG Quality (1-100)')).not.toBeInTheDocument();
+      expect(screen.queryByText('JPG Quality (1-100)')).not.toBeInTheDocument();
     });
 
     it('updates JPG quality when input is changed', () => {
@@ -477,6 +480,8 @@ describe('ProcessingSettingsModal', () => {
     });
 
     it('updates PNG quality when input is changed', () => {
+      // PNG Quality is not shown in the component (PNG is lossless)
+      // This test is not applicable - PNG quality control doesn't exist
       const conversionToggle = screen.getByLabelText('Enable image conversion');
       fireEvent.click(conversionToggle);
       
@@ -484,10 +489,8 @@ describe('ProcessingSettingsModal', () => {
       const convertFormatSelect = screen.getByLabelText('Convert Format') as HTMLSelectElement;
       fireEvent.change(convertFormatSelect, { target: { value: 'png' } });
       
-      const pngQualityInput = screen.getByLabelText('PNG Quality (1-100)');
-      fireEvent.change(pngQualityInput, { target: { value: '77' } });
-      
-      expect(pngQualityInput).toHaveValue(77);
+      // PNG Quality input doesn't exist
+      expect(screen.queryByLabelText('PNG Quality (1-100)')).not.toBeInTheDocument();
     });
   });
 
@@ -637,7 +640,8 @@ describe('ProcessingSettingsModal', () => {
       const retryButton = screen.getByText('Retry with Original Settings (3 images)');
       fireEvent.click(retryButton);
 
-      expect(mockOnRetry).toHaveBeenCalledWith(true, undefined, false);
+        // onRetry is called with 4 parameters: useOriginalSettings, modifiedSettings, includeMetadata, failOptions
+        expect(mockOnRetry).toHaveBeenCalledWith(true, undefined, false, { enabled: false, steps: [] });
     });
 
     it('calls onRetry with correct parameters for modified settings', () => {
@@ -662,16 +666,17 @@ describe('ProcessingSettingsModal', () => {
       const retryButton = screen.getByText('Retry with Modified Settings (3 images)');
       fireEvent.click(retryButton);
 
+      // onRetry is called with 4 parameters: useOriginalSettings, modifiedSettings, includeMetadata, failOptions
       expect(mockOnRetry).toHaveBeenCalledWith(false, expect.objectContaining({
         imageEnhancement: true,
         sharpening: 5,
         saturation: 1,
-      }), false);
+      }), false, { enabled: false, steps: [] });
     });
   });
 
   describe('Numeric Emission', () => {
-    it('emits numeric values for sharpening, saturation, and pngQuality', () => {
+    it('emits numeric values for sharpening and saturation', () => {
       render(
         <ProcessingSettingsModal
           isOpen={true}
@@ -698,23 +703,18 @@ describe('ProcessingSettingsModal', () => {
       const saturationInput = screen.getByLabelText(/Saturation Level/) as HTMLInputElement;
       fireEvent.change(saturationInput, { target: { value: '1.7' } });
 
-      // Enable conversion and switch to PNG then set pngQuality
-      const conversionToggle = screen.getByLabelText('Enable image conversion');
-      fireEvent.click(conversionToggle);
-      const convertFormatSelect = screen.getByLabelText('Convert Format') as HTMLSelectElement;
-      fireEvent.change(convertFormatSelect, { target: { value: 'png' } });
-
-      const pngQualityInput = screen.getByLabelText('PNG Quality (1-100)') as HTMLInputElement;
-      fireEvent.change(pngQualityInput, { target: { value: '77' } });
-
       // Trigger retry with modified settings
       const retryButton = screen.getByText('Retry with Modified Settings (3 images)');
       fireEvent.click(retryButton);
 
+      // PNG Quality is not shown in the component (PNG is lossless)
+      // pngQuality cannot be set via UI, so it won't be in the settings object
+      // onRetry is called with 4 parameters: useOriginalSettings, modifiedSettings, includeMetadata, failOptions
       expect(mockOnRetry).toHaveBeenCalledWith(
         false,
-        expect.objectContaining({ imageEnhancement: true, sharpening: 7, saturation: 1.7, pngQuality: 77 }),
-        false
+        expect.objectContaining({ imageEnhancement: true, sharpening: 7, saturation: 1.7 }),
+        false,
+        { enabled: false, steps: [] }
       );
     });
   });

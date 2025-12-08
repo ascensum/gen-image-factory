@@ -24,7 +24,10 @@ A new `/electron` directory will be created to house all UI and Electron-specifi
 
 ## Deployment and Operations
 
-The final application will be packaged using `electron-builder` to generate distributable installers for Windows, macOS, and Linux. 
+The final application will be packaged using `electron-builder` to generate distributable installers for Windows, macOS, and Linux.
+
+*   **Automated Cloud Builds:** Releases are built automatically by GitHub Actions when a tag is pushed.
+*   **Source of Truth:** The GitHub Releases page is the official source for all distribution artifacts. Local builds are for development and debugging only.
 
 ### Release and CI Policy (2025-11-02)
 

@@ -343,13 +343,29 @@ describe('JobFilters', () => {
   });
 
   it('disables clear all button when no filters are active', () => {
-    render(<JobFilters {...defaultProps} />);
+    // Ensure searchQuery is empty and no filters are active
+    const propsWithNoFilters = {
+      ...defaultProps,
+      searchQuery: '',
+      filters: {
+        status: 'all',
+        dateRange: 'all',
+        label: '',
+        minImages: 0,
+        maxImages: undefined
+      }
+    };
+    
+    render(<JobFilters {...propsWithNoFilters} />);
     
     // Expand filters first
     fireEvent.click(screen.getByText('Show Filters'));
     
     const clearButton = screen.getByText('Clear All');
+    // Button is disabled when !hasActiveFilters && !searchQuery
+    // Check aria-disabled attribute as well
     expect(clearButton).toBeDisabled();
+    expect(clearButton).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('handles clear all filters', () => {
@@ -372,12 +388,13 @@ describe('JobFilters', () => {
     const clearButton = screen.getByText('Clear All');
     fireEvent.click(clearButton);
     
+    // Component sets maxImages to undefined, not null
     expect(defaultProps.onFiltersChange).toHaveBeenCalledWith({
       status: 'all',
       dateRange: 'all',
       label: '',
       minImages: 0,
-      maxImages: null
+      maxImages: undefined
     });
     expect(defaultProps.onSearch).toHaveBeenCalledWith('');
   });

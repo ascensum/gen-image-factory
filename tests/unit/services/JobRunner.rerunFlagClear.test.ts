@@ -10,7 +10,11 @@ describe('JobRunner rerun leak guard', () => {
     const mockAdapter = {
       saveJobExecution: vi.fn().mockResolvedValue({ success: true, id: 999 }),
     } as any
-    runner.backendAdapter = mockAdapter
+    
+    // startJob re-initializes backendAdapter from global.backendAdapter or process.mainModule.exports.backendAdapter
+    // So we need to set it globally before calling startJob
+    // The code at lines 603-610 checks these sources and sets this.backendAdapter
+    global.backendAdapter = mockAdapter
 
     // Simulate leftover rerun state but without an execution id
     runner.isRerun = true as any
@@ -29,9 +33,15 @@ describe('JobRunner rerun leak guard', () => {
     }
 
     const res = await runner.startJob(config as any)
+    
+    // Clean up global
+    delete (global as any).backendAdapter
+    
     expect(res.success).toBe(true)
 
     // Should have cleared rerun mode and saved a fresh execution
+    // The code clears isRerun at line 653, then checks !this.isRerun at line 660
+    // So saveJobExecution should be called
     expect(mockAdapter.saveJobExecution).toHaveBeenCalled()
     const payload = mockAdapter.saveJobExecution.mock.calls[0][0]
     expect(payload).toMatchObject({ configurationId: 123, status: 'running' })

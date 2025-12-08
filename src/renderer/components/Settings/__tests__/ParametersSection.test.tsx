@@ -5,9 +5,11 @@ import { ParametersSection } from '../ParametersSection'
 describe('ParametersSection', () => {
   const defaultProps = {
     // Backend parameters from index.js command line options
+    // Legacy Midjourney parameters - required by component interface but NOT tested:
     processMode: 'relax',
-    aspectRatios: ['1:1', '16:9', '9:16'],
+    aspectRatios: ['1:1'],
     mjVersion: '6.1',
+    // openaiModel is still actively used for prompt generation and AI features
     openaiModel: 'gpt-4o-mini',
     pollingTimeout: 15,
     keywordRandom: false,
@@ -24,9 +26,11 @@ describe('ParametersSection', () => {
     runMetadataGen: true,
     
     // Callback functions
+    // Legacy Midjourney callbacks - required by component interface but NOT tested:
     onProcessModeChange: vi.fn(),
     onAspectRatiosChange: vi.fn(),
     onMjVersionChange: vi.fn(),
+    // onOpenaiModelChange is still actively used
     onOpenaiModelChange: vi.fn(),
     onPollingTimeoutChange: vi.fn(),
     onKeywordRandomChange: vi.fn(),
@@ -51,11 +55,11 @@ describe('ParametersSection', () => {
     render(<ParametersSection {...defaultProps} />)
     
     expect(screen.getByText('Basic Settings')).toBeInTheDocument()
-    expect(screen.getByText('Process Mode')).toBeInTheDocument()
-    expect(screen.getByText('Aspect Ratios')).toBeInTheDocument()
-    expect(screen.getByText('MJ Version')).toBeInTheDocument()
+    // Legacy Midjourney parameters removed: Process Mode, Aspect Ratios, MJ Version
+    // OpenAI Model is still actively used for prompt generation and AI features
     expect(screen.getByText('OpenAI Model')).toBeInTheDocument()
-    expect(screen.getByText('Polling Timeout (minutes)')).toBeInTheDocument()
+    // Component uses "Generation Timeout" not "Polling Timeout"
+    expect(screen.getByText('Generation Timeout (minutes)')).toBeInTheDocument()
   })
 
   test('renders advanced settings section', () => {
@@ -96,30 +100,11 @@ describe('ParametersSection', () => {
     expect(screen.getByText('Run Metadata Generation')).toBeInTheDocument()
   })
 
-  test('displays process mode options', () => {
-    render(<ParametersSection {...defaultProps} />)
-    
-    expect(screen.getByText('Relax')).toBeInTheDocument()
-    expect(screen.getByText('Fast')).toBeInTheDocument()
-    expect(screen.getByText('Turbo')).toBeInTheDocument()
-  })
-
-  test('displays aspect ratio options', () => {
-    render(<ParametersSection {...defaultProps} />)
-    
-    expect(screen.getByText('1:1')).toBeInTheDocument()
-    expect(screen.getByText('16:9')).toBeInTheDocument()
-    expect(screen.getByText('9:16')).toBeInTheDocument()
-  })
-
-  test('displays MJ version options', () => {
-    render(<ParametersSection {...defaultProps} />)
-    
-    expect(screen.getByText('6.1')).toBeInTheDocument()
-    expect(screen.getByText('6.0')).toBeInTheDocument()
-    expect(screen.getByText('niji')).toBeInTheDocument()
-  })
-
+  // Legacy Midjourney parameter tests removed:
+  // - displays process mode options
+  // - displays aspect ratio options
+  // - displays MJ version options
+  
   test('displays OpenAI model options', () => {
     render(<ParametersSection {...defaultProps} />)
     
@@ -151,32 +136,10 @@ describe('ParametersSection', () => {
     expect(screen.getByText('Full')).toBeInTheDocument()
   })
 
-  test('handles process mode change', () => {
-    render(<ParametersSection {...defaultProps} />)
-    
-    const fastButton = screen.getByText('Fast')
-    fireEvent.click(fastButton)
-    
-    expect(defaultProps.onProcessModeChange).toHaveBeenCalledWith('fast')
-  })
-
-  test('handles aspect ratio selection', () => {
-    render(<ParametersSection {...defaultProps} />)
-    
-    const ratioButton = screen.getByText('16:9')
-    fireEvent.click(ratioButton)
-    
-    expect(defaultProps.onAspectRatiosChange).toHaveBeenCalledWith(['16:9'])
-  })
-
-  test('handles MJ version change', () => {
-    render(<ParametersSection {...defaultProps} />)
-    
-    const versionButton = screen.getByText('6.0')
-    fireEvent.click(versionButton)
-    
-    expect(defaultProps.onMjVersionChange).toHaveBeenCalledWith('6.0')
-  })
+  // Legacy Midjourney parameter tests removed:
+  // - handles process mode change
+  // - handles aspect ratio selection
+  // - handles MJ version change
 
   test('handles OpenAI model change', () => {
     render(<ParametersSection {...defaultProps} />)
@@ -389,9 +352,15 @@ describe('ParametersSection', () => {
   test('shows help text for advanced options', () => {
     render(<ParametersSection {...defaultProps} />)
     
-    expect(screen.getByText(/Process mode affects generation speed and cost/)).toBeInTheDocument()
-    expect(screen.getByText(/Aspect ratios determine image dimensions/)).toBeInTheDocument()
-    expect(screen.getByText(/Polling timeout in minutes/)).toBeInTheDocument()
+    // Legacy Midjourney help text removed:
+    // - Process mode affects generation speed and cost
+    // - Aspect ratios determine image dimensions
+    // Component uses "Generation Timeout" and help text is "Used as HTTP timeout for Runware (minutes)"
+    // There might be multiple "Generation Timeout" elements, so use getAllByText
+    const timeoutTexts = screen.getAllByText(/Generation Timeout/i)
+    expect(timeoutTexts.length).toBeGreaterThan(0)
+    // Also check for the help text
+    expect(screen.getByText(/Used as HTTP timeout for Runware/i)).toBeInTheDocument()
   })
 
   test('collapses advanced settings by default', () => {

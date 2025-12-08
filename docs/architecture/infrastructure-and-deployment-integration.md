@@ -60,23 +60,29 @@ As a solo developer (no PR flow for now), enforce hygiene and security via local
 
 ### CI/CD Workflow Design (Solo Dev, direct-to-main)
 
-- Triggers:
-  - Cloud QA: `on: push` to `main` (single developer flow)
-  - Release build: `on: push` tags (e.g., `v*.*.*`)
-- Cloud QA jobs (minimal):
+- **Triggers:**
+  - **Clean Room Validation:** `on: push` to `main`.
+    - Purpose: Verify build and tests pass on a clean machine (eliminates "works on my machine").
+    - Jobs: Build, Unit/Integration Tests, E2E Tests (Headless).
+    - Failure Policy: Blocking. Fix immediately.
+  - **Automated Release Pipeline:** `on: push` tags (e.g., `v*.*.*`).
+    - Purpose: Create and publish release artifacts.
+    - Jobs: `electron-builder` matrix (Windows/Mac/Linux).
+    - Output: Signed/Unsigned artifacts uploaded to GitHub Releases.
+
+- **Cloud QA jobs (minimal):**
   - Build → `npm ci && npm run build`
   - Tests → `npm test`
   - CodeQL → `github/codeql-action` (Javascript)
   - Semgrep → `npx semgrep --config p/owasp-electron --error`
   - Audit → `npm audit` (or rely on Dependabot)
-- Release build job (optional if manual releases preferred):
-  - `electron-builder --publish never`, upload artifacts to release draft
-- Failure policy: Any high‑risk finding from CodeQL/Semgrep fails the workflow.
 
-Refinements:
-- Concurrency: use a `concurrency` group on `main` with `cancel-in-progress: true` to stop outdated runs.
-- Scheduled security: add a weekly CodeQL scheduled job in addition to push events.
-- Semgrep hygiene: exclude heavy directories (`node_modules`, `playwright-report`, `web-bundles`, built assets) and pin rule versions via `.semgrep.yml`.
+- **Refinements:**
+  - **Clean Room Validation:** A lightweight GitHub Action runs on every push to `main` to verify the build/tests work on a clean machine.
+  - **Automated Release Pipeline:** A GitHub Action triggered by **Git Tags** (e.g., `v1.0.0`) automatically builds `electron-builder` artifacts (Windows/Mac/Linux) and uploads them to GitHub Releases.
+  - Concurrency: use a `concurrency` group on `main` with `cancel-in-progress: true` to stop outdated runs.
+  - Scheduled security: add a weekly CodeQL scheduled job in addition to push events.
+  - Semgrep hygiene: exclude heavy directories (`node_modules`, `playwright-report`, `web-bundles`, built assets) and pin rule versions via `.semgrep.yml`.
 
 ### Code-Signing (Future)
 - Not configured yet. Document platform-specific signing steps (Apple Developer ID, Windows code signing) before public distribution.

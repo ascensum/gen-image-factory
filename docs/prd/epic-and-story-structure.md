@@ -107,14 +107,21 @@
     - Consistent hover/focus states; dark/light consistency; microcopy clarity
     - Small, low-risk PRs with brief change log entries and before/after when helpful
 
-15. **Security: Implement Production Security Measures**
+15. **Acceptance Fixes & Stabilization**
+    - Resolve blocking and major acceptance test issues (output paths, date filters, orphaned jobs)
+    - Stabilize Runware Advanced gating and LoRA support
+    - Implement WebP support and remove forced PNG conversion
+    - Fix Remove.bg failures and retry handling (soft/technical failure modes)
+    - UI visual polish and consistency updates (Gallery, Failed Review, etc.)
+
+16. **Security: Implement Production Security Measures**
     - Implement encrypted database fallback for API key storage
     - Add comprehensive memory protection for sensitive data
     - Create secure logging that masks API keys and sensitive information
     - Add security health checks and monitoring capabilities
     - Style security components with Tailwind CSS
 
-16. **Testing: Implement Comprehensive Testing for Story 1.1**
+17. **Testing: Implement Comprehensive Testing for Story 1.1**
     - Create unit tests for React components using React Testing Library
     - Implement integration tests for IPC communication
     - Create end-to-end tests for basic app functionality
@@ -123,7 +130,7 @@
     - Implement security tests for IPC and app security
     - Create performance and build optimization tests
 
-17. **Testing Stabilization & Post-1.9 Remediation: Unit & Integration (Story 1.17)**
+18. **Testing Stabilization & Post-1.9 Remediation: Unit & Integration (Story 1.18)**
     - Stabilize database integration tests using in-memory/isolated SQLite and migrations in setup
     - Align settings integration tests with `BackendAdapter` (replace legacy `SettingsAdapter` usage)
     - Centralize Electron and `keytar` mocks; assert IPC handlers and payloads
@@ -131,7 +138,7 @@
     - Provide npm scripts for targeted subsets (DB, settings, story-1.7)
     - Remediate failing tests introduced after Story 1.9 development, excluding unit/integration/E2E already green and covered by the HySky pre-commit script
 
-18. **Distribution: Implement Application Packaging** (Detailed story to be drafted by Scrum Master)
+19. **Distribution: Implement Application Packaging** (Detailed story to be drafted by Scrum Master)
     - Configure Electron Builder for cross-platform packaging (NFR3)
     - Generate distributable installers for Windows, macOS, and Linux
     - Initial distribution: manual unsigned releases via GitHub Releases (keep history for rollback)
@@ -139,4 +146,4 @@
     - Create deployment documentation
     - Optimize Vite build for production
 
-**Testing Strategy**: Each story includes comprehensive testing tasks covering unit tests, integration tests, and end-to-end validation as appropriate for the story scope. TypeScript will provide additional type safety during development. Story 1.16 specifically addresses the testing requirements for the foundational components from Story 1.1. Story 1.17 stabilizes unit and integration tests to ensure CI reliability and alignment with current architecture.
+**Testing Strategy**: Each story includes comprehensive testing tasks covering unit tests, integration tests, and end-to-end validation as appropriate for the story scope. TypeScript will provide additional type safety during development. Story 1.17 specifically addresses the testing requirements for the foundational components from Story 1.1. Story 1.18 stabilizes unit and integration tests to ensure CI reliability and alignment with current architecture.

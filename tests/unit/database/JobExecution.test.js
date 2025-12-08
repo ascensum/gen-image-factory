@@ -1,26 +1,47 @@
 const { JobExecution } = require('../../../src/database/models/JobExecution');
 const path = require('path');
 const fs = require('fs').promises;
+const os = require('os');
 
 describe('JobExecution Model', () => {
   let jobExecution;
   let testDbPath;
 
   beforeAll(async () => {
-    // Create a test database with unique name to avoid conflicts
-    testDbPath = path.join(__dirname, '../../../data/test-job-executions.db');
-    jobExecution = new JobExecution();
-    
-    // Override the database path for testing
-    jobExecution.dbPath = testDbPath;
+    // Create a test database with unique name in temp directory (per testing strategy)
+    testDbPath = path.join(os.tmpdir(), `test-job-executions-${Date.now()}-${Math.random().toString(36).substring(7)}.db`);
     
     // Ensure test directory exists
     await fs.mkdir(path.dirname(testDbPath), { recursive: true });
     
+    // Create instance and override path before init is called
+    jobExecution = new JobExecution();
+    
+    // Override the database path for testing (before init completes)
+    jobExecution.dbPath = testDbPath;
+    
+    // Close any existing connection from constructor's init
+    if (jobExecution.db) {
+      await new Promise((resolve) => {
+        jobExecution.db.close(() => resolve());
+      });
+    }
+    
+    // Reinitialize with test path
     await jobExecution.init();
     
+    // Helper to promisify db.run
+    const dbRun = (sql, params = []) => {
+      return new Promise((resolve, reject) => {
+        jobExecution.db.run(sql, params, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    };
+    
     // Create job_configurations table for foreign key relationship
-    await jobExecution.db.run(`
+    await dbRun(`
       CREATE TABLE IF NOT EXISTS job_configurations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL,
@@ -31,17 +52,35 @@ describe('JobExecution Model', () => {
     `);
     
     // Insert a test configuration
-    await jobExecution.db.run(`
+    await dbRun(`
       INSERT OR REPLACE INTO job_configurations (id, name, settings) 
       VALUES (1, 'test-config', '{"test": "settings"}')
+    `);
+    
+    // Create generated_images table for getJobHistory JOIN
+    await dbRun(`
+      CREATE TABLE IF NOT EXISTS generated_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        image_mapping_id TEXT NOT NULL,
+        execution_id INTEGER,
+        generation_prompt TEXT,
+        seed INTEGER,
+        qc_status TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (execution_id) REFERENCES job_executions(id)
+      )
     `);
   });
 
   afterAll(async () => {
-    await jobExecution.close();
+    if (jobExecution && jobExecution.db) {
+      await jobExecution.close();
+    }
     // Clean up test database
     try {
-      await fs.unlink(testDbPath);
+      if (testDbPath && await fs.access(testDbPath).then(() => true).catch(() => false)) {
+        await fs.unlink(testDbPath);
+      }
     } catch (error) {
       // Ignore cleanup errors
     }
@@ -49,7 +88,12 @@ describe('JobExecution Model', () => {
 
   beforeEach(async () => {
     // Clear the database before each test
-    await jobExecution.db.run('DELETE FROM job_executions');
+    await new Promise((resolve, reject) => {
+      jobExecution.db.run('DELETE FROM job_executions', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
   });
 
   describe('CRUD Operations', () => {

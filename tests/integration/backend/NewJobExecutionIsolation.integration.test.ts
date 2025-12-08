@@ -73,7 +73,7 @@ describe('New job execution isolation', () => {
     } as any)
     expect(seed.success).toBe(true)
 
-    const before = await adapter.getAllJobExecutions(10)
+    const before = await adapter.getAllJobExecutions({ limit: 10 })
     const prevExecId = before.executions?.[0]?.id
     expect(prevExecId).toBeTruthy()
 
@@ -87,7 +87,7 @@ describe('New job execution isolation', () => {
     } as any)
     expect(start.success).toBe(true)
 
-    const after = await adapter.getAllJobExecutions(10)
+    const after = await adapter.getAllJobExecutions({ limit: 10 })
     const latest = after.executions?.[0]
     expect(latest?.label).toBe('Animal photography')
     expect(latest?.id).not.toBe(prevExecId)

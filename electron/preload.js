@@ -157,6 +157,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'job:get-progress',
       'job:get-logs',
       'get-security-status',
+      'protocol:refresh-roots',
+      'protocol:request-access',
       // Job Execution Management
       'job-execution:save',
       'job-execution:get',

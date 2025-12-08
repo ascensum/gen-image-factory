@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/renderer/App.jsx",
+    "src/renderer/e2e/**/*",
+    "src/renderer/components/Common/StatusBadge.tsx",
+    "tests/test-utils/**/*",
+    "tests/integration/api/ipc-preload.integration.test.ts",
+    "tests/integration/api/ipc-main-process.integration.test.ts",
+    "tests/integration/security/ipc-security.integration.test.ts",
+    "tests/integration/platform/electron-main.platform.test.ts"
+  ]
+}
+

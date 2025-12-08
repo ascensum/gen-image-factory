@@ -1,10 +1,48 @@
 # Testing Strategy and Standards
 
+## AI Generation & Integrity Protocols (Strict Enforcement)
+
+**Critical Instruction for AI Agents:** When generating tests, you must strictly adhere to the following anti-hallucination rules. Violations will result in the code being rejected.
+
+### 1. The "No-Tautology" Rule
+- **Forbidden:** Asserting that a constant equals itself or that `true` is `true`.
+- **Forbidden:** Asserting `expect(service.method).not.toThrow()` without verifying the *outcome* of the method (unless specifically testing error swallowing).
+- **Required:** Every test must assert a state change, a return value, or a specific side-effect.
+
+### 2. The "SUT Isolation" Rule
+- **Forbidden:** Mocking the System Under Test (SUT).
+- **Explanation:** If you are testing `BackendAdapter`, you must mock `keytar` and `electron`, but you CANNOT mock methods inside `BackendAdapter` itself to make the test pass.
+- **Required:** The SUT must be the real implementation.
+
+### 3. The "Concrete Data" Rule
+- **Forbidden:** Using `expect.any(String)` or `expect.objectContaining({})` for critical data paths.
+- **Required:** Use hardcoded, concrete expectation values.
+  - *Bad:* `expect(result.id).toBeDefined()`
+  - *Good:* `expect(result.id).toBe('user_123')`
+
+### 4. The "Mock-check" Rule
+- **Context:** This project uses specific mocks in `src/test/setup.ts`.
+- **Instruction:** Do not hallucinate new mocking patterns. Use `vi.mock('keytar')` patterns as defined in the "Test Setup Files" section above.
+- **Constraint:** When asserting mocks, check arguments: `expect(mock).toHaveBeenCalledWith(specificArgs)`, not just `toHaveBeenCalled()`.
+
 Note (2025-11-02): CI is not yet configured in this repository. Add GitHub Actions to run unit/integration tests (Vitest) and E2E (Playwright) on PRs, and a separate build workflow to package Electron apps on tags.
 
 ## QA + DevSecOps Pipeline (Solo Developer, direct-to-main)
 
 This project uses a two-layer QA approach optimized for a solo developer committing straight to `main` while keeping security first and avoiding over‑engineering.
+
+### Test Infrastructure Prerequisites
+
+To ensure stability and eliminate "flakiness" caused by shared resources, the following infrastructure helpers are mandatory:
+
+- **Database Isolation:** Every integration test interacting with the database MUST use a unique, temporary SQLite file.
+  - Implementation: `createIsolatedDbPath()` helper in `src/test/setup.ts` or a dedicated test utils file.
+  - Constraint: No shared `database.sqlite` usage in tests.
+
+- **Global Mocks:** `src/test/setup.ts` MUST provide default mocks for system-level dependencies to prevent tests from accessing real OS resources.
+  - `keytar`: Mocked to prevent accessing the real OS keychain.
+  - `electron`: Mocked to prevent real dialogs and IPC bridges from attempting to spawn.
+  - `fs`: Mocked or carefully scoped to temporary directories to protect the real file system.
 
 ### Local QA Layer (Developer Machine)
 
@@ -109,6 +147,15 @@ The application implements a **Testing Pyramid** approach with the following dis
 - **Unit Tests (70%)**: Fast, isolated tests for individual functions and components
 - **Integration Tests (20%)**: Tests for component interactions and API communication
 - **End-to-End Tests (10%)**: Complete user workflow validation
+
+## Test Execution Scripts (Story 1.18)
+
+Targeted test subsets for faster development feedback:
+
+- `npm run test:integration:db` - Run database integration tests (JobConfiguration)
+- `npm run test:integration:settings` - Run settings adapter integration tests
+- `npm run test:story:1.7` - Run Story 1.7 related tests (clamping, normalization)
+- `npm run test:exports` - Run export functionality tests (ZIP + Excel)
 
 ## Testing Framework Specifications
 
@@ -396,13 +443,70 @@ export default defineConfig({
 ```
 
 ### Test Setup Files
+
+#### Database Test Setup (Story 1.18)
+
+Integration tests that interact with the database use isolated SQLite databases to avoid native `sqlite3` worker crashes and ensure test isolation:
+
+- **Unique Database Paths**: Each test suite creates a unique temporary database file using `os.tmpdir()` with timestamp and random suffix
+- **Database Isolation**: Tests override `dbPath` after construction to use test-specific paths
+- **Migrations**: Database tables are created via `init()` method which runs `CREATE TABLE IF NOT EXISTS` statements
+- **Cleanup**: Test databases are cleaned up in `afterAll` hooks
+
+Example pattern:
 ```typescript
-// tests/setup.ts
+beforeEach(async () => {
+  const testDbPath = path.join(os.tmpdir(), `test-${Date.now()}-${Math.random().toString(36).substring(7)}.db`)
+  jobConfig = new JobConfiguration()
+  // Close constructor's connection
+  if (jobConfig.db) {
+    await new Promise<void>((resolve) => {
+      jobConfig.db.close(() => resolve())
+    })
+  }
+  // Override path and reinit
+  jobConfig.dbPath = testDbPath
+  await jobConfig.init()
+})
+```
+
+#### Electron and Keytar Mocks (Story 1.18)
+
+Tests that use BackendAdapter mock Electron and keytar at module level:
+
+- **keytar Mock**: Mocks `keytar.getPassword`, `keytar.setPassword`, `keytar.deletePassword` for API key storage (NOT user authentication - stores service API keys like OpenAI, remove.bg)
+- **Electron Dialog Mock**: Mocks `electron.dialog.showOpenDialog` and `electron.dialog.showSaveDialog` for file selection
+- **IPC Mock**: Mocks `electron.ipcMain.handle` to capture and test IPC handlers
+
+Example:
+```typescript
+// Mock keytar at module level
+vi.mock('keytar', () => ({
+  default: {
+    getPassword: mockGetApiKey,
+    setPassword: mockSetApiKey,
+    deletePassword: mockDeleteApiKey,
+  }
+}))
+
+// Mock Electron dialog
+vi.mock('electron', () => ({
+  ipcMain: { handle: vi.fn() },
+  dialog: {
+    showOpenDialog: mockShowOpenDialog,
+    showSaveDialog: mockShowSaveDialog,
+  }
+}))
+```
+
+#### Test Setup Files
+```typescript
+// src/test/setup.ts
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
-// Mock Electron IPC
-global.window.api = {
+// Mock Electron API for tests
+global.window.electronAPI = {
   getSettings: vi.fn(),
   saveSettings: vi.fn(),
   selectFile: vi.fn(),

@@ -17,6 +17,11 @@ describe('BackendAdapter-SettingsUI Integration Tests', () => {
 
   describe('Settings UI Data Structure Alignment', () => {
     it('should provide settings structure that matches SettingsPanel expectations', async () => {
+      // Ensure database has proper structure by saving default settings first
+      // This prevents empty filePaths from overwriting defaults in shallow merge
+      const defaultSettings = backendAdapter.jobConfig.getDefaultSettings();
+      await backendAdapter.saveSettings(defaultSettings);
+      
       const result = await backendAdapter.getSettings();
       
       expect(result.success).toBe(true);
