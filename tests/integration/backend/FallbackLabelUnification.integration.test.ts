@@ -47,38 +47,91 @@ vi.mock('../../../src/services/jobRunner', () => ({
   }
 }))
 
-import { BackendAdapter } from '../../../src/adapter/backendAdapter'
-
 describe('Fallback label unification', () => {
-  let adapter: BackendAdapter
+  let adapter: any
 
-  beforeEach(() => {
-    adapter = new BackendAdapter({ skipIpcSetup: true }) as any
+  beforeEach(async () => {
+    vi.resetModules()
+
+    // Avoid real sqlite init/locks: stub DB models
+    vi.doMock('../../../src/database/models/JobConfiguration', () => ({
+      JobConfiguration: vi.fn().mockImplementation(() => ({
+        init: vi.fn().mockResolvedValue(undefined),
+        createTables: vi.fn().mockResolvedValue(undefined),
+        getDefaultSettings: vi.fn().mockReturnValue({
+          apiKeys: { openai: '', runware: '', removeBg: '' },
+          filePaths: { outputDirectory: '/tmp', tempDirectory: '/tmp' },
+          parameters: {},
+          processing: {},
+          ai: {},
+          advanced: {},
+        }),
+        saveSettings: vi.fn().mockResolvedValue({ success: true, id: 123 }),
+      })),
+    }))
+    vi.doMock('../../../src/database/models/JobExecution', () => ({
+      JobExecution: vi.fn().mockImplementation(() => ({
+        init: vi.fn().mockResolvedValue(undefined),
+        createTables: vi.fn().mockResolvedValue(undefined),
+        saveJobExecution: vi.fn().mockResolvedValue({ success: true, id: 456 }),
+        updateJobExecution: vi.fn().mockResolvedValue({ success: true }),
+        getAllJobExecutions: vi.fn().mockResolvedValue({ success: true, executions: [] }),
+      })),
+    }))
+    vi.doMock('../../../src/database/models/GeneratedImage', () => ({
+      GeneratedImage: vi.fn().mockImplementation(() => ({
+        init: vi.fn().mockResolvedValue(undefined),
+        createTables: vi.fn().mockResolvedValue(undefined),
+      })),
+    }))
+
+    const mod = await import('../../../src/adapter/backendAdapter')
+    adapter = new mod.BackendAdapter({ skipIpcSetup: true }) as any
+
     // Provide runtime API keys so preflight passes
     vi.spyOn(adapter, 'getSettings').mockResolvedValue({
       success: true,
       settings: {
-        apiKeys: { openai: 'test', piapi: 'test', removeBg: '' },
+        apiKeys: { openai: 'test', runware: 'test', removeBg: '' },
         filePaths: { outputDirectory: '/tmp', tempDirectory: '/tmp' },
-        parameters: { processMode: 'single', openaiModel: 'gpt-4o' },
+        parameters: { processMode: 'relax', openaiModel: 'gpt-4o', runwareModel: 'runware:101@1', runwareFormat: 'png', variations: 1 },
         ai: { runQualityCheck: false, runMetadataGen: false },
         processing: {}
       }
     } as any)
+
+    // Make post-start read APIs return the saved label consistently (no DB dependency)
+    let savedLabel = ''
+    adapter.jobConfig.saveSettings = vi.fn().mockImplementation(async (_settings: any, configName: string) => {
+      // configName is the canonical label used when parameters.label is missing
+      savedLabel = String(configName)
+      return { success: true, id: 123 }
+    })
+    adapter.jobExecution.saveJobExecution = vi.fn().mockImplementation(async (payload: any) => {
+      savedLabel = String(payload.label)
+      return { success: true, id: 456 }
+    })
+    adapter.jobExecution.updateJobExecution = vi.fn().mockResolvedValue({ success: true })
+    adapter.getAllJobExecutions = vi.fn().mockImplementation(async () => ({ success: true, executions: [{ id: 456, label: savedLabel }] }))
+    adapter.getJobHistory = vi.fn().mockImplementation(async () => ([{ id: 456, label: savedLabel }]))
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.resetModules()
+    vi.unmock('../../../src/database/models/JobConfiguration')
+    vi.unmock('../../../src/database/models/JobExecution')
+    vi.unmock('../../../src/database/models/GeneratedImage')
   })
 
   it('persists one canonical fallback label across config name and execution label', async () => {
     const config = {
       // No parameters.label provided → should fallback
       filePaths: { outputDirectory: '/tmp', tempDirectory: '/tmp' },
-      parameters: { processMode: 'single', openaiModel: 'gpt-4o' },
+      parameters: { processMode: 'relax', openaiModel: 'gpt-4o', runwareModel: 'runware:101@1', runwareFormat: 'png', variations: 1 },
       ai: { runQualityCheck: false, runMetadataGen: false },
       processing: {},
-      apiKeys: { openai: 'x', piapi: 'y' }
+      apiKeys: { openai: 'x', runware: 'y' }
     }
 
     const start = await adapter.startJob(config as any)

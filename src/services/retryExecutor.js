@@ -348,8 +348,10 @@ class RetryExecutor extends EventEmitter {
    * @returns {Promise<Object>} Processing result
    */
   async processSingleImage(job) {
+    let imageId;
     try {
-      const { imageId, useOriginalSettings, modifiedSettings, includeMetadata, failOptions } = job;
+      const { imageId: _imageId, useOriginalSettings, modifiedSettings, includeMetadata, failOptions } = job;
+      imageId = _imageId;
       this.currentImageId = imageId; // Track current image being processed
       
       console.log(` RetryExecutor: Starting to process image ${imageId}`);

@@ -12,7 +12,10 @@ class GeneratedImage {
   constructor() {
     // Cross-platform database path resolution
     this.dbPath = this.resolveDatabasePath();
-    this.init();
+    // Constructor is used in many contexts that don't await init(); prevent unhandled rejections.
+    this.init().catch((err) => {
+      console.error('GeneratedImage init failed:', err?.message || err);
+    });
   }
 
   resolveDatabasePath() {
@@ -128,6 +131,9 @@ class GeneratedImage {
           console.error('Error opening database:', err);
           reject(err);
         } else {
+          // Reduce SQLITE_BUSY flakes under parallel usage (tests/Electron multi-model startup)
+          // NOTE: use configure() (sync) to avoid async PRAGMA on closing handles.
+          try { this.db.configure('busyTimeout', 5000); } catch (_) {}
           this.createTables().then(resolve).catch(reject);
         }
       });
@@ -172,25 +178,50 @@ class GeneratedImage {
 
           // Now check if we need to migrate an older schema
           this.checkAndMigrateTable().then(() => {
+            // If the handle was closed during migration, exit gracefully
+            if (!this.db || this.db.open === false) {
+              resolve();
+              return;
+            }
             // Create indexes
             createIndexesSQL.forEach((indexSQL, index) => {
-              this.db.run(indexSQL, (err) => {
-                if (err) {
-                  console.error(`Error creating index ${index}:`, err);
-                } else {
-                  console.log(`Index ${index} created successfully`);
-                }
-              });
+              if (!this.db || this.db.open === false) {
+                return;
+              }
+              try {
+                this.db.run(indexSQL, (err) => {
+                  if (err) {
+                    console.error(`Error creating index ${index}:`, err);
+                  } else {
+                    console.log(`Index ${index} created successfully`);
+                  }
+                });
+              } catch (err) {
+                console.warn(`Skipped index ${index} creation; DB closed:`, err?.message || err);
+              }
             });
 
             // Wait for all operations to complete
-            this.db.wait((err) => {
-              if (err) {
-                reject(err);
-              } else {
-                resolve();
-              }
-            });
+            if (!this.db || this.db.open === false) {
+              resolve();
+              return;
+            }
+            try {
+              this.db.wait((err) => {
+                if (err && err.code === 'SQLITE_MISUSE') {
+                  resolve(); // ignore if handle closed during teardown
+                  return;
+                }
+                if (err) {
+                  reject(err);
+                } else {
+                  resolve();
+                }
+              });
+            } catch (err) {
+              console.warn('Skipped wait; DB likely closed:', err?.message || err);
+              resolve();
+            }
           }).catch((error) => {
             console.error('Migration failed:', error);
             reject(error);

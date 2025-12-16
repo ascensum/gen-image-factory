@@ -1,15 +1,12 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Avoid native sqlite3 init in integration tests
 vi.mock('sqlite3', () => ({ verbose: () => ({ Database: vi.fn() }), Database: vi.fn() }));
 
-// Spy on processImage to capture config passed (mock before importing BackendAdapter)
-vi.mock('../../../src/producePictureModule', () => ({
-  processImage: vi.fn().mockResolvedValue('/tmp/out.png')
-}));
+// We assert on a local "processImage" spy (no module import needed)
 
 // Mock GeneratedImage model to provide a tempImagePath
-vi.mock('../../../src/database/models/GeneratedImage.js', () => ({
+vi.mock('../../../src/database/models/GeneratedImage', () => ({
   GeneratedImage: vi.fn().mockImplementation(() => ({
     init: vi.fn(),
     close: vi.fn(),
@@ -19,18 +16,19 @@ vi.mock('../../../src/database/models/GeneratedImage.js', () => ({
 }));
 
 // Mock other models
-vi.mock('../../../src/database/models/JobConfiguration.js', () => ({ JobConfiguration: vi.fn().mockImplementation(() => ({ init: vi.fn(), close: vi.fn(), getDefaultSettings: vi.fn().mockReturnValue({ filePaths: { outputDirectory: '/fallback/toupload', tempDirectory: '/fallback/generated' }}) })) }));
-vi.mock('../../../src/database/models/JobExecution.js', () => ({ JobExecution: vi.fn().mockImplementation(() => ({ init: vi.fn(), close: vi.fn(), updateJobExecution: vi.fn().mockResolvedValue({ success: true }) })) }));
+vi.mock('../../../src/database/models/JobConfiguration', () => ({ JobConfiguration: vi.fn().mockImplementation(() => ({ init: vi.fn(), close: vi.fn(), getDefaultSettings: vi.fn().mockReturnValue({ filePaths: { outputDirectory: '/fallback/toupload', tempDirectory: '/fallback/generated' }}) })) }));
+vi.mock('../../../src/database/models/JobExecution', () => ({ JobExecution: vi.fn().mockImplementation(() => ({ init: vi.fn(), close: vi.fn(), updateJobExecution: vi.fn().mockResolvedValue({ success: true }) })) }));
 
 import { BackendAdapter } from '../../../src/adapter/backendAdapter';
-import { processImage } from '../../../src/producePictureModule';
 
 describe('Retry normalization integration', () => {
   let adapter: any;
   let fsAccessSpy: any;
+  let processImageSpy: any;
   
   beforeEach(async () => {
     vi.clearAllMocks();
+    processImageSpy = vi.fn().mockResolvedValue('/tmp/out.png');
     
     // Spy on fs.promises.access after modules are loaded (similar to ManualApprove test)
     const fsPromises = require('fs').promises;
@@ -97,21 +95,29 @@ describe('Retry normalization integration', () => {
     adapter.retryExecutor.getOriginalProcessingSettings = vi.fn().mockResolvedValue({});
     
     // Mock runPostProcessing to capture and normalize settings, then call processImage
-    // Use the imported processImage from the top of the file (it's already mocked)
     adapter.retryExecutor.runPostProcessing = vi.fn().mockImplementation(async (sourcePath, settings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions) => {
       // This is where normalization happens in the real code
       // Normalize settings using the actual normalizer (same as real code does)
       const { normalizeProcessingSettings } = require('../../../src/utils/processing');
       const normalized = normalizeProcessingSettings(settings);
       
-      // Call processImage with normalized settings (this is what we want to test)
-      // Use the imported processImage which is already mocked
+      // Call our "processImage" spy with normalized settings (this is what we want to test)
       const path = require('path');
       const sourceFileName = path.basename(sourcePath, path.extname(sourcePath));
-      await processImage(sourcePath, sourceFileName, normalized);
+      await processImageSpy(sourcePath, sourceFileName, normalized);
       
       return { success: true, message: 'Processed successfully' };
     });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    vi.unmock('sqlite3');
+    vi.unmock('../../../src/database/models/GeneratedImage');
+    vi.unmock('../../../src/database/models/JobConfiguration');
+    vi.unmock('../../../src/database/models/JobExecution');
+    vi.unmock('../../../src/producePictureModule');
   });
 
   it('normalizes stringified processing values before calling processImage', async () => {
@@ -160,11 +166,11 @@ describe('Retry normalization integration', () => {
     // Verify runPostProcessing was called (concrete assertion per testing strategy)
     expect(adapter.retryExecutor.runPostProcessing).toHaveBeenCalled();
     
-    // Verify processImage was called (concrete assertion per testing strategy)
-    expect((processImage as any).mock.calls.length).toBeGreaterThan(0);
+    // Verify "processImage" was called with normalized config (concrete assertion)
+    expect(processImageSpy.mock.calls.length).toBeGreaterThan(0);
     
     // Get the config passed to processImage (3rd argument) - use concrete values per testing strategy
-    const passedConfig = (processImage as any).mock.calls[0][2];
+    const passedConfig = processImageSpy.mock.calls[0][2];
     expect(passedConfig.removeBg).toBe(true); // '1' → true
     expect(passedConfig.imageConvert).toBe(true); // 'true' → true
     expect(passedConfig.convertToJpg).toBe(true); // 'true' → true

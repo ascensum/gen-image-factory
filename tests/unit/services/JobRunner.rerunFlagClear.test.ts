@@ -27,7 +27,7 @@ describe('JobRunner rerun leak guard', () => {
     ;(runner as any).executeJob = vi.fn().mockResolvedValue(undefined)
 
     const config = {
-      apiKeys: { openai: 'k', piapi: 'p' },
+      apiKeys: { openai: 'k', runware: 'p' },
       filePaths: { outputDirectory: '/tmp', tempDirectory: '/tmp' },
       parameters: { processMode: 'fast', openaiModel: 'gpt-4o', label: 'Unit Test Job' },
     }

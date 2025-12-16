@@ -14,7 +14,10 @@ class JobConfiguration {
   constructor() {
     // Cross-platform database path resolution
     this.dbPath = this.resolveDatabasePath();
-    this.init();
+    // Constructor is used in many contexts that don't await init(); prevent unhandled rejections.
+    this.init().catch((err) => {
+      console.error('JobConfiguration init failed:', err?.message || err);
+    });
   }
 
   resolveDatabasePath() {
@@ -126,6 +129,9 @@ class JobConfiguration {
           console.error('Error opening database:', err);
           reject(err);
         } else {
+          // Reduce SQLITE_BUSY flakes under parallel usage (tests/Electron multi-model startup)
+          // NOTE: use configure() (sync) to avoid async PRAGMA on closing handles.
+          try { this.db.configure('busyTimeout', 5000); } catch (_) {}
           this.createTables().then(resolve).catch(reject);
         }
       });

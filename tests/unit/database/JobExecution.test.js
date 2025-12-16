@@ -256,11 +256,13 @@ describe('JobExecution Model', () => {
 
     test('should handle cleanup of old executions', async () => {
       // Create an old execution by directly inserting with old timestamp
-      await jobExecution.db.run(`
-        INSERT INTO job_executions 
-        (configuration_id, started_at) 
-        VALUES (1, datetime('now', '-31 days'))
-      `);
+      await new Promise((resolve, reject) => {
+        jobExecution.db.run(`
+          INSERT INTO job_executions 
+          (configuration_id, started_at) 
+          VALUES (1, datetime('now', '-31 days'))
+        `, (err) => (err ? reject(err) : resolve()));
+      });
       
       const result = await jobExecution.cleanupOldExecutions(30);
       

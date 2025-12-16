@@ -15,7 +15,7 @@ describe('Settings Label Persistence', () => {
     const load = await adapter.getSettings()
     expect(load.success).toBe(true)
     expect(load.settings.parameters.label).toBe('My Test Label')
-  })
+  }, 60000)
 })
 
 

@@ -1,47 +1,36 @@
 # Test Coverage Summary
 
-**Generated**: 2025-12-08  
-**Test Suite**: 1030 tests passing, 2 skipped (99.8% pass rate)  
+**Generated**: 2025-12-15  
+**Test Suite**: 1360 tests passing, 0 skipped (100% pass rate)
 **Coverage Tool**: @vitest/coverage-v8  
 **Coverage Scope**: Unit and Integration tests only (E2E tests excluded)
 
 ## Overall Coverage Statistics
 
-| Metric | Overall | Frontend | Backend |
-|--------|---------|----------|---------|
-| **Statements** | 51.94% | 59.33% | 34.17% |
-| **Branches** | 62.41% | 57.14% | 12.22% |
-| **Functions** | 50.47% | 15% | 46.66% |
-| **Lines** | 51.94% | 59.33% | 34.17% |
+| Metric | Overall |
+|--------|---------|
+| **Statements** | 68.06% |
+| **Branches** | 68.49% |
+| **Functions** | 59.91% |
+| **Lines** | 68.06% |
 
 ### Coverage Breakdown by Layer
 
-**Frontend (src/renderer)**: 59.33% statements, 57.14% branches, 15% functions
-- React components and UI logic
-- User interactions and state management
-- IPC communication with backend
-
-**Backend (src/adapter, src/services, src/database, src/utils)**: 34.17% statements, 12.22% branches, 46.66% functions
-- Business logic and API layer
-- Database operations
-- Service orchestration
-- Image processing
-
-**Note**: The overall 51.94% is a weighted average of frontend and backend coverage. Frontend has higher coverage due to comprehensive component tests, while backend services need more integration tests.
+**Note**: This run captures updated overall + file-level coverage. If you need an updated “Frontend vs Backend” split, derive it from the full Vitest report output (not included verbatim here).
 
 ## Coverage by Category
 
 ### Frontend Code (src/renderer)
-**Overall**: 59.33% statements, 57.14% branches, 15% functions, 59.33% lines
+**Overall**: 61.39% statements, 50% branches, 19.04% functions, 61.39% lines
 
 **Coverage Summary**: Frontend has good coverage with comprehensive component tests. Most React components are well-tested with unit and integration tests.
 
 #### Dashboard Components
-- **DashboardPanel.tsx**: 63.69% statements, 66.37% branches, 29.62% functions
+- **DashboardPanel.tsx**: 67.14% statements, 66.53% branches, 38.88% functions
 - **FailedImageCard.tsx**: 98.44% statements, 62.96% branches, 58.33% functions
 - **FailedImageReviewModal.tsx**: 85.36% statements, 56.73% branches, 56.52% functions
 - **FailedImagesReviewPanel.tsx**: 59.47% statements, 68.22% branches, 56.81% functions
-- **ImageGallery.tsx**: 70.76% statements, 54.9% branches, 45.45% functions
+- **ImageGallery.tsx**: 73.09% statements, 60.18% branches, 45.45% functions
 - **ImageModal.tsx**: 79.86% statements, 51.81% branches, 35% functions
 - **JobHistory.tsx**: 88.35% statements, 75% branches, 79.16% functions
 - **LogViewer.tsx**: 81.57% statements, 80.3% branches, 83.33% functions
@@ -49,75 +38,82 @@
 
 #### Jobs Components
 - **JobTable.tsx**: 94.59% statements, 87.14% branches, 63.63% functions
-- **SingleJobView.tsx**: 72.63% statements, 63.52% branches, 30.61% functions
+- **SingleJobView.tsx**: 73.26% statements, 65.62% branches, 32.65% functions
 - **JobFilters.tsx**: 100% statements, 94% branches, 84.61% functions
 - **JobStatistics.tsx**: 98.37% statements, 92.1% branches, 100% functions
 - **BatchOperationsToolbar.tsx**: 98.39% statements, 93.93% branches, 100% functions
 
 #### Settings Components
-- **SettingsPanel.tsx**: 53.95% statements, 48.57% branches, 32.69% functions
+- **SettingsPanel.tsx**: 59.61% statements, 67.41% branches, 42.3% functions
 - **ApiKeysSection.tsx**: 74.92% statements, 64.91% branches, 50% functions
 - **ParametersSection.tsx**: 90.83% statements, 83.78% branches, 80.64% functions
 - **FilePathsSection.tsx**: 83.54% statements, 53.65% branches, 33.33% functions
-- **SecureInput.tsx**: 86.74% statements, 79.45% branches, 100% functions
+- **SecureInput.tsx**: 87.14% statements, 79.72% branches, 100% functions
 - **FileSelector.tsx**: 65.24% statements, 72.13% branches, 62.5% functions
 
 ### Backend Code
 
 #### Backend Services (src/services)
-**Overall**: 15.61% statements, 35.03% branches, 29.59% functions
+**Overall**: 36.82% statements, 66.38% branches, 62% functions
 
 **Coverage Summary**: Backend services have low coverage and need significant improvement, especially for critical business logic.
 
-- **jobRunner.js**: 13% statements, 26.43% branches, 31.25% functions
-- **retryExecutor.js**: 15.47% statements, 52.56% branches, 30.76% functions
+- **jobRunner.js**: 23.04% statements, 65.01% branches, 59.09% functions
+- **retryExecutor.js**: 74.34% statements, 70.35% branches, 84.61% functions
 - **errorTranslation.js**: 51.65% statements, 100% branches, 12.5% functions
 
-#### Database Models (src/database/models)
-**Overall**: 54.21% statements, 64.12% branches, 68% functions
+#### Database Layer (migrations, backup, models)
+**Coverage Summary**: Backup/restore tests are now un-skipped and stabilized via sqlite3 mocks + isolated temp paths; JobConfiguration init error paths are covered.
 
-**Coverage Summary**: Database models have moderate coverage with good function coverage. Integration tests cover most CRUD operations.
-
-- **GeneratedImage.js**: 59.18% statements, 60.83% branches, 68% functions
-- **JobConfiguration.js**: 64.63% statements, 60% branches, 72% functions
-- **JobExecution.js**: 46.05% statements, 70.71% branches, 64% functions
+- **backupManager.js**: 82.23% statements, 70.68% branches, 100% functions
+- **transactionManager.js**: 84.92% statements, 68.62% branches, 87.5% functions
+- **migrations/**: 78.98% statements, 79.54% branches, 81.81% functions
+- **src/database/migrations/index.js**: 66.26% statements, 79.54% branches, 81.81% functions
+- **GeneratedImage.js**: 63.63% statements, 64.11% branches, 72% functions
+- **JobConfiguration.js**: 62.4% statements, 69.74% branches, 64% functions
+- **JobExecution.js**: 65.03% statements, 70.73% branches, 76.92% functions
 
 #### Adapter Layer (src/adapter)
-**Overall**: 49.77% statements, 50.74% branches, 55.55% functions
+**Overall**: 70.18% statements, 70.13% branches, 80.24% functions
 
 **Coverage Summary**: BackendAdapter has moderate coverage. Main API endpoints are tested, but error handling and edge cases need more coverage.
 
-- **backendAdapter.js**: 49.77% statements, 50.74% branches, 55.55% functions
+- **backendAdapter.js**: 70.18% statements, 70.13% branches, 80.24% functions
 
 #### Utilities (src/utils)
-**Overall**: 76.24% statements, 66.66% branches, 57.14% functions
+**Overall**: 95.58% statements, 78.94% branches, 85.71% functions
 
 **Coverage Summary**: Utility functions have good coverage, especially processing utilities which are well-tested.
 
-- **processing.js**: 86.17% statements, 68.75% branches, 100% functions
-- **logMasking.js**: 78.46% statements, 60% branches, 40% functions
-- **logDebug.js**: 27.27% statements, 50% branches, 100% functions
+- **processing.js**: 94.68% statements, 77.77% branches, 100% functions
+- **logMasking.js**: 95.38% statements, 76.47% branches, 80% functions
+- **logDebug.js**: 100% statements, 100% branches, 100% functions
 
 ### Low Coverage Areas
 
 #### Zero Coverage (0%)
-- **src/index.js**: 0% (main entry point, likely not testable in unit tests)
-- **src/utils.js**: 0% (utility functions)
-- **src/database/backupManager.js**: 0% (backup functionality)
-- **src/database/migrationManager.js**: 0% (migration functionality)
-- **src/database/migrations/**: 0% (migration scripts)
-- **src/database/index.js**: 0% (database initialization)
-- **src/constant/keywords_food.js**: 0% (constant data)
+- **src/constant/keywords_food.js**
 
-#### Very Low Coverage (<20%)
-- **src/aiVision.js**: 18.51% statements
-- **src/producePictureModule.js**: 5.78% statements
-- **src/services/jobRunner.js**: 13% statements
-- **src/services/retryExecutor.js**: 15.47% statements
+#### Excluded from Coverage (entrypoints / side-effect modules)
+- **src/index.js**
+- **src/utils.js**
+
+#### Very Low Coverage (<25% statements)
+- **src/services/jobRunner.js**: 23.04% statements
+
+#### Notable Improvements (this story)
+- **src/paramsGeneratorModule.js**: 96.69% statements, 90.47% branches
+- **src/database/backupManager.js**: 82.23% statements, 70.68% branches (previously very low)
+- **src/database/migrations/**: migration scripts are now covered; multi-statement migrations execute via `db.exec`
+- **src/database/transactionManager.js**: added unit tests + fixed transaction callback binding
+
+#### Remaining Gaps / Follow-ups
+- **Overall guardrail not yet met**: overall coverage is still below **≥70% statements/branches**.
+- **JobRunner remains low statements**: `src/services/jobRunner.js` still has low statement coverage; continue adding **scenario-driven, integration-like** tests that execute larger orchestration slices (stop/cancel, rerun persistence, QC + processing + DB persistence), and avoid micro-tests just to hit numeric targets.
 
 ## Frontend vs Backend Coverage Comparison
 
-### Frontend Coverage (59.33% statements)
+### Frontend Coverage (61.39% statements)
 **Strengths**:
 - Component tests cover most UI interactions
 - State management and props are well-tested
@@ -128,40 +124,36 @@
 - Accessibility features
 - Performance optimizations
 
-### Backend Coverage (34.17% statements)
+### Backend Services Coverage (36.82% statements)
 **Strengths**:
-- Database models have good CRUD operation coverage (54.21%)
-- Utility functions are well-tested (76.24%)
-- Adapter layer has moderate coverage (49.77%)
+- Database layer is in moderate shape overall (see DB section above)
+- Utility functions are strong (see `src/utils` section above)
+- Adapter layer meets the ≥70% per-file target for `backendAdapter.js`
 
 **Critical Gaps**:
-- **Backend Services** (15.61%): Core business logic needs significant improvement
-  - `jobRunner.js` (13%): Critical job execution logic
-  - `retryExecutor.js` (15.47%): Critical retry functionality
-- **Database Infrastructure** (0%): Migrations and backup not tested
-- **Entry Points** (0%): `src/index.js` not covered (may require E2E tests)
+- **Backend Services** (36.82%): Core business logic still needs significant improvement
+  - `jobRunner.js` (23.04%): Critical job execution logic
+  - `retryExecutor.js` now meets the ≥70% per-file target (74.34% statements, 70.35% branches)
 
 ## Recommendations
 
 ### High Priority (Critical Business Logic)
-1. **Backend Services** (15.61% coverage) - **CRITICAL**
-   - `jobRunner.js` (13%): Core job execution logic needs more integration tests
-   - `retryExecutor.js` (15.47%): Retry functionality needs comprehensive testing
+1. **Backend Services** (36.82% coverage) - **CRITICAL**
+   - `jobRunner.js` (23.04%): Core job execution logic needs more integration tests
    - These are critical paths that handle job processing and retries
    - **Impact**: Low backend coverage means critical business logic is not fully tested
 
-2. **Database Layer** (0% for migrations/backup)
-   - Migration scripts should have integration tests
-   - Backup manager should be tested for data integrity
+2. **Database Layer** (0–41% for migrations/backup)
+   - Migration scripts should have integration tests (and rollback/idempotency checks)
+   - Backup manager should be tested for data integrity across happy/corrupt/missing file cases
 
-3. **Adapter Layer** (49.77% coverage)
-   - `backendAdapter.js` is the main API layer and should have higher coverage
-   - Focus on error handling paths and edge cases
+3. **Adapter Layer** (≥70% per-file met for `backendAdapter.js`)
+   - Continue expanding error-path coverage as new handlers are added
 
 ### Medium Priority (UI Components)
-1. **SettingsPanel.tsx** (53.95%): Main settings UI needs more test scenarios
-2. **SingleJobView.tsx** (72.63%): Complex component with many edge cases
-3. **ExportDialog.tsx** (37.33%): Export functionality needs more coverage
+1. **SettingsPanel.tsx** (59.61%): Main settings UI still needs more edge/error/a11y scenarios
+2. **SingleJobView.tsx** (73.26%): Complex component with many edge cases
+3. **ExportDialog.tsx**: Improved (90.66%) but keep an eye on failure/permission edge cases
 
 ### Low Priority (Utilities and Constants)
 1. **Constants and Keywords**: Low priority as these are mostly data
@@ -200,7 +192,7 @@ Based on `docs/architecture/testing-strategy.md`:
 
 1. **Increase Backend Service Coverage**
    - Add more integration tests for `jobRunner.js`
-   - Add more integration tests for `retryExecutor.js`
+   - Keep `retryExecutor.js` above ≥70% statements/branches as it evolves
    - Focus on error handling and edge cases
 
 2. **Increase Adapter Coverage**

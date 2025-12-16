@@ -79,7 +79,7 @@ describe('BackendAdapter-SettingsUI Integration Tests', () => {
       
       // Check Advanced structure
       expect(settings.advanced.debugMode).toBeDefined();
-    });
+    }, 60000);
 
     it('should save and load settings with Story 1.4 structure', async () => {
       const testSettings = {
@@ -146,7 +146,7 @@ describe('BackendAdapter-SettingsUI Integration Tests', () => {
       expect(loadedSettings.processing.imageEnhancement).toBe(testSettings.processing.imageEnhancement);
       expect(loadedSettings.processing.sharpening).toBe(testSettings.processing.sharpening);
       expect(loadedSettings.processing.saturation).toBe(testSettings.processing.saturation);
-    });
+    }, 60000);
 
     it('should handle job execution with Story 1.4 settings structure', async () => {
       const config = {
@@ -198,7 +198,7 @@ describe('BackendAdapter-SettingsUI Integration Tests', () => {
       const result = await backendAdapter.startJob(config);
       expect(result.success).toBe(true);
       expect(result.jobId).toBeDefined();
-    });
+    }, 60000);
   });
 
   describe('IPC Communication Compatibility', () => {

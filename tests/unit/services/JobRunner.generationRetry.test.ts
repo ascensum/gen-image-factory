@@ -27,7 +27,7 @@ describe('JobRunner - per-generation retry', () => {
     // Stub parameter generation to avoid external calls
     vi.spyOn(runner, 'generateParameters').mockResolvedValue({ prompt: 'k1', promptContext: '', aspectRatios: ['1:1'] });
     const config = {
-      apiKeys: { openai: 'x', piapi: 'y' },
+      apiKeys: { openai: 'x', runware: 'y' },
       filePaths: { outputDirectory: '/tmp', tempDirectory: '/tmp' },
       parameters: {
         processMode: 'relax',

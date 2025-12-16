@@ -1,6 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');
+const fsp = fs.promises;
 const crypto = require('crypto');
 
 /**
@@ -19,7 +20,7 @@ class BackupManager {
   async init() {
     try {
       // Create backup directory if it doesn't exist
-      await fs.mkdir(this.backupDir, { recursive: true });
+      await fsp.mkdir(this.backupDir, { recursive: true });
       console.log('Backup directory initialized');
     } catch (error) {
       console.error('Error initializing backup directory:', error);
@@ -33,7 +34,7 @@ class BackupManager {
     
     return new Promise((resolve, reject) => {
       // Check if source database exists
-      fs.access(this.dbPath).then(() => {
+      fsp.access(this.dbPath).then(() => {
         // Create backup using SQLite backup API
         const sourceDb = new sqlite3.Database(this.dbPath, (err) => {
           if (err) {
@@ -82,17 +83,17 @@ class BackupManager {
     };
 
     const metadataPath = backupPath + '.meta';
-    await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+    await fsp.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
   }
 
   async calculateChecksum(filePath) {
-    const data = await fs.readFile(filePath);
+    const data = await fsp.readFile(filePath);
     return crypto.createHash('sha256').update(data).digest('hex');
   }
 
   async listBackups() {
     try {
-      const files = await fs.readdir(this.backupDir);
+      const files = await fsp.readdir(this.backupDir);
       const backups = [];
 
       for (const file of files) {
@@ -102,11 +103,11 @@ class BackupManager {
           
           let metadata = null;
           try {
-            const metadataContent = await fs.readFile(metadataPath, 'utf8');
+            const metadataContent = await fsp.readFile(metadataPath, 'utf8');
             metadata = JSON.parse(metadataContent);
           } catch (error) {
             // Metadata file doesn't exist, create basic info
-            const stats = await fs.stat(backupPath);
+            const stats = await fsp.stat(backupPath);
             metadata = {
               timestamp: file.replace('backup-', '').replace('.db', ''),
               size: stats.size,
@@ -143,7 +144,7 @@ class BackupManager {
         // Create temporary backup of current database
         const currentBackupPath = this.dbPath + '.restore-backup';
         
-        fs.copyFile(this.dbPath, currentBackupPath).then(() => {
+        fsp.copyFile(this.dbPath, currentBackupPath).then(() => {
           // Restore from backup
           const sourceDb = new sqlite3.Database(backupPath, (err) => {
             if (err) {
@@ -167,14 +168,14 @@ class BackupManager {
             
             if (err) {
               // Restore failed, try to restore from temporary backup
-              fs.copyFile(currentBackupPath, this.dbPath).then(() => {
+              fsp.copyFile(currentBackupPath, this.dbPath).then(() => {
                 reject(err);
               }).catch(() => {
                 reject(new Error('Restore failed and rollback failed'));
               });
             } else {
               // Clean up temporary backup
-              fs.unlink(currentBackupPath).catch(() => {});
+              fsp.unlink(currentBackupPath).catch(() => {});
               console.log('Database restored successfully');
               resolve({ success: true });
             }
@@ -228,7 +229,7 @@ class BackupManager {
 
   async getDatabaseSize() {
     try {
-      const stats = await fs.stat(this.dbPath);
+      const stats = await fsp.stat(this.dbPath);
       return {
         size: stats.size,
         sizeInMB: (stats.size / (1024 * 1024)).toFixed(2)
@@ -248,9 +249,9 @@ class BackupManager {
         
         for (const backup of backupsToDelete) {
           try {
-            await fs.unlink(backup.path);
+            await fsp.unlink(backup.path);
             const metadataPath = backup.path + '.meta';
-            await fs.unlink(metadataPath).catch(() => {});
+            await fsp.unlink(metadataPath).catch(() => {});
             console.log(`Deleted old backup: ${backup.file}`);
           } catch (error) {
             console.error(`Error deleting backup ${backup.file}:`, error);

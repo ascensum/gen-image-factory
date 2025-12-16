@@ -10,6 +10,21 @@ describe('SettingsSection', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    // Prevent delayed DOM operations from firing after test teardown.
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation((cb: any) => {
+      try {
+        cb()
+      } catch {
+        // ignore
+      }
+      return 0 as any
+    })
+  })
+
+  afterEach(() => {
+    // Restore timers after each test.
+    // @ts-ignore
+    globalThis.setTimeout?.mockRestore?.()
   })
 
   test('renders settings section with title', () => {

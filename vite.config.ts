@@ -25,7 +25,10 @@ export default defineConfig({
         '**/*.d.ts',
         '**/e2e/**',
         '**/coverage/**',
-        '**/.{idea,git,cache,output,temp}/**'
+        '**/.{idea,git,cache,output,temp}/**',
+        // Entrypoints / side-effect modules that are not meaningfully unit-testable
+        'src/index.js',
+        'src/utils.js'
       ],
       include: [
         'src/**/*.{ts,tsx,js,jsx}'

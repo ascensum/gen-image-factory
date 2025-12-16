@@ -101,7 +101,9 @@ class DatabaseMigration {
         });
 
         // Run migration
-        this.db.run(upSQL, (err) => {
+        // NOTE: migrations often contain multiple statements; `run` only executes the first.
+        // Use `exec` so multi-statement migrations apply correctly.
+        this.db.exec(upSQL, (err) => {
           if (err) {
             this.db.run('ROLLBACK', () => {
               reject(err);
@@ -169,7 +171,8 @@ class DatabaseMigration {
             return;
           }
 
-          this.db.run(downSQL, (err) => {
+          // Rollbacks can also be multi-statement.
+          this.db.exec(downSQL, (err) => {
             if (err) {
               this.db.run('ROLLBACK', () => {
                 reject(err);

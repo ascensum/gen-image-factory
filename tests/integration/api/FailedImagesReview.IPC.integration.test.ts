@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import path from 'path';
 import fs from 'fs/promises';
+import { createRequire } from 'node:module';
 
 describe('Failed Images Review - IPC Integration', () => {
   let backend: any;
   let handlers: Map<string, Function>;
   let store: Record<string, any>;
+  const req = createRequire(import.meta.url);
+  let prevCache: Record<string, any> = {};
 
   beforeEach(async () => {
     vi.resetModules();
@@ -15,11 +18,78 @@ describe('Failed Images Review - IPC Integration', () => {
 
     // Mock electron ipcMain and capture handlers
     handlers = new Map();
-    vi.mock('electron', () => ({
+    vi.doMock('electron', () => ({
       ipcMain: {
         handle: vi.fn((channel: string, cb: Function) => handlers.set(channel, cb)),
-        removeHandler: vi.fn(),
+        removeHandler: vi.fn((channel: string) => handlers.delete(channel)),
       },
+      app: { getPath: vi.fn(() => '/tmp') },
+      dialog: {
+        showOpenDialog: vi.fn().mockResolvedValue({ canceled: true, filePaths: [] }),
+        showSaveDialog: vi.fn().mockResolvedValue({ canceled: true, filePath: undefined }),
+      },
+      shell: {
+        openPath: vi.fn().mockResolvedValue(''),
+        showItemInFolder: vi.fn(),
+      },
+    }));
+
+    // Prevent sqlite initialization in BackendAdapter constructor (it uses CJS require at module scope).
+    // For CJS modules, Vitest mocks are not reliably applied to runtime require(), so patch require cache.
+    prevCache = {};
+    const resolvedJC = req.resolve('../../../src/database/models/JobConfiguration');
+    const resolvedJE = req.resolve('../../../src/database/models/JobExecution');
+    const resolvedGI = req.resolve('../../../src/database/models/GeneratedImage');
+    prevCache[resolvedJC] = req.cache[resolvedJC];
+    prevCache[resolvedJE] = req.cache[resolvedJE];
+    prevCache[resolvedGI] = req.cache[resolvedGI];
+
+    const jobConfigMock = {
+      JobConfiguration: function JobConfiguration() {
+        return {
+          init: vi.fn().mockResolvedValue(undefined),
+          createTables: vi.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
+          getDefaultSettings: vi.fn().mockReturnValue({
+            apiKeys: {},
+            filePaths: { outputDirectory: '/tmp', tempDirectory: '/tmp' },
+            parameters: {},
+            processing: {},
+            ai: {},
+            advanced: {},
+          }),
+          getSettings: vi.fn().mockResolvedValue({ success: true, settings: {} }),
+          saveSettings: vi.fn().mockResolvedValue({ success: true, id: 1 }),
+        };
+      },
+    };
+    const jobExecutionMock = {
+      JobExecution: function JobExecution() {
+        return {
+          init: vi.fn().mockResolvedValue(undefined),
+          createTables: vi.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
+        };
+      },
+    };
+    const generatedImageMock = {
+      GeneratedImage: function GeneratedImage() {
+        return {
+          init: vi.fn().mockResolvedValue(undefined),
+          createTables: vi.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
+        };
+      },
+    };
+
+    req.cache[resolvedJC] = { id: resolvedJC, filename: resolvedJC, loaded: true, exports: jobConfigMock } as any;
+    req.cache[resolvedJE] = { id: resolvedJE, filename: resolvedJE, loaded: true, exports: jobExecutionMock } as any;
+    req.cache[resolvedGI] = { id: resolvedGI, filename: resolvedGI, loaded: true, exports: generatedImageMock } as any;
+    vi.doMock('../../../src/services/jobRunner', () => ({
+      JobRunner: vi.fn().mockImplementation(() => ({ on: vi.fn() })),
+    }));
+    vi.doMock('../../../src/services/retryExecutor', () => ({
+      default: vi.fn().mockImplementation(() => ({})),
     }));
 
     // Stub GeneratedImage model methods by overriding instance after construction
@@ -91,6 +161,26 @@ describe('Failed Images Review - IPC Integration', () => {
   afterEach(async () => {
     store = {} as any;
     vi.restoreAllMocks();
+    vi.resetModules();
+    vi.unmock('electron');
+    vi.unmock('../../../src/services/jobRunner');
+    vi.unmock('../../../src/services/retryExecutor');
+
+    // Restore require cache entries we replaced
+    try {
+      const keys = Object.keys(prevCache || {});
+      for (const k of keys) {
+        if (typeof prevCache[k] === 'undefined') {
+          delete req.cache[k];
+        } else {
+          req.cache[k] = prevCache[k];
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      prevCache = {};
+    }
   });
 
   it('registers IPC handlers for failed images review channels', async () => {

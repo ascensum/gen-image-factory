@@ -31,18 +31,19 @@ describe('JobRunner - parameter regeneration per generation', () => {
       // Simulate the same selection logic: sequential by __forceSequentialIndex
       const idx = (cfg.__forceSequentialIndex ?? 0) % 3;
       const kw = ['alpha', 'bravo', 'charlie'][idx];
-      return { prompt: kw, promptContext: '', aspectRatios: ['1:1'] };
+      // aspectRatios is a legacy Midjourney-era field; omit it for Runware-aligned tests
+      return { prompt: kw, promptContext: '' };
     });
 
     const config = {
-      apiKeys: { openai: 'x', piapi: 'y' },
+      apiKeys: { openai: 'x', runware: 'y' },
       filePaths: { outputDirectory: '/tmp', tempDirectory: '/tmp', keywordsFile: '/tmp/keywords.txt' },
-      parameters: { processMode: 'relax', aspectRatios: ['1:1'], count: 3, keywordRandom: false, enablePollingTimeout: false },
+      parameters: { processMode: 'relax', count: 3, keywordRandom: false, enablePollingTimeout: false },
       processing: {},
       ai: {}
     };
 
-    await runner._generateImagesPerGeneration(config, { prompt: 'seed', promptContext: '', aspectRatios: ['1:1'] }, 3);
+    await runner._generateImagesPerGeneration(config, { prompt: 'seed', promptContext: '' }, 3);
     const logs = runner.getJobLogs('debug');
     const prompts = (genSpy.mock.calls || []).map(call => call[0]?.__forceSequentialIndex).length;
     expect(prompts).toBe(3);

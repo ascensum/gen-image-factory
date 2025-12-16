@@ -88,6 +88,14 @@ describe('GeneratedImage Model', () => {
 
   afterAll(async () => {
     if (generatedImage && generatedImage.db) {
+      // Ensure any queued sqlite operations (indexes) finish before closing
+      await new Promise((resolve) => {
+        try {
+          generatedImage.db.wait(() => resolve());
+        } catch (_e) {
+          resolve();
+        }
+      });
       await generatedImage.close();
     }
     // Clean up test database
@@ -434,7 +442,7 @@ describe('GeneratedImage Model', () => {
       await generatedImage.db.run(`
         INSERT INTO generated_images 
         (image_mapping_id, execution_id, generation_prompt, created_at) 
-        VALUES (?, 1, 'Old image', datetime('now', '-31 days'))
+        VALUES (?, 1, 'Old image', '2000-01-01 00:00:00')
       `, [mappingId]);
       
       const result = await generatedImage.cleanupOldImages(30);

@@ -103,9 +103,10 @@ describe('Export to Excel - Regression', () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         settings: {
-          apiKeys: { openai: 'sk-should-not-export', piapi: 'piapi-should-not-export', removeBg: 'rm-should-not-export' },
+          apiKeys: { openai: 'sk-should-not-export', runware: 'rw-should-not-export', piapi: 'piapi-should-not-export', removeBg: 'rm-should-not-export' },
           filePaths: { outputDirectory: '/out', tempDirectory: '/tmp' },
-          parameters: { processMode: 'relax', aspectRatios: '1:1', mjVersion: '6.1', openaiModel: 'gpt-4o-mini' },
+          // Legacy MJ-only fields (mjVersion/aspectRatios) intentionally omitted; Runware is the active provider.
+          parameters: { processMode: 'relax', runwareModel: 'runware:101@1', runwareDimensionsCsv: '1024x1024', runwareFormat: 'png', variations: 1, openaiModel: 'gpt-4o-mini' },
           ai: { runQualityCheck: true, runMetadataGen: true },
         },
       },

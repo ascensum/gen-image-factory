@@ -68,6 +68,7 @@ class TransactionManager {
     
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
+      const tm = this;
       
       connection.serialize(() => {
         // Begin transaction
@@ -93,12 +94,12 @@ class TransactionManager {
             const queryTime = Date.now() - queryStartTime;
             
             // Log query performance
-            this.logQuery(operation.sql, queryTime);
+            tm.logQuery(operation.sql, queryTime);
             
             if (err) {
               hasError = true;
               connection.run('ROLLBACK', () => {
-                this.releaseConnection(connection);
+                tm.releaseConnection(connection);
                 reject(err);
               });
               return;
@@ -116,10 +117,10 @@ class TransactionManager {
             if (completedOperations === operations.length) {
               connection.run('COMMIT', (err) => {
                 if (err) {
-                  this.releaseConnection(connection);
+                  tm.releaseConnection(connection);
                   reject(err);
                 } else {
-                  this.releaseConnection(connection);
+                  tm.releaseConnection(connection);
                   const totalTime = Date.now() - startTime;
                   console.log(`Transaction completed in ${totalTime}ms`);
                   resolve({
@@ -223,6 +224,7 @@ class TransactionManager {
     const connection = await this.getConnection();
     
     return new Promise((resolve, reject) => {
+      const tm = this;
       connection.serialize(() => {
         // Analyze tables for better query planning
         connection.run('ANALYZE', (err) => {
@@ -236,23 +238,15 @@ class TransactionManager {
           if (err) {
             console.warn('VACUUM failed:', err.message);
           }
-        });
-
-        // Reindex for better performance
-        connection.run('REINDEX', (err) => {
-          if (err) {
-            console.warn('REINDEX failed:', err.message);
-          }
-        });
-
-        connection.wait((err) => {
-          this.releaseConnection(connection);
-          if (err) {
-            reject(err);
-          } else {
+          // Reindex for better performance
+          connection.run('REINDEX', (err2) => {
+            if (err2) {
+              console.warn('REINDEX failed:', err2.message);
+            }
+            tm.releaseConnection(connection);
             console.log('Database optimization completed');
             resolve();
-          }
+          });
         });
       });
     });

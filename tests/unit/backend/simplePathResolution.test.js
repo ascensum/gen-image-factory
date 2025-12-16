@@ -26,6 +26,8 @@ describe('Simple Path Resolution Test', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.resetModules();
+    vi.unmock('electron');
   });
 
   it('should test the actual path resolution logic used in production', () => {

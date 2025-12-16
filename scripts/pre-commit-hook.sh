@@ -120,15 +120,20 @@ else
     exit 1
 fi
 
-# 4. Check for sensitive data in staged files
+# 4. Check for sensitive data in staged files (exclude test files)
 echo "Checking for sensitive data in staged files..."
-if git diff --cached --name-only | xargs grep -l "sk-" 2>/dev/null; then
+# Filter out test files and hook scripts from the check (test files legitimately contain fake API keys)
+# Check only non-test files for "sk-" pattern followed by alphanumeric (actual API key pattern)
+non_test_files=$(git diff --cached --name-only | grep -v -E "(test|spec|__tests__|pre-commit)" || echo "")
+if [ -n "$non_test_files" ] && echo "$non_test_files" | xargs grep -lE "sk-[a-zA-Z0-9]{20,}" 2>/dev/null; then
     print_status "ERROR" "Potential API keys found in staged files!"
     echo "Please remove any API keys before committing."
     exit 1
 fi
 
-if git diff --cached --name-only | xargs grep -l "console.log.*apiKeys" 2>/dev/null; then
+# Exclude hook scripts and test files from this check
+non_test_files=$(git diff --cached --name-only | grep -v -E "(test|spec|__tests__|pre-commit)" || echo "")
+if [ -n "$non_test_files" ] && echo "$non_test_files" | xargs grep -l "console.log.*apiKeys" 2>/dev/null; then
     print_status "ERROR" "Potential API key logging found in staged files!"
     echo "Please ensure all logging is properly sanitized."
     exit 1

@@ -189,6 +189,9 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   });
   const [showError, setShowError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  // Local banner messages (used when parent doesn't provide error/success props)
+  const [localError, setLocalError] = useState<string | null>(null);
+  const [localSuccess, setLocalSuccess] = useState<string | null>(null);
   // Runware Advanced visibility is persisted in settings via parameters.runwareAdvancedEnabled
   const [showResetDialog, setShowResetDialog] = useState(false);
   
@@ -204,12 +207,18 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           if (result && result.success && result.settings) {
             setSettings(result.settings as SettingsObject);
             setForm(result.settings as SettingsObject);
+            // Uncontrolled inputs use defaultValue; bump version to reflect loaded values
+            setFormVersion((v) => v + 1);
+            setHasUnsavedChanges(false);
           }
         } else {
           console.log('Electron API not available, using default settings');
         }
       } catch (error) {
         console.error('Error loading settings:', error);
+        setLocalError('Failed to load settings');
+        setShowError(true);
+        setTimeout(() => setShowError(false), 3000);
       }
     };
 
@@ -267,6 +276,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       }
       setSettings(form);
       setHasUnsavedChanges(false);
+      setLocalSuccess('Settings saved');
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
       if (onSave) {
@@ -274,6 +284,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       }
     } catch (error) {
       console.error('Error saving settings:', error);
+      setLocalError('Failed to save settings');
       setShowError(true);
       setTimeout(() => setShowError(false), 3000);
     }
@@ -300,12 +311,14 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
   // Handle error and success states
   useEffect(() => {
     if (error) {
+      setLocalError(error);
       setShowError(true);
     }
   }, [error]);
 
   useEffect(() => {
     if (success) {
+      setLocalSuccess(success);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     }
@@ -1291,12 +1304,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
       {/* Main Content */}
       <main className="flex-1 flex flex-col">
         {/* Notifications */}
-        {showError && error && (
+        {showError && (error || localError) && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 m-4 rounded-md" role="alert" data-testid="error-message">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <AlertCircle className="w-5 h-5 text-red-400 mr-2" />
-                <p className="text-sm text-red-700">{error}</p>
+                <p className="text-sm text-red-700">{error || localError}</p>
               </div>
               <button
                 onClick={() => setShowError(false)}
@@ -1309,12 +1322,12 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </div>
         )}
 
-        {showSuccess && success && (
+        {showSuccess && (success || localSuccess) && (
           <div className="bg-green-50 border-l-4 border-green-400 p-4 m-4 rounded-md" role="alert" data-testid="success-message">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
-                <p className="text-sm text-green-700">{success}</p>
+                <p className="text-sm text-green-700">{success || localSuccess}</p>
               </div>
               <button
                 onClick={() => setShowSuccess(false)}

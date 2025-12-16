@@ -17,9 +17,10 @@ describe('Job label propagation on startJob', () => {
     const spy = vi.spyOn(adapter.jobExecution, 'saveJobExecution').mockResolvedValue({ success: true, id: 123 })
 
     const config = {
-      apiKeys: { openai: 'k' },
+      apiKeys: { openai: 'k', runware: 'k' },
       filePaths: { outputDirectory: './out', tempDirectory: './tmp' },
-      parameters: { label: 'Start Label', processMode: 'relax', aspectRatios: ['1:1'], mjVersion: '6.1', openaiModel: 'gpt-4o', pollingTimeout: 15, keywordRandom: false },
+      // Legacy MJ-only fields (mjVersion/aspectRatios) intentionally omitted; Runware is the active provider.
+      parameters: { label: 'Start Label', processMode: 'relax', openaiModel: 'gpt-4o', runwareModel: 'runware:101@1', runwareDimensionsCsv: '1024x1024', runwareFormat: 'png', variations: 1, pollingTimeout: 15, keywordRandom: false },
       processing: {},
       ai: {},
       advanced: {}

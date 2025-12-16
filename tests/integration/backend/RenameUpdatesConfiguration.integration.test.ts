@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { BackendAdapter } from '../../../src/adapter/backendAdapter'
 
 vi.mock('../../../src/services/jobRunner', () => ({
   JobRunner: class {
@@ -17,32 +16,73 @@ vi.mock('../../../src/services/jobRunner', () => ({
 }))
 
 describe('Inline rename updates configuration name', () => {
-  let adapter: BackendAdapter
+  let adapter: any
+  let store: any
 
-  beforeEach(() => {
-    adapter = new BackendAdapter({ skipIpcSetup: true }) as any
+  beforeEach(async () => {
+    vi.resetModules()
+    store = {
+      configId: 1,
+      execId: 2,
+      configName: 'job_20240101_000000',
+      execLabel: 'job_20240101_000000',
+    }
+
+    const mod = await import('../../../src/adapter/backendAdapter')
+    adapter = new mod.BackendAdapter({ skipIpcSetup: true }) as any
+
+    // Avoid real DB init: stub out model methods used by adapter paths under test
+    adapter.ensureInitialized = vi.fn().mockResolvedValue(undefined)
+    adapter.jobConfig.saveSettings = vi.fn().mockResolvedValue({ success: true, id: store.configId })
+    adapter.jobConfig.getConfigurationById = vi.fn().mockResolvedValue({
+      success: true,
+      configuration: { id: store.configId, name: store.configName, settings: {} },
+    })
+
+    adapter.jobExecution.saveJobExecution = vi.fn().mockResolvedValue({ success: true, id: store.execId })
+    adapter.jobExecution.updateJobExecution = vi.fn().mockImplementation(async (_id: number, patch: any) => {
+      if (patch && typeof patch.label === 'string') store.execLabel = patch.label
+      return { success: true }
+    })
+    adapter.jobExecution.getJobHistory = vi.fn().mockResolvedValue({
+      success: true,
+      history: [{ id: store.execId, label: store.execLabel, configurationId: store.configId }],
+    })
+    adapter.jobExecution.getJobExecution = vi.fn().mockImplementation(async (id: number) => {
+      if (id !== store.execId) return { success: false, error: 'Job execution not found' }
+      return { success: true, execution: { id: store.execId, label: store.execLabel, configurationId: store.configId } }
+    })
+    adapter.jobExecution.renameJobExecution = vi.fn().mockImplementation(async (id: number, label: string) => {
+      if (id !== store.execId) return { success: false, error: 'Job execution not found' }
+      store.execLabel = label
+      return { success: true }
+    })
+
     vi.spyOn(adapter, 'getSettings').mockResolvedValue({
       success: true,
       settings: {
-        apiKeys: { openai: 'ok', piapi: 'ok', removeBg: '' },
+        apiKeys: { openai: 'ok', runware: 'ok', removeBg: '' },
         filePaths: { outputDirectory: '/tmp', tempDirectory: '/tmp' },
-        parameters: { processMode: 'single', openaiModel: 'gpt-4o' },
+        parameters: { processMode: 'relax', openaiModel: 'gpt-4o', runwareModel: 'runware:101@1', runwareFormat: 'png', variations: 1 },
         ai: { runQualityCheck: false, runMetadataGen: false },
-        processing: {}
-      }
+        processing: {},
+      },
     } as any)
   })
 
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.resetModules()
+  })
 
   it('renameJobExecution updates execution.label (configuration name unchanged)', async () => {
     // Start with fallback so we can see rename effect
     const config = {
       filePaths: { outputDirectory: '/tmp', tempDirectory: '/tmp' },
-      parameters: { processMode: 'single', openaiModel: 'gpt-4o' },
+      parameters: { processMode: 'relax', openaiModel: 'gpt-4o', runwareModel: 'runware:101@1', runwareFormat: 'png', variations: 1 },
       ai: { runQualityCheck: false, runMetadataGen: false },
       processing: {},
-      apiKeys: { openai: 'x', piapi: 'y' }
+      apiKeys: { openai: 'x', runware: 'y' }
     }
     const start = await adapter.startJob(config as any)
     expect(start.success).toBe(true)

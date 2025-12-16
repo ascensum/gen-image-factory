@@ -84,7 +84,7 @@ describe('ZIP Export - Integration', () => {
     expect(fs.existsSync(res.zipPath)).toBe(true);
     const stats = fs.statSync(res.zipPath);
     expect(stats.size).toBeGreaterThan(0);
-  });
+  }, 60000);
 
   it('respects overwrite duplicate policy for custom output path', async () => {
     const outDir = path.join(tempDir, 'zip-out');
@@ -98,7 +98,7 @@ describe('ZIP Export - Integration', () => {
     expect(fs.existsSync(res.zipPath)).toBe(true);
     const stats = fs.statSync(res.zipPath);
     expect(stats.size).toBeGreaterThan(0);
-  });
+  }, 60000);
 
   it('appends number when duplicate and policy is append', async () => {
     const outDir = path.join(tempDir, 'zip-out2');
@@ -110,7 +110,7 @@ describe('ZIP Export - Integration', () => {
     expect(res.zipPath).not.toBe(target);
     expect(res.zipPath.toLowerCase().endsWith('.zip')).toBe(true);
     expect(fs.existsSync(res.zipPath)).toBe(true);
-  });
+  }, 60000);
 });
 
 

@@ -1,0 +1,10 @@
+# Semgrep ignore list (local + CI)
+node_modules/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+electron/renderer/
+web-bundles/
+
