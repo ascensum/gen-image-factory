@@ -14,13 +14,7 @@ fi
 
 MSG_CONTENT=$(cat "$MSG_FILE")
 
-# Try a grep with common emoji ranges; fallback to node check if available
-if printf "%s" "$MSG_CONTENT" | grep -qP '[\x{1F300}-\x{1FAFF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]'; then
-  echo "[ERROR] Emojis are not allowed in commit messages."
-  exit 1
-fi
-
-# Node-based extended test (handles Extended_Pictographic when available)
+# Node-based emoji detection (works cross-platform, handles Extended_Pictographic)
 if command -v node >/dev/null 2>&1; then
   node -e 'const fs=require("fs");const m=fs.readFileSync(process.argv[1],"utf8");try{const r=/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/u; if(r.test(m)){process.exit(2)} }catch(e){const r2=/[\u203C-\u3299\u2122\u00A9\u00AE\u2194-\u21AA\u231A-\u27BF\u2B05-\u2B55\u1F000-\u1FAFF]/; if(r2.test(m)){process.exit(2)} }' "$MSG_FILE" || RC=$?; RC=${RC:-0}; if [ "$RC" -eq 2 ]; then echo "[ERROR] Emojis are not allowed in commit messages."; exit 1; fi
 fi
