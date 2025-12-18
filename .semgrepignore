@@ -1,5 +1,4 @@
 # Semgrep ignore list (local + CI)
-# This keeps the scan fast by ignoring binaries and build artifacts, but removes the ignore on your renderer.
 
 # --- Dependencies & Build Artifacts ---
 node_modules/
@@ -8,6 +7,7 @@ build/
 out/
 release/
 web-bundles/
+electron/renderer/  # <--- ADD THIS: This is Vite build output, not source code
 *.asar
 package-lock.json
 
