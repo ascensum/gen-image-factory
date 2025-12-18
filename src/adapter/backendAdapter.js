@@ -74,7 +74,7 @@ class BackendAdapter {
       let machineInfo = '';
       try {
         machineInfo = `${os.hostname()}-${os.userInfo().username}`;
-      } catch (e) {
+      } catch {
         // Fallback if os info unavailable
         machineInfo = 'generic-machine';
       }
@@ -167,7 +167,7 @@ class BackendAdapter {
         const desktopPath = app.getPath('desktop');
         tempDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'generated');
         outputDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
-      } catch (error) {
+      } catch {
         const os = require('os');
         const homeDir = os.homedir();
         tempDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'generated');
@@ -306,13 +306,19 @@ class BackendAdapter {
 
     // Ensure required tables exist to avoid race conditions on first access
     if (this.jobConfig && this.jobConfig.createTables) {
-      try { await this.jobConfig.createTables(); } catch (e) {}
+      try { await this.jobConfig.createTables(); } catch {
+        // Ignore table creation errors (tables may already exist)
+      }
     }
     if (this.jobExecution && this.jobExecution.createTables) {
-      try { await this.jobExecution.createTables(); } catch (e) {}
+      try { await this.jobExecution.createTables(); } catch {
+        // Ignore table creation errors (tables may already exist)
+      }
     }
     if (this.generatedImage && this.generatedImage.createTables) {
-      try { await this.generatedImage.createTables(); } catch (e) {}
+      try { await this.generatedImage.createTables(); } catch {
+        // Ignore table creation errors (tables may already exist)
+      }
     }
   }
 
@@ -352,7 +358,7 @@ class BackendAdapter {
       handlers.forEach(handler => {
         try {
           _ipc.removeHandler(handler);
-        } catch (error) {
+        } catch {
           // Handler might not exist, ignore error
         }
       });
@@ -423,12 +429,14 @@ class BackendAdapter {
       });
 
       // Reveal an item in system file manager
-      _ipc.handle('reveal-in-folder', async (event, fullPath) => {
+      _ipc.handle('reveal-in-folder', async (_event, fullPath) => {
         try {
           const { shell } = require('electron');
           if (fullPath && typeof fullPath === 'string') {
             // showItemInFolder highlights the file if it exists; if not, open its directory
-            try { await shell.showItemInFolder(fullPath); } catch {}
+            try { await shell.showItemInFolder(fullPath); } catch {
+              // Ignore errors when revealing item in folder
+            }
             return { success: true };
           }
           return { success: false, error: 'Invalid path' };
@@ -619,7 +627,8 @@ class BackendAdapter {
       });
 
       // Get retry queue status
-      _ipc.handle('failed-image:get-queue-status', async (event) => {
+      // eslint-disable-next-line no-unused-vars
+      _ipc.handle('failed-image:get-queue-status', async (_event) => {
         return await this.getRetryQueueStatus();
       });
 
@@ -666,11 +675,12 @@ class BackendAdapter {
         }
       });
 
-      _ipc.handle('job-execution:bulk-rerun', async (event, ids) => {
+      _ipc.handle('job-execution:bulk-rerun', async (_event, ids) => {
         return await this.bulkRerunJobExecutions(ids);
       });
 
-      _ipc.handle('job-execution:process-next-bulk-rerun', async (event) => {
+      // eslint-disable-next-line no-unused-vars
+      _ipc.handle('job-execution:process-next-bulk-rerun', async (_event) => {
         return await this.processNextBulkRerunJob();
       });
 
@@ -766,14 +776,18 @@ class BackendAdapter {
               (configResult?.configuration?.settings?.parameters && configResult.configuration.settings.parameters.label) || ''
             ).trim();
             if (cfgLabel) baseLabel = cfgLabel;
-          } catch (_) {}
+          } catch {
+            // Ignore errors when extracting label from config
+          }
 
           // Fallback to configuration name if provided
           if (!baseLabel) {
             try {
               const cfgName = String(configResult?.configuration?.name || '').trim();
               if (cfgName) baseLabel = cfgName;
-            } catch (_) {}
+            } catch {
+            // Ignore errors when extracting label from config
+          }
           }
 
           if (!baseLabel) {
@@ -802,6 +816,7 @@ class BackendAdapter {
           try {
             const cfg = configResult?.configuration?.settings || null;
             if (cfg) {
+              // eslint-disable-next-line no-unused-vars
               const { apiKeys, ...sanitized } = cfg;
               if (sanitized && sanitized.parameters) {
                 const adv = sanitized.parameters.runwareAdvanced || {};
@@ -823,7 +838,9 @@ class BackendAdapter {
                 const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
                 const mode = modeFromCfg || existing;
                 sanitized.processing.removeBgFailureMode = (mode === 'mark_failed' || mode === 'approve') ? mode : (mode ? mode : 'approve');
-              } catch {}
+              } catch {
+                // Ignore errors when setting removeBgFailureMode
+              }
               await this.jobExecution.updateJobExecution(newExecution.id, {
                 configurationId: jobData.execution.configurationId,
                 status: 'running',
@@ -865,13 +882,17 @@ class BackendAdapter {
               if (params.runwareAdvanced) params.runwareAdvanced = {};
               settingsForRun.parameters = params;
             }
-          } catch {}
+          } catch {
+            // Ignore errors when normalizing parameters
+          }
           try {
             console.log('Rerun (single) starting with parameters gate:', {
               enabledFlag: settingsForRun?.parameters?.runwareAdvancedEnabled,
               advancedKeys: settingsForRun?.parameters?.runwareAdvanced ? Object.keys(settingsForRun.parameters.runwareAdvanced) : []
             });
-          } catch {}
+          } catch {
+            // Ignore errors when logging
+          }
           const jobResult = await this.jobRunner.startJob(settingsForRun);
           
           if (jobResult.success) {
@@ -1003,7 +1024,7 @@ class BackendAdapter {
         message: 'Secure storage available (System Keychain)',
         securityLevel: 'native-keychain'
       };
-    } catch (error) {
+    } catch {
       return {
         secureStorage: 'unavailable', 
         fallback: 'encrypted-database',
@@ -1137,7 +1158,9 @@ class BackendAdapter {
           if (params.runwareAdvanced) params.runwareAdvanced = {};
           settingsObject.parameters = params;
         }
-      } catch (_) {}
+      } catch {
+        // Ignore errors when normalizing parameters
+      }
       const result = await this.jobConfig.updateConfiguration(id, settingsObject);
       return result;
     } catch (error) {
@@ -1170,7 +1193,9 @@ class BackendAdapter {
           if (params.runwareAdvanced) params.runwareAdvanced = {};
           settingsObject.parameters = params;
         }
-      } catch (_) {}
+      } catch {
+        // Ignore errors when normalizing parameters
+      }
 
       // Save API keys to secure storage
       for (const [service, apiKey] of Object.entries(settingsObject.apiKeys)) {
@@ -1289,7 +1314,7 @@ class BackendAdapter {
       }
       
       return { isValid: true };
-    } catch (error) {
+    } catch {
       return { isValid: false, message: 'Path does not exist or is not accessible' };
     }
   }
@@ -1366,7 +1391,7 @@ class BackendAdapter {
           const { normalizeProcessingSettings } = require('../utils/processing');
           normalizedConfig.processing = normalizeProcessingSettings(normalizedConfig.processing);
         }
-      } catch (e) {
+      } catch {
         // proceed without fatal error
       }
 
@@ -1895,7 +1920,9 @@ class BackendAdapter {
         const policy = options.duplicatePolicy || 'append';
         if (fsSync.existsSync(full)) {
           if (policy === 'overwrite') {
-            try { fsSync.unlinkSync(full); } catch {}
+            try { fsSync.unlinkSync(full); } catch {
+              // Ignore errors when deleting existing file
+            }
             filePath = full;
           } else {
             const nameNoExt = base.replace(/\.xlsx$/i, '');
@@ -2005,7 +2032,7 @@ class BackendAdapter {
             const desktopPath = app.getPath('desktop');
             outputDirectory = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
             console.log(` manualApproveImage: Using fallback Desktop path: ${outputDirectory}`);
-          } catch (error) {
+          } catch {
             const os = require('os');
             const homeDir = os.homedir();
             outputDirectory = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
@@ -2196,7 +2223,7 @@ class BackendAdapter {
           const id = Number(mappingId);
           const byId = await this.generatedImage.updateImagePathsById(id, tempImagePath, finalImagePath);
           return byId;
-        } catch (e) {
+        } catch {
           // keep original result
         }
       }
@@ -2529,7 +2556,9 @@ class BackendAdapter {
         const policy = options.duplicatePolicy || 'append';
         if (fsSync_bulk.existsSync(full)) {
           if (policy === 'overwrite') {
-            try { fsSync_bulk.unlinkSync(full); } catch {}
+            try { fsSync_bulk.unlinkSync(full); } catch {
+              // Ignore errors when deleting existing file
+            }
             zipPath = full;
           } else {
             const nameNoExt = base.replace(/\.zip$/i, '');
@@ -2861,6 +2890,7 @@ class BackendAdapter {
       try {
         const cfg = firstJob?.configuration || null;
         if (cfg) {
+          // eslint-disable-next-line no-unused-vars
           const { apiKeys, ...sanitized } = cfg;
           if (sanitized && sanitized.parameters) {
             const adv = sanitized.parameters.runwareAdvanced || {};
@@ -2884,7 +2914,9 @@ class BackendAdapter {
             const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
             const mode = modeFromCfg || existing;
             sanitized.processing.removeBgFailureMode = (mode === 'mark_failed' || mode === 'approve') ? mode : (mode ? mode : 'approve');
-          } catch {}
+          } catch {
+            // Ignore errors when setting removeBgFailureMode
+          }
           await this.jobExecution.updateJobExecution(newExecution.id, {
             configurationId: firstJob.configurationId,
             status: 'running',
@@ -2912,13 +2944,17 @@ class BackendAdapter {
           if (params.runwareAdvanced) params.runwareAdvanced = {};
           firstJob.configuration.parameters = params;
         }
-      } catch {}
+      } catch {
+        // Ignore errors when normalizing parameters
+      }
       try {
         console.log('Rerun (bulk first) starting with parameters gate:', {
           enabledFlag: firstJob?.configuration?.parameters?.runwareAdvancedEnabled,
           advancedKeys: firstJob?.configuration?.parameters?.runwareAdvanced ? Object.keys(firstJob.configuration.parameters.runwareAdvanced) : []
         });
-      } catch {}
+      } catch {
+        // Ignore errors when logging
+      }
       const jobResult = await this.jobRunner.startJob(firstJob.configuration);
       
       if (jobResult.success) {
@@ -3112,13 +3148,17 @@ class BackendAdapter {
           if (params.runwareAdvanced) params.runwareAdvanced = {};
           nextJob.configuration.parameters = params;
         }
-      } catch {}
+      } catch {
+        // Ignore errors when normalizing parameters
+      }
       try {
         console.log('Rerun (bulk queued) starting with parameters gate:', {
           enabledFlag: nextJob?.configuration?.parameters?.runwareAdvancedEnabled,
           advancedKeys: nextJob?.configuration?.parameters?.runwareAdvanced ? Object.keys(nextJob.configuration.parameters.runwareAdvanced) : []
         });
-      } catch {}
+      } catch {
+        // Ignore errors when logging
+      }
       // Start the job
       const jobResult = await this.jobRunner.startJob(nextJob.configuration);
       if (jobResult.success) {
@@ -3210,7 +3250,9 @@ class BackendAdapter {
         const policy = options.duplicatePolicy || 'append';
         if (fsSync.existsSync(full)) {
           if (policy === 'overwrite') {
-            try { fsSync.unlinkSync(full); } catch {}
+            try { fsSync.unlinkSync(full); } catch {
+              // Ignore errors when deleting existing file
+            }
             zipPath = full;
           } else {
             // append (1), (2), ...
@@ -3236,7 +3278,9 @@ class BackendAdapter {
       archive.pipe(output);
 
       // Progress: gathering files
-      try { this.mainWindow?.webContents?.send('zip-export:progress', { step: 'gathering-files' }); } catch {}
+      try { this.mainWindow?.webContents?.send('zip-export:progress', { step: 'gathering-files' }); } catch {
+        // Ignore errors when sending progress updates (window may be closed)
+      }
 
       // Collect images and build metadata rows
       const filenameCounts = new Map();
@@ -3254,7 +3298,7 @@ class BackendAdapter {
         }
         try {
           await fs.access(filePath);
-        } catch (_) {
+        } catch {
           // Skip missing files
           continue;
         }
@@ -3307,7 +3351,9 @@ class BackendAdapter {
 
       // Add Excel metadata
       if (includeExcel) {
-        try { this.mainWindow?.webContents?.send('zip-export:progress', { step: 'creating-excel' }); } catch {}
+        try { this.mainWindow?.webContents?.send('zip-export:progress', { step: 'creating-excel' }); } catch {
+          // Ignore errors when sending progress updates (window may be closed)
+        }
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Metadata');
         worksheet.columns = [
@@ -3322,7 +3368,9 @@ class BackendAdapter {
         archive.append(Buffer.from(buffer), { name: 'metadata.xlsx' });
       }
 
-      try { this.mainWindow?.webContents?.send('zip-export:progress', { step: 'zipping' }); } catch {}
+      try { this.mainWindow?.webContents?.send('zip-export:progress', { step: 'zipping' }); } catch {
+        // Ignore errors when sending progress updates (window may be closed)
+      }
       await archive.finalize();
 
       // Wait for stream to close
@@ -3331,11 +3379,15 @@ class BackendAdapter {
         output.on('error', reject);
       });
 
-      try { this.mainWindow?.webContents?.send('zip-export:completed', { zipPath }); } catch {}
+      try { this.mainWindow?.webContents?.send('zip-export:completed', { zipPath }); } catch {
+        // Ignore errors when sending completion message (window may be closed)
+      }
       return { success: true, zipPath, message: 'ZIP export created successfully' };
     } catch (error) {
       console.error('Error creating ZIP export:', error);
-      try { this.mainWindow?.webContents?.send('zip-export:error', { error: error.message || String(error) }); } catch {}
+      try { this.mainWindow?.webContents?.send('zip-export:error', { error: error.message || String(error) }); } catch {
+        // Ignore errors when sending error message (window may be closed)
+      }
       return { success: false, error: error.message };
     }
   }
