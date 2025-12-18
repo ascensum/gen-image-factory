@@ -9,8 +9,9 @@ rules:
 
 paths:
   include:
-    - src/
-    - electron/
+    - src/                  # Your React/TS source code
+    - electron/main.js      # Explicitly include the heart of the app
+    - electron/preload.js   # Explicitly include the bridge
     - scripts/
   exclude:
     - "electron/renderer/**"  # Vite build output, not source code (use ** for recursive)
