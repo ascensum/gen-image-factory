@@ -13,10 +13,10 @@ paths:
     - electron/
     - scripts/
   exclude:
-    - electron/renderer/  # Vite build output, not source code
-    - tests/
+    - "electron/renderer/**"  # Vite build output, not source code (use ** for recursive)
+    - "tests/**"
     - "**/*.test.ts"
     - "**/*.test.js"
     - "**/*.spec.ts"
     - "**/*.spec.js"
-    - "**/__tests__/"
+    - "**/__tests__/**"
