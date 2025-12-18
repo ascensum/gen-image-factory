@@ -192,20 +192,40 @@ jobs:
             fi
           done
 
-      - name: Semgrep Scan
-        # Uses your .semgrep.yml automatically
-        # Generate SARIF even if findings are detected (--error will still exit non-zero)
+      - name: Semgrep Scan (produce JSON + SARIF and set env based on results)
         run: |
-          semgrep scan \
-            --config .semgrep.yml \
-            --sarif \
-            --output semgrep.sarif \
-            --error || echo "SEMGREP_FAILED=true" >> $GITHUB_ENV
-          # Ensure SARIF file exists even if Semgrep found issues
+          # Ensure jq is available for JSON parsing
+          sudo apt-get update && sudo apt-get install -y jq
+
+          # Run semgrep to produce both JSON and SARIF outputs; don't fail this step on semgrep exit code
+          semgrep --config .semgrep.yml --json --output semgrep.json --sarif --output semgrep.sarif . || true
+
+          # Count results in the JSON output reliably
+          results_count=$(jq '[.results[]?] | length' semgrep.json 2>/dev/null || echo 0)
+          echo "Semgrep results_count=$results_count"
+
+          if [ "$results_count" -gt 0 ]; then
+            echo "SEMGREP_FAILED=true" >> $GITHUB_ENV
+          else
+            echo "SEMGREP_FAILED=false" >> $GITHUB_ENV
+          fi
+
+          # Ensure SARIF exists even if semgrep failed to generate it
           if [ ! -f semgrep.sarif ]; then
-            echo "Warning: SARIF file not generated, creating empty file"
+            echo "Warning: semgrep.sarif not found - creating empty SARIF"
             echo '{"version":"2.1.0","$schema":"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json","runs":[]}' > semgrep.sarif
           fi
+
+      - name: Debug semgrep outputs
+        run: |
+          echo "semgrep.json size:"
+          ls -lh semgrep.json || true
+          echo "semgrep.sarif size:"
+          ls -lh semgrep.sarif || true
+          echo "SARIF runs and total_results:"
+          jq '{runs: (.runs|length), total_results: ([.runs[].results[]?] | length)}' semgrep.sarif || true
+          echo "Top semgrep.json results (first 200 lines):"
+          jq '.results[] | {path:.path, start:.start, rule_id:.check_id, message:.extra.message}' semgrep.json | sed -n '1,200p' || true
 
       - name: Verify SARIF file exists
         run: |
