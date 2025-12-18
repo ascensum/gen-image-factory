@@ -176,18 +176,30 @@ jobs:
 
       - name: Semgrep Scan
         # Uses your .semgrep.yml automatically
+        # Generate SARIF even if findings are detected (--error will still exit non-zero)
         run: |
           npx semgrep scan \
             --config .semgrep.yml \
             --sarif \
             --output semgrep.sarif \
             --error || echo "SEMGREP_FAILED=true" >> $GITHUB_ENV
+          # Ensure SARIF file exists even if Semgrep found issues
+          if [ ! -f semgrep.sarif ]; then
+            echo "Warning: SARIF file not generated, creating empty file"
+            echo '{"version":"2.1.0","$schema":"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json","runs":[]}' > semgrep.sarif
+          fi
+
+      - name: Verify SARIF file exists
+        run: |
+          ls -lh semgrep.sarif || echo "SARIF file missing"
+          file semgrep.sarif || echo "SARIF file validation failed"
 
       - name: Upload Semgrep SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: semgrep.sarif
+          wait-for-processing: true
 
       - name: Check Semgrep Status
         if: env.SEMGREP_FAILED == 'true'
