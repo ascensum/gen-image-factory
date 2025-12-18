@@ -101,6 +101,27 @@ describe('BackendAdapter Integration Tests', () => {
       (req as any).cache[id] = { id, filename: id, loaded: true, exports };
     };
 
+    // Patch keytar in CommonJS cache (critical for backendAdapter.js which uses require('keytar'))
+    try {
+      const keytarId = req.resolve('keytar');
+      set(keytarId, {
+        getPassword: vi.fn((service: string, account: string) => {
+          const key = storedApiKeys[account] ?? null;
+          return Promise.resolve(key);
+        }),
+        setPassword: vi.fn((service: string, account: string, password: string) => {
+          storedApiKeys[account] = password;
+          return Promise.resolve(undefined);
+        }),
+        deletePassword: vi.fn((service: string, account: string) => {
+          delete storedApiKeys[account];
+          return Promise.resolve(true);
+        }),
+      });
+    } catch {
+      // keytar might not be resolvable in test environment, that's ok
+    }
+
     // Ensure CJS require() inside backendAdapter.js sees mocks (vi.mock is not reliable for CJS require)
     set(req.resolve('../../../src/database/models/JobConfiguration.js'), {
       JobConfiguration: vi.fn().mockImplementation(() => ({
