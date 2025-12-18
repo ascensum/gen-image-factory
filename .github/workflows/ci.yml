@@ -17,6 +17,11 @@ permissions:
   security-events: write
   actions: read
 
+# Retry helper function for network operations
+env:
+  RETRY_MAX_ATTEMPTS: 5
+  RETRY_DELAY_SECONDS: 10
+
 jobs:
   build:
     name: Build
@@ -33,14 +38,42 @@ jobs:
 
       - name: Install build dependencies for native modules
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential python3 libvips-dev libsecret-1-dev
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            sudo apt-get update && sudo apt-get install -y build-essential python3 libvips-dev libsecret-1-dev && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "apt-get failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "apt-get failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            npm ci --ignore-scripts && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "npm ci failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "npm ci failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
 
       - name: Rebuild native dependencies
-        run: npm rebuild
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            npm rebuild && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "npm rebuild failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "npm rebuild failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
 
       - name: Build
         run: npm run build
@@ -60,17 +93,55 @@ jobs:
 
       - name: Install build dependencies for native modules
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential python3 libvips-dev libsecret-1-dev
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            sudo apt-get update && sudo apt-get install -y build-essential python3 libvips-dev libsecret-1-dev && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "apt-get failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "apt-get failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            npm ci --ignore-scripts && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "npm ci failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "npm ci failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
 
       - name: Rebuild native dependencies
-        run: npm rebuild
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            npm rebuild && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "npm rebuild failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "npm rebuild failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
 
       - name: Run tests
-        run: npm test
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            npm test && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "npm test failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "npm test failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
 
   codeql:
     name: CodeQL Security Scan
@@ -110,7 +181,17 @@ jobs:
           python-version: '3.12'
 
       - name: Install Semgrep
-        run: python -m pip install --upgrade pip semgrep
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            python -m pip install --upgrade pip semgrep && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "pip install failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "pip install failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
 
       - name: Semgrep scan (OWASP Top 10 + JavaScript/TypeScript)
         run: |
@@ -154,22 +235,64 @@ jobs:
 
       - name: Install build dependencies for native modules
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential python3 libvips-dev libsecret-1-dev
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            sudo apt-get update && sudo apt-get install -y build-essential python3 libvips-dev libsecret-1-dev && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "apt-get failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "apt-get failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
 
       - name: Install dependencies
-        run: npm ci --ignore-scripts
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            npm ci --ignore-scripts && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "npm ci failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "npm ci failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
 
       - name: Rebuild native dependencies
-        run: npm rebuild
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            npm rebuild && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "npm rebuild failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "npm rebuild failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
 
       - name: Run Socket.dev scan
         run: |
-          npx socket audit || true
-          # Socket.dev exit codes are inconsistent, so we check output
-          socket_output=$(npx socket audit 2>&1 || true)
-          if echo "$socket_output" | grep -qi "high-risk\|critical\|malicious"; then
-            echo "High-risk supply-chain issues detected"
-            echo "$socket_output"
-            exit 1
-          fi
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            socket_output=$(npx socket audit 2>&1 || true)
+            # Check if it's a network error vs actual findings
+            if echo "$socket_output" | grep -qiE "ETIMEDOUT|ECONNRESET|ENOTFOUND|network|timeout|failed to fetch"; then
+              if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+                echo "Socket.dev network error, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+                sleep ${{ env.RETRY_DELAY_SECONDS }}
+                continue
+              else
+                echo "Socket.dev network error after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+                exit 1
+              fi
+            fi
+            # Check for high-risk findings (not network errors)
+            if echo "$socket_output" | grep -qi "high-risk\|critical\|malicious"; then
+              echo "High-risk supply-chain issues detected"
+              echo "$socket_output"
+              exit 1
+            fi
+            # Success - no network errors and no high-risk findings
+            break
+          done
