@@ -1,5 +1,6 @@
 # Semgrep configuration for Gen Image Factory
 # By putting the rules here, you ensure your local terminal, pre-commit hook, and GitHub CI all use the exact same logic.
+# Updated: Using precise include paths to avoid scanning build output and test files.
 
 rules:
   - p/owasp-electron
