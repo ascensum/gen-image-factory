@@ -210,10 +210,17 @@ jobs:
             echo "SEMGREP_FAILED=false" >> $GITHUB_ENV
           fi
 
-          # Ensure SARIF exists even if semgrep failed to generate it
+          # Ensure SARIF exists and has valid structure (at least one run) even if empty
           if [ ! -f semgrep.sarif ]; then
-            echo "Warning: semgrep.sarif not found - creating empty SARIF"
-            echo '{"version":"2.1.0","$schema":"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json","runs":[]}' > semgrep.sarif
+            echo "Warning: semgrep.sarif not found - creating valid empty SARIF"
+            echo '{"version":"2.1.0","$schema":"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json","runs":[{"tool":{"driver":{"name":"Semgrep","version":"0.0.0"}},"results":[]}]}' > semgrep.sarif
+          else
+            # Ensure SARIF has at least one run (GitHub requires this)
+            runs_count=$(jq '.runs | length' semgrep.sarif 2>/dev/null || echo 0)
+            if [ "$runs_count" -eq 0 ]; then
+              echo "Warning: SARIF has no runs - adding empty run"
+              jq '.runs = [{"tool":{"driver":{"name":"Semgrep","version":"0.0.0"}},"results":[]}]' semgrep.sarif > semgrep.sarif.tmp && mv semgrep.sarif.tmp semgrep.sarif
+            fi
           fi
 
       - name: Debug semgrep outputs
