@@ -417,7 +417,7 @@ These scenarios represent the **formal validation standard** for critical applic
 1. **Repository hygiene scan**: `repo:scan:staged` - Validates staged files for repo standards
 2. **Critical regression test suite**: `npm run test:critical` - Validates all Story 1.19 must-not-regress scenarios
 3. **ESLint**: Zero warnings allowed on staged JS/TS files (blocking failure)
-4. **Semgrep security scan**: Electron + JavaScript rulesets (`p/owasp-electron`, `p/javascript`) on staged files
+4. **Semgrep security scan**: Uses rules from `.semgrep.yml` (Electron + OWASP Top 10 + JavaScript + TypeScript) on staged files
 5. **Socket.dev supply-chain scan**: `npx socket audit` - Detects high-risk npm dependencies
 6. **Sensitive data check**: Scans for API keys and secret leakage in non-test files
 
@@ -473,8 +473,8 @@ The critical test suite is optimized to cover all Story 1.19 must-not-regress sc
    - Uploads SARIF results to GitHub Security tab
 
 4. **Semgrep Security Scan**: Full codebase scan
-   - Rulesets: `p/owasp-electron`, `p/javascript`, `p/typescript`
-   - Excludes heavy paths via `.semgrep.yml` (node_modules, build output, etc.)
+   - Rulesets defined in `.semgrep.yml`: `p/owasp-electron`, `p/owasp-top-ten`, `p/javascript`, `p/typescript`
+   - Paths and exclusions configured in `.semgrep.yml` and `.semgrepignore`
    - Uploads SARIF results to GitHub Security tab
    - Fails workflow on high-risk findings
 

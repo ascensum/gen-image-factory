@@ -83,7 +83,7 @@ else
     fi
 fi
 
-# 4. Semgrep security scan (staged files)
+# 4. Semgrep security scan (staged files) - Uses .semgrep.yml config
 echo "Running Semgrep security scan (staged files)..."
 staged_files_for_semgrep=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' || echo "")
 if [ -z "$staged_files_for_semgrep" ]; then
@@ -120,9 +120,8 @@ else
         fi
     fi
     
-    # Run Semgrep with OWASP Top 10 + JavaScript rulesets
-    # Use separate --config flags (comma-separated doesn't work)
-    semgrep_output=$(echo "$staged_files_for_semgrep" | xargs $SEMGREP_CMD --config p/owasp-top-ten --config p/javascript --error 2>&1)
+    # Run Semgrep on staged files using .semgrep.yml config (ensures consistency across local, pre-commit, and CI)
+    semgrep_output=$(echo "$staged_files_for_semgrep" | xargs $SEMGREP_CMD scan --config .semgrep.yml --error 2>&1)
     semgrep_exit=$?
     
     if [ $semgrep_exit -eq 0 ]; then
@@ -142,18 +141,15 @@ fi
 
 # 5. Socket.dev supply-chain scan
 echo "Running Socket.dev supply-chain scan..."
-if npx socket audit 2>&1 | grep -q "No issues found" || npx socket audit 2>&1 | grep -q "No high-risk"; then
+socket_output=$(npx socket audit 2>&1 || true)
+if echo "$socket_output" | grep -qi "No issues found\|No high-risk"; then
     print_status "SUCCESS" "Socket.dev supply-chain scan passed"
+elif echo "$socket_output" | grep -qi "high-risk\|critical\|malicious"; then
+    print_status "ERROR" "Socket.dev found high-risk supply-chain issues - this blocks the commit!"
+    echo "$socket_output"
+    exit 1
 else
-    # Check for high-risk findings
-    socket_output=$(npx socket audit 2>&1 || true)
-    if echo "$socket_output" | grep -qi "high-risk\|critical\|malicious"; then
-        print_status "ERROR" "Socket.dev found high-risk supply-chain issues - this blocks the commit!"
-        echo "$socket_output"
-        exit 1
-    else
-        print_status "SUCCESS" "Socket.dev scan completed (low-risk findings only)"
-    fi
+    print_status "SUCCESS" "Socket.dev scan completed (low-risk findings only)"
 fi
 
 # 6. Check for sensitive data in staged files (exclude test files)

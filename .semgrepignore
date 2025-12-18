@@ -1,10 +1,29 @@
 # Semgrep ignore list (local + CI)
+# This keeps the scan fast by ignoring binaries and build artifacts, but removes the ignore on your renderer.
+
+# --- Dependencies & Build Artifacts ---
 node_modules/
 dist/
 build/
+out/
+release/
+web-bundles/
+*.asar
+package-lock.json
+
+# --- Testing & Reports ---
 coverage/
 playwright-report/
 test-results/
-electron/renderer/
-web-bundles/
+*.test.ts
+*.spec.ts
+__tests__/
 
+# --- Media & Binary Assets ---
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.svg
+**/*.ico
+**/*.pdf

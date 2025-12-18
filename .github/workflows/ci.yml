@@ -153,15 +153,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript
-
+          # Focus CodeQL on data flow between Main and Renderer
+          queries: security-extended,security-and-quality
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
-
       - name: Analyze
         uses: github/codeql-action/analyze@v3
 
@@ -175,50 +174,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install Semgrep
+      - name: Semgrep Scan
+        # Uses your .semgrep.yml automatically
         run: |
-          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
-            python -m pip install --upgrade pip semgrep && break
-            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
-              echo "pip install failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
-              sleep ${{ env.RETRY_DELAY_SECONDS }}
-            else
-              echo "pip install failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
-              exit 1
-            fi
-          done
-
-      - name: Semgrep scan (OWASP Top 10 + JavaScript/TypeScript)
-        run: |
-          semgrep scan \
-            --config p/owasp-top-ten \
-            --config p/javascript \
-            --config p/typescript \
+          npx semgrep scan \
+            --config .semgrep.yml \
             --sarif \
             --output semgrep.sarif \
-            --error || semgrep_exit=$?
-          # Semgrep exits with non-zero if findings are found
-          # Exit code 1 = findings found, 2 = error, 7 = some findings
-          # We want to fail on high-risk findings but still upload SARIF
-          if [ "${semgrep_exit:-0}" -eq 1 ] || [ "${semgrep_exit:-0}" -eq 7 ]; then
-            echo "Semgrep found security findings (exit code: ${semgrep_exit})"
-            echo "Review findings in Security tab. Workflow will continue to upload SARIF."
-          elif [ "${semgrep_exit:-0}" -ne 0 ]; then
-            echo "Semgrep error (exit code: ${semgrep_exit})"
-            exit ${semgrep_exit}
-          fi
+            --error || echo "SEMGREP_FAILED=true" >> $GITHUB_ENV
 
       - name: Upload Semgrep SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: semgrep.sarif
-          continue-on-error: true
+
+      - name: Check Semgrep Status
+        if: env.SEMGREP_FAILED == 'true'
+        run: |
+          echo "Semgrep found high-severity issues. Check the Security tab."
+          exit 1
 
   socket-dev:
     name: Socket.dev Supply Chain Scan

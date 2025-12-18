@@ -1,28 +1,18 @@
 # Semgrep configuration for Gen Image Factory
-# Base rulesets are defined in CI workflow (p/owasp-electron, p/javascript, p/typescript)
-# This file contains project-specific overrides and exclusions
+# By putting the rules here, you ensure your local terminal, pre-commit hook, and GitHub CI all use the exact same logic.
 
-rules: []
+rules:
+  - p/owasp-electron
+  - p/owasp-top-ten
+  - p/javascript
+  - p/typescript
 
-# Exclude heavy/non-source paths from scanning
-exclude:
-  - node_modules
-  - playwright-report
-  - web-bundles
-  - dist
-  - build
-  - .next
-  - coverage
-  - .git
-
-# Paths to scan (defaults to all if not specified)
 paths:
-  - src
-  - tests
-  - scripts
-  - electron
-
-# Ruleset version pinning (for reproducibility)
-# Note: Base rulesets are pinned via --config flags in CI
-# Project-specific rule overrides can be added here if needed
-
+  include:
+    - src/
+    - electron/
+    - scripts/
+  exclude:
+    - tests/
+    - "**/*.test.ts"
+    - "**/*.spec.ts"
