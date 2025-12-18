@@ -174,11 +174,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Semgrep
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            python -m pip install --upgrade pip semgrep && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "pip install failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "pip install failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
+
       - name: Semgrep Scan
         # Uses your .semgrep.yml automatically
         # Generate SARIF even if findings are detected (--error will still exit non-zero)
         run: |
-          npx semgrep scan \
+          semgrep scan \
             --config .semgrep.yml \
             --sarif \
             --output semgrep.sarif \
