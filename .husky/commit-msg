@@ -1,6 +1,1 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
 bash scripts/commit-msg-hook.sh "$1"
-
-
