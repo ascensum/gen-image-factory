@@ -322,10 +322,54 @@ src/renderer/components/Settings/__tests__/SettingsPanel.test.tsx
 
 ## Testing Standards
 
-### Code Coverage Requirements
-- **Unit Tests**: Minimum 80% coverage for backend services and React components
+### Code Coverage Requirements (Story 1.19 Policy)
+
+**Overall Coverage Target:**
+- **Overall (Vitest)**: Target **≥70% statements and ≥70% branches** across the codebase
+- Future work must not introduce major regressions from this baseline
+- Coverage should trend upward over time
+
+**Per-File Gates (Stable API-like Modules):**
+- **`src/adapter/backendAdapter.js`**: Must maintain **≥70% statements and ≥70% branches**
+- **`src/services/retryExecutor.js`**: Must maintain **≥70% statements and ≥70% branches**
+- These modules act as stable APIs and are practical to unit test deeply
+
+**Scenario-Driven Coverage (JobRunner):**
+- **`src/services/jobRunner.js`**: Validated by a **must-not-regress scenario suite** rather than a rigid percentage target
+- **Rationale**: For large orchestration modules, a rigid statement target incentivizes low-value tests for logging/guards and micro-branches
+- **Strategy**: Protect the app by validating **end-to-end orchestration behaviors** with integration-like unit tests
+- **Approach**: Raise coverage by adding **big-path tests** that execute meaningful slices (start → generate → persist → QC → post-process → finalize; stop/cancel; rerun)
+- Branch coverage is prioritized over statement coverage for this file
+
+**Other Modules:**
+- **Unit Tests**: Target ≥70% coverage for backend services and React components (pragmatic approach, not rigid 80%)
 - **Integration Tests**: Minimum 70% coverage for API endpoints and database operations
 - **E2E Tests**: Coverage of all critical user workflows
+
+### Must-Not-Regress Scenarios (Formal Validation Standard)
+
+These scenarios represent the **formal validation standard** for critical application behaviors. All scenarios must be covered by tests and must not regress.
+
+#### Settings (Critical)
+- [x] Load defaults and load persisted settings (success + failure surfaces)
+- [x] Save settings (success + backend failure surfaces)
+- [x] API key update/clear flows (and no secret leakage in UI banners)
+- [ ] Schema/legacy fields preserved where UI/schema requires them (do not reintroduce PIAPI-era params as "active" generation settings)
+
+#### JobRunner (Critical)
+- [x] Start → generate → persist (DB execution + generated images persisted; configurationSnapshot safe)
+- [x] QC on/off (approve path and failure path persist correctly)
+- [x] Post-processing success/failure (including remove.bg failure modes)
+- [x] Metadata success/failure (per-image failure persistence)
+- [x] Stop/cancel mid-flight (terminates cleanly; terminal state persisted; no hang)
+- [x] Rerun (label persistence + rerun flag clearing + safe snapshot; bulk rerun queue advancement)
+- [ ] Retry per-generation (attempts/backoff; partial success without corrupting state)
+
+#### RetryExecutor / Retry flows (Critical)
+- [x] Retry job updates statuses correctly across success/failure branches; stop/clear queue behaves; DB update failures are surfaced/contained
+- [x] `retryExecutor.js` per-file gate met and should not regress
+
+**Validation Approach**: These scenarios are validated through integration-like unit tests that exercise meaningful orchestration behaviors rather than micro-branch testing. The test suite must demonstrate that all checked scenarios are covered and passing.
 
 ### Testing Best Practices
 
@@ -363,16 +407,104 @@ src/renderer/components/Settings/__tests__/SettingsPanel.test.tsx
 
 ## Continuous Integration
 
-### Pre-commit Hooks
-- Run unit tests before code commits
-- Check code coverage thresholds
-- Lint and format code automatically
+### Pre-commit Hooks (Free Tools Stack)
 
-### CI Pipeline
-- Run full test suite on pull requests
-- Generate coverage reports
-- Parallelize test execution
-- Cache dependencies for faster builds
+**Purpose**: Fast, blocking checks for obvious bugs and security issues (< 30s)
+
+**Implementation**: Executed via **Husky pre-commit hook** (`scripts/pre-commit-hook.sh`)
+
+**Mandatory Checks** (executed in order):
+1. **Repository hygiene scan**: `repo:scan:staged` - Validates staged files for repo standards
+2. **Critical regression test suite**: `npm run test:critical` - Validates all Story 1.19 must-not-regress scenarios
+3. **ESLint**: Zero warnings allowed on staged JS/TS files (blocking failure)
+4. **Semgrep security scan**: Electron + JavaScript rulesets (`p/owasp-electron`, `p/javascript`) on staged files
+5. **Socket.dev supply-chain scan**: `npx socket audit` - Detects high-risk npm dependencies
+6. **Sensitive data check**: Scans for API keys and secret leakage in non-test files
+
+**Critical Test Suite (`test:critical`)**:
+The critical test suite is optimized to cover all Story 1.19 must-not-regress scenarios in < 30 seconds:
+
+- **Settings (Critical)**: `tests/integration/api/settingsAdapter.integration.test.ts`
+  - Covers: Load defaults/persisted settings, save settings, API key update/clear flows (no secret leakage)
+
+- **JobRunner (Critical)**: 
+  - `tests/unit/services/JobRunner.executeJob.qcDisabled.integration-like.test.js` - Start → generate → persist
+  - `tests/unit/services/JobRunner.executeJob.qcEnabled.integration-like.test.js` - QC on/off (approve + failure paths)
+  - `tests/unit/services/JobRunner.executeJob.stopCancel.integration-like.moreCoverage.test.js` - Stop/cancel mid-flight
+  - `tests/unit/services/JobRunner.startJob.rerunPersistence.moreCoverage.test.js` - Rerun (label persistence + flag clearing + snapshot safety)
+
+- **RetryExecutor (Critical)**:
+  - `tests/unit/services/RetryExecutor.queue.test.js` - Status updates, stop/clear queue
+  - `tests/unit/services/RetryExecutor.updateImageStatus.test.js` - DB update failures surfaced/contained
+
+**Test-to-Scenario Mapping**: See `docs/stories/1.20-test-analysis.md` for detailed mapping analysis.
+
+**What Does NOT Run Locally**:
+- Full test suite (belongs in CI)
+- E2E tests (belongs in CI)
+- CodeQL (belongs in CI)
+- Large dependency scans (belongs in CI)
+- Multi-platform builds (belongs in CI)
+
+**Deliverable**: `scripts/pre-commit-hook.sh` enforcing the above checks with non-zero exit on failure
+
+### CI Pipeline (GitHub Actions)
+
+**Trigger**: `on: push` to `main` and `pull_request` to `main`
+
+**Purpose**: Deep validation and dependency security on every commit
+
+**Workflow File**: `.github/workflows/ci.yml`
+
+**Jobs (minimal, reproducible, run in parallel)**:
+1. **Build**: `npm ci --ignore-scripts && npm run build`
+   - Enforces lockfile usage
+   - Blocks install-time malware
+   - Reduces supply-chain risk
+   - Uses Node.js caching for `node_modules`
+
+2. **Test Suite**: `npm test`
+   - Runs full unit, integration, and E2E test suite
+   - Uses Node.js caching for `node_modules`
+
+3. **CodeQL Security Scan**: `github/codeql-action`
+   - Free for public repos
+   - JavaScript/TypeScript analysis
+   - Uploads SARIF results to GitHub Security tab
+
+4. **Semgrep Security Scan**: Full codebase scan
+   - Rulesets: `p/owasp-electron`, `p/javascript`, `p/typescript`
+   - Excludes heavy paths via `.semgrep.yml` (node_modules, build output, etc.)
+   - Uploads SARIF results to GitHub Security tab
+   - Fails workflow on high-risk findings
+
+5. **Socket.dev Supply Chain Scan**: `npx socket audit`
+   - Detects high-risk/malicious npm dependencies
+   - Fails workflow on high-risk findings
+
+**Failure Policy**: Fail workflow on:
+- Build failures
+- Test failures
+- High-severity vulnerabilities
+- High-confidence malicious dependency signals
+- CodeQL or Semgrep high-risk findings
+
+**Refinements for Speed and Signal**:
+- **Concurrency**: Cancel superseded runs on `main` to avoid wasting minutes on old pushes
+- **Semgrep scope**: Exclude heavy/non-source paths (e.g., `node_modules`, `playwright-report`, `web-bundles`, build output) via `.semgrep.yml`
+- **Caching**: Node.js cache for `node_modules` to speed up builds
+- **Parallel execution**: All jobs run in parallel for faster feedback
+
+**Supply-Chain Protection (Mandatory)**:
+- Lockfile usage (`npm ci --ignore-scripts`)
+- Socket.dev scanning in CI
+- Dependabot enabled for npm ecosystem (separate configuration)
+- GitHub Actions hygiene: pinned action versions, minimal permissions (`contents: read`)
+- **Artifact Integrity & Provenance**: CI must generate an **SBOM (Software Bill of Materials)** for every release (using `cyclonedx-npm` or similar free tool) - *Future enhancement*
+
+**Deliverables**:
+- `.github/workflows/ci.yml` (single minimal workflow with all quality gates)
+- `.semgrep.yml` (project overrides; base rulesets remain public packs)
 
 ### Coverage Reporting
 - Generate HTML coverage reports

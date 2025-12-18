@@ -42,6 +42,7 @@
     "test:integration:db": "vitest run tests/integration/database/JobConfiguration.integration.test.ts",
     "test:integration:settings": "vitest run tests/integration/api/settingsAdapter.integration.test.ts",
     "test:story:1.7": "vitest run tests/integration/backend/FailedImagesReview.integration.test.ts tests/unit/utils/processing.normalizer.test.ts",
+    "test:critical": "vitest run tests/integration/api/settingsAdapter.integration.test.ts tests/unit/services/JobRunner.executeJob.qcDisabled.integration-like.test.js tests/unit/services/JobRunner.executeJob.qcEnabled.integration-like.test.js tests/unit/services/JobRunner.executeJob.stopCancel.integration-like.moreCoverage.test.js tests/unit/services/JobRunner.startJob.rerunPersistence.moreCoverage.test.js tests/unit/services/RetryExecutor.queue.test.js tests/unit/services/RetryExecutor.updateImageStatus.test.js",
     "repo:scan": "node scripts/repo-scan.js",
     "repo:scan:staged": "node scripts/repo-scan.js --staged",
     "repo:clean": "node scripts/repo-clean.js",

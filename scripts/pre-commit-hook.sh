@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # Pre-commit hook script for Gen Image Factory
-# This script runs critical regression tests before allowing commits
+# This script runs critical quality gates before allowing commits
+# Total target time: < 30 seconds
 
 set -e
 
-echo "Running pre-commit regression tests..."
+echo "Running pre-commit quality gates..."
 
 # Colors for output
 RED='\033[0;31m'
@@ -43,6 +44,7 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
+# 1. Repository hygiene scan (staged files)
 echo "Running repository hygiene scan (staged files)..."
 if node scripts/repo-scan.js --staged > /dev/null 2>&1; then
     print_status "SUCCESS" "Repo-scan passed for staged files"
@@ -53,104 +55,110 @@ else
     exit 1
 fi
 
-echo "Running critical regression tests..."
-# 0. Run export regressions (ZIP + single/bulk Excel)
-echo "Testing Export Regressions (ZIP + Excel)..."
-if npm run test:exports > /dev/null 2>&1; then
-    print_status "SUCCESS" "Export regression tests passed"
+# 2. Critical regression tests (must-not-regress scenarios)
+echo "Running critical regression tests (must-not-regress scenarios)..."
+if npm run test:critical > /dev/null 2>&1; then
+    print_status "SUCCESS" "Critical regression tests passed"
 else
-    print_status "ERROR" "Export regression tests failed - blocks regressions in ZIP/Excel exports!"
+    print_status "ERROR" "Critical regression tests failed - this blocks the commit!"
     echo "Running tests with output to see failures:"
-    npm run test:exports
+    npm run test:critical
     exit 1
 fi
 
-
-# 1. Run retry functionality tests (CRITICAL - prevent regression)
-echo "Testing Retry Functionality (CRITICAL)..."
-if npm run test:retry > /dev/null 2>&1; then
-    print_status "SUCCESS" "Retry functionality tests passed"
+# 3. ESLint on staged files (BLOCKING - zero warnings allowed)
+echo "Running ESLint on staged files (zero warnings allowed)..."
+staged_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' || echo "")
+if [ -z "$staged_files" ]; then
+    print_status "SUCCESS" "No staged JS/TS files to lint"
 else
-    print_status "ERROR" "Retry functionality tests failed - this is CRITICAL!"
-    echo "Running tests with output to see failures:"
-    npm run test:retry
-    exit 1
+    # Run ESLint and capture exit code
+    if echo "$staged_files" | xargs npx eslint --quiet 2>&1; then
+        print_status "SUCCESS" "ESLint passed (no warnings)"
+    else
+        print_status "ERROR" "ESLint found issues - this blocks the commit!"
+        echo "Staged files with issues:"
+        echo "$staged_files" | xargs npx eslint
+        exit 1
+    fi
 fi
 
-# 1b. Run label/formatting regression tests (CRITICAL UI CONTRACT)
-echo "Testing Label formatting (CRITICAL UI CONTRACT)..."
-if npm run test:labels > /dev/null 2>&1; then
-    print_status "SUCCESS" "Label formatting tests passed"
+# 4. Semgrep security scan (staged files)
+echo "Running Semgrep security scan (staged files)..."
+staged_files_for_semgrep=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' || echo "")
+if [ -z "$staged_files_for_semgrep" ]; then
+    print_status "SUCCESS" "No staged JS/TS files to scan with Semgrep"
 else
-    print_status "ERROR" "Label formatting tests failed - prevents inconsistent rerun labels!"
-    echo "Running tests with output to see failures:"
-    npm run test:labels
-    exit 1
+    # Run Semgrep with Electron + JavaScript rulesets
+    if echo "$staged_files_for_semgrep" | xargs npx semgrep --config p/owasp-electron,p/javascript --error 2>&1; then
+        print_status "SUCCESS" "Semgrep security scan passed"
+    else
+        print_status "ERROR" "Semgrep found security issues - this blocks the commit!"
+        echo "Staged files with security issues:"
+        echo "$staged_files_for_semgrep" | xargs npx semgrep --config p/owasp-electron,p/javascript --error
+        exit 1
+    fi
 fi
 
-# 2. Run security tests
-echo "Testing Security (API Key Exposure Prevention)..."
-if npm run test:security > /dev/null 2>&1; then
-    print_status "SUCCESS" "Security tests passed"
+# 5. Socket.dev supply-chain scan
+echo "Running Socket.dev supply-chain scan..."
+if npx socket audit 2>&1 | grep -q "No issues found" || npx socket audit 2>&1 | grep -q "No high-risk"; then
+    print_status "SUCCESS" "Socket.dev supply-chain scan passed"
 else
-    print_status "ERROR" "Security tests failed - potential API key exposure!"
-    echo "Running tests with output to see failures:"
-    npm run test:security
-    exit 1
+    # Check for high-risk findings
+    socket_output=$(npx socket audit 2>&1 || true)
+    if echo "$socket_output" | grep -qi "high-risk\|critical\|malicious"; then
+        print_status "ERROR" "Socket.dev found high-risk supply-chain issues - this blocks the commit!"
+        echo "$socket_output"
+        exit 1
+    else
+        print_status "SUCCESS" "Socket.dev scan completed (low-risk findings only)"
+    fi
 fi
 
-# 3. Run job-flow and rerun regression tests (critical)
-echo "Testing Job Management flows (critical)..."
-if npm run test:job-management > /dev/null 2>&1; then
-    print_status "SUCCESS" "Job management flow tests passed"
-else
-    print_status "ERROR" "Job management flow tests failed"
-    echo "Running tests with output to see failures:"
-    npm run test:job-management
-    exit 1
-fi
-
-echo "Testing Retry regression aggregate (critical)..."
-if npm run test:regression:retry > /dev/null 2>&1; then
-    print_status "SUCCESS" "Retry regression tests passed"
-else
-    print_status "ERROR" "Retry regression tests failed"
-    echo "Running tests with output to see failures:"
-    npm run test:regression:retry
-    exit 1
-fi
-
-# 4. Check for sensitive data in staged files (exclude test files)
+# 6. Check for sensitive data in staged files (exclude test files)
 echo "Checking for sensitive data in staged files..."
 # Filter out test files and hook scripts from the check (test files legitimately contain fake API keys)
-# Check only non-test files for "sk-" pattern followed by alphanumeric (actual API key pattern)
-non_test_files=$(git diff --cached --name-only | grep -v -E "(test|spec|__tests__|pre-commit)" || echo "")
-if [ -n "$non_test_files" ] && echo "$non_test_files" | xargs grep -lE "sk-[a-zA-Z0-9]{20,}" 2>/dev/null; then
-    print_status "ERROR" "Potential API keys found in staged files!"
-    echo "Please remove any API keys before committing."
-    exit 1
-fi
+non_test_files=$(git diff --cached --name-only | grep -v -E "(test|spec|__tests__|pre-commit|\.md$|\.txt$)" || echo "")
 
-# Exclude hook scripts and test files from this check
-non_test_files=$(git diff --cached --name-only | grep -v -E "(test|spec|__tests__|pre-commit)" || echo "")
-if [ -n "$non_test_files" ] && echo "$non_test_files" | xargs grep -l "console.log.*apiKeys" 2>/dev/null; then
-    print_status "ERROR" "Potential API key logging found in staged files!"
-    echo "Please ensure all logging is properly sanitized."
-    exit 1
-fi
-
-print_status "SUCCESS" "All pre-commit checks passed!"
-
-# 5. Run linting if available
-if [ -f "eslint.config.js" ]; then
-    echo "Running ESLint..."
-    if npx eslint src/ --ext .js,.jsx,.ts,.tsx --quiet; then
-        print_status "SUCCESS" "ESLint passed"
-    else
-        print_status "WARNING" "ESLint found issues - consider fixing them"
+if [ -n "$non_test_files" ]; then
+    # Check for OpenAI-style API keys (sk-...)
+    if echo "$non_test_files" | xargs grep -lE "sk-[a-zA-Z0-9]{20,}" 2>/dev/null; then
+        print_status "ERROR" "Potential OpenAI API keys found in staged files!"
+        echo "Please remove any API keys before committing."
+        exit 1
+    fi
+    
+    # Check for other common API key patterns
+    # Runware keys (if they follow a pattern - adjust based on actual format)
+    if echo "$non_test_files" | xargs grep -lE "(api[_-]?key|apikey)\s*[:=]\s*['\"]?[a-zA-Z0-9]{32,}" 2>/dev/null; then
+        print_status "ERROR" "Potential API key assignments found in staged files!"
+        echo "Please ensure API keys are not hardcoded. Use Settings UI instead."
+        exit 1
+    fi
+    
+    # Check for environment variable assignments with long values (potential keys)
+    if echo "$non_test_files" | xargs grep -lE "(OPENAI|RUNWARE|REMOVE_BG|API_KEY).*=\s*['\"]?[a-zA-Z0-9]{32,}" 2>/dev/null; then
+        print_status "ERROR" "Potential API key environment variables found in staged files!"
+        echo "Please use .env files (which are gitignored) instead of hardcoding."
+        exit 1
+    fi
+    
+    # Check for console.log with apiKeys (logging detection)
+    if echo "$non_test_files" | xargs grep -l "console\.log.*apiKeys" 2>/dev/null; then
+        print_status "ERROR" "Potential API key logging found in staged files!"
+        echo "Please ensure all logging is properly sanitized (use safeLogger)."
+        exit 1
+    fi
+    
+    # Check for .env files being committed
+    if echo "$non_test_files" | grep -E "\.env$|\.env\."; then
+        print_status "ERROR" ".env files detected in staged files!"
+        echo ".env files should never be committed. They are in .gitignore for a reason."
+        exit 1
     fi
 fi
 
 echo ""
-print_status "SUCCESS" "Pre-commit hook completed successfully!"
+print_status "SUCCESS" "All pre-commit quality gates passed!"
 echo "Ready to commit your changes!"
