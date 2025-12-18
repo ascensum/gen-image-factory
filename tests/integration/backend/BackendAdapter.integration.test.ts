@@ -1,11 +1,23 @@
 // Mock external dependencies BEFORE imports to prevent SQLite initialization
 import { vi } from 'vitest';
 
+// In-memory store for keytar mocks to persist API keys across calls
+const storedApiKeys: Record<string, string> = {};
+
 vi.mock('keytar', () => ({
   default: {
-    getPassword: vi.fn().mockResolvedValue(null),
-    setPassword: vi.fn().mockResolvedValue(undefined),
-    deletePassword: vi.fn().mockResolvedValue(true),
+    getPassword: vi.fn((service: string, account: string) => {
+      const key = storedApiKeys[account] ?? null;
+      return Promise.resolve(key);
+    }),
+    setPassword: vi.fn((service: string, account: string, password: string) => {
+      storedApiKeys[account] = password;
+      return Promise.resolve(undefined);
+    }),
+    deletePassword: vi.fn((service: string, account: string) => {
+      delete storedApiKeys[account];
+      return Promise.resolve(true);
+    }),
   }
 }));
 
@@ -164,6 +176,9 @@ describe('BackendAdapter Integration Tests', () => {
   };
 
   beforeEach(async () => {
+    // Clear stored API keys before each test
+    Object.keys(storedApiKeys).forEach(key => delete storedApiKeys[key]);
+    
     vi.resetModules();
     patchCjsDeps();
     ({ BackendAdapter } = await import('../../../src/adapter/backendAdapter'));

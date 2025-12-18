@@ -89,13 +89,53 @@ staged_files_for_semgrep=$(git diff --cached --name-only --diff-filter=ACM | gre
 if [ -z "$staged_files_for_semgrep" ]; then
     print_status "SUCCESS" "No staged JS/TS files to scan with Semgrep"
 else
-    # Run Semgrep with Electron + JavaScript rulesets
-    if echo "$staged_files_for_semgrep" | xargs npx semgrep --config p/owasp-electron,p/javascript --error 2>&1; then
-        print_status "SUCCESS" "Semgrep security scan passed"
+    # Ensure Semgrep is available - install via pip if not found
+    SEMGREP_CMD=""
+    if command -v semgrep >/dev/null 2>&1; then
+        SEMGREP_CMD="semgrep"
+    elif command -v python3 >/dev/null 2>&1 && python3 -m semgrep --version >/dev/null 2>&1; then
+        # Semgrep installed but not in PATH, use python3 -m semgrep
+        SEMGREP_CMD="python3 -m semgrep"
     else
+        # Install via pip (handle Homebrew Python PEP 668 restriction)
+        print_status "WARNING" "Semgrep not found, installing via pip..."
+        if command -v python3 >/dev/null 2>&1; then
+            # Try with --break-system-packages (required for Homebrew Python)
+            if python3 -m pip install --break-system-packages semgrep >/dev/null 2>&1; then
+                # Check if semgrep is now available
+                if command -v semgrep >/dev/null 2>&1; then
+                    SEMGREP_CMD="semgrep"
+                elif python3 -m semgrep --version >/dev/null 2>&1; then
+                    SEMGREP_CMD="python3 -m semgrep"
+                fi
+            fi
+            
+            if [ -z "$SEMGREP_CMD" ]; then
+                print_status "ERROR" "Failed to install Semgrep. Please install manually: python3 -m pip install --break-system-packages semgrep"
+                exit 1
+            fi
+        else
+            print_status "ERROR" "Python3 not found. Please install Semgrep manually: python3 -m pip install --break-system-packages semgrep"
+            exit 1
+        fi
+    fi
+    
+    # Run Semgrep with OWASP Top 10 + JavaScript rulesets
+    # Use separate --config flags (comma-separated doesn't work)
+    semgrep_output=$(echo "$staged_files_for_semgrep" | xargs $SEMGREP_CMD --config p/owasp-top-ten --config p/javascript --error 2>&1)
+    semgrep_exit=$?
+    
+    if [ $semgrep_exit -eq 0 ]; then
+        print_status "SUCCESS" "Semgrep security scan passed"
+    elif [ $semgrep_exit -eq 1 ] || [ $semgrep_exit -eq 7 ]; then
+        # Exit codes 1 and 7 mean findings were found
         print_status "ERROR" "Semgrep found security issues - this blocks the commit!"
-        echo "Staged files with security issues:"
-        echo "$staged_files_for_semgrep" | xargs npx semgrep --config p/owasp-electron,p/javascript --error
+        echo "$semgrep_output"
+        exit 1
+    else
+        # Other exit codes - installation/execution errors
+        print_status "ERROR" "Semgrep scan failed (exit code: $semgrep_exit)"
+        echo "$semgrep_output"
         exit 1
     fi
 fi

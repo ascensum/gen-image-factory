@@ -112,10 +112,10 @@ jobs:
       - name: Install Semgrep
         run: python -m pip install --upgrade pip semgrep
 
-      - name: Semgrep scan (OWASP Electron + JavaScript/TypeScript)
+      - name: Semgrep scan (OWASP Top 10 + JavaScript/TypeScript)
         run: |
           semgrep scan \
-            --config p/owasp-electron \
+            --config p/owasp-top-ten \
             --config p/javascript \
             --config p/typescript \
             --sarif \
