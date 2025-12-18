@@ -13,6 +13,10 @@ paths:
     - electron/
     - scripts/
   exclude:
+    - electron/renderer/  # Vite build output, not source code
     - tests/
     - "**/*.test.ts"
+    - "**/*.test.js"
     - "**/*.spec.ts"
+    - "**/*.spec.js"
+    - "**/__tests__/"
