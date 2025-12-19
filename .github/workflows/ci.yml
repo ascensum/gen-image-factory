@@ -205,7 +205,8 @@ jobs:
           # Explicitly include: src/, electron/main.js, electron/preload.js, scripts/
           # Explicitly exclude: electron/renderer/ (build output, not source code)
           # Additional exclusions handled via .semgrepignore (tests, node_modules, etc.)
-          semgrep --config=p/owasp-electron --config=p/owasp-top-ten --config=p/javascript --json --output semgrep.json --sarif --output semgrep.sarif src/ electron/main.js electron/preload.js scripts/ || semgrep_exit=$?
+          # Use --json-output and --sarif-output (not --output twice, which Semgrep doesn't allow)
+          semgrep --config=p/owasp-electron --config=p/owasp-top-ten --config=p/javascript --json --json-output=semgrep.json --sarif --sarif-output=semgrep.sarif src/ electron/main.js electron/preload.js scripts/ || semgrep_exit=$?
           
           # Check if Semgrep failed due to errors (not security findings)
           if [ -f semgrep.json ]; then
