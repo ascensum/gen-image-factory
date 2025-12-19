@@ -506,6 +506,111 @@ The critical test suite is optimized to cover all Story 1.19 must-not-regress sc
 - `.github/workflows/ci.yml` (single minimal workflow with all quality gates)
 - `.semgrep.yml` (project overrides; base rulesets remain public packs)
 
+### E2E Test Execution Workflows
+
+**Purpose**: Run comprehensive E2E tests periodically and before releases
+
+**Workflow File**: `.github/workflows/e2e-tests.yml`
+
+**Triggers**:
+- **Nightly**: Scheduled daily at 3:00 AM UTC
+- **Release**: Runs automatically on version tags (e.g., `v1.0.0`)
+- **Manual**: Can be triggered via `workflow_dispatch` in GitHub Actions UI
+
+**Jobs**:
+- **E2E Tests**: Runs full Playwright test suite
+  - Installs dependencies and Playwright browsers
+  - Builds application
+  - Executes all E2E tests
+  - Uploads test reports as artifacts (retained for 30 days)
+
+**Note**: E2E tests are NOT required on every push (too slow) but are mandatory before releases and run nightly to catch regressions.
+
+### Scheduled Security Scans
+
+**CodeQL Weekly Scan**: `.github/workflows/codeql-scheduled.yml`
+- Runs every Monday at 2:00 AM UTC
+- Catches security drift between regular CI runs
+- Can be manually triggered via `workflow_dispatch`
+- Uses CodeQL v4 with security-extended and security-and-quality queries
+
+### Troubleshooting Guide for Pre-Commit Failures
+
+**Common Issues and Solutions**:
+
+1. **Critical Tests Fail**
+   - **Symptom**: `[ERROR] Critical regression tests failed - this blocks the commit!`
+   - **Solution**: 
+     - Run `npm run test:critical` locally to see detailed failures
+     - Fix failing tests before committing
+     - Ensure all Story 1.19 must-not-regress scenarios are passing
+   - **Prevention**: Run `npm run test:critical` before staging files
+
+2. **ESLint Errors**
+   - **Symptom**: `[ERROR] ESLint found issues - this blocks the commit!`
+   - **Solution**:
+     - Run `npm run lint` to see all issues
+     - Run `npm run lint:fix` to auto-fix many issues
+     - Manually fix remaining issues
+   - **Prevention**: Configure your IDE to show ESLint errors in real-time
+
+3. **Semgrep Security Issues**
+   - **Symptom**: `[ERROR] Semgrep found security issues - this blocks the commit!`
+   - **Solution**:
+     - Review Semgrep output to identify the security issue
+     - Fix the security vulnerability (e.g., add `authTagLength` for GCM, sanitize user input)
+     - If it's a false positive, add an exclusion to `.semgrepignore` with a comment explaining why
+   - **Prevention**: Review Semgrep documentation for Electron security best practices
+
+4. **Socket.dev High-Risk Findings**
+   - **Symptom**: `[ERROR] Socket.dev found high-risk supply-chain issues - this blocks the commit!`
+   - **Solution**:
+     - Review Socket.dev output for specific package risks
+     - Update or replace vulnerable dependencies
+     - If false positive, document why the dependency is necessary
+   - **Prevention**: Regularly review `npm audit` and Socket.dev reports
+
+5. **Sensitive Data Detected**
+   - **Symptom**: `[ERROR] Potential API keys found in staged files!`
+   - **Solution**:
+     - Remove hardcoded API keys from source files
+     - Use Settings UI or environment variables (`.env` files, which are gitignored)
+     - Ensure test files use fake/test keys only
+   - **Prevention**: Never commit real API keys; use `.env` files for local development
+
+6. **Semgrep Not Installed**
+   - **Symptom**: `[ERROR] Failed to install Semgrep`
+   - **Solution**:
+     - Install manually: `python3 -m pip install --break-system-packages semgrep`
+     - On macOS with Homebrew Python, the `--break-system-packages` flag is required
+     - Verify installation: `semgrep --version`
+   - **Prevention**: Install Semgrep globally or ensure Python 3 is available
+
+7. **Pre-Commit Hook Too Slow**
+   - **Symptom**: Pre-commit takes > 30 seconds
+   - **Solution**:
+     - Check if Semgrep is scanning too many files (should only scan staged files)
+     - Verify `test:critical` suite completes quickly (< 10 seconds)
+     - Check network connectivity for Socket.dev scan
+   - **Prevention**: Keep critical test suite minimal and fast
+
+8. **Repo Hygiene Scan Fails**
+   - **Symptom**: `[ERROR] Repo-scan failed for staged files`
+   - **Solution**:
+     - Run `node scripts/repo-scan.js --staged --verbose` to see details
+     - Fix any repository hygiene issues (e.g., missing file headers, incorrect formatting)
+   - **Prevention**: Follow repository standards documented in project guidelines
+
+**Getting Help**:
+- Review error messages carefully - they include specific file paths and line numbers
+- Run individual checks manually to isolate issues:
+  - `npm run test:critical` - Test failures
+  - `npm run lint` - ESLint issues
+  - `npx semgrep scan --config .semgrep.yml <file>` - Semgrep issues
+  - `npx socket audit` - Socket.dev issues
+- Check `docs/architecture/testing-strategy.md` for detailed gate documentation
+- If all else fails, commit with `--no-verify` flag (NOT recommended - bypasses quality gates)
+
 ### Coverage Reporting
 - Generate HTML coverage reports
 - Track coverage trends over time
