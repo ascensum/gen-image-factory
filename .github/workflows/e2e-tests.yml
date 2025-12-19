@@ -97,16 +97,17 @@ jobs:
 
       - name: Run E2E tests
         run: |
-          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
-            npm run test:e2e && break
-            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
-              echo "E2E tests failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
-              sleep ${{ env.RETRY_DELAY_SECONDS }}
-            else
-              echo "E2E tests failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
-              exit 1
-            fi
-          done
+          # Optimize for CI: Run only on chromium for faster execution, use 2 workers for parallelization
+          # Full cross-browser testing happens in nightly scheduled runs
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            # Nightly runs: Full cross-browser testing (chromium, firefox, webkit)
+            echo "Running full E2E test suite across all browsers (nightly scheduled run)"
+            npm run test:e2e
+          else
+            # Manual/workflow_dispatch/tag runs: Faster chromium-only for quick feedback
+            echo "Running E2E tests on chromium only for faster CI feedback"
+            npm run test:e2e -- --project=chromium
+          fi
 
       - name: Upload Playwright test results
         if: always()
