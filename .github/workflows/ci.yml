@@ -205,8 +205,15 @@ jobs:
           # Explicitly include: src/, electron/main.js, electron/preload.js, scripts/
           # Explicitly exclude: electron/renderer/ (build output, not source code)
           # Additional exclusions handled via .semgrepignore (tests, node_modules, etc.)
-          # Use --json-output and --sarif-output (not --output twice, which Semgrep doesn't allow)
-          semgrep --config=p/owasp-electron --config=p/owasp-top-ten --config=p/javascript --json --json-output=semgrep.json --sarif --sarif-output=semgrep.sarif src/ electron/main.js electron/preload.js scripts/ || semgrep_exit=$?
+          # Note: --json and --sarif are mutually exclusive, so we run Semgrep twice
+          # First run: Generate JSON output for result counting and error checking
+          semgrep --config=p/owasp-electron --config=p/owasp-top-ten --config=p/javascript --json --json-output=semgrep.json src/ electron/main.js electron/preload.js scripts/ || semgrep_exit=$?
+          
+          # Second run: Generate SARIF output for GitHub Security upload (only if first run succeeded or had findings)
+          if [ "$semgrep_exit" -eq 0 ] || [ "$semgrep_exit" -eq 1 ] || [ "$semgrep_exit" -eq 7 ]; then
+            # Exit codes 0, 1, and 7 are valid (0=no findings, 1/7=findings found)
+            semgrep --config=p/owasp-electron --config=p/owasp-top-ten --config=p/javascript --sarif --sarif-output=semgrep.sarif src/ electron/main.js electron/preload.js scripts/ || true
+          fi
           
           # Check if Semgrep failed due to errors (not security findings)
           if [ -f semgrep.json ]; then
