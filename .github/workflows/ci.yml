@@ -197,8 +197,26 @@ jobs:
           # Ensure jq is available for JSON parsing
           sudo apt-get update && sudo apt-get install -y jq
 
-          # Run semgrep to produce both JSON and SARIF outputs; don't fail this step on semgrep exit code
-          semgrep --config .semgrep.yml --json --output semgrep.json --sarif --output semgrep.sarif . || true
+          # Run semgrep using command-line config flags (Semgrep 1.146.0 has issues with YAML config files)
+          # Using same rules as .semgrep.yml: p/owasp-electron, p/owasp-top-ten, p/javascript
+          # Explicitly include: src/, electron/main.js, electron/preload.js, scripts/
+          # Explicitly exclude: electron/renderer/ (build output, not source code)
+          # Additional exclusions handled via .semgrepignore (tests, node_modules, etc.)
+          semgrep --config=p/owasp-electron --config=p/owasp-top-ten --config=p/javascript --json --output semgrep.json --sarif --output semgrep.sarif src/ electron/main.js electron/preload.js scripts/ || semgrep_exit=$?
+          
+          # Check if Semgrep failed due to errors (not security findings)
+          if [ -f semgrep.json ]; then
+            config_errors=$(jq '.errors[]? | select(.code == 4 or .code == 7) | .code' semgrep.json 2>/dev/null | wc -l)
+            if [ "$config_errors" -gt 0 ]; then
+              echo "ERROR: Semgrep encountered errors - security scanning may be incomplete!"
+              echo "Errors:"
+              jq '.errors[]? | {code: .code, message: .short_msg, long_msg: .long_msg}' semgrep.json
+              exit 1
+            fi
+          elif [ -n "$semgrep_exit" ] && [ "$semgrep_exit" -ne 0 ]; then
+            echo "ERROR: Semgrep failed to run"
+            exit 1
+          fi
 
           # Count results in the JSON output reliably
           results_count=$(jq '[.results[]?] | length' semgrep.json 2>/dev/null || echo 0)

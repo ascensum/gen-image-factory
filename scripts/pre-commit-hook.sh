@@ -85,9 +85,9 @@ fi
 
 # 4. Semgrep security scan (staged files) - Uses .semgrep.yml config
 echo "Running Semgrep security scan (staged files)..."
-staged_files_for_semgrep=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' || echo "")
+staged_files_for_semgrep=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|jsx|ts|tsx)$' | grep -v '^electron/renderer/' || echo "")
 if [ -z "$staged_files_for_semgrep" ]; then
-    print_status "SUCCESS" "No staged JS/TS files to scan with Semgrep"
+    print_status "SUCCESS" "No staged JS/TS files to scan with Semgrep (excluding electron/renderer/)"
 else
     # Ensure Semgrep is available - install via pip if not found
     SEMGREP_CMD=""
@@ -120,8 +120,11 @@ else
         fi
     fi
     
-    # Run Semgrep on staged files using .semgrep.yml config (ensures consistency across local, pre-commit, and CI)
-    semgrep_output=$(echo "$staged_files_for_semgrep" | xargs $SEMGREP_CMD scan --config .semgrep.yml --error 2>&1)
+    # Run Semgrep on staged files using command-line config flags (Semgrep 1.146.0 has issues with YAML config files)
+    # Using same rules as .semgrep.yml: p/owasp-electron, p/owasp-top-ten, p/javascript
+    # Explicitly exclude electron/renderer/ (build output) and include electron/main.js and electron/preload.js
+    # Path exclusions also handled via .semgrepignore as backup
+    semgrep_output=$(echo "$staged_files_for_semgrep" | xargs $SEMGREP_CMD scan --config=p/owasp-electron --config=p/owasp-top-ten --config=p/javascript --error 2>&1)
     semgrep_exit=$?
     
     if [ $semgrep_exit -eq 0 ]; then

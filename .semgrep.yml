@@ -1,6 +1,7 @@
 # Semgrep configuration for Gen Image Factory
 # By putting the rules here, you ensure your local terminal, pre-commit hook, and GitHub CI all use the exact same logic.
-# Updated: Using precise include paths to avoid scanning build output and test files.
+# Path exclusions are handled via .semgrepignore file
+# Note: Semgrep 1.146.0 doesn't support 'paths' section with rules in YAML config, so we use .semgrepignore for exclusions
 
 rules:
   - p/owasp-electron
@@ -9,18 +10,3 @@ rules:
   # Note: p/typescript removed temporarily - Semgrep 1.146.0 doesn't support it in config files
   # JavaScript ruleset covers TypeScript code, so security coverage is maintained
   # TODO: Re-add p/typescript when Semgrep version supports it in config files
-
-paths:
-  include:
-    - src/                  # Your React/TS source code
-    - electron/main.js      # Explicitly include the heart of the app
-    - electron/preload.js   # Explicitly include the bridge
-    - scripts/
-  exclude:
-    - "electron/renderer/**"  # Vite build output, not source code (use ** for recursive)
-    - "tests/**"
-    - "**/*.test.ts"
-    - "**/*.test.js"
-    - "**/*.spec.ts"
-    - "**/*.spec.js"
-    - "**/__tests__/**"

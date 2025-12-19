@@ -7,7 +7,7 @@ build/
 out/
 release/
 web-bundles/
-electron/renderer/  # <--- ADD THIS: This is Vite build output, not source code
+electron/renderer/**  # Vite build output, not source code (exclude entire directory recursively)
 *.asar
 package-lock.json
 
