@@ -121,10 +121,11 @@ else
     fi
     
     # Run Semgrep on staged files using command-line config flags (Semgrep 1.146.0 has issues with YAML config files)
-    # Using same rules as .semgrep.yml: p/owasp-electron, p/owasp-top-ten, p/javascript
+    # Using rulesets: p/owasp-top-ten, p/javascript
+    # Note: p/owasp-electron doesn't exist (returns 404), so we use p/owasp-top-ten which covers Electron security concerns
     # Explicitly exclude electron/renderer/ (build output) and include electron/main.js and electron/preload.js
     # Path exclusions also handled via .semgrepignore as backup
-    semgrep_output=$(echo "$staged_files_for_semgrep" | xargs $SEMGREP_CMD scan --config=p/owasp-electron --config=p/owasp-top-ten --config=p/javascript --error 2>&1)
+    semgrep_output=$(echo "$staged_files_for_semgrep" | xargs $SEMGREP_CMD scan --config=p/owasp-top-ten --config=p/javascript --error 2>&1)
     semgrep_exit=$?
     
     if [ $semgrep_exit -eq 0 ]; then
