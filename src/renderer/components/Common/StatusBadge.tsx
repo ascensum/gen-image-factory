@@ -7,6 +7,7 @@ interface StatusBadgeProps {
   status: string | undefined | null;
   className?: string;
   labelOverride?: string;
+  'data-testid'?: string;
 }
 
 const baseClasses = 'inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium border';
@@ -129,7 +130,7 @@ function getQcStyle(status: string) {
   }
 }
 
-const StatusBadge: React.FC<StatusBadgeProps> = ({ variant, status, className = '', labelOverride }) => {
+const StatusBadge: React.FC<StatusBadgeProps> = ({ variant, status, className = '', labelOverride, 'data-testid': dataTestId }) => {
   if (!status) return null;
 
   const normalized = String(status).toLowerCase();
@@ -137,7 +138,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ variant, status, className = 
   const Icon = variant === 'job' ? JobStatusIcon : QcStatusIcon;
 
   return (
-    <span className={`${baseClasses} ${classes} ${className}`.trim()}>
+    <span className={`${baseClasses} ${classes} ${className}`.trim()} data-testid={dataTestId}>
       <Icon status={normalized} />
       {labelOverride ?? label}
     </span>

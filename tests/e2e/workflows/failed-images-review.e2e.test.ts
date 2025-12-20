@@ -37,8 +37,12 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     
     // Wait for navigation to complete
     await page.waitForLoadState('networkidle');
-    // Wait for the panel to be visible
-    await page.waitForSelector('h1:has-text("Failed Images Review"), [data-testid^="failed-image-card-"], text=No Failed Images', { timeout: 15000 });
+    // Wait for the panel to be visible - use Promise.race for multiple possible selectors
+    await Promise.race([
+      page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 15000 }),
+      page.waitForSelector('[data-testid^="failed-image-card-"]', { timeout: 15000 }),
+      page.locator('text=No Failed Images').waitFor({ state: 'visible', timeout: 15000 })
+    ]);
 
     // Panel header (use heading role to avoid ambiguity with the button)
     await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible({ timeout: 10000 });
@@ -75,8 +79,12 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     
     // Wait for navigation to complete
     await page.waitForLoadState('networkidle');
-    // Wait for the panel to be visible
-    await page.waitForSelector('h1:has-text("Failed Images Review"), [data-testid^="failed-image-card-"], text=No Failed Images', { timeout: 15000 });
+    // Wait for the panel to be visible - use Promise.race for multiple possible selectors
+    await Promise.race([
+      page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 15000 }),
+      page.waitForSelector('[data-testid^="failed-image-card-"]', { timeout: 15000 }),
+      page.locator('text=No Failed Images').waitFor({ state: 'visible', timeout: 15000 })
+    ]);
     
     await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible({ timeout: 10000 });
 
@@ -113,8 +121,12 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     
     // Wait for navigation to complete
     await page.waitForLoadState('networkidle');
-    // Wait for the panel to be visible
-    await page.waitForSelector('h1:has-text("Failed Images Review"), [data-testid^="failed-image-card-"], text=No Failed Images', { timeout: 15000 });
+    // Wait for the panel to be visible - use Promise.race for multiple possible selectors
+    await Promise.race([
+      page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 15000 }),
+      page.waitForSelector('[data-testid^="failed-image-card-"]', { timeout: 15000 }),
+      page.locator('text=No Failed Images').waitFor({ state: 'visible', timeout: 15000 })
+    ]);
     
     await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible({ timeout: 10000 });
 
