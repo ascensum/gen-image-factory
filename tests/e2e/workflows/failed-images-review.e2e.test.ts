@@ -1,7 +1,106 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+/**
+ * Injects Electron API stub with mock failed images data for E2E testing
+ */
+async function injectElectronStubWithFailedImages(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    if (window.electronAPI) return;
+
+    // Create mock failed images data matching GeneratedImage interface
+    const mockFailedImage = {
+      id: 1,
+      executionId: 1,
+      generationPrompt: 'Test prompt for failed image',
+      qcStatus: 'failed' as const,
+      qcReason: 'Quality check failed',
+      finalImagePath: '/test/path/test-failed-image.jpg',
+      tempImagePath: '/test/path/temp/test-failed-image.jpg',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      metadata: {
+        title: 'Test Failed Image',
+        description: 'A test image that failed QC'
+      }
+    };
+
+    const mockRetryFailedImage = {
+      id: 2,
+      executionId: 1,
+      generationPrompt: 'Test prompt for retry failed image',
+      qcStatus: 'failed' as const,
+      qcReason: 'Retry failed',
+      finalImagePath: '/test/path/test-retry-failed-image.jpg',
+      tempImagePath: '/test/path/temp/test-retry-failed-image.jpg',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      metadata: {
+        title: 'Test Retry Failed Image',
+        description: 'A test image that failed retry'
+      }
+    };
+
+    const createAsyncFunction = () => {
+      const fn = function () {}
+      return new Proxy(fn, {
+        apply: () => Promise.resolve(undefined),
+        get: (_target, prop) => {
+          if (prop === 'then') return undefined
+          return createAsyncFunction()
+        },
+      })
+    }
+
+    window.electronAPI = new Proxy(
+      {},
+      {
+        get: (_target, prop) => {
+          if (prop === 'ping') return () => Promise.resolve('pong')
+          if (prop === 'getAppVersion') return () => Promise.resolve('0.0.0')
+          if (prop === 'generatedImages') {
+            return {
+              getImagesByQCStatus: (status: string) => {
+                // Return mock data based on status
+                // Note: The component maps 'qc_failed' to 'failed' status
+                if (status === 'qc_failed' || status === 'failed') {
+                  return Promise.resolve([mockFailedImage])
+                }
+                if (status === 'retry_failed') {
+                  return Promise.resolve([mockRetryFailedImage])
+                }
+                // Return empty arrays for other statuses
+                return Promise.resolve([])
+              },
+              updateQCStatus: () => Promise.resolve({ success: true }),
+              deleteGeneratedImage: () => Promise.resolve({ success: true }),
+              manualApproveImage: () => Promise.resolve({ 
+                success: true, 
+                outputDirectory: '/test/output',
+                finalImagePath: '/test/output/test-failed-image.jpg'
+              })
+            }
+          }
+          if (prop === 'jobManagement') {
+            return {
+              getAllJobExecutions: () => Promise.resolve({
+                executions: [
+                  { id: 'test-job-1', label: 'Test Job 1' }
+                ]
+              })
+            }
+          }
+          return createAsyncFunction()
+        },
+      }
+    )
+  })
+}
 
 test.describe('Failed Images Review - E2E Workflow', () => {
   test.beforeEach(async ({ page }) => {
+    // Inject Electron stub with mock failed images data
+    await injectElectronStubWithFailedImages(page);
+    
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
