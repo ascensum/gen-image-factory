@@ -46,8 +46,12 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     const jobManagementButton = page.locator('button:has-text("Job Management")');
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load
-    await page.waitForSelector('button:has-text("Back to Dashboard")');
+    // Wait for Job Management page to load - check for heading or back button
+    await Promise.race([
+      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
+      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
+      page.waitForSelector('.job-management-header', { timeout: 15000 })
+    ]);
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -99,8 +103,12 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     const jobManagementButton = page.locator('button:has-text("Job Management")');
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load
-    await page.waitForSelector('button:has-text("Back to Dashboard")');
+    // Wait for Job Management page to load - check for heading or back button
+    await Promise.race([
+      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
+      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
+      page.waitForSelector('.job-management-header', { timeout: 15000 })
+    ]);
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -163,8 +171,12 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     const jobManagementButton = page.locator('button:has-text("Job Management")');
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load
-    await page.waitForSelector('button:has-text("Back to Dashboard")');
+    // Wait for Job Management page to load - check for heading or back button
+    await Promise.race([
+      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
+      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
+      page.waitForSelector('.job-management-header', { timeout: 15000 })
+    ]);
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -201,8 +213,12 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     const jobManagementButton = page.locator('button:has-text("Job Management")');
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load
-    await page.waitForSelector('button:has-text("Back to Dashboard")');
+    // Wait for Job Management page to load - check for heading or back button
+    await Promise.race([
+      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
+      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
+      page.waitForSelector('.job-management-header', { timeout: 15000 })
+    ]);
     
     // Look for individual rerun buttons
     const rerunButtons = page.locator('button[title="Rerun Job"]');
@@ -238,8 +254,12 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     const jobManagementButton = page.locator('button:has-text("Job Management")');
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load
-    await page.waitForSelector('button:has-text("Back to Dashboard")');
+    // Wait for Job Management page to load - check for heading or back button
+    await Promise.race([
+      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
+      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
+      page.waitForSelector('.job-management-header', { timeout: 15000 })
+    ]);
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -309,8 +329,12 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     const jobManagementButton = page.locator('button:has-text("Job Management")');
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load
-    await page.waitForSelector('button:has-text("Back to Dashboard")');
+    // Wait for Job Management page to load - check for heading or back button
+    await Promise.race([
+      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
+      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
+      page.waitForSelector('.job-management-header', { timeout: 15000 })
+    ]);
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
