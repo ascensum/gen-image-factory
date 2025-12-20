@@ -117,6 +117,8 @@ function getQcStyle(status: string) {
   switch (status) {
     case 'qc_failed':
       return { classes: 'bg-red-100 text-red-800 border-red-200', label: 'QC Failed' };
+    case 'retry_failed':
+      return { classes: 'bg-red-100 text-red-800 border-red-200', label: 'Retry Failed' };
     case 'retry_pending':
       return { classes: 'bg-amber-100 text-amber-800 border-amber-200', label: 'Pending Retry' };
     case 'processing':
