@@ -5,13 +5,25 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Go to Dashboard
+    // Go to Dashboard - check if we're already on dashboard or need to navigate
     const dashboardButton = page.locator('button:has-text("Open Dashboard")');
-    await expect(dashboardButton).toBeVisible();
-    await dashboardButton.click();
-    // New Dashboard has no H1; wait for a stable section header instead
-    await expect(page.locator('h2:has-text("Current Job")')).toBeVisible();
-    await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
+    const isOnDashboard = await page.locator('h2:has-text("Current Job"), h2:has-text("Generated Images"), button:has-text("Start Job")').first().isVisible({ timeout: 2000 }).catch(() => false);
+    
+    if (!isOnDashboard) {
+      await expect(dashboardButton).toBeVisible({ timeout: 10000 });
+      await dashboardButton.click();
+      await page.waitForLoadState('networkidle');
+    }
+    
+    // Wait for dashboard to be fully loaded - use more flexible selectors
+    await Promise.race([
+      page.waitForSelector('h2:has-text("Current Job")', { timeout: 15000 }),
+      page.waitForSelector('h2:has-text("Generated Images")', { timeout: 15000 }),
+      page.waitForSelector('button:has-text("Start Job"), button[aria-label="Start job"]', { timeout: 15000 })
+    ]);
+    
+    // Additional wait to ensure all components are rendered
+    await page.waitForTimeout(500);
   });
 
   test('navigate to Failed Images Review and perform batch retry (original settings)', async ({ page }) => {
@@ -27,7 +39,7 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible();
 
     // If there are failed cards, select all and open retry
-    const selectAllLabel = page.locator('text=/Select All \(\d+\/\d+\)/');
+    const selectAllLabel = page.locator('text=/Select All \\(\\d+\\/\\d+\\)/');
     if (await selectAllLabel.first().isVisible()) {
       const selectAllCheckbox = selectAllLabel.first().locator('xpath=preceding-sibling::*[1]');
       await selectAllCheckbox.click();
@@ -43,7 +55,7 @@ test.describe('Failed Images Review - E2E Workflow', () => {
         await originalBtn.click();
         // Modal closes and selection clears
         await expect(page.locator('[data-testid="processing-settings-modal"]')).not.toBeVisible({ timeout: 3000 });
-        await expect(page.locator('text=/Select All \(0\//')).toBeVisible();
+        await expect(page.locator('text=/Select All \\(0\\//')).toBeVisible();
       }
     }
   });

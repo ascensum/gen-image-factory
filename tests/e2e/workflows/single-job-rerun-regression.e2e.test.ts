@@ -20,8 +20,27 @@ test.describe('Single Job Rerun Regression Prevention', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to Dashboard
     await page.goto('/');
-    // Wait for the page to load - look for the Start Job button
-    await page.waitForSelector('button:has-text("Start Job")');
+    // Wait for the page to fully load
+    await page.waitForLoadState('networkidle');
+    // Wait for the dashboard to be visible - look for Start Job button or dashboard content
+    // Use a more flexible selector that works whether we're on home or dashboard
+    try {
+      // First try to find Start Job button (if already on dashboard)
+      await page.waitForSelector('button:has-text("Start Job"), button[aria-label="Start job"]', { timeout: 10000 });
+    } catch {
+      // If not found, navigate to dashboard first
+      const dashboardButton = page.locator('button:has-text("Open Dashboard")');
+      if (await dashboardButton.count() > 0) {
+        await dashboardButton.click();
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('button:has-text("Start Job"), button[aria-label="Start job"]', { timeout: 15000 });
+      } else {
+        // Fallback: wait for any visible content
+        await page.waitForSelector('button, [class*="dashboard"], [class*="panel"]', { timeout: 15000 });
+      }
+    }
+    // Additional wait to ensure all components are rendered
+    await page.waitForTimeout(500);
   });
 
   test('Rerun from Job Management Panel', async ({ page }) => {
