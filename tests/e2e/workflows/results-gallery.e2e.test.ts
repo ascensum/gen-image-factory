@@ -69,7 +69,8 @@ async function injectElectronStubWithGeneratedImages(page: Page): Promise<void> 
           if (prop === 'jobManagement') {
             return {
               getAllGeneratedImages: () => Promise.resolve(mockApprovedImages),
-              deleteGeneratedImage: () => Promise.resolve({ success: true }),
+              exportJobToExcel: () => Promise.resolve({ success: true, filePath: '/test/export.xlsx' }),
+              exportZip: () => Promise.resolve({ success: true, filePath: '/test/export.zip' }),
               getAllJobExecutions: () => Promise.resolve({
                 executions: [
                   { id: 1, label: 'Test Job 1' }
@@ -79,8 +80,10 @@ async function injectElectronStubWithGeneratedImages(page: Page): Promise<void> 
           }
           if (prop === 'generatedImages') {
             return {
-              exportExcel: () => Promise.resolve({ success: true, filePath: '/test/export.xlsx' }),
-              exportZip: () => Promise.resolve({ success: true, filePath: '/test/export.zip' })
+              getImagesByQCStatus: () => Promise.resolve({ success: true, images: mockApprovedImages }),
+              updateQCStatus: () => Promise.resolve({ success: true }),
+              deleteGeneratedImage: () => Promise.resolve({ success: true }),
+              manualApproveImage: () => Promise.resolve({ success: true, outputDirectory: '/test/output', finalImagePath: '/test/output/test-image.jpg' })
             }
           }
           return createAsyncFunction()

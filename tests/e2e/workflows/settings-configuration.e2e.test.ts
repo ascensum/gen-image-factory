@@ -28,11 +28,11 @@ test.describe('Settings Configuration E2E Tests', () => {
     await openaiInput.fill('sk-test-openai-key');
     await expect(openaiInput).toHaveValue('sk-test-openai-key');
 
-    // Test PiAPI key input
-    const piapiInput = page.locator('[data-testid="piapi-api-key-input"]');
-    await expect(piapiInput).toBeVisible();
-    await piapiInput.fill('pi-test-piapi-key');
-    await expect(piapiInput).toHaveValue('pi-test-piapi-key');
+    // Test Runware API key input (piapi was replaced with runware)
+    const runwareInput = page.locator('[data-testid="runware-api-key-input"]');
+    await expect(runwareInput).toBeVisible();
+    await runwareInput.fill('rw-test-runware-key');
+    await expect(runwareInput).toHaveValue('rw-test-runware-key');
 
     // Test Remove.bg key input
     const removeBgInput = page.locator('[data-testid="removeBg-api-key-input"]');
@@ -95,31 +95,31 @@ test.describe('Settings Configuration E2E Tests', () => {
   test('parameters configuration workflow', async ({ page }) => {
     // Navigate to Parameters tab
     await page.locator('[data-testid="parameters-tab"]').click();
-    await expect(page.locator('[data-testid="parameters-section"]').first()).toBeVisible();
+    await expect(page.locator('[data-testid="parameters-section"]').first()).toBeVisible({ timeout: 10000 });
 
-    // Test process mode selection
-    const processModeSelect = page.locator('#process-mode');
-    await expect(processModeSelect).toBeVisible();
-    await processModeSelect.selectOption('fast');
-    await expect(processModeSelect).toHaveValue('fast');
+    // Test job label input
+    const jobLabelInput = page.locator('#job-label');
+    await expect(jobLabelInput).toBeVisible();
+    await jobLabelInput.fill('Test Job Label');
+    await expect(jobLabelInput).toHaveValue('Test Job Label');
 
-    // Test aspect ratios input
-    const aspectRatiosInput = page.locator('#aspect-ratios');
-    await expect(aspectRatiosInput).toBeVisible();
-    await aspectRatiosInput.fill('16:9,4:5');
-    await expect(aspectRatiosInput).toHaveValue('16:9,4:5');
+    // Test Runware model input
+    const runwareModelInput = page.locator('#runware-model');
+    await expect(runwareModelInput).toBeVisible();
+    await runwareModelInput.fill('runware:102@1');
+    await expect(runwareModelInput).toHaveValue('runware:102@1');
 
-    // Test Midjourney version input
-    const mjVersionInput = page.locator('#mj-version');
-    await expect(mjVersionInput).toBeVisible();
-    await mjVersionInput.fill('6.0');
-    await expect(mjVersionInput).toHaveValue('6.0');
+    // Test Runware dimensions input
+    const runwareDimensionsInput = page.locator('#runware-dimensions');
+    await expect(runwareDimensionsInput).toBeVisible();
+    await runwareDimensionsInput.fill('1024x1024,1280x720');
+    await expect(runwareDimensionsInput).toHaveValue('1024x1024,1280x720');
 
-    // Test OpenAI model selection
-    const openaiModelSelect = page.locator('#openai-model');
-    await expect(openaiModelSelect).toBeVisible();
-    await openaiModelSelect.selectOption('gpt-4o-mini');
-    await expect(openaiModelSelect).toHaveValue('gpt-4o-mini');
+    // Test OpenAI model input (it's a text input, not a select)
+    const openaiModelInput = page.locator('#openai-model');
+    await expect(openaiModelInput).toBeVisible();
+    await openaiModelInput.fill('gpt-4o-mini');
+    await expect(openaiModelInput).toHaveValue('gpt-4o-mini');
 
     // Test polling timeout toggle and slider
     const enablePollingTimeoutToggle = page.locator('button[role="switch"]').nth(0);

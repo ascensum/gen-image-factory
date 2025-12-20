@@ -46,13 +46,32 @@ test.describe('Single Job Rerun Regression Prevention', () => {
   test('Rerun from Job Management Panel', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    await expect(menuButton).toBeVisible();
     await menuButton.click();
     
+    // Wait for menu to be visible
+    await page.waitForTimeout(300);
+    
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load
-    await page.waitForSelector('button:has-text("Back to Dashboard")');
+    // Wait for navigation to complete
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
+    // Wait for Job Management page to load - use flexible selectors
+    try {
+      await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      // Fallback: check for back button or header class
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     // Look for a job with rerun button (rerun icon button)
     const rerunButton = page.locator('button[title="Rerun Job"]').first();
@@ -122,7 +141,22 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     await jobManagementButton.click();
     
     // Wait for Job Management page to load
-    await page.waitForSelector('button:has-text("Back to Dashboard")');
+    // Wait for navigation to complete
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
+    // Wait for Job Management page to load - use flexible selectors
+    try {
+      await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      // Fallback: check for back button or header class
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     // Look for a "View" button to open single job view
     const viewButton = page.locator('button:has-text("View")').first();
@@ -187,7 +221,22 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     await jobManagementButton.click();
     
     // Wait for Job Management page to load
-    await page.waitForSelector('button:has-text("Back to Dashboard")');
+    // Wait for navigation to complete
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
+    // Wait for Job Management page to load - use flexible selectors
+    try {
+      await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      // Fallback: check for back button or header class
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     // Look for rerun buttons - they should be disabled for running jobs
     const rerunButtons = page.locator('button[title="Rerun Job"]');
@@ -221,7 +270,22 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     await jobManagementButton.click();
     
     // Wait for Job Management page to load
-    await page.waitForSelector('button:has-text("Back to Dashboard")');
+    // Wait for navigation to complete
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
+    // Wait for Job Management page to load - use flexible selectors
+    try {
+      await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      // Fallback: check for back button or header class
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     // Look for a job with rerun button
     const rerunButton = page.locator('button[title="Rerun Job"]').first();
@@ -260,7 +324,22 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     await jobManagementButton.click();
     
     // Wait for Job Management page to load
-    await page.waitForSelector('button:has-text("Back to Dashboard")');
+    // Wait for navigation to complete
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
+    // Wait for Job Management page to load - use flexible selectors
+    try {
+      await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      // Fallback: check for back button or header class
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     // Look for rerun buttons in different job states
     const rerunButtons = page.locator('button[title="Rerun Job"]');
