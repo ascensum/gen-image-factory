@@ -41,17 +41,32 @@ test.describe('Bulk Rerun Regression Prevention', () => {
   test('Bulk rerun with 2 jobs', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    await expect(menuButton).toBeVisible();
     await menuButton.click();
     
+    // Wait for menu to be visible
+    await page.waitForTimeout(300);
+    
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load - check for heading or back button
-    await Promise.race([
-      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
-      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
-      page.waitForSelector('.job-management-header', { timeout: 15000 })
-    ]);
+    // Wait for navigation to complete - dashboard should disappear, Job Management should appear
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
+    // Wait for Job Management page to load - try multiple selectors
+    try {
+      await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      // Fallback: check for back button or header class
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -98,17 +113,32 @@ test.describe('Bulk Rerun Regression Prevention', () => {
   test('Bulk rerun with 3 jobs', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    await expect(menuButton).toBeVisible();
     await menuButton.click();
     
+    // Wait for menu to be visible
+    await page.waitForTimeout(300);
+    
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load - check for heading or back button
-    await Promise.race([
-      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
-      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
-      page.waitForSelector('.job-management-header', { timeout: 15000 })
-    ]);
+    // Wait for navigation to complete - dashboard should disappear, Job Management should appear
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
+    // Wait for Job Management page to load - try multiple selectors
+    try {
+      await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      // Fallback: check for back button or header class
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -169,14 +199,25 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     await menuButton.click();
     
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load - check for heading or back button
-    await Promise.race([
-      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
-      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
-      page.waitForSelector('.job-management-header', { timeout: 15000 })
-    ]);
+    // Wait for navigation to complete - dashboard should disappear, Job Management should appear
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
+    // Wait for Job Management page to load - try multiple selectors
+    try {
+      await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      // Fallback: check for back button or header class
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -211,14 +252,25 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     await menuButton.click();
     
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load - check for heading or back button
-    await Promise.race([
-      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
-      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
-      page.waitForSelector('.job-management-header', { timeout: 15000 })
-    ]);
+    // Wait for navigation to complete - dashboard should disappear, Job Management should appear
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
+    // Wait for Job Management page to load - try multiple selectors
+    try {
+      await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      // Fallback: check for back button or header class
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     // Look for individual rerun buttons
     const rerunButtons = page.locator('button[title="Rerun Job"]');
@@ -252,14 +304,25 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     await menuButton.click();
     
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load - check for heading or back button
-    await Promise.race([
-      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
-      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
-      page.waitForSelector('.job-management-header', { timeout: 15000 })
-    ]);
+    // Wait for navigation to complete - dashboard should disappear, Job Management should appear
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
+    // Wait for Job Management page to load - try multiple selectors
+    try {
+      await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      // Fallback: check for back button or header class
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -327,14 +390,25 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     await menuButton.click();
     
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
     await jobManagementButton.click();
     
-    // Wait for Job Management page to load - check for heading or back button
-    await Promise.race([
-      page.waitForSelector('h1:has-text("Job Management")', { timeout: 15000 }),
-      page.waitForSelector('button[aria-label="Go back to dashboard"]', { timeout: 15000 }),
-      page.waitForSelector('.job-management-header', { timeout: 15000 })
-    ]);
+    // Wait for navigation to complete - dashboard should disappear, Job Management should appear
+    await page.waitForLoadState('networkidle');
+    
+    // Wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
+    // Wait for Job Management page to load - try multiple selectors
+    try {
+      await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      // Fallback: check for back button or header class
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
