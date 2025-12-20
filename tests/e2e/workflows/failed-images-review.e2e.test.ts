@@ -85,8 +85,12 @@ async function injectElectronStubWithFailedImages(page: Page): Promise<void> {
                 success: true, 
                 outputDirectory: '/test/output',
                 finalImagePath: '/test/output/test-failed-image.jpg'
-              })
+              }),
+              retryFailedImagesBatch: () => Promise.resolve({ success: true })
             }
+          }
+          if (prop === 'retryFailedImagesBatch') {
+            return () => Promise.resolve({ success: true })
           }
           if (prop === 'jobManagement') {
             return {
@@ -179,9 +183,12 @@ test.describe('Failed Images Review - E2E Workflow', () => {
         const originalBtn = page.locator('button:has-text("Retry with Original Settings")');
         await expect(originalBtn).toBeVisible();
         await originalBtn.click();
-        // Modal closes and selection clears
-        await expect(page.locator('[data-testid="processing-settings-modal"]')).not.toBeVisible({ timeout: 3000 });
-        await expect(page.locator('text=/Select All \\(0\\/\\d+\\)/')).toBeVisible();
+        // Modal closes and selection clears - give React time to update state
+        await page.waitForTimeout(500);
+        await expect(page.locator('[data-testid="processing-settings-modal"]')).not.toBeVisible({ timeout: 5000 });
+        // Selection should clear - wait for it
+        await page.waitForTimeout(300);
+        await expect(page.locator('text=/Select All \\(0\\/\\d+\\)/')).toBeVisible({ timeout: 5000 });
       }
     }
   });

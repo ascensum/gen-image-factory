@@ -17,10 +17,25 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Bulk Rerun Regression Prevention', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to Dashboard
     await page.goto('/');
-    // Wait for the page to load - look for the Start Job button
-    await page.waitForSelector('button:has-text("Start Job")');
+    await page.waitForLoadState('networkidle');
+    
+    // Check if already on dashboard or need to navigate
+    const isOnDashboard = await page.locator('h2:has-text("Current Job"), h2:has-text("Generated Images"), button:has-text("Start Job")').first().isVisible({ timeout: 2000 }).catch(() => false);
+    
+    if (!isOnDashboard) {
+      const dashboardButton = page.locator('button:has-text("Open Dashboard")');
+      await expect(dashboardButton).toBeVisible({ timeout: 10000 });
+      await dashboardButton.click();
+      await page.waitForLoadState('networkidle');
+    }
+    
+    // Ensure dashboard is loaded
+    await Promise.race([
+      page.waitForSelector('button:has-text("Start Job")', { timeout: 15000 }),
+      page.waitForSelector('h2:has-text("Current Job")', { timeout: 15000 }),
+      page.waitForSelector('h2:has-text("Generated Images")', { timeout: 15000 })
+    ]);
   });
 
   test('Bulk rerun with 2 jobs', async ({ page }) => {
