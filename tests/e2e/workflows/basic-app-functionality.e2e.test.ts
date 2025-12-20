@@ -492,19 +492,21 @@ test.describe('StatusBadge Harness - Story 1.1', () => {
     await page.waitForLoadState('networkidle')
     // Wait for the export harness to be visible
     await page.waitForSelector('[data-testid="export-harness"]', { timeout: 15000 })
-    // Additional wait to ensure status badges are rendered
-    await page.waitForTimeout(500)
+    // Wait for the status demo container to ensure badges are rendered
+    await page.waitForSelector('[data-testid="status-demo"]', { timeout: 10000 })
+    // Additional wait to ensure React has fully rendered the badges
+    await page.waitForTimeout(1000)
   })
 
   test('should render failed badges with red styling', async ({ page }) => {
     // Verify failed status badge has correct error styling
     const failedBadge = page.locator('[data-testid="status-badge-failed"]')
-    await expect(failedBadge).toBeVisible()
+    await expect(failedBadge).toBeVisible({ timeout: 10000 })
     await expect(failedBadge).toHaveAttribute('class', /text-red-800/)
     
     // Verify retry_failed badge also uses error styling
     const retryBadge = page.locator('[data-testid="status-badge-retry-failed"]')
-    await expect(retryBadge).toBeVisible()
+    await expect(retryBadge).toBeVisible({ timeout: 10000 })
     await expect(retryBadge).toHaveAttribute('class', /text-red-800/)
     
     // Verify badges are distinguishable despite same color
@@ -514,9 +516,12 @@ test.describe('StatusBadge Harness - Story 1.1', () => {
   })
 
   test('should show exclamation icon for retry_failed badges', async ({ page }) => {
+    // First ensure the badge itself is visible
+    const retryBadge = page.locator('[data-testid="status-badge-retry-failed"]')
+    await expect(retryBadge).toBeVisible({ timeout: 10000 })
     // Verify retry_failed badge displays warning/exclamation icon
     const retryBadgeIcon = page.locator('[data-testid="status-badge-retry-failed"] svg path').first()
-    await expect(retryBadgeIcon).toBeVisible()
+    await expect(retryBadgeIcon).toBeVisible({ timeout: 10000 })
     
     // Check for exclamation mark path in SVG (M12 9v4 is part of exclamation icon path)
     await expect(retryBadgeIcon).toHaveAttribute('d', /M12 9v4/)

@@ -34,9 +34,14 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     const reviewLink = page.locator('button:has-text("Failed Images Review")');
     await expect(reviewLink).toBeVisible();
     await reviewLink.click();
+    
+    // Wait for navigation to complete
+    await page.waitForLoadState('networkidle');
+    // Wait for the panel to be visible
+    await page.waitForSelector('h1:has-text("Failed Images Review"), [data-testid^="failed-image-card-"], text=No Failed Images', { timeout: 15000 });
 
     // Panel header (use heading role to avoid ambiguity with the button)
-    await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible({ timeout: 10000 });
 
     // If there are failed cards, select all and open retry
     const selectAllLabel = page.locator('text=/Select All \\(\\d+\\/\\d+\\)/');
@@ -55,7 +60,7 @@ test.describe('Failed Images Review - E2E Workflow', () => {
         await originalBtn.click();
         // Modal closes and selection clears
         await expect(page.locator('[data-testid="processing-settings-modal"]')).not.toBeVisible({ timeout: 3000 });
-        await expect(page.locator('text=/Select All \\(0\\//')).toBeVisible();
+        await expect(page.locator('text=/Select All \\(0\\/\\d+\\)/')).toBeVisible();
       }
     }
   });
@@ -67,7 +72,13 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     const reviewLink = page.locator('button:has-text("Failed Images Review")');
     await expect(reviewLink).toBeVisible();
     await reviewLink.click();
-    await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible();
+    
+    // Wait for navigation to complete
+    await page.waitForLoadState('networkidle');
+    // Wait for the panel to be visible
+    await page.waitForSelector('h1:has-text("Failed Images Review"), [data-testid^="failed-image-card-"], text=No Failed Images', { timeout: 15000 });
+    
+    await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible({ timeout: 10000 });
 
     const firstCard = page.locator('[data-testid^="failed-image-card-"]').first();
     if (await firstCard.isVisible()) {
@@ -99,7 +110,13 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     const reviewLink = page.locator('button:has-text("Failed Images Review")');
     await expect(reviewLink).toBeVisible();
     await reviewLink.click();
-    await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible();
+    
+    // Wait for navigation to complete
+    await page.waitForLoadState('networkidle');
+    // Wait for the panel to be visible
+    await page.waitForSelector('h1:has-text("Failed Images Review"), [data-testid^="failed-image-card-"], text=No Failed Images', { timeout: 15000 });
+    
+    await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible({ timeout: 10000 });
 
     const firstCard = page.locator('[data-testid^="failed-image-card-"]').first();
     if (await firstCard.isVisible()) {
