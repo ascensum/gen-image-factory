@@ -31,12 +31,16 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     const menuButton = page.getByRole('button', { name: 'Open menu' });
     await expect(menuButton).toBeVisible();
     await menuButton.click();
+    
+    // Wait for menu to be visible before clicking
     const reviewLink = page.locator('button:has-text("Failed Images Review")');
-    await expect(reviewLink).toBeVisible();
+    await expect(reviewLink).toBeVisible({ timeout: 5000 });
     await reviewLink.click();
     
-    // Wait for navigation to complete
-    await page.waitForLoadState('networkidle');
+    // Wait for React state update and component mount - check that dashboard is gone and panel appears
+    // First wait for dashboard elements to disappear (indicating navigation started)
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
     // Wait for the panel to be visible - use Promise.race for multiple possible selectors
     await Promise.race([
       page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 15000 }),
@@ -73,12 +77,15 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     const menuButton = page.getByRole('button', { name: 'Open menu' });
     await expect(menuButton).toBeVisible();
     await menuButton.click();
+    
+    // Wait for menu to be visible before clicking
     const reviewLink = page.locator('button:has-text("Failed Images Review")');
-    await expect(reviewLink).toBeVisible();
+    await expect(reviewLink).toBeVisible({ timeout: 5000 });
     await reviewLink.click();
     
-    // Wait for navigation to complete
-    await page.waitForLoadState('networkidle');
+    // Wait for React state update and component mount - check that dashboard is gone and panel appears
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
     // Wait for the panel to be visible - use Promise.race for multiple possible selectors
     await Promise.race([
       page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 15000 }),
@@ -115,12 +122,15 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     const menuButton = page.getByRole('button', { name: 'Open menu' });
     await expect(menuButton).toBeVisible();
     await menuButton.click();
+    
+    // Wait for menu to be visible before clicking
     const reviewLink = page.locator('button:has-text("Failed Images Review")');
-    await expect(reviewLink).toBeVisible();
+    await expect(reviewLink).toBeVisible({ timeout: 5000 });
     await reviewLink.click();
     
-    // Wait for navigation to complete
-    await page.waitForLoadState('networkidle');
+    // Wait for React state update and component mount - check that dashboard is gone and panel appears
+    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    
     // Wait for the panel to be visible - use Promise.race for multiple possible selectors
     await Promise.race([
       page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 15000 }),
