@@ -37,16 +37,22 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     await expect(reviewLink).toBeVisible({ timeout: 5000 });
     await reviewLink.click();
     
-    // Wait for React state update and component mount - check that dashboard is gone and panel appears
-    // First wait for dashboard elements to disappear (indicating navigation started)
-    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    // Wait for React state update - give React time to unmount dashboard and mount panel
+    // Wait a bit for the state change to propagate
+    await page.waitForTimeout(500);
     
-    // Wait for the panel to be visible - use Promise.race for multiple possible selectors
-    await Promise.race([
-      page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 15000 }),
-      page.waitForSelector('[data-testid^="failed-image-card-"]', { timeout: 15000 }),
-      page.locator('text=No Failed Images').waitFor({ state: 'visible', timeout: 15000 })
-    ]);
+    // Wait for the panel to be visible - try heading first, then fallback to other indicators
+    // The panel should render immediately after state change
+    try {
+      await page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 10000 });
+    } catch {
+      // Fallback: wait for any panel content
+      await Promise.race([
+        page.waitForSelector('[data-testid^="failed-image-card-"]', { timeout: 10000 }),
+        page.locator('text=No Failed Images').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('text=Review and manage images').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
 
     // Panel header (use heading role to avoid ambiguity with the button)
     await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible({ timeout: 10000 });
@@ -83,15 +89,20 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     await expect(reviewLink).toBeVisible({ timeout: 5000 });
     await reviewLink.click();
     
-    // Wait for React state update and component mount - check that dashboard is gone and panel appears
-    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    // Wait for React state update - give React time to unmount dashboard and mount panel
+    await page.waitForTimeout(500);
     
-    // Wait for the panel to be visible - use Promise.race for multiple possible selectors
-    await Promise.race([
-      page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 15000 }),
-      page.waitForSelector('[data-testid^="failed-image-card-"]', { timeout: 15000 }),
-      page.locator('text=No Failed Images').waitFor({ state: 'visible', timeout: 15000 })
-    ]);
+    // Wait for the panel to be visible - try heading first, then fallback to other indicators
+    try {
+      await page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 10000 });
+    } catch {
+      // Fallback: wait for any panel content
+      await Promise.race([
+        page.waitForSelector('[data-testid^="failed-image-card-"]', { timeout: 10000 }),
+        page.locator('text=No Failed Images').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('text=Review and manage images').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible({ timeout: 10000 });
 
@@ -128,15 +139,20 @@ test.describe('Failed Images Review - E2E Workflow', () => {
     await expect(reviewLink).toBeVisible({ timeout: 5000 });
     await reviewLink.click();
     
-    // Wait for React state update and component mount - check that dashboard is gone and panel appears
-    await page.waitForSelector('h2:has-text("Current Job")', { state: 'hidden', timeout: 5000 }).catch(() => {});
+    // Wait for React state update - give React time to unmount dashboard and mount panel
+    await page.waitForTimeout(500);
     
-    // Wait for the panel to be visible - use Promise.race for multiple possible selectors
-    await Promise.race([
-      page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 15000 }),
-      page.waitForSelector('[data-testid^="failed-image-card-"]', { timeout: 15000 }),
-      page.locator('text=No Failed Images').waitFor({ state: 'visible', timeout: 15000 })
-    ]);
+    // Wait for the panel to be visible - try heading first, then fallback to other indicators
+    try {
+      await page.waitForSelector('h1:has-text("Failed Images Review")', { timeout: 10000 });
+    } catch {
+      // Fallback: wait for any panel content
+      await Promise.race([
+        page.waitForSelector('[data-testid^="failed-image-card-"]', { timeout: 10000 }),
+        page.locator('text=No Failed Images').waitFor({ state: 'visible', timeout: 10000 }),
+        page.locator('text=Review and manage images').waitFor({ state: 'visible', timeout: 10000 })
+      ]);
+    }
     
     await expect(page.getByRole('heading', { name: 'Failed Images Review' })).toBeVisible({ timeout: 10000 });
 
