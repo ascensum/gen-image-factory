@@ -1,7 +1,100 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+/**
+ * Injects Electron API stub with mock generated images data for E2E testing.
+ */
+async function injectElectronStubWithGeneratedImages(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    if (window.electronAPI) return;
+
+    // Create mock approved images for gallery display
+    const mockApprovedImages = [
+      {
+        id: 1,
+        imageMappingId: 'test-mapping-1',
+        executionId: 1,
+        generationPrompt: 'A beautiful landscape with mountains',
+        seed: 12345,
+        qcStatus: 'approved',
+        qcReason: null,
+        finalImagePath: '/test/path/image1.jpg',
+        tempImagePath: null,
+        metadata: JSON.parse(JSON.stringify({
+          title: 'AI-Generated Title',
+          description: 'A beautiful landscape',
+          tags: ['landscape', 'nature']
+        })),
+        processingSettings: JSON.parse(JSON.stringify({
+          imageEnhancement: true,
+          sharpening: 50
+        })),
+        createdAt: new Date('2025-01-01T00:00:00Z')
+      },
+      {
+        id: 2,
+        imageMappingId: 'test-mapping-2',
+        executionId: 1,
+        generationPrompt: 'Modern city skyline at sunset',
+        seed: 67890,
+        qcStatus: 'approved',
+        qcReason: null,
+        finalImagePath: '/test/path/image2.jpg',
+        tempImagePath: null,
+        metadata: JSON.parse(JSON.stringify({
+          title: 'City Sunset',
+          description: 'Modern urban landscape'
+        })),
+        processingSettings: null,
+        createdAt: new Date('2025-01-01T01:00:00Z')
+      }
+    ];
+
+    const createAsyncFunction = () => {
+      const fn = function () {}
+      return new Proxy(fn, {
+        apply: () => Promise.resolve(undefined),
+        get: (_target, prop) => {
+          if (prop === 'then') return undefined
+          return createAsyncFunction()
+        },
+      })
+    }
+
+    window.electronAPI = new Proxy(
+      {},
+      {
+        get: (_target, prop) => {
+          if (prop === 'ping') return () => Promise.resolve('pong')
+          if (prop === 'getAppVersion') return () => Promise.resolve('0.0.0')
+          if (prop === 'jobManagement') {
+            return {
+              getAllGeneratedImages: () => Promise.resolve(mockApprovedImages),
+              deleteGeneratedImage: () => Promise.resolve({ success: true }),
+              getAllJobExecutions: () => Promise.resolve({
+                executions: [
+                  { id: 1, label: 'Test Job 1' }
+                ]
+              })
+            }
+          }
+          if (prop === 'generatedImages') {
+            return {
+              exportExcel: () => Promise.resolve({ success: true, filePath: '/test/export.xlsx' }),
+              exportZip: () => Promise.resolve({ success: true, filePath: '/test/export.zip' })
+            }
+          }
+          return createAsyncFunction()
+        },
+      }
+    )
+  })
+}
 
 test.describe('Results Gallery E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
+    // Inject Electron stub with mock generated images data
+    await injectElectronStubWithGeneratedImages(page);
+    
     // Navigate to the main page
     await page.goto('/');
     

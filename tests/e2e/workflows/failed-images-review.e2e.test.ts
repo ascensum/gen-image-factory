@@ -1,43 +1,51 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
- * Injects Electron API stub with mock failed images data for E2E testing
+ * Injects Electron API stub with mock failed images data for E2E testing.
+ * Note: This mocks the API layer - database/backend coverage is in integration tests.
  */
 async function injectElectronStubWithFailedImages(page: Page): Promise<void> {
   await page.addInitScript(() => {
     if (window.electronAPI) return;
 
-    // Create mock failed images data matching GeneratedImage interface
+    // Create mock failed images data matching GeneratedImage interface exactly
+    // This matches the structure returned by GeneratedImage.getImagesByQCStatus()
+    // which maps database rows to: { id, imageMappingId, executionId, generationPrompt, 
+    // seed, qcStatus, qcReason, finalImagePath, tempImagePath, metadata, processingSettings, createdAt }
     const mockFailedImage = {
       id: 1,
+      imageMappingId: 'test-mapping-1',
       executionId: 1,
       generationPrompt: 'Test prompt for failed image',
-      qcStatus: 'failed' as const,
+      seed: 12345,
+      qcStatus: 'failed', // Database stores as 'failed', component filters by 'qc_failed'
       qcReason: 'Quality check failed',
       finalImagePath: '/test/path/test-failed-image.jpg',
       tempImagePath: '/test/path/temp/test-failed-image.jpg',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      metadata: {
+      metadata: JSON.parse(JSON.stringify({
         title: 'Test Failed Image',
         description: 'A test image that failed QC'
-      }
+      })),
+      processingSettings: null,
+      createdAt: new Date('2025-01-01T00:00:00Z')
     };
 
     const mockRetryFailedImage = {
       id: 2,
+      imageMappingId: 'test-mapping-2',
       executionId: 1,
       generationPrompt: 'Test prompt for retry failed image',
-      qcStatus: 'failed' as const,
+      seed: 67890,
+      qcStatus: 'failed', // Database stores as 'failed', component filters by 'retry_failed' 
       qcReason: 'Retry failed',
       finalImagePath: '/test/path/test-retry-failed-image.jpg',
       tempImagePath: '/test/path/temp/test-retry-failed-image.jpg',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      metadata: {
+      metadata: JSON.parse(JSON.stringify({
         title: 'Test Retry Failed Image',
         description: 'A test image that failed retry'
-      }
+      })),
+      processingSettings: null,
+      createdAt: new Date('2025-01-01T01:00:00Z')
     };
 
     const createAsyncFunction = () => {
@@ -60,16 +68,16 @@ async function injectElectronStubWithFailedImages(page: Page): Promise<void> {
           if (prop === 'generatedImages') {
             return {
               getImagesByQCStatus: (status: string) => {
-                // Return mock data based on status
+                // Return mock data matching real API format: { success: true, images: [...] }
                 // Note: The component maps 'qc_failed' to 'failed' status
                 if (status === 'qc_failed' || status === 'failed') {
-                  return Promise.resolve([mockFailedImage])
+                  return Promise.resolve({ success: true, images: [mockFailedImage] })
                 }
                 if (status === 'retry_failed') {
-                  return Promise.resolve([mockRetryFailedImage])
+                  return Promise.resolve({ success: true, images: [mockRetryFailedImage] })
                 }
-                // Return empty arrays for other statuses
-                return Promise.resolve([])
+                // Return empty arrays for other statuses (matching real API format)
+                return Promise.resolve({ success: true, images: [] })
               },
               updateQCStatus: () => Promise.resolve({ success: true }),
               deleteGeneratedImage: () => Promise.resolve({ success: true }),
