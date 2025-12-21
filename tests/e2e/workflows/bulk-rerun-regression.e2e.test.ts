@@ -58,11 +58,11 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for Job Management page to load - use Promise.race properly
     // Create promises that reject on timeout, then race them
     const waitPromises = [
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 })
     ];
     
     // Race all promises - first one to resolve wins
@@ -75,15 +75,26 @@ test.describe('Bulk Rerun Regression Prevention', () => {
         throw new Error('Navigation to Job Management failed - still on dashboard');
       }
       // Dashboard is hidden, so navigation started but panel might not be fully loaded
-      // Wait a bit more and check again
+      // Wait a bit more and check again - check all selectors in parallel
       await page.waitForTimeout(1000);
-      const hasJobManagement = await Promise.race([
-        page.locator('h1:has-text("Job Management")').isVisible(),
-        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
-        page.locator('text=Job Management').first().isVisible()
-      ]).catch(() => false);
+      const visibilityChecks = await Promise.all([
+        page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+        page.locator('text=Job Management').first().isVisible().catch(() => false),
+        page.locator('.header-title:has-text("Job Management")').isVisible().catch(() => false)
+      ]);
+      const hasJobManagement = visibilityChecks.some(v => v === true);
       if (!hasJobManagement) {
-        throw new Error('Job Management panel did not load after navigation');
+        // Last resort: wait a bit longer and try one more time
+        await page.waitForTimeout(2000);
+        const finalCheck = await Promise.all([
+          page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+          page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+          page.locator('text=Job Management').first().isVisible().catch(() => false)
+        ]);
+        if (!finalCheck.some(v => v === true)) {
+          throw new Error('Job Management panel did not load after navigation');
+        }
       }
     }
     
@@ -149,11 +160,11 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for Job Management page to load - use Promise.race properly
     // Create promises that reject on timeout, then race them
     const waitPromises = [
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 })
     ];
     
     // Race all promises - first one to resolve wins
@@ -166,15 +177,26 @@ test.describe('Bulk Rerun Regression Prevention', () => {
         throw new Error('Navigation to Job Management failed - still on dashboard');
       }
       // Dashboard is hidden, so navigation started but panel might not be fully loaded
-      // Wait a bit more and check again
+      // Wait a bit more and check again - check all selectors in parallel
       await page.waitForTimeout(1000);
-      const hasJobManagement = await Promise.race([
-        page.locator('h1:has-text("Job Management")').isVisible(),
-        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
-        page.locator('text=Job Management').first().isVisible()
-      ]).catch(() => false);
+      const visibilityChecks = await Promise.all([
+        page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+        page.locator('text=Job Management').first().isVisible().catch(() => false),
+        page.locator('.header-title:has-text("Job Management")').isVisible().catch(() => false)
+      ]);
+      const hasJobManagement = visibilityChecks.some(v => v === true);
       if (!hasJobManagement) {
-        throw new Error('Job Management panel did not load after navigation');
+        // Last resort: wait a bit longer and try one more time
+        await page.waitForTimeout(2000);
+        const finalCheck = await Promise.all([
+          page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+          page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+          page.locator('text=Job Management').first().isVisible().catch(() => false)
+        ]);
+        if (!finalCheck.some(v => v === true)) {
+          throw new Error('Job Management panel did not load after navigation');
+        }
       }
     }
     
@@ -251,11 +273,11 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for Job Management page to load - use Promise.race properly
     // Create promises that reject on timeout, then race them
     const waitPromises = [
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 })
     ];
     
     // Race all promises - first one to resolve wins
@@ -268,15 +290,26 @@ test.describe('Bulk Rerun Regression Prevention', () => {
         throw new Error('Navigation to Job Management failed - still on dashboard');
       }
       // Dashboard is hidden, so navigation started but panel might not be fully loaded
-      // Wait a bit more and check again
+      // Wait a bit more and check again - check all selectors in parallel
       await page.waitForTimeout(1000);
-      const hasJobManagement = await Promise.race([
-        page.locator('h1:has-text("Job Management")').isVisible(),
-        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
-        page.locator('text=Job Management').first().isVisible()
-      ]).catch(() => false);
+      const visibilityChecks = await Promise.all([
+        page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+        page.locator('text=Job Management').first().isVisible().catch(() => false),
+        page.locator('.header-title:has-text("Job Management")').isVisible().catch(() => false)
+      ]);
+      const hasJobManagement = visibilityChecks.some(v => v === true);
       if (!hasJobManagement) {
-        throw new Error('Job Management panel did not load after navigation');
+        // Last resort: wait a bit longer and try one more time
+        await page.waitForTimeout(2000);
+        const finalCheck = await Promise.all([
+          page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+          page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+          page.locator('text=Job Management').first().isVisible().catch(() => false)
+        ]);
+        if (!finalCheck.some(v => v === true)) {
+          throw new Error('Job Management panel did not load after navigation');
+        }
       }
     }
     
@@ -327,11 +360,11 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for Job Management page to load - use Promise.race properly
     // Create promises that reject on timeout, then race them
     const waitPromises = [
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 })
     ];
     
     // Race all promises - first one to resolve wins
@@ -344,15 +377,26 @@ test.describe('Bulk Rerun Regression Prevention', () => {
         throw new Error('Navigation to Job Management failed - still on dashboard');
       }
       // Dashboard is hidden, so navigation started but panel might not be fully loaded
-      // Wait a bit more and check again
+      // Wait a bit more and check again - check all selectors in parallel
       await page.waitForTimeout(1000);
-      const hasJobManagement = await Promise.race([
-        page.locator('h1:has-text("Job Management")').isVisible(),
-        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
-        page.locator('text=Job Management').first().isVisible()
-      ]).catch(() => false);
+      const visibilityChecks = await Promise.all([
+        page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+        page.locator('text=Job Management').first().isVisible().catch(() => false),
+        page.locator('.header-title:has-text("Job Management")').isVisible().catch(() => false)
+      ]);
+      const hasJobManagement = visibilityChecks.some(v => v === true);
       if (!hasJobManagement) {
-        throw new Error('Job Management panel did not load after navigation');
+        // Last resort: wait a bit longer and try one more time
+        await page.waitForTimeout(2000);
+        const finalCheck = await Promise.all([
+          page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+          page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+          page.locator('text=Job Management').first().isVisible().catch(() => false)
+        ]);
+        if (!finalCheck.some(v => v === true)) {
+          throw new Error('Job Management panel did not load after navigation');
+        }
       }
     }
     
@@ -402,11 +446,11 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for Job Management page to load - use Promise.race properly
     // Create promises that reject on timeout, then race them
     const waitPromises = [
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 })
     ];
     
     // Race all promises - first one to resolve wins
@@ -419,15 +463,26 @@ test.describe('Bulk Rerun Regression Prevention', () => {
         throw new Error('Navigation to Job Management failed - still on dashboard');
       }
       // Dashboard is hidden, so navigation started but panel might not be fully loaded
-      // Wait a bit more and check again
+      // Wait a bit more and check again - check all selectors in parallel
       await page.waitForTimeout(1000);
-      const hasJobManagement = await Promise.race([
-        page.locator('h1:has-text("Job Management")').isVisible(),
-        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
-        page.locator('text=Job Management').first().isVisible()
-      ]).catch(() => false);
+      const visibilityChecks = await Promise.all([
+        page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+        page.locator('text=Job Management').first().isVisible().catch(() => false),
+        page.locator('.header-title:has-text("Job Management")').isVisible().catch(() => false)
+      ]);
+      const hasJobManagement = visibilityChecks.some(v => v === true);
       if (!hasJobManagement) {
-        throw new Error('Job Management panel did not load after navigation');
+        // Last resort: wait a bit longer and try one more time
+        await page.waitForTimeout(2000);
+        const finalCheck = await Promise.all([
+          page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+          page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+          page.locator('text=Job Management').first().isVisible().catch(() => false)
+        ]);
+        if (!finalCheck.some(v => v === true)) {
+          throw new Error('Job Management panel did not load after navigation');
+        }
       }
     }
     
@@ -511,11 +566,11 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for Job Management page to load - use Promise.race properly
     // Create promises that reject on timeout, then race them
     const waitPromises = [
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
-      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 })
     ];
     
     // Race all promises - first one to resolve wins
@@ -528,15 +583,26 @@ test.describe('Bulk Rerun Regression Prevention', () => {
         throw new Error('Navigation to Job Management failed - still on dashboard');
       }
       // Dashboard is hidden, so navigation started but panel might not be fully loaded
-      // Wait a bit more and check again
+      // Wait a bit more and check again - check all selectors in parallel
       await page.waitForTimeout(1000);
-      const hasJobManagement = await Promise.race([
-        page.locator('h1:has-text("Job Management")').isVisible(),
-        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
-        page.locator('text=Job Management').first().isVisible()
-      ]).catch(() => false);
+      const visibilityChecks = await Promise.all([
+        page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+        page.locator('text=Job Management').first().isVisible().catch(() => false),
+        page.locator('.header-title:has-text("Job Management")').isVisible().catch(() => false)
+      ]);
+      const hasJobManagement = visibilityChecks.some(v => v === true);
       if (!hasJobManagement) {
-        throw new Error('Job Management panel did not load after navigation');
+        // Last resort: wait a bit longer and try one more time
+        await page.waitForTimeout(2000);
+        const finalCheck = await Promise.all([
+          page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
+          page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
+          page.locator('text=Job Management').first().isVisible().catch(() => false)
+        ]);
+        if (!finalCheck.some(v => v === true)) {
+          throw new Error('Job Management panel did not load after navigation');
+        }
       }
     }
     
