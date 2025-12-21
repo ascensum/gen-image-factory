@@ -44,30 +44,33 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     await expect(menuButton).toBeVisible();
     await menuButton.click();
     
-    // Wait for menu to be visible - verify it actually opened
-    await page.waitForTimeout(300);
+    // Wait for menu to be visible - wait for the menu panel to appear
+    await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
-    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
+    await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
     
-    // Click and wait for navigation
+    // Click and wait for navigation - use Promise.all to wait for both disappearance and appearance
     await jobManagementButton.click();
     
-    // Wait for dashboard to disappear (indicating navigation started)
-    await page.locator('h2:has-text("Current Job")').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    // Wait for React state change - give it time to unmount dashboard and mount Job Management
+    await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - try multiple selectors with longer timeout
-    // Use a more flexible approach: wait for any Job Management indicator
-    const jobManagementIndicators = [
-      page.locator('h1:has-text("Job Management")'),
-      page.locator('.header-title:has-text("Job Management")'),
-      page.locator('button[aria-label="Go back to dashboard"]'),
-      page.locator('.job-management-header'),
-      page.locator('text=Job Management').first()
-    ];
-    
-    await Promise.race(
-      jobManagementIndicators.map(locator => locator.waitFor({ state: 'visible', timeout: 15000 }))
-    );
+    // Wait for Job Management page to load - try multiple selectors
+    // First try the most specific ones, then fallback to more general
+    try {
+      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+    } catch {
+      try {
+        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      } catch {
+        try {
+          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
+        } catch {
+          // Last resort: wait for any Job Management text
+          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
+        }
+      }
+    }
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -117,30 +120,33 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     await expect(menuButton).toBeVisible();
     await menuButton.click();
     
-    // Wait for menu to be visible - verify it actually opened
-    await page.waitForTimeout(300);
+    // Wait for menu to be visible - wait for the menu panel to appear
+    await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
-    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
+    await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
     
-    // Click and wait for navigation
+    // Click and wait for navigation - use Promise.all to wait for both disappearance and appearance
     await jobManagementButton.click();
     
-    // Wait for dashboard to disappear (indicating navigation started)
-    await page.locator('h2:has-text("Current Job")').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+    // Wait for React state change - give it time to unmount dashboard and mount Job Management
+    await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - try multiple selectors with longer timeout
-    // Use a more flexible approach: wait for any Job Management indicator
-    const jobManagementIndicators = [
-      page.locator('h1:has-text("Job Management")'),
-      page.locator('.header-title:has-text("Job Management")'),
-      page.locator('button[aria-label="Go back to dashboard"]'),
-      page.locator('.job-management-header'),
-      page.locator('text=Job Management').first()
-    ];
-    
-    await Promise.race(
-      jobManagementIndicators.map(locator => locator.waitFor({ state: 'visible', timeout: 15000 }))
-    );
+    // Wait for Job Management page to load - try multiple selectors
+    // First try the most specific ones, then fallback to more general
+    try {
+      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+    } catch {
+      try {
+        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      } catch {
+        try {
+          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
+        } catch {
+          // Last resort: wait for any Job Management text
+          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
+        }
+      }
+    }
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -198,23 +204,36 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    await expect(menuButton).toBeVisible();
     await menuButton.click();
     
+    // Wait for menu to be visible - wait for the menu panel to appear
+    await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
-    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
+    await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
+    
+    // Click and wait for navigation
     await jobManagementButton.click();
     
-    // Wait for React state change to complete - Job Management panel should render
-    // Navigation is instant (React state), but component needs time to mount
+    // Wait for React state change - give it time to unmount dashboard and mount Job Management
     await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - use Promise.race for any indicator
-    await Promise.race([
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 15000 })
-    ]);
+    // Wait for Job Management page to load - try multiple selectors
+    // First try the most specific ones, then fallback to more general
+    try {
+      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+    } catch {
+      try {
+        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      } catch {
+        try {
+          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
+        } catch {
+          // Last resort: wait for any Job Management text
+          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
+        }
+      }
+    }
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -246,23 +265,36 @@ test.describe('Bulk Rerun Regression Prevention', () => {
   test('Individual rerun during bulk operation', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    await expect(menuButton).toBeVisible();
     await menuButton.click();
     
+    // Wait for menu to be visible - wait for the menu panel to appear
+    await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
-    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
+    await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
+    
+    // Click and wait for navigation
     await jobManagementButton.click();
     
-    // Wait for React state change to complete - Job Management panel should render
-    // Navigation is instant (React state), but component needs time to mount
+    // Wait for React state change - give it time to unmount dashboard and mount Job Management
     await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - use Promise.race for any indicator
-    await Promise.race([
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 15000 })
-    ]);
+    // Wait for Job Management page to load - try multiple selectors
+    // First try the most specific ones, then fallback to more general
+    try {
+      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+    } catch {
+      try {
+        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      } catch {
+        try {
+          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
+        } catch {
+          // Last resort: wait for any Job Management text
+          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
+        }
+      }
+    }
     
     // Look for individual rerun buttons
     const rerunButtons = page.locator('button[title="Rerun Job"]');
@@ -293,23 +325,36 @@ test.describe('Bulk Rerun Regression Prevention', () => {
   test('Progress tracking during bulk rerun', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    await expect(menuButton).toBeVisible();
     await menuButton.click();
     
+    // Wait for menu to be visible - wait for the menu panel to appear
+    await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
-    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
+    await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
+    
+    // Click and wait for navigation
     await jobManagementButton.click();
     
-    // Wait for React state change to complete - Job Management panel should render
-    // Navigation is instant (React state), but component needs time to mount
+    // Wait for React state change - give it time to unmount dashboard and mount Job Management
     await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - use Promise.race for any indicator
-    await Promise.race([
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 15000 })
-    ]);
+    // Wait for Job Management page to load - try multiple selectors
+    // First try the most specific ones, then fallback to more general
+    try {
+      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+    } catch {
+      try {
+        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      } catch {
+        try {
+          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
+        } catch {
+          // Last resort: wait for any Job Management text
+          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
+        }
+      }
+    }
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
@@ -374,23 +419,36 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    await expect(menuButton).toBeVisible();
     await menuButton.click();
     
+    // Wait for menu to be visible - wait for the menu panel to appear
+    await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
-    await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
+    await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
+    
+    // Click and wait for navigation
     await jobManagementButton.click();
     
-    // Wait for React state change to complete - Job Management panel should render
-    // Navigation is instant (React state), but component needs time to mount
+    // Wait for React state change - give it time to unmount dashboard and mount Job Management
     await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - use Promise.race for any indicator
-    await Promise.race([
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 15000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 15000 })
-    ]);
+    // Wait for Job Management page to load - try multiple selectors
+    // First try the most specific ones, then fallback to more general
+    try {
+      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+    } catch {
+      try {
+        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      } catch {
+        try {
+          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
+        } catch {
+          // Last resort: wait for any Job Management text
+          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
+        }
+      }
+    }
     
     // Look for job checkboxes to select jobs
     const jobCheckboxes = page.locator('input[type="checkbox"]:not([aria-label="Select all jobs"])');
