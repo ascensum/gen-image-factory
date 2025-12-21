@@ -119,33 +119,32 @@ test.describe('Results Gallery E2E Tests', () => {
     // Wait for the image gallery section to be visible
     await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     
-    // Navigate to Image Gallery tab if needed
+    // Navigate to Image Gallery tab - it should be visible
     const imageGalleryTab = page.locator('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")');
-    if (await imageGalleryTab.isVisible()) {
-      await imageGalleryTab.click();
-      await page.waitForTimeout(500);
-    }
+    await expect(imageGalleryTab).toBeVisible({ timeout: 10000 });
+    await imageGalleryTab.click();
     
-    // Wait for images to load from mock data
-    await page.waitForTimeout(1000);
+    // Wait for tab content to load
+    await page.waitForTimeout(500);
+    
+    // Wait for images to load from mock data - check for image cards or checkboxes
+    const imageCheckboxes = page.locator('input[type="checkbox"][aria-label^="Select "]');
+    await imageCheckboxes.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     
     // Look for the Export ZIP button (which can export to Excel/ZIP)
     const exportButton = page.locator('button:has-text("Export ZIP")');
     
-    // The button might not be visible if we need to select images first
+    // The button is disabled until images are selected
     // Check if images are available and select one if needed
-    const imageCheckboxes = page.locator('input[type="checkbox"][aria-label^="Select "]');
     const checkboxCount = await imageCheckboxes.count();
     
     if (checkboxCount > 0) {
       // Select first image to enable export button
       await imageCheckboxes.first().check();
-      await page.waitForTimeout(500);
-    }
-    
-    // Now check for export button - wait for it to appear
-    await page.waitForTimeout(300);
-    if (await exportButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await page.waitForTimeout(500); // Wait for React state update
+      
+      // Now the export button should be enabled
+      await expect(exportButton).toBeVisible({ timeout: 5000 });
       const isDisabled = await exportButton.isDisabled();
       
       if (!isDisabled) {

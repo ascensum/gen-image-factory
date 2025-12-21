@@ -30,9 +30,10 @@ test.describe('Settings Configuration E2E Tests', () => {
 
     // Test Runware API key input (piapi was replaced with runware)
     const runwareInput = page.locator('[data-testid="runware-api-key-input"]');
-    await expect(runwareInput).toBeVisible();
+    await expect(runwareInput).toBeVisible({ timeout: 10000 });
     await runwareInput.fill('rw-test-runware-key');
-    await expect(runwareInput).toHaveValue('rw-test-runware-key');
+    await page.waitForTimeout(300); // Wait for value to be set
+    await expect(runwareInput).toHaveValue('rw-test-runware-key', { timeout: 5000 });
 
     // Test Remove.bg key input
     const removeBgInput = page.locator('[data-testid="removeBg-api-key-input"]');
