@@ -29,10 +29,25 @@ test.describe('Settings Configuration E2E Tests', () => {
     await expect(openaiInput).toHaveValue('sk-test-openai-key');
 
     // Test Runware API key input (piapi was replaced with runware)
+    // Note: This is a password input, so we need to handle it carefully
     const runwareInput = page.locator('[data-testid="runware-api-key-input"]');
     await expect(runwareInput).toBeVisible({ timeout: 10000 });
+    
+    // Clear any existing value first
+    await runwareInput.clear();
     await runwareInput.fill('rw-test-runware-key');
-    await page.waitForTimeout(300); // Wait for value to be set
+    
+    // For password inputs, wait a bit longer and verify by checking the input directly
+    await page.waitForTimeout(500);
+    
+    // Verify the value was set - password inputs may not expose value in DOM, so check input.value
+    const inputValue = await runwareInput.inputValue();
+    if (inputValue !== 'rw-test-runware-key') {
+      // Retry once
+      await runwareInput.clear();
+      await runwareInput.fill('rw-test-runware-key');
+      await page.waitForTimeout(500);
+    }
     await expect(runwareInput).toHaveValue('rw-test-runware-key', { timeout: 5000 });
 
     // Test Remove.bg key input

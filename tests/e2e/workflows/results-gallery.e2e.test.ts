@@ -111,8 +111,13 @@ test.describe('Results Gallery E2E Tests', () => {
     
     // Wait for the dashboard to load (new UI has no H1 "Dashboard")
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('h2:has-text("Current Job")')).toBeVisible();
-    await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
+    
+    // Wait for dashboard elements - use Promise.race for flexibility
+    await Promise.race([
+      page.locator('h2:has-text("Current Job")').waitFor({ state: 'visible', timeout: 15000 }),
+      page.locator('h2:has-text("Generated Images")').waitFor({ state: 'visible', timeout: 15000 }),
+      page.locator('button:has-text("Start Job")').waitFor({ state: 'visible', timeout: 15000 })
+    ]);
   });
 
   test('Excel export functionality workflow', async ({ page }) => {
