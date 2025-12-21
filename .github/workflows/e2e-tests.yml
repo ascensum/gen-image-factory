@@ -119,6 +119,8 @@ jobs:
         run: npm run build
 
       # Cross-platform execution logic
+      # Note: Electron app uses Chromium only, so we test with Chromium on all OSes
+      # Multi-OS matrix ensures we catch OS-specific issues (file paths, permissions, etc.)
       - name: Run E2E tests
         env:
           ELECTRON_DISABLE_SANDBOX: 1 # Essential for Linux CI
@@ -126,22 +128,12 @@ jobs:
         run: |
           if [ "${{ runner.os }}" = "Linux" ]; then
             # Linux requires xvfb for headless display
-            if [ "${{ github.event_name }}" = "schedule" ]; then
-              echo "Running full E2E test suite across all browsers (nightly scheduled run on Linux)"
-              xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" npm run test:e2e
-            else
-              echo "Running E2E tests on chromium only for faster CI feedback (Linux)"
-              xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" npm run test:e2e -- --project=chromium
-            fi
+            echo "Running E2E tests on Chromium (${{ runner.os }})"
+            xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" npm run test:e2e -- --project=chromium
           else
             # Windows and macOS do not use xvfb
-            if [ "${{ github.event_name }}" = "schedule" ]; then
-              echo "Running full E2E test suite across all browsers (nightly scheduled run on ${{ runner.os }})"
-              npm run test:e2e
-            else
-              echo "Running E2E tests on chromium only for faster CI feedback (${{ runner.os }})"
-              npm run test:e2e -- --project=chromium
-            fi
+            echo "Running E2E tests on Chromium (${{ runner.os }})"
+            npm run test:e2e -- --project=chromium
           fi
         shell: bash
 
