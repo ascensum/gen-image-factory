@@ -60,6 +60,7 @@ jobs:
           done
 
       - name: Install dependencies
+        shell: bash
         run: |
           for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
             npm ci --ignore-scripts && break
@@ -73,6 +74,7 @@ jobs:
           done
 
       - name: Rebuild native dependencies
+        shell: bash
         run: |
           for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
             npm rebuild && break
