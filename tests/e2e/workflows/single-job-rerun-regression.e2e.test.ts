@@ -46,6 +46,8 @@ test.describe('Single Job Rerun Regression Prevention', () => {
   test('Rerun from Job Management Panel', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button[aria-label="Open menu"]', { state: 'attached', timeout: 15000 });
     await expect(menuButton).toBeVisible();
     await menuButton.click();
     
@@ -53,6 +55,8 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     await page.waitForTimeout(300);
     
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Job Management")', { state: 'attached', timeout: 15000 });
     await expect(jobManagementButton).toBeVisible({ timeout: 5000 });
     await jobManagementButton.click();
     
@@ -66,7 +70,11 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     try {
       await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
     } catch {
-      // Fallback: check for back button or header class
+      // Fallback: check for back button or header class - Active State Synchronization
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 15000 }),
+        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: 15000 })
+      ]);
       await Promise.race([
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
         page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
@@ -135,9 +143,13 @@ test.describe('Single Job Rerun Regression Prevention', () => {
   test('Rerun from Single Job View', async ({ page }) => {
     // Navigate to Job Management first
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button[aria-label="Open menu"]', { state: 'attached', timeout: 15000 });
     await menuButton.click();
     
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Job Management")', { state: 'attached', timeout: 15000 });
     await jobManagementButton.click();
     
     // Wait for Job Management page to load
@@ -151,7 +163,11 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     try {
       await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
     } catch {
-      // Fallback: check for back button or header class
+      // Fallback: check for back button or header class - Active State Synchronization
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 15000 }),
+        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: 15000 })
+      ]);
       await Promise.race([
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
         page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
@@ -207,7 +223,8 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     const startJobButton = page.locator('button:has-text("Start Job")');
     await startJobButton.click();
     
-    // Wait for job to start
+    // Wait for job to start - Active State Synchronization
+    await page.waitForSelector('button:has-text("Starting...")', { state: 'attached', timeout: 15000 });
     await expect(page.locator('button:has-text("Starting...")')).toBeVisible();
     
     // Wait for job to be running
@@ -215,9 +232,13 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button[aria-label="Open menu"]', { state: 'attached', timeout: 15000 });
     await menuButton.click();
     
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Job Management")', { state: 'attached', timeout: 15000 });
     await jobManagementButton.click();
     
     // Wait for Job Management page to load
@@ -231,7 +252,11 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     try {
       await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
     } catch {
-      // Fallback: check for back button or header class
+      // Fallback: check for back button or header class - Active State Synchronization
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 15000 }),
+        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: 15000 })
+      ]);
       await Promise.race([
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
         page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
@@ -264,9 +289,13 @@ test.describe('Single Job Rerun Regression Prevention', () => {
   test('Multiple reruns of same job', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button[aria-label="Open menu"]', { state: 'attached', timeout: 15000 });
     await menuButton.click();
     
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Job Management")', { state: 'attached', timeout: 15000 });
     await jobManagementButton.click();
     
     // Wait for Job Management page to load
@@ -280,7 +309,11 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     try {
       await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
     } catch {
-      // Fallback: check for back button or header class
+      // Fallback: check for back button or header class - Active State Synchronization
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 15000 }),
+        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: 15000 })
+      ]);
       await Promise.race([
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
         page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
@@ -318,9 +351,13 @@ test.describe('Single Job Rerun Regression Prevention', () => {
   test('Rerun with job in different states', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button[aria-label="Open menu"]', { state: 'attached', timeout: 15000 });
     await menuButton.click();
     
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Job Management")', { state: 'attached', timeout: 15000 });
     await jobManagementButton.click();
     
     // Wait for Job Management page to load
@@ -334,7 +371,11 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     try {
       await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
     } catch {
-      // Fallback: check for back button or header class
+      // Fallback: check for back button or header class - Active State Synchronization
+      await Promise.race([
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 15000 }),
+        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: 15000 })
+      ]);
       await Promise.race([
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
         page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })

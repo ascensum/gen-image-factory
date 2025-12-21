@@ -109,6 +109,8 @@ test.describe('Results Gallery E2E Tests', () => {
     
     // Click "Open Dashboard" button to navigate to dashboard
     const dashboardButton = page.locator('button:has-text("Open Dashboard")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Open Dashboard")', { state: 'attached', timeout: 15000 });
     await expect(dashboardButton).toBeVisible();
     await dashboardButton.click();
     
@@ -124,11 +126,13 @@ test.describe('Results Gallery E2E Tests', () => {
   });
 
   test('Excel export functionality workflow', async ({ page }) => {
-    // Wait for the image gallery section to be visible
+    // Wait for the image gallery section to be visible - Active State Synchronization
+    await page.waitForSelector('h2:has-text("Generated Images")', { state: 'attached', timeout: 15000 });
     await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     
-    // Navigate to Image Gallery tab - it should be visible
+    // Navigate to Image Gallery tab - it should be visible - Active State Synchronization
     const imageGalleryTab = page.locator('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")');
+    await page.waitForSelector('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")', { state: 'attached', timeout: 15000 });
     await expect(imageGalleryTab).toBeVisible({ timeout: 10000 });
     await imageGalleryTab.click();
     
@@ -151,7 +155,8 @@ test.describe('Results Gallery E2E Tests', () => {
       await imageCheckboxes.first().check();
       await page.waitForTimeout(500); // Wait for React state update
       
-      // Now the export button should be enabled
+      // Now the export button should be enabled - Active State Synchronization
+      await page.waitForSelector('button:has-text("Export ZIP")', { state: 'attached', timeout: 15000 });
       await expect(exportButton).toBeVisible({ timeout: 5000 });
       const isDisabled = await exportButton.isDisabled();
       
@@ -166,7 +171,8 @@ test.describe('Results Gallery E2E Tests', () => {
           page.locator('button:has-text("Zipping…")').waitFor({ state: 'visible', timeout: 2000 })
         ]).catch(() => {});
         
-        // Wait for export to complete (button should return to normal state)
+        // Wait for export to complete (button should return to normal state) - Active State Synchronization
+        await page.waitForSelector('button:has-text("Export ZIP")', { state: 'attached', timeout: 15000 });
         await expect(exportButton).toBeVisible({ timeout: 10000 });
         
         // Verify no error message appears
@@ -176,17 +182,20 @@ test.describe('Results Gallery E2E Tests', () => {
         await expect(exportButton).toBeDisabled();
       }
     } else {
-      // If button not visible, verify we can see the gallery structure
+      // If button not visible, verify we can see the gallery structure - Active State Synchronization
+      await page.waitForSelector('h2:has-text("Generated Images")', { state: 'attached', timeout: 15000 });
       await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     }
   });
 
   test('Image modal functionality workflow', async ({ page }) => {
-    // Wait for the image gallery section to be visible
+    // Wait for the image gallery section to be visible - Active State Synchronization
+    await page.waitForSelector('h2:has-text("Generated Images")', { state: 'attached', timeout: 15000 });
     await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     
-    // Navigate to Image Gallery tab - it should be visible
+    // Navigate to Image Gallery tab - it should be visible - Active State Synchronization
     const imageGalleryTab = page.locator('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")');
+    await page.waitForSelector('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")', { state: 'attached', timeout: 15000 });
     await expect(imageGalleryTab).toBeVisible({ timeout: 10000 });
     await imageGalleryTab.click();
     
@@ -206,26 +215,33 @@ test.describe('Results Gallery E2E Tests', () => {
       const firstImage = images.first();
       await firstImage.click();
       
-      // Verify modal opens
+      // Verify modal opens - Active State Synchronization
+      await page.waitForSelector('h2:has-text("Image Details")', { state: 'attached', timeout: 15000 });
       await expect(page.locator('h2:has-text("Image Details")')).toBeVisible();
       
-      // Verify tabs are present
+      // Verify tabs are present - Active State Synchronization
+      await page.waitForSelector('button:has-text("Details")', { state: 'attached', timeout: 15000 });
       await expect(page.locator('button:has-text("Details")')).toBeVisible();
+      await page.waitForSelector('button:has-text("AI Metadata")', { state: 'attached', timeout: 15000 });
       await expect(page.locator('button:has-text("AI Metadata")')).toBeVisible();
+      await page.waitForSelector('button:has-text("Processing")', { state: 'attached', timeout: 15000 });
       await expect(page.locator('button:has-text("Processing")')).toBeVisible();
       
       // Test tab switching
       await page.locator('button:has-text("AI Metadata")').click();
+      await page.waitForSelector('text=AI-Generated Title', { state: 'attached', timeout: 15000 });
       await expect(page.locator('text=AI-Generated Title')).toBeVisible();
       
       await page.locator('button:has-text("Processing")').click();
+      await page.waitForSelector('text=Image Enhancement', { state: 'attached', timeout: 15000 });
       await expect(page.locator('text=Image Enhancement')).toBeVisible();
       
       // Test modal navigation (if multiple images exist)
       const nextButton = page.locator('[aria-label="Next image"]');
       if (await nextButton.isVisible() && !(await nextButton.isDisabled())) {
         await nextButton.click();
-        // Verify we're still in the modal
+        // Verify we're still in the modal - Active State Synchronization
+        await page.waitForSelector('h2:has-text("Image Details")', { state: 'attached', timeout: 15000 });
         await expect(page.locator('h2:has-text("Image Details")')).toBeVisible();
       }
       
@@ -233,17 +249,20 @@ test.describe('Results Gallery E2E Tests', () => {
       await page.locator('[aria-label="Close modal"]').click();
       await expect(page.locator('h2:has-text("Image Details")')).not.toBeVisible();
     } else {
-      // No images available - verify the empty state
+      // No images available - verify the empty state - Active State Synchronization
+      await page.waitForSelector('text=/No images/i', { state: 'attached', timeout: 15000 });
       await expect(page.locator('text=/No images/i')).toBeVisible();
     }
   });
 
   test('Enhanced metadata display workflow', async ({ page }) => {
-    // Wait for the image gallery section to be visible
+    // Wait for the image gallery section to be visible - Active State Synchronization
+    await page.waitForSelector('h2:has-text("Generated Images")', { state: 'attached', timeout: 15000 });
     await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     
-    // Navigate to Image Gallery tab
+    // Navigate to Image Gallery tab - Active State Synchronization
     const imageGalleryTab = page.locator('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")');
+    await page.waitForSelector('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")', { state: 'attached', timeout: 15000 });
     await expect(imageGalleryTab).toBeVisible({ timeout: 10000 });
     await imageGalleryTab.click();
     await page.waitForTimeout(500);
@@ -259,41 +278,46 @@ test.describe('Results Gallery E2E Tests', () => {
     if (cardCount > 0) {
       const firstCard = imageCards.first();
       
-      // Check for AI-generated title (if present)
+      // Check for AI-generated title (if present) - Active State Synchronization
       const titleElement = firstCard.locator('[class*="font-medium"][class*="text-gray-900"]');
       if (await titleElement.isVisible()) {
+        await page.waitForSelector('[class*="font-medium"][class*="text-gray-900"]', { state: 'attached', timeout: 15000 });
         await expect(titleElement).toBeVisible();
       }
       
-      // Check for processing settings indicators
+      // Check for processing settings indicators - Active State Synchronization
       const processingIndicators = firstCard.locator('[class*="bg-blue-100"], [class*="bg-purple-100"], [class*="bg-green-100"], [class*="bg-yellow-100"]');
       if (await processingIndicators.count() > 0) {
+        await page.waitForSelector('[class*="bg-blue-100"], [class*="bg-purple-100"], [class*="bg-green-100"], [class*="bg-yellow-100"]', { state: 'attached', timeout: 15000 });
         await expect(processingIndicators.first()).toBeVisible();
       }
       
-      // Check for seed display
+      // Check for seed display - Active State Synchronization
       const seedElement = firstCard.locator('text=/.+/');
       if (await seedElement.isVisible()) {
         await expect(seedElement).toBeVisible();
       }
       
-      // Check for date display
+      // Check for date display - Active State Synchronization
       const dateElement = firstCard.locator('[title*="/"]');
       if (await dateElement.isVisible()) {
         await expect(dateElement).toBeVisible();
       }
     } else {
-      // No image cards available - verify we can see the gallery structure
+      // No image cards available - verify we can see the gallery structure - Active State Synchronization
+      await page.waitForSelector('h2:has-text("Generated Images")', { state: 'attached', timeout: 15000 });
       await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     }
   });
 
   test('Image filtering and search workflow', async ({ page }) => {
-    // Wait for the image gallery section to be visible
+    // Wait for the image gallery section to be visible - Active State Synchronization
+    await page.waitForSelector('h2:has-text("Generated Images")', { state: 'attached', timeout: 15000 });
     await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     
-    // Navigate to Image Gallery tab
+    // Navigate to Image Gallery tab - Active State Synchronization
     const imageGalleryTab = page.locator('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")');
+    await page.waitForSelector('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")', { state: 'attached', timeout: 15000 });
     await expect(imageGalleryTab).toBeVisible({ timeout: 10000 });
     await imageGalleryTab.click();
     await page.waitForTimeout(500);
@@ -334,11 +358,13 @@ test.describe('Results Gallery E2E Tests', () => {
   });
 
   test('Image selection and bulk actions workflow', async ({ page }) => {
-    // Wait for the image gallery section to be visible
+    // Wait for the image gallery section to be visible - Active State Synchronization
+    await page.waitForSelector('h2:has-text("Generated Images")', { state: 'attached', timeout: 15000 });
     await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     
-    // Navigate to Image Gallery tab
+    // Navigate to Image Gallery tab - Active State Synchronization
     const imageGalleryTab = page.locator('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")');
+    await page.waitForSelector('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")', { state: 'attached', timeout: 15000 });
     await expect(imageGalleryTab).toBeVisible({ timeout: 10000 });
     await imageGalleryTab.click();
     await page.waitForTimeout(500);
@@ -361,7 +387,8 @@ test.describe('Results Gallery E2E Tests', () => {
         // Look for bulk action options
         const bulkOptions = page.locator('[role="menu"] button, [class*="dropdown"] button');
         if (await bulkOptions.count() > 0) {
-          // Just verify the menu is visible, don't execute destructive actions
+          // Just verify the menu is visible, don't execute destructive actions - Active State Synchronization
+          await page.waitForSelector('[role="menu"] button, [class*="dropdown"] button', { state: 'attached', timeout: 15000 });
           await expect(bulkOptions.first()).toBeVisible();
           
           // Click elsewhere to close menu
@@ -373,7 +400,8 @@ test.describe('Results Gallery E2E Tests', () => {
       await imageCheckboxes.first().uncheck();
       await expect(imageCheckboxes.first()).not.toBeChecked();
     } else {
-      // No images available - verify the UI is still functional
+      // No images available - verify the UI is still functional - Active State Synchronization
+      await page.waitForSelector('h2:has-text("Generated Images")', { state: 'attached', timeout: 15000 });
       await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     }
   });
@@ -382,9 +410,10 @@ test.describe('Results Gallery E2E Tests', () => {
     // Wait for the page to load
     await page.waitForLoadState('networkidle');
     
-    // Test with no images (empty state)
+    // Test with no images (empty state) - Active State Synchronization
     const noImagesMessage = page.locator('text=/No images/i');
     if (await noImagesMessage.isVisible()) {
+      await page.waitForSelector('text=/No images/i', { state: 'attached', timeout: 15000 });
       await expect(noImagesMessage).toBeVisible();
     }
     

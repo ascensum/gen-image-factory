@@ -27,6 +27,8 @@ test.describe('Single Job Run Regression Prevention', () => {
     const isOnDashboard = await page.locator('button:has-text("Start Job"), h2:has-text("Current Job")').first().isVisible({ timeout: 2000 }).catch(() => false);
     
     if (!isOnDashboard) {
+      // Active State Synchronization: Wait for element to be attached before visibility check
+      await page.waitForSelector('button:has-text("Open Dashboard")', { state: 'attached', timeout: 15000 });
       await expect(dashboardButton).toBeVisible({ timeout: 10000 });
       await dashboardButton.click();
       await page.waitForLoadState('networkidle');
@@ -45,7 +47,8 @@ test.describe('Single Job Run Regression Prevention', () => {
     const startJobButton = page.locator('button:has-text("Start Job")');
     await startJobButton.click();
     
-    // Wait for job to start - look for "Starting..." text
+    // Wait for job to start - look for "Starting..." text - Active State Synchronization
+    await page.waitForSelector('button:has-text("Starting...")', { state: 'attached', timeout: 15000 });
     await expect(page.locator('button:has-text("Starting...")')).toBeVisible();
     
     // Verify job is in starting state
@@ -119,8 +122,9 @@ test.describe('Single Job Run Regression Prevention', () => {
     // Check if there's any progress-related text or elements
     const progressElements = page.locator('text=/progress|Progress|%|step|Step/i');
     
-    // If progress elements exist, verify they're visible
+    // If progress elements exist, verify they're visible - Active State Synchronization
     if (await progressElements.count() > 0) {
+      await page.waitForSelector('text=/progress|Progress|%|step|Step/i', { state: 'attached', timeout: 15000 });
       await expect(progressElements.first()).toBeVisible();
     }
     

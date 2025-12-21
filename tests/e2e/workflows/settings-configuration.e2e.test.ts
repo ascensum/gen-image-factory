@@ -10,27 +10,34 @@ test.describe('Settings Configuration E2E Tests', () => {
     
     // Click the "Open Settings" button to open the settings panel
     const openSettingsButton = page.locator('button:has-text("Open Settings")').first();
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Open Settings")', { state: 'attached', timeout: 15000 });
     await expect(openSettingsButton).toBeVisible();
     await openSettingsButton.click();
     
-    // Wait for the settings panel to be visible
+    // Wait for the settings panel to be visible - Active State Synchronization
+    await page.waitForSelector('[data-testid="settings-panel"]', { state: 'attached', timeout: 15000 });
     await expect(page.locator('[data-testid="settings-panel"]')).toBeVisible();
   });
 
   test('API keys configuration workflow', async ({ page }) => {
     // Navigate to API Keys tab
     await page.locator('[data-testid="api-keys-tab"]').click();
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('[data-testid="api-keys-section"]', { state: 'attached', timeout: 15000 });
     await expect(page.locator('[data-testid="api-keys-section"]').first()).toBeVisible();
 
-    // Test OpenAI API key input
+    // Test OpenAI API key input - Active State Synchronization
     const openaiInput = page.locator('[data-testid="openai-api-key-input"]');
+    await page.waitForSelector('[data-testid="openai-api-key-input"]', { state: 'attached', timeout: 15000 });
     await expect(openaiInput).toBeVisible();
     await openaiInput.fill('sk-test-openai-key');
     await expect(openaiInput).toHaveValue('sk-test-openai-key');
 
     // Test Runware API key input (piapi was replaced with runware)
-    // Note: This is a password input, so we need to handle it carefully
+    // Note: This is a password input, so we need to handle it carefully - Active State Synchronization
     const runwareInput = page.locator('[data-testid="runware-api-key-input"]');
+    await page.waitForSelector('[data-testid="runware-api-key-input"]', { state: 'attached', timeout: 15000 });
     await expect(runwareInput).toBeVisible({ timeout: 10000 });
     
     // Clear any existing value first
@@ -50,18 +57,21 @@ test.describe('Settings Configuration E2E Tests', () => {
     }
     await expect(runwareInput).toHaveValue('rw-test-runware-key', { timeout: 5000 });
 
-    // Test Remove.bg key input
+    // Test Remove.bg key input - Active State Synchronization
     const removeBgInput = page.locator('[data-testid="removeBg-api-key-input"]');
+    await page.waitForSelector('[data-testid="removeBg-api-key-input"]', { state: 'attached', timeout: 15000 });
     await expect(removeBgInput).toBeVisible();
     await removeBgInput.fill('rm-test-removebg-key');
     await expect(removeBgInput).toHaveValue('rm-test-removebg-key');
 
-    // Test password visibility toggles (using the eye icons)
+    // Test password visibility toggles (using the eye icons) - Active State Synchronization
     const openaiEyeButton = page.locator('#openai-key').locator('..').locator('button');
+    await page.waitForSelector('#openai-key', { state: 'attached', timeout: 15000 });
     await expect(openaiEyeButton).toBeVisible();
     await openaiEyeButton.click();
 
     const piapiEyeButton = page.locator('#piapi-key').locator('..').locator('button');
+    await page.waitForSelector('#piapi-key', { state: 'attached', timeout: 15000 });
     await expect(piapiEyeButton).toBeVisible();
     await piapiEyeButton.click();
   });
@@ -69,10 +79,13 @@ test.describe('Settings Configuration E2E Tests', () => {
   test('file paths configuration workflow', async ({ page }) => {
     // Navigate to File Paths tab
     await page.locator('[data-testid="files-tab"]').click();
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('[data-testid="file-paths-section"]', { state: 'attached', timeout: 15000 });
     await expect(page.locator('[data-testid="file-paths-section"]').first()).toBeVisible();
 
-    // Test output directory FileSelector
+    // Test output directory FileSelector - Active State Synchronization
     const outputDirInput = page.locator('input[placeholder*="Select directory for processed images"]');
+    await page.waitForSelector('input[placeholder*="Select directory for processed images"]', { state: 'attached', timeout: 15000 });
     await expect(outputDirInput).toBeVisible();
     await outputDirInput.fill('./pictures/toupload');
     await expect(outputDirInput).toHaveValue('./pictures/toupload');
@@ -142,8 +155,9 @@ test.describe('Settings Configuration E2E Tests', () => {
     await expect(enablePollingTimeoutToggle).toBeVisible();
     await expect(enablePollingTimeoutToggle).toHaveAttribute('aria-checked', 'true'); // Default should be enabled
     
-    // Test polling timeout slider (should be visible when enabled)
+    // Test polling timeout slider (should be visible when enabled) - Active State Synchronization
     const pollingTimeoutSlider = page.locator('#polling-timeout');
+    await page.waitForSelector('#polling-timeout', { state: 'attached', timeout: 15000 });
     await expect(pollingTimeoutSlider).toBeVisible();
     await pollingTimeoutSlider.fill('30');
     // Note: Range inputs don't always update value immediately in tests
@@ -155,8 +169,9 @@ test.describe('Settings Configuration E2E Tests', () => {
     // The slider should be hidden when disabled
     await expect(pollingTimeoutSlider).not.toBeVisible();
 
-    // Test random keyword selection toggle
+    // Test random keyword selection toggle - Active State Synchronization
     const keywordRandomToggle = page.locator('button[role="switch"]').nth(1);
+    await page.waitForSelector('button[role="switch"]', { state: 'attached', timeout: 15000 });
     await expect(keywordRandomToggle).toBeVisible();
     await keywordRandomToggle.click();
     await expect(keywordRandomToggle).toHaveAttribute('aria-checked', 'true');
@@ -165,23 +180,27 @@ test.describe('Settings Configuration E2E Tests', () => {
   test('processing configuration workflow', async ({ page }) => {
     // Navigate to Processing tab
     await page.locator('[data-testid="processing-tab"]').click();
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('[data-testid="processing-section"]', { state: 'attached', timeout: 15000 });
     await expect(page.locator('[data-testid="processing-section"]').first()).toBeVisible();
 
-    // Test Remove Background toggle (master switch)
+    // Test Remove Background toggle (master switch) - Active State Synchronization
     const removeBgToggle = page.locator('button[role="switch"]').nth(0);
+    await page.waitForSelector('button[role="switch"]', { state: 'attached', timeout: 15000 });
     await expect(removeBgToggle).toBeVisible();
     await removeBgToggle.click();
     await expect(removeBgToggle).toHaveAttribute('aria-checked', 'true');
 
-    // Test Remove.bg size selection (should appear after Remove Background is enabled)
+    // Test Remove.bg size selection (should appear after Remove Background is enabled) - Active State Synchronization
     const removeBgSizeSelect = page.locator('#remove-bg-size');
+    await page.waitForSelector('#remove-bg-size', { state: 'attached', timeout: 15000 });
     await expect(removeBgSizeSelect).toBeVisible();
     await removeBgSizeSelect.selectOption('full');
     await expect(removeBgSizeSelect).toHaveValue('full');
 
-    // Test Image Convert toggle (master switch for image conversion)
-    // Test Image Convert toggle (master switch for image conversion)
+    // Test Image Convert toggle (master switch for image conversion) - Active State Synchronization
     const imageConvertToggle = page.locator('button[role="switch"]').nth(1);
+    await page.waitForSelector('button[role="switch"]', { state: 'attached', timeout: 15000 });
     await expect(imageConvertToggle).toBeVisible();
     await imageConvertToggle.click();
     await expect(imageConvertToggle).toHaveAttribute('aria-checked', 'true');
@@ -243,8 +262,9 @@ test.describe('Settings Configuration E2E Tests', () => {
     await expect(pngQualityInput).toHaveValue('90');
     */
 
-    // Test Trim Transparent Background toggle (appears when Remove Background is enabled)
+    // Test Trim Transparent Background toggle (appears when Remove Background is enabled) - Active State Synchronization
     const trimTransparentToggle = page.locator('button[role="switch"]').nth(3);
+    await page.waitForSelector('button[role="switch"]', { state: 'attached', timeout: 15000 });
     await expect(trimTransparentToggle).toBeVisible();
     await trimTransparentToggle.click();
     await expect(trimTransparentToggle).toHaveAttribute('aria-checked', 'true');
@@ -275,10 +295,13 @@ test.describe('Settings Configuration E2E Tests', () => {
   test('advanced configuration workflow', async ({ page }) => {
     // Navigate to Advanced tab
     await page.locator('[data-testid="advanced-tab"]').click();
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('[data-testid="advanced-section"]', { state: 'attached', timeout: 15000 });
     await expect(page.locator('[data-testid="advanced-section"]').first()).toBeVisible();
 
-    // Test Enable Logging toggle
+    // Test Enable Logging toggle - Active State Synchronization
     const debugModeToggle = page.locator('button[role="switch"]').nth(0);
+    await page.waitForSelector('button[role="switch"]', { state: 'attached', timeout: 15000 });
     await expect(debugModeToggle).toBeVisible();
     await debugModeToggle.click();
     await expect(debugModeToggle).toHaveAttribute('aria-checked', 'true');
@@ -290,18 +313,20 @@ test.describe('Settings Configuration E2E Tests', () => {
     const openaiInput = page.locator('[data-testid="openai-api-key-input"]');
     await openaiInput.fill('sk-test-save-key');
 
-    // Test save button
+    // Test save button - Active State Synchronization
     const saveButton = page.locator('[data-testid="save-button"]');
+    await page.waitForSelector('[data-testid="save-button"]', { state: 'attached', timeout: 15000 });
     await expect(saveButton).toBeVisible();
     await saveButton.click();
 
-    // Test reset button
+    // Test reset button - Active State Synchronization
     const resetButton = page.locator('[data-testid="reset-button"]');
+    await page.waitForSelector('[data-testid="reset-button"]', { state: 'attached', timeout: 15000 });
     await expect(resetButton).toBeVisible();
     await resetButton.click();
 
     // Verify the reset button is functional (in browser E2E, we can't test actual persistence)
-    // Instead, verify that the reset button exists and is clickable
+    // Instead, verify that the reset button exists and is clickable - Active State Synchronization
     await expect(resetButton).toBeVisible();
     await expect(resetButton).toBeEnabled();
   });
@@ -315,10 +340,13 @@ test.describe('Settings Configuration E2E Tests', () => {
     
     // Click the "Open Settings" button to open the settings panel
     const openSettingsButton = page.locator('button:has-text("Open Settings")').first();
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Open Settings")', { state: 'attached', timeout: 15000 });
     await expect(openSettingsButton).toBeVisible();
     await openSettingsButton.click();
     
-    // Wait for the settings panel to be visible
+    // Wait for the settings panel to be visible - Active State Synchronization
+    await page.waitForSelector('[data-testid="settings-panel"]', { state: 'attached', timeout: 15000 });
     await expect(page.locator('[data-testid="settings-panel"]')).toBeVisible();
 
     // Test tab navigation with keyboard
@@ -326,26 +354,30 @@ test.describe('Settings Configuration E2E Tests', () => {
     await apiKeysTab.click();
     await expect(apiKeysTab).toBeVisible();
 
-    // Test tab switching by clicking on different tabs
+    // Test tab switching by clicking on different tabs - Active State Synchronization
     const filesTab = page.locator('[data-testid="files-tab"]');
     await filesTab.click();
+    await page.waitForSelector('[data-testid="file-paths-section"]', { state: 'attached', timeout: 15000 });
     await expect(page.locator('[data-testid="file-paths-section"]').first()).toBeVisible();
 
-    // Test another tab switch
+    // Test another tab switch - Active State Synchronization
     const parametersTab = page.locator('[data-testid="parameters-tab"]');
     await parametersTab.click();
+    await page.waitForSelector('[data-testid="parameters-section"]', { state: 'attached', timeout: 15000 });
     await expect(page.locator('[data-testid="parameters-section"]').first()).toBeVisible();
   });
 
   test('error and success message handling', async ({ page }) => {
     // Test that error and success message containers exist in the DOM
-    // These containers are conditionally rendered, so we'll just verify the structure
+    // These containers are conditionally rendered, so we'll just verify the structure - Active State Synchronization
     const settingsPanel = page.locator('[data-testid="settings-panel"]');
+    await page.waitForSelector('[data-testid="settings-panel"]', { state: 'attached', timeout: 15000 });
     await expect(settingsPanel).toBeVisible();
     
     // Verify that the settings panel has the structure for error/success messages
     // The containers are rendered conditionally, so we can't test them directly
-    // without triggering actual errors/success states
+    // without triggering actual errors/success states - Active State Synchronization
+    await page.waitForSelector('main', { state: 'attached', timeout: 15000 });
     await expect(page.locator('main')).toBeVisible();
   });
 }); 
