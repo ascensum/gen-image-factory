@@ -55,20 +55,35 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for React state change - give it time to unmount dashboard and mount Job Management
     await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - try multiple selectors
-    // First try the most specific ones, then fallback to more general
+    // Wait for Job Management page to load - use Promise.race properly
+    // Create promises that reject on timeout, then race them
+    const waitPromises = [
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+    ];
+    
+    // Race all promises - first one to resolve wins
     try {
-      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      await Promise.race(waitPromises);
     } catch {
-      try {
-        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
-      } catch {
-        try {
-          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
-        } catch {
-          // Last resort: wait for any Job Management text
-          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
-        }
+      // If all failed, check if we're at least not on dashboard anymore
+      const isDashboardHidden = await page.locator('h2:has-text("Current Job")').isHidden().catch(() => false);
+      if (!isDashboardHidden) {
+        throw new Error('Navigation to Job Management failed - still on dashboard');
+      }
+      // Dashboard is hidden, so navigation started but panel might not be fully loaded
+      // Wait a bit more and check again
+      await page.waitForTimeout(1000);
+      const hasJobManagement = await Promise.race([
+        page.locator('h1:has-text("Job Management")').isVisible(),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
+        page.locator('text=Job Management').first().isVisible()
+      ]).catch(() => false);
+      if (!hasJobManagement) {
+        throw new Error('Job Management panel did not load after navigation');
       }
     }
     
@@ -131,20 +146,35 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for React state change - give it time to unmount dashboard and mount Job Management
     await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - try multiple selectors
-    // First try the most specific ones, then fallback to more general
+    // Wait for Job Management page to load - use Promise.race properly
+    // Create promises that reject on timeout, then race them
+    const waitPromises = [
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+    ];
+    
+    // Race all promises - first one to resolve wins
     try {
-      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      await Promise.race(waitPromises);
     } catch {
-      try {
-        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
-      } catch {
-        try {
-          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
-        } catch {
-          // Last resort: wait for any Job Management text
-          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
-        }
+      // If all failed, check if we're at least not on dashboard anymore
+      const isDashboardHidden = await page.locator('h2:has-text("Current Job")').isHidden().catch(() => false);
+      if (!isDashboardHidden) {
+        throw new Error('Navigation to Job Management failed - still on dashboard');
+      }
+      // Dashboard is hidden, so navigation started but panel might not be fully loaded
+      // Wait a bit more and check again
+      await page.waitForTimeout(1000);
+      const hasJobManagement = await Promise.race([
+        page.locator('h1:has-text("Job Management")').isVisible(),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
+        page.locator('text=Job Management').first().isVisible()
+      ]).catch(() => false);
+      if (!hasJobManagement) {
+        throw new Error('Job Management panel did not load after navigation');
       }
     }
     
@@ -218,20 +248,35 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for React state change - give it time to unmount dashboard and mount Job Management
     await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - try multiple selectors
-    // First try the most specific ones, then fallback to more general
+    // Wait for Job Management page to load - use Promise.race properly
+    // Create promises that reject on timeout, then race them
+    const waitPromises = [
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+    ];
+    
+    // Race all promises - first one to resolve wins
     try {
-      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      await Promise.race(waitPromises);
     } catch {
-      try {
-        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
-      } catch {
-        try {
-          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
-        } catch {
-          // Last resort: wait for any Job Management text
-          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
-        }
+      // If all failed, check if we're at least not on dashboard anymore
+      const isDashboardHidden = await page.locator('h2:has-text("Current Job")').isHidden().catch(() => false);
+      if (!isDashboardHidden) {
+        throw new Error('Navigation to Job Management failed - still on dashboard');
+      }
+      // Dashboard is hidden, so navigation started but panel might not be fully loaded
+      // Wait a bit more and check again
+      await page.waitForTimeout(1000);
+      const hasJobManagement = await Promise.race([
+        page.locator('h1:has-text("Job Management")').isVisible(),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
+        page.locator('text=Job Management').first().isVisible()
+      ]).catch(() => false);
+      if (!hasJobManagement) {
+        throw new Error('Job Management panel did not load after navigation');
       }
     }
     
@@ -279,20 +324,35 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for React state change - give it time to unmount dashboard and mount Job Management
     await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - try multiple selectors
-    // First try the most specific ones, then fallback to more general
+    // Wait for Job Management page to load - use Promise.race properly
+    // Create promises that reject on timeout, then race them
+    const waitPromises = [
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+    ];
+    
+    // Race all promises - first one to resolve wins
     try {
-      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      await Promise.race(waitPromises);
     } catch {
-      try {
-        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
-      } catch {
-        try {
-          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
-        } catch {
-          // Last resort: wait for any Job Management text
-          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
-        }
+      // If all failed, check if we're at least not on dashboard anymore
+      const isDashboardHidden = await page.locator('h2:has-text("Current Job")').isHidden().catch(() => false);
+      if (!isDashboardHidden) {
+        throw new Error('Navigation to Job Management failed - still on dashboard');
+      }
+      // Dashboard is hidden, so navigation started but panel might not be fully loaded
+      // Wait a bit more and check again
+      await page.waitForTimeout(1000);
+      const hasJobManagement = await Promise.race([
+        page.locator('h1:has-text("Job Management")').isVisible(),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
+        page.locator('text=Job Management').first().isVisible()
+      ]).catch(() => false);
+      if (!hasJobManagement) {
+        throw new Error('Job Management panel did not load after navigation');
       }
     }
     
@@ -339,20 +399,35 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for React state change - give it time to unmount dashboard and mount Job Management
     await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - try multiple selectors
-    // First try the most specific ones, then fallback to more general
+    // Wait for Job Management page to load - use Promise.race properly
+    // Create promises that reject on timeout, then race them
+    const waitPromises = [
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+    ];
+    
+    // Race all promises - first one to resolve wins
     try {
-      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      await Promise.race(waitPromises);
     } catch {
-      try {
-        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
-      } catch {
-        try {
-          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
-        } catch {
-          // Last resort: wait for any Job Management text
-          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
-        }
+      // If all failed, check if we're at least not on dashboard anymore
+      const isDashboardHidden = await page.locator('h2:has-text("Current Job")').isHidden().catch(() => false);
+      if (!isDashboardHidden) {
+        throw new Error('Navigation to Job Management failed - still on dashboard');
+      }
+      // Dashboard is hidden, so navigation started but panel might not be fully loaded
+      // Wait a bit more and check again
+      await page.waitForTimeout(1000);
+      const hasJobManagement = await Promise.race([
+        page.locator('h1:has-text("Job Management")').isVisible(),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
+        page.locator('text=Job Management').first().isVisible()
+      ]).catch(() => false);
+      if (!hasJobManagement) {
+        throw new Error('Job Management panel did not load after navigation');
       }
     }
     
@@ -433,20 +508,35 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Wait for React state change - give it time to unmount dashboard and mount Job Management
     await page.waitForTimeout(500);
     
-    // Wait for Job Management page to load - try multiple selectors
-    // First try the most specific ones, then fallback to more general
+    // Wait for Job Management page to load - use Promise.race properly
+    // Create promises that reject on timeout, then race them
+    const waitPromises = [
+      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 8000 }),
+      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 8000 })
+    ];
+    
+    // Race all promises - first one to resolve wins
     try {
-      await page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
+      await Promise.race(waitPromises);
     } catch {
-      try {
-        await page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 });
-      } catch {
-        try {
-          await page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 });
-        } catch {
-          // Last resort: wait for any Job Management text
-          await page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 });
-        }
+      // If all failed, check if we're at least not on dashboard anymore
+      const isDashboardHidden = await page.locator('h2:has-text("Current Job")').isHidden().catch(() => false);
+      if (!isDashboardHidden) {
+        throw new Error('Navigation to Job Management failed - still on dashboard');
+      }
+      // Dashboard is hidden, so navigation started but panel might not be fully loaded
+      // Wait a bit more and check again
+      await page.waitForTimeout(1000);
+      const hasJobManagement = await Promise.race([
+        page.locator('h1:has-text("Job Management")').isVisible(),
+        page.locator('button[aria-label="Go back to dashboard"]').isVisible(),
+        page.locator('text=Job Management').first().isVisible()
+      ]).catch(() => false);
+      if (!hasJobManagement) {
+        throw new Error('Job Management panel did not load after navigation');
       }
     }
     
