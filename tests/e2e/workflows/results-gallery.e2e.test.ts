@@ -8,11 +8,12 @@ async function injectElectronStubWithGeneratedImages(page: Page): Promise<void> 
     if (window.electronAPI) return;
 
     // Create mock approved images for gallery display
+    // Note: IDs must be strings, executionId can be number or string
     const mockApprovedImages = [
       {
-        id: 1,
+        id: '1',
         imageMappingId: 'test-mapping-1',
-        executionId: 1,
+        executionId: '1',
         generationPrompt: 'A beautiful landscape with mountains',
         seed: 12345,
         qcStatus: 'approved',
@@ -28,12 +29,13 @@ async function injectElectronStubWithGeneratedImages(page: Page): Promise<void> 
           imageEnhancement: true,
           sharpening: 50
         })),
-        createdAt: new Date('2025-01-01T00:00:00Z')
+        createdAt: new Date('2025-01-01T00:00:00Z'),
+        updatedAt: new Date('2025-01-01T00:00:00Z')
       },
       {
-        id: 2,
+        id: '2',
         imageMappingId: 'test-mapping-2',
-        executionId: 1,
+        executionId: '1',
         generationPrompt: 'Modern city skyline at sunset',
         seed: 67890,
         qcStatus: 'approved',
@@ -45,7 +47,8 @@ async function injectElectronStubWithGeneratedImages(page: Page): Promise<void> 
           description: 'Modern urban landscape'
         })),
         processingSettings: null,
-        createdAt: new Date('2025-01-01T01:00:00Z')
+        createdAt: new Date('2025-01-01T01:00:00Z'),
+        updatedAt: new Date('2025-01-01T01:00:00Z')
       }
     ];
 
@@ -182,18 +185,20 @@ test.describe('Results Gallery E2E Tests', () => {
     // Wait for the image gallery section to be visible
     await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     
-    // Navigate to Image Gallery tab if needed
+    // Navigate to Image Gallery tab - it should be visible
     const imageGalleryTab = page.locator('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")');
-    if (await imageGalleryTab.isVisible()) {
-      await imageGalleryTab.click();
-      await page.waitForTimeout(500);
-    }
+    await expect(imageGalleryTab).toBeVisible({ timeout: 10000 });
+    await imageGalleryTab.click();
     
-    // Wait for images to load
-    await page.waitForTimeout(1000);
+    // Wait for tab content to load
+    await page.waitForTimeout(500);
+    
+    // Wait for images to load from mock - check for image checkboxes or cards
+    const imageCheckboxes = page.locator('input[type="checkbox"][aria-label^="Select "]');
+    await imageCheckboxes.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     
     // Check if there are any images available - use more flexible selectors
-    const images = page.locator('img[src*="data:image"], img[class*="object-cover"], img[alt*="landscape"], img[alt*="city"]');
+    const images = page.locator('img[src*="data:image"], img[class*="object-cover"], img[alt*="landscape"], img[alt*="city"], img[src*="file://"]');
     const imageCount = await images.count();
     
     if (imageCount > 0) {
@@ -237,6 +242,16 @@ test.describe('Results Gallery E2E Tests', () => {
     // Wait for the image gallery section to be visible
     await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     
+    // Navigate to Image Gallery tab
+    const imageGalleryTab = page.locator('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")');
+    await expect(imageGalleryTab).toBeVisible({ timeout: 10000 });
+    await imageGalleryTab.click();
+    await page.waitForTimeout(500);
+    
+    // Wait for images to load
+    const imageCheckboxes = page.locator('input[type="checkbox"][aria-label^="Select "]');
+    await imageCheckboxes.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+    
     // Look for enhanced metadata elements in image cards
     const imageCards = page.locator('[class*="border"][class*="rounded"]').filter({ hasText: /.+/ });
     const cardCount = await imageCards.count();
@@ -277,6 +292,12 @@ test.describe('Results Gallery E2E Tests', () => {
     // Wait for the image gallery section to be visible
     await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
     
+    // Navigate to Image Gallery tab
+    const imageGalleryTab = page.locator('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")');
+    await expect(imageGalleryTab).toBeVisible({ timeout: 10000 });
+    await imageGalleryTab.click();
+    await page.waitForTimeout(500);
+    
     // Test QC status filtering
     const qcFilter = page.locator('select').filter({ hasText: /QC Status|All Statuses/ }).first();
     if (await qcFilter.isVisible()) {
@@ -315,6 +336,12 @@ test.describe('Results Gallery E2E Tests', () => {
   test('Image selection and bulk actions workflow', async ({ page }) => {
     // Wait for the image gallery section to be visible
     await expect(page.locator('h2:has-text("Generated Images")')).toBeVisible();
+    
+    // Navigate to Image Gallery tab
+    const imageGalleryTab = page.locator('button:has-text("Image Gallery"), [role="tab"]:has-text("Image Gallery")');
+    await expect(imageGalleryTab).toBeVisible({ timeout: 10000 });
+    await imageGalleryTab.click();
+    await page.waitForTimeout(500);
     
     // Test image selection
     // Only target per-image checkboxes, not the Select All checkbox

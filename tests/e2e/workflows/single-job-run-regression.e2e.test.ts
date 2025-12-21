@@ -20,8 +20,24 @@ test.describe('Single Job Run Regression Prevention', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to Dashboard
     await page.goto('/');
-    // Wait for the page to load - look for the Start Job button
-    await page.waitForSelector('button:has-text("Start Job")');
+    await page.waitForLoadState('networkidle');
+    
+    // Check if we're on home screen or already on dashboard
+    const dashboardButton = page.locator('button:has-text("Open Dashboard")');
+    const isOnDashboard = await page.locator('button:has-text("Start Job"), h2:has-text("Current Job")').first().isVisible({ timeout: 2000 }).catch(() => false);
+    
+    if (!isOnDashboard) {
+      await expect(dashboardButton).toBeVisible({ timeout: 10000 });
+      await dashboardButton.click();
+      await page.waitForLoadState('networkidle');
+    }
+    
+    // Wait for dashboard to be ready - use flexible selectors
+    await Promise.race([
+      page.locator('button:has-text("Start Job")').waitFor({ state: 'visible', timeout: 15000 }),
+      page.locator('h2:has-text("Current Job")').waitFor({ state: 'visible', timeout: 15000 }),
+      page.locator('h2:has-text("Generated Images")').waitFor({ state: 'visible', timeout: 15000 })
+    ]);
   });
 
   test('Normal job start from dashboard', async ({ page }) => {
