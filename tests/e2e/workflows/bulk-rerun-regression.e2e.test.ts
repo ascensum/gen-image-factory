@@ -25,6 +25,8 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     
     if (!isOnDashboard) {
       const dashboardButton = page.locator('button:has-text("Open Dashboard")');
+      // Active State Synchronization: Wait for element to be attached before visibility check
+      await page.waitForSelector('button:has-text("Open Dashboard")', { state: 'attached', timeout: 15000 });
       await expect(dashboardButton).toBeVisible({ timeout: 10000 });
       await dashboardButton.click();
       await page.waitForLoadState('networkidle');
@@ -41,12 +43,16 @@ test.describe('Bulk Rerun Regression Prevention', () => {
   test('Bulk rerun with 2 jobs', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button[aria-label="Open menu"]', { state: 'attached', timeout: 15000 });
     await expect(menuButton).toBeVisible();
     await menuButton.click();
     
     // Wait for menu to be visible - wait for the menu panel to appear
     await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Job Management")', { state: 'attached', timeout: 15000 });
     await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
     
     // Click and wait for navigation
@@ -123,12 +129,16 @@ test.describe('Bulk Rerun Regression Prevention', () => {
   test('Bulk rerun with 3 jobs', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button[aria-label="Open menu"]', { state: 'attached', timeout: 15000 });
     await expect(menuButton).toBeVisible();
     await menuButton.click();
     
     // Wait for menu to be visible - wait for the menu panel to appear
     await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Job Management")', { state: 'attached', timeout: 15000 });
     await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
     
     // Click and wait for navigation
@@ -208,7 +218,8 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     const startJobButton = page.locator('button:has-text("Start Job")');
     await startJobButton.click();
     
-    // Wait for job to start
+    // Wait for job to start - Active State Synchronization
+    await page.waitForSelector('button:has-text("Starting...")', { state: 'attached', timeout: 15000 });
     await expect(page.locator('button:has-text("Starting...")')).toBeVisible();
     
     // Wait for job to be running
@@ -216,12 +227,16 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button[aria-label="Open menu"]', { state: 'attached', timeout: 15000 });
     await expect(menuButton).toBeVisible();
     await menuButton.click();
     
     // Wait for menu to be visible - wait for the menu panel to appear
     await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Job Management")', { state: 'attached', timeout: 15000 });
     await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
     
     // Click and wait for navigation
@@ -285,12 +300,16 @@ test.describe('Bulk Rerun Regression Prevention', () => {
   test('Individual rerun during bulk operation', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button[aria-label="Open menu"]', { state: 'attached', timeout: 15000 });
     await expect(menuButton).toBeVisible();
     await menuButton.click();
     
     // Wait for menu to be visible - wait for the menu panel to appear
     await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Job Management")', { state: 'attached', timeout: 15000 });
     await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
     
     // Click and wait for navigation
@@ -353,12 +372,16 @@ test.describe('Bulk Rerun Regression Prevention', () => {
   test('Progress tracking during bulk rerun', async ({ page }) => {
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button[aria-label="Open menu"]', { state: 'attached', timeout: 15000 });
     await expect(menuButton).toBeVisible();
     await menuButton.click();
     
     // Wait for menu to be visible - wait for the menu panel to appear
     await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Job Management")', { state: 'attached', timeout: 15000 });
     await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
     
     // Click and wait for navigation
@@ -417,8 +440,9 @@ test.describe('Bulk Rerun Regression Prevention', () => {
         // Look for progress indicators
         const progressElements = page.locator('text=/progress|Progress|%|step|Step/i');
         
-        // If progress elements exist, verify they're visible
+        // If progress elements exist, verify they're visible - Active State Synchronization
         if (await progressElements.count() > 0) {
+          await page.waitForSelector('text=/progress|Progress|%|step|Step/i', { state: 'attached', timeout: 15000 });
           await expect(progressElements.first()).toBeVisible();
         }
         
@@ -447,7 +471,8 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     const startJobButton = page.locator('button:has-text("Start Job")');
     await startJobButton.click();
     
-    // Wait for job to start
+    // Wait for job to start - Active State Synchronization
+    await page.waitForSelector('button:has-text("Starting...")', { state: 'attached', timeout: 15000 });
     await expect(page.locator('button:has-text("Starting...")')).toBeVisible();
     
     // Wait for job to be running
@@ -455,12 +480,16 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     
     // Navigate to Job Management
     const menuButton = page.locator('button[aria-label="Open menu"]');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button[aria-label="Open menu"]', { state: 'attached', timeout: 15000 });
     await expect(menuButton).toBeVisible();
     await menuButton.click();
     
     // Wait for menu to be visible - wait for the menu panel to appear
     await page.waitForTimeout(500);
     const jobManagementButton = page.locator('button:has-text("Job Management")');
+    // Active State Synchronization: Wait for element to be attached before visibility check
+    await page.waitForSelector('button:has-text("Job Management")', { state: 'attached', timeout: 15000 });
     await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
     
     // Click and wait for navigation

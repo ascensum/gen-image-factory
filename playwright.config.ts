@@ -24,6 +24,21 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+
+    /* Launch options to prevent sandbox crashes on CI (especially Linux) */
+    launchOptions: {
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+      ],
+    },
+  },
+
+  /* Expect timeout - Allow for slow UI hydration in CI environments */
+  expect: {
+    timeout: process.env.CI ? 10000 : 5000,
   },
 
   /* Configure projects for major browsers */
