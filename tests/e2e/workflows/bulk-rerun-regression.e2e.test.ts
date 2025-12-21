@@ -49,53 +49,33 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     const jobManagementButton = page.locator('button:has-text("Job Management")');
     await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
     
-    // Click and wait for navigation - use Promise.all to wait for both disappearance and appearance
+    // Click and wait for navigation
     await jobManagementButton.click();
     
-    // Wait for React state change - give it time to unmount dashboard and mount Job Management
-    await page.waitForTimeout(500);
+    // First, wait for dashboard to disappear (confirm React started unmounting)
+    await page.locator('h2:has-text("Current Job")').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
     
-    // Wait for Job Management page to load - use Promise.race properly
-    // Create promises that reject on timeout, then race them
-    const waitPromises = [
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+    // Wait for Job Management panel to be attached to DOM (React has mounted it)
+    // Use 'attached' first to ensure element exists, then check visibility
+    await Promise.race([
+      page.locator('header.job-management-header').waitFor({ state: 'attached', timeout: 10000 }),
+      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'attached', timeout: 10000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 10000 })
+    ]);
+    
+    // Now wait for it to be visible (CSS applied, layout complete)
+    await Promise.race([
+      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
       page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 }),
-      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 })
-    ];
+      page.locator('header.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+    ]);
     
-    // Race all promises - first one to resolve wins
-    try {
-      await Promise.race(waitPromises);
-    } catch {
-      // If all failed, check if we're at least not on dashboard anymore
-      const isDashboardHidden = await page.locator('h2:has-text("Current Job")').isHidden().catch(() => false);
-      if (!isDashboardHidden) {
-        throw new Error('Navigation to Job Management failed - still on dashboard');
-      }
-      // Dashboard is hidden, so navigation started but panel might not be fully loaded
-      // Wait a bit more and check again - check all selectors in parallel
-      await page.waitForTimeout(1000);
-      const visibilityChecks = await Promise.all([
-        page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
-        page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
-        page.locator('text=Job Management').first().isVisible().catch(() => false),
-        page.locator('.header-title:has-text("Job Management")').isVisible().catch(() => false)
-      ]);
-      const hasJobManagement = visibilityChecks.some(v => v === true);
-      if (!hasJobManagement) {
-        // Last resort: wait a bit longer and try one more time
-        await page.waitForTimeout(2000);
-        const finalCheck = await Promise.all([
-          page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
-          page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
-          page.locator('text=Job Management').first().isVisible().catch(() => false)
-        ]);
-        if (!finalCheck.some(v => v === true)) {
-          throw new Error('Job Management panel did not load after navigation');
-        }
-      }
+    // Final verification - ensure we can actually see the header
+    const headerVisible = await page.locator('h1.header-title:has-text("Job Management")').isVisible().catch(() => false);
+    const backButtonVisible = await page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false);
+    
+    if (!headerVisible && !backButtonVisible) {
+      throw new Error('Job Management panel did not load after navigation - elements not visible');
     }
     
     // Look for job checkboxes to select jobs
@@ -151,53 +131,33 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     const jobManagementButton = page.locator('button:has-text("Job Management")');
     await expect(jobManagementButton).toBeVisible({ timeout: 10000 });
     
-    // Click and wait for navigation - use Promise.all to wait for both disappearance and appearance
+    // Click and wait for navigation
     await jobManagementButton.click();
     
-    // Wait for React state change - give it time to unmount dashboard and mount Job Management
-    await page.waitForTimeout(500);
+    // First, wait for dashboard to disappear (confirm React started unmounting)
+    await page.locator('h2:has-text("Current Job")').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
     
-    // Wait for Job Management page to load - use Promise.race properly
-    // Create promises that reject on timeout, then race them
-    const waitPromises = [
-      page.locator('h1:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
-      page.locator('.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
+    // Wait for Job Management panel to be attached to DOM (React has mounted it)
+    // Use 'attached' first to ensure element exists, then check visibility
+    await Promise.race([
+      page.locator('header.job-management-header').waitFor({ state: 'attached', timeout: 10000 }),
+      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'attached', timeout: 10000 }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 10000 })
+    ]);
+    
+    // Now wait for it to be visible (CSS applied, layout complete)
+    await Promise.race([
+      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
       page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
-      page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 }),
-      page.locator('text=Job Management').first().waitFor({ state: 'visible', timeout: 10000 })
-    ];
+      page.locator('header.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+    ]);
     
-    // Race all promises - first one to resolve wins
-    try {
-      await Promise.race(waitPromises);
-    } catch {
-      // If all failed, check if we're at least not on dashboard anymore
-      const isDashboardHidden = await page.locator('h2:has-text("Current Job")').isHidden().catch(() => false);
-      if (!isDashboardHidden) {
-        throw new Error('Navigation to Job Management failed - still on dashboard');
-      }
-      // Dashboard is hidden, so navigation started but panel might not be fully loaded
-      // Wait a bit more and check again - check all selectors in parallel
-      await page.waitForTimeout(1000);
-      const visibilityChecks = await Promise.all([
-        page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
-        page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
-        page.locator('text=Job Management').first().isVisible().catch(() => false),
-        page.locator('.header-title:has-text("Job Management")').isVisible().catch(() => false)
-      ]);
-      const hasJobManagement = visibilityChecks.some(v => v === true);
-      if (!hasJobManagement) {
-        // Last resort: wait a bit longer and try one more time
-        await page.waitForTimeout(2000);
-        const finalCheck = await Promise.all([
-          page.locator('h1:has-text("Job Management")').isVisible().catch(() => false),
-          page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false),
-          page.locator('text=Job Management').first().isVisible().catch(() => false)
-        ]);
-        if (!finalCheck.some(v => v === true)) {
-          throw new Error('Job Management panel did not load after navigation');
-        }
-      }
+    // Final verification - ensure we can actually see the header
+    const headerVisible = await page.locator('h1.header-title:has-text("Job Management")').isVisible().catch(() => false);
+    const backButtonVisible = await page.locator('button[aria-label="Go back to dashboard"]').isVisible().catch(() => false);
+    
+    if (!headerVisible && !backButtonVisible) {
+      throw new Error('Job Management panel did not load after navigation - elements not visible');
     }
     
     // Look for job checkboxes to select jobs
