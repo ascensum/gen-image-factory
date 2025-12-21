@@ -28,8 +28,12 @@ env:
 
 jobs:
   e2e-tests:
-    name: E2E Tests
-    runs-on: ubuntu-latest
+    name: E2E Tests on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false # Don't cancel other OS runs if one fails
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,7 +44,9 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      # OS-specific build dependencies (Linux only)
       - name: Install build dependencies for native modules
+        if: runner.os == 'Linux'
         run: |
           for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
             sudo apt-get update && sudo apt-get install -y build-essential python3 libvips-dev libsecret-1-dev && break
@@ -79,40 +85,70 @@ jobs:
             fi
           done
 
-      - name: Install Playwright browsers
+      # Standardize OS dependencies (Crucial for Linux)
+      - name: Install Playwright & OS Deps
         run: |
-          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
-            npx playwright install --with-deps && break
-            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
-              echo "playwright install failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
-              sleep ${{ env.RETRY_DELAY_SECONDS }}
-            else
-              echo "playwright install failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
-              exit 1
-            fi
-          done
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            # Linux: Install with deps and system dependencies
+            for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+              npx playwright install chromium --with-deps && sudo npx playwright install-deps && break
+              if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+                echo "playwright install failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+                sleep ${{ env.RETRY_DELAY_SECONDS }}
+              else
+                echo "playwright install failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+                exit 1
+              fi
+            done
+          else
+            # Windows and macOS: Install browsers only
+            for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+              npx playwright install chromium && break
+              if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+                echo "playwright install failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+                sleep ${{ env.RETRY_DELAY_SECONDS }}
+              else
+                echo "playwright install failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+                exit 1
+              fi
+            done
+          fi
+        shell: bash
 
       - name: Build application
         run: npm run build
 
+      # Cross-platform execution logic
       - name: Run E2E tests
+        env:
+          ELECTRON_DISABLE_SANDBOX: 1 # Essential for Linux CI
+          CI: true
         run: |
-          # Optimize for CI: Run only on chromium for faster execution, use 2 workers for parallelization
-          # Full cross-browser testing happens in nightly scheduled runs
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            # Nightly runs: Full cross-browser testing (chromium, firefox, webkit)
-            echo "Running full E2E test suite across all browsers (nightly scheduled run)"
-            npm run test:e2e
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            # Linux requires xvfb for headless display
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "Running full E2E test suite across all browsers (nightly scheduled run on Linux)"
+              xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" npm run test:e2e
+            else
+              echo "Running E2E tests on chromium only for faster CI feedback (Linux)"
+              xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" npm run test:e2e -- --project=chromium
+            fi
           else
-            # Manual/workflow_dispatch/tag runs: Faster chromium-only for quick feedback
-            echo "Running E2E tests on chromium only for faster CI feedback"
-            npm run test:e2e -- --project=chromium
+            # Windows and macOS do not use xvfb
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "Running full E2E test suite across all browsers (nightly scheduled run on ${{ runner.os }})"
+              npm run test:e2e
+            else
+              echo "Running E2E tests on chromium only for faster CI feedback (${{ runner.os }})"
+              npm run test:e2e -- --project=chromium
+            fi
           fi
+        shell: bash
 
       - name: Upload Playwright test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.os }}
           path: playwright-report/
           retention-days: 30

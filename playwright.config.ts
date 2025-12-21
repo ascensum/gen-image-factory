@@ -9,10 +9,12 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
+  /* Retry on CI only - bypasses random CPU lag on GitHub */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 2 : 3, // Use 2 workers on CI for faster execution (was 1, too slow for 276 tests)
+  /* Global timeout - Give Electron 60s to boot on slow Mac runners */
+  timeout: 60000,
+  /* Opt out of parallel tests on CI - Running multiple Electron instances on a 2-core GitHub worker causes massive flakiness */
+  workers: process.env.CI ? 1 : 3, // Stick to 1 worker on CI for reliability
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
