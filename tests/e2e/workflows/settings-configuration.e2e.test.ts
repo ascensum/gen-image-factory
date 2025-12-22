@@ -150,7 +150,11 @@ test.describe('Settings Configuration E2E Tests', () => {
 
   test('API keys configuration workflow', async ({ page }) => {
     // Navigate to API Keys tab
-    await page.locator('[data-testid="api-keys-tab"]').click();
+    const apiKeysTab = page.locator('[data-testid="api-keys-tab"]');
+    await apiKeysTab.waitFor({ state: 'visible', timeout: 10000 });
+    await apiKeysTab.click();
+    // Wait for tab switch animation and section to load
+    await page.waitForTimeout(500);
     // Active State Synchronization: Wait for element to be attached before visibility check
     await page.waitForSelector('[data-testid="api-keys-section"]', { state: 'attached', timeout: 15000 });
     await expect(page.locator('[data-testid="api-keys-section"]').first()).toBeVisible();
@@ -227,38 +231,56 @@ test.describe('Settings Configuration E2E Tests', () => {
     const outputDirInput = page.locator('input[placeholder*="Select directory for processed images"]');
     await page.waitForSelector('input[placeholder*="Select directory for processed images"]', { state: 'attached', timeout: 15000 });
     await expect(outputDirInput).toBeVisible();
+    await outputDirInput.clear();
     await outputDirInput.fill('./pictures/toupload');
-    await expect(outputDirInput).toHaveValue('./pictures/toupload');
+    await page.waitForTimeout(300);
+    const outputDirValue = await outputDirInput.inputValue();
+    expect(outputDirValue).toBe('./pictures/toupload');
 
     // Test temp directory FileSelector
     const tempDirInput = page.locator('input[placeholder*="Select directory for temporary files"]');
     await expect(tempDirInput).toBeVisible();
+    await tempDirInput.clear();
     await tempDirInput.fill('./pictures/generated');
-    await expect(tempDirInput).toHaveValue('./pictures/generated');
+    await page.waitForTimeout(300);
+    const tempDirValue = await tempDirInput.inputValue();
+    expect(tempDirValue).toBe('./pictures/generated');
 
     // Test system prompt file FileSelector
     const systemPromptInput = page.locator('input[placeholder*="Select system prompt file"]');
     await expect(systemPromptInput).toBeVisible();
+    await systemPromptInput.clear();
     await systemPromptInput.fill('./templates/system_prompt.txt');
-    await expect(systemPromptInput).toHaveValue('./templates/system_prompt.txt');
+    await page.waitForTimeout(300);
+    const systemPromptValue = await systemPromptInput.inputValue();
+    expect(systemPromptValue).toBe('./templates/system_prompt.txt');
 
     // Test keywords file FileSelector
     const keywordsInput = page.locator('input[placeholder*="Select keywords file"]');
     await expect(keywordsInput).toBeVisible();
+    await keywordsInput.clear();
     await keywordsInput.fill('./keywords.txt');
-    await expect(keywordsInput).toHaveValue('./keywords.txt');
+    await page.waitForTimeout(300);
+    const keywordsValue = await keywordsInput.inputValue();
+    expect(keywordsValue).toBe('./keywords.txt');
 
     // Test quality check prompt file FileSelector
     const qualityCheckInput = page.locator('input[placeholder*="Select quality check prompt file"]');
     await expect(qualityCheckInput).toBeVisible();
+    await qualityCheckInput.clear();
     await qualityCheckInput.fill('./templates/quality_check.txt');
-    await expect(qualityCheckInput).toHaveValue('./templates/quality_check.txt');
+    await page.waitForTimeout(300);
+    const qualityCheckValue = await qualityCheckInput.inputValue();
+    expect(qualityCheckValue).toBe('./templates/quality_check.txt');
 
     // Test metadata prompt file FileSelector
     const metadataInput = page.locator('input[placeholder*="Select metadata prompt file"]');
     await expect(metadataInput).toBeVisible();
+    await metadataInput.clear();
     await metadataInput.fill('./templates/metadata.txt');
-    await expect(metadataInput).toHaveValue('./templates/metadata.txt');
+    await page.waitForTimeout(300);
+    const metadataValue = await metadataInput.inputValue();
+    expect(metadataValue).toBe('./templates/metadata.txt');
   });
 
   test('parameters configuration workflow', async ({ page }) => {
@@ -287,14 +309,20 @@ test.describe('Settings Configuration E2E Tests', () => {
     // Test Runware dimensions input
     const runwareDimensionsInput = page.locator('#runware-dimensions');
     await expect(runwareDimensionsInput).toBeVisible();
+    await runwareDimensionsInput.clear();
     await runwareDimensionsInput.fill('1024x1024,1280x720');
-    await expect(runwareDimensionsInput).toHaveValue('1024x1024,1280x720');
+    await page.waitForTimeout(300);
+    const runwareDimensionsValue = await runwareDimensionsInput.inputValue();
+    expect(runwareDimensionsValue).toBe('1024x1024,1280x720');
 
     // Test OpenAI model input (it's a text input, not a select)
     const openaiModelInput = page.locator('#openai-model');
     await expect(openaiModelInput).toBeVisible();
+    await openaiModelInput.clear();
     await openaiModelInput.fill('gpt-4o-mini');
-    await expect(openaiModelInput).toHaveValue('gpt-4o-mini');
+    await page.waitForTimeout(300);
+    const openaiModelValue = await openaiModelInput.inputValue();
+    expect(openaiModelValue).toBe('gpt-4o-mini');
 
     // Test polling timeout toggle and slider
     const enablePollingTimeoutToggle = page.locator('button[role="switch"]').nth(0);
