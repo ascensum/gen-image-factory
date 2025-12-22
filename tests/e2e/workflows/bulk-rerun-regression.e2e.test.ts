@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 /**
  * E2E Test: Bulk Rerun Regression Prevention
@@ -15,9 +15,79 @@ import { test, expect } from '@playwright/test';
  * 6. Job constraints during bulk rerun
  */
 
+/**
+ * Injects Electron API stub to prevent "Cannot read properties of undefined" errors
+ * This is required because E2E tests run in a browser environment without Electron
+ */
+async function injectElectronStub(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    // Skip if already injected to avoid conflicts
+    if ((window as any).electronAPI) return;
+
+    // Helper to create mock async functions with proper promise handling
+    const createAsyncFunction = () => {
+      const fn = function () {};
+      return new Proxy(fn, {
+        apply: () => Promise.resolve(undefined),
+        get: (_target, prop) => {
+          if (prop === 'then') return undefined;
+          return createAsyncFunction();
+        },
+      });
+    };
+
+    const createNamespace = () =>
+      new Proxy(
+        {},
+        {
+          get: (_target, prop) => {
+            if (prop === 'then') return undefined;
+            if (typeof prop === 'string' && prop.startsWith('on')) {
+              return () => {};
+            }
+            return createAsyncFunction();
+          },
+        }
+      );
+
+    (window as any).electronAPI = new Proxy(
+      {},
+      {
+        get: (_target, prop) => {
+          if (prop === 'ping') return () => Promise.resolve('pong');
+          if (prop === 'getAppVersion') return () => Promise.resolve('0.0.0');
+          if (prop === 'jobManagement') {
+            return {
+              getJobExecutionsWithFilters: () => Promise.resolve({
+                success: true,
+                executions: [],
+                count: 0,
+                totalCount: 0
+              }),
+              getJobStatus: () => Promise.resolve({ state: 'idle' }),
+              getJobHistory: () => Promise.resolve({ success: true, history: [] }),
+              getAllJobExecutions: () => Promise.resolve({
+                success: true,
+                executions: [],
+                count: 0
+              })
+            };
+          }
+          if (prop === 'generatedImages') {
+            return createNamespace();
+          }
+          return createAsyncFunction();
+        },
+      }
+    );
+  });
+}
+
 test.describe('Bulk Rerun Regression Prevention', () => {
   // DIAGNOSTICS: Capture console errors for debugging
   test.beforeEach(async ({ page }) => {
+    // Inject Electron API stub BEFORE navigating to page
+    await injectElectronStub(page);
     // Capture console errors
     page.on('console', msg => {
       if (msg.type() === 'error') {
@@ -106,14 +176,14 @@ test.describe('Bulk Rerun Regression Prevention', () => {
         page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'attached', timeout: navigationTimeout }),
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
         // Also wait for error view to detect API failures
-        page.locator('text=/Error|Failed to load|Retry/i').waitFor({ state: 'attached', timeout: navigationTimeout })
+        page.locator('text=/Error|Failed to load|Retry/i').first().waitFor({ state: 'attached', timeout: navigationTimeout })
       ]);
     } catch (error) {
       // DIAGNOSTICS: Capture page state when navigation fails
       const pageTitle = await page.title().catch(() => 'unknown');
       const pageUrl = page.url();
       const dashboardStillVisible = await page.locator('h2:has-text("Current Job")').isVisible().catch(() => false);
-      const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+      const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').first().isVisible().catch(() => false);
       const headerExists = await page.locator('header.job-management-header').count();
       const backButtonExists = await page.locator('button[aria-label="Go back to dashboard"]').count();
       
@@ -180,7 +250,7 @@ test.describe('Bulk Rerun Regression Prevention', () => {
       const pageUrl = page.url();
       const headerCount = await page.locator('header.job-management-header').count();
       const backButtonCount = await page.locator('button[aria-label="Go back to dashboard"]').count();
-      const errorViewCount = await page.locator('text=/Error|Failed to load|Retry/i').count();
+      const errorViewCount = await page.locator('text=/Error|Failed to load|Retry/i').first().count();
       
       await page.screenshot({ path: `test-results/header-not-visible-${Date.now()}.png`, fullPage: true }).catch(() => {});
       
@@ -273,14 +343,14 @@ test.describe('Bulk Rerun Regression Prevention', () => {
         page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'attached', timeout: navigationTimeout }),
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
         // Also wait for error view to detect API failures
-        page.locator('text=/Error|Failed to load|Retry/i').waitFor({ state: 'attached', timeout: navigationTimeout })
+        page.locator('text=/Error|Failed to load|Retry/i').first().waitFor({ state: 'attached', timeout: navigationTimeout })
       ]);
     } catch (error) {
       // DIAGNOSTICS: Capture page state when navigation fails
       const pageTitle = await page.title().catch(() => 'unknown');
       const pageUrl = page.url();
       const dashboardStillVisible = await page.locator('h2:has-text("Current Job")').isVisible().catch(() => false);
-      const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+      const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').first().isVisible().catch(() => false);
       const headerExists = await page.locator('header.job-management-header').count();
       const backButtonExists = await page.locator('button[aria-label="Go back to dashboard"]').count();
       
@@ -329,7 +399,7 @@ test.describe('Bulk Rerun Regression Prevention', () => {
       const pageUrl = page.url();
       const headerCount = await page.locator('header.job-management-header').count();
       const backButtonCount = await page.locator('button[aria-label="Go back to dashboard"]').count();
-      const errorViewCount = await page.locator('text=/Error|Failed to load|Retry/i').count();
+      const errorViewCount = await page.locator('text=/Error|Failed to load|Retry/i').first().count();
       
       await page.screenshot({ path: `test-results/header-not-visible-${Date.now()}.png`, fullPage: true }).catch(() => {});
       
