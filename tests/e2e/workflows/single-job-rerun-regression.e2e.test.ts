@@ -17,7 +17,37 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Single Job Rerun Regression Prevention', () => {
+  // DIAGNOSTICS: Capture console errors for debugging
   test.beforeEach(async ({ page }) => {
+    // Capture console errors
+    page.on('console', msg => {
+      if (msg.type() === 'error') {
+        page.evaluate((error) => {
+          if (!(window as any).__consoleErrors) {
+            (window as any).__consoleErrors = [];
+          }
+          (window as any).__consoleErrors.push({
+            text: error.text,
+            type: error.type,
+            location: error.location
+          });
+        }, { text: msg.text(), type: msg.type(), location: msg.location() }).catch(() => {});
+      }
+    });
+    
+    // Capture page errors
+    page.on('pageerror', error => {
+      page.evaluate((err) => {
+        if (!(window as any).__consoleErrors) {
+          (window as any).__consoleErrors = [];
+        }
+        (window as any).__consoleErrors.push({
+          text: err.message,
+          type: 'pageerror',
+          stack: err.stack
+        });
+      }, { message: error.message, stack: error.stack }).catch(() => {});
+    });
     // Navigate to Dashboard
     await page.goto('/');
     // Wait for the page to fully load
@@ -73,10 +103,43 @@ test.describe('Single Job Rerun Regression Prevention', () => {
       // Fallback: check for back button or header class - Active State Synchronization
       // Increased timeout for slow CI runners
       const navigationTimeout = process.env.CI ? 20000 : 15000;
-      await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
-        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout })
-      ]);
+      try {
+        await Promise.race([
+          page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
+          page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout }),
+          // DIAGNOSTICS: Also wait for error view to detect API failures
+          page.locator('text=/Error|Failed to load|Retry/i').waitFor({ state: 'attached', timeout: navigationTimeout })
+        ]);
+      } catch (error) {
+        // DIAGNOSTICS: Capture page state when navigation fails
+        const pageTitle = await page.title().catch(() => 'unknown');
+        const pageUrl = page.url();
+        const dashboardStillVisible = await page.locator('h2:has-text("Current Job")').isVisible().catch(() => false);
+        const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+        const headerExists = await page.locator('.job-management-header').count();
+        const backButtonExists = await page.locator('button[aria-label="Go back to dashboard"]').count();
+        
+        await page.screenshot({ path: `test-results/navigation-failure-${Date.now()}.png`, fullPage: true }).catch(() => {});
+        
+        throw new Error(
+          `Navigation to Job Management failed. Diagnostics:\n` +
+          `- Page Title: ${pageTitle}\n` +
+          `- Page URL: ${pageUrl}\n` +
+          `- Dashboard still visible: ${dashboardStillVisible}\n` +
+          `- Error view visible: ${errorViewVisible}\n` +
+          `- Header elements found: ${headerExists}\n` +
+          `- Back button elements found: ${backButtonExists}\n` +
+          `- Original error: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+      
+      // DIAGNOSTICS: Check if error view is showing instead of normal view
+      const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+      if (errorViewVisible) {
+        const errorText = await page.locator('text=/Error|Failed to load|Retry/i').first().textContent().catch(() => 'unknown error');
+        throw new Error(`Job Management API failed to load: ${errorText}`);
+      }
+      
       await Promise.race([
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
         page.locator('.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
@@ -168,10 +231,43 @@ test.describe('Single Job Rerun Regression Prevention', () => {
       // Fallback: check for back button or header class - Active State Synchronization
       // Increased timeout for slow CI runners
       const navigationTimeout = process.env.CI ? 20000 : 15000;
-      await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
-        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout })
-      ]);
+      try {
+        await Promise.race([
+          page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
+          page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout }),
+          // DIAGNOSTICS: Also wait for error view to detect API failures
+          page.locator('text=/Error|Failed to load|Retry/i').waitFor({ state: 'attached', timeout: navigationTimeout })
+        ]);
+      } catch (error) {
+        // DIAGNOSTICS: Capture page state when navigation fails
+        const pageTitle = await page.title().catch(() => 'unknown');
+        const pageUrl = page.url();
+        const dashboardStillVisible = await page.locator('h2:has-text("Current Job")').isVisible().catch(() => false);
+        const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+        const headerExists = await page.locator('.job-management-header').count();
+        const backButtonExists = await page.locator('button[aria-label="Go back to dashboard"]').count();
+        
+        await page.screenshot({ path: `test-results/navigation-failure-${Date.now()}.png`, fullPage: true }).catch(() => {});
+        
+        throw new Error(
+          `Navigation to Job Management failed. Diagnostics:\n` +
+          `- Page Title: ${pageTitle}\n` +
+          `- Page URL: ${pageUrl}\n` +
+          `- Dashboard still visible: ${dashboardStillVisible}\n` +
+          `- Error view visible: ${errorViewVisible}\n` +
+          `- Header elements found: ${headerExists}\n` +
+          `- Back button elements found: ${backButtonExists}\n` +
+          `- Original error: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+      
+      // DIAGNOSTICS: Check if error view is showing instead of normal view
+      const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+      if (errorViewVisible) {
+        const errorText = await page.locator('text=/Error|Failed to load|Retry/i').first().textContent().catch(() => 'unknown error');
+        throw new Error(`Job Management API failed to load: ${errorText}`);
+      }
+      
       await Promise.race([
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
         page.locator('.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
@@ -259,10 +355,43 @@ test.describe('Single Job Rerun Regression Prevention', () => {
       // Fallback: check for back button or header class - Active State Synchronization
       // Increased timeout for slow CI runners
       const navigationTimeout = process.env.CI ? 20000 : 15000;
-      await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
-        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout })
-      ]);
+      try {
+        await Promise.race([
+          page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
+          page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout }),
+          // DIAGNOSTICS: Also wait for error view to detect API failures
+          page.locator('text=/Error|Failed to load|Retry/i').waitFor({ state: 'attached', timeout: navigationTimeout })
+        ]);
+      } catch (error) {
+        // DIAGNOSTICS: Capture page state when navigation fails
+        const pageTitle = await page.title().catch(() => 'unknown');
+        const pageUrl = page.url();
+        const dashboardStillVisible = await page.locator('h2:has-text("Current Job")').isVisible().catch(() => false);
+        const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+        const headerExists = await page.locator('.job-management-header').count();
+        const backButtonExists = await page.locator('button[aria-label="Go back to dashboard"]').count();
+        
+        await page.screenshot({ path: `test-results/navigation-failure-${Date.now()}.png`, fullPage: true }).catch(() => {});
+        
+        throw new Error(
+          `Navigation to Job Management failed. Diagnostics:\n` +
+          `- Page Title: ${pageTitle}\n` +
+          `- Page URL: ${pageUrl}\n` +
+          `- Dashboard still visible: ${dashboardStillVisible}\n` +
+          `- Error view visible: ${errorViewVisible}\n` +
+          `- Header elements found: ${headerExists}\n` +
+          `- Back button elements found: ${backButtonExists}\n` +
+          `- Original error: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+      
+      // DIAGNOSTICS: Check if error view is showing instead of normal view
+      const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+      if (errorViewVisible) {
+        const errorText = await page.locator('text=/Error|Failed to load|Retry/i').first().textContent().catch(() => 'unknown error');
+        throw new Error(`Job Management API failed to load: ${errorText}`);
+      }
+      
       await Promise.race([
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
         page.locator('.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
@@ -318,10 +447,43 @@ test.describe('Single Job Rerun Regression Prevention', () => {
       // Fallback: check for back button or header class - Active State Synchronization
       // Increased timeout for slow CI runners
       const navigationTimeout = process.env.CI ? 20000 : 15000;
-      await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
-        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout })
-      ]);
+      try {
+        await Promise.race([
+          page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
+          page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout }),
+          // DIAGNOSTICS: Also wait for error view to detect API failures
+          page.locator('text=/Error|Failed to load|Retry/i').waitFor({ state: 'attached', timeout: navigationTimeout })
+        ]);
+      } catch (error) {
+        // DIAGNOSTICS: Capture page state when navigation fails
+        const pageTitle = await page.title().catch(() => 'unknown');
+        const pageUrl = page.url();
+        const dashboardStillVisible = await page.locator('h2:has-text("Current Job")').isVisible().catch(() => false);
+        const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+        const headerExists = await page.locator('.job-management-header').count();
+        const backButtonExists = await page.locator('button[aria-label="Go back to dashboard"]').count();
+        
+        await page.screenshot({ path: `test-results/navigation-failure-${Date.now()}.png`, fullPage: true }).catch(() => {});
+        
+        throw new Error(
+          `Navigation to Job Management failed. Diagnostics:\n` +
+          `- Page Title: ${pageTitle}\n` +
+          `- Page URL: ${pageUrl}\n` +
+          `- Dashboard still visible: ${dashboardStillVisible}\n` +
+          `- Error view visible: ${errorViewVisible}\n` +
+          `- Header elements found: ${headerExists}\n` +
+          `- Back button elements found: ${backButtonExists}\n` +
+          `- Original error: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+      
+      // DIAGNOSTICS: Check if error view is showing instead of normal view
+      const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+      if (errorViewVisible) {
+        const errorText = await page.locator('text=/Error|Failed to load|Retry/i').first().textContent().catch(() => 'unknown error');
+        throw new Error(`Job Management API failed to load: ${errorText}`);
+      }
+      
       await Promise.race([
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
         page.locator('.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
@@ -382,10 +544,43 @@ test.describe('Single Job Rerun Regression Prevention', () => {
       // Fallback: check for back button or header class - Active State Synchronization
       // Increased timeout for slow CI runners
       const navigationTimeout = process.env.CI ? 20000 : 15000;
-      await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
-        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout })
-      ]);
+      try {
+        await Promise.race([
+          page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
+          page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout }),
+          // DIAGNOSTICS: Also wait for error view to detect API failures
+          page.locator('text=/Error|Failed to load|Retry/i').waitFor({ state: 'attached', timeout: navigationTimeout })
+        ]);
+      } catch (error) {
+        // DIAGNOSTICS: Capture page state when navigation fails
+        const pageTitle = await page.title().catch(() => 'unknown');
+        const pageUrl = page.url();
+        const dashboardStillVisible = await page.locator('h2:has-text("Current Job")').isVisible().catch(() => false);
+        const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+        const headerExists = await page.locator('.job-management-header').count();
+        const backButtonExists = await page.locator('button[aria-label="Go back to dashboard"]').count();
+        
+        await page.screenshot({ path: `test-results/navigation-failure-${Date.now()}.png`, fullPage: true }).catch(() => {});
+        
+        throw new Error(
+          `Navigation to Job Management failed. Diagnostics:\n` +
+          `- Page Title: ${pageTitle}\n` +
+          `- Page URL: ${pageUrl}\n` +
+          `- Dashboard still visible: ${dashboardStillVisible}\n` +
+          `- Error view visible: ${errorViewVisible}\n` +
+          `- Header elements found: ${headerExists}\n` +
+          `- Back button elements found: ${backButtonExists}\n` +
+          `- Original error: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+      
+      // DIAGNOSTICS: Check if error view is showing instead of normal view
+      const errorViewVisible = await page.locator('text=/Error|Failed to load|Retry/i').isVisible().catch(() => false);
+      if (errorViewVisible) {
+        const errorText = await page.locator('text=/Error|Failed to load|Retry/i').first().textContent().catch(() => 'unknown error');
+        throw new Error(`Job Management API failed to load: ${errorText}`);
+      }
+      
       await Promise.race([
         page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
         page.locator('.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
