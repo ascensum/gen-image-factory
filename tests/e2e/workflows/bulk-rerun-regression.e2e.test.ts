@@ -118,12 +118,29 @@ test.describe('Bulk Rerun Regression Prevention', () => {
       const backButtonExists = await page.locator('button[aria-label="Go back to dashboard"]').count();
       
       // Take screenshot for debugging
-      await page.screenshot({ path: `test-results/navigation-failure-${Date.now()}.png`, fullPage: true }).catch(() => {});
+      const screenshotPath = `test-results/navigation-failure-bulk-rerun-2jobs-${Date.now()}.png`;
+      await page.screenshot({ path: screenshotPath, fullPage: true }).catch(() => {});
       
       // Log console errors
       const consoleErrors = await page.evaluate(() => {
         return (window as any).__consoleErrors || [];
       }).catch(() => []);
+      
+      // DIAGNOSTICS: Log to console for visibility in CI logs
+      const diagnosticInfo = {
+        test: 'Bulk rerun with 2 jobs',
+        pageTitle,
+        pageUrl,
+        dashboardStillVisible,
+        errorViewVisible,
+        headerElementsFound: headerExists,
+        backButtonElementsFound: backButtonExists,
+        consoleErrors: consoleErrors.length > 0 ? consoleErrors : 'none',
+        screenshotPath,
+        originalError: error instanceof Error ? error.message : String(error)
+      };
+      
+      console.error('[BULK-RERUN-2JOBS] NAVIGATION FAILURE DIAGNOSTICS:', JSON.stringify(diagnosticInfo, null, 2));
       
       throw new Error(
         `Navigation to Job Management failed. Diagnostics:\n` +
@@ -134,6 +151,7 @@ test.describe('Bulk Rerun Regression Prevention', () => {
         `- Header elements found: ${headerExists}\n` +
         `- Back button elements found: ${backButtonExists}\n` +
         `- Console errors: ${consoleErrors.length > 0 ? JSON.stringify(consoleErrors) : 'none'}\n` +
+        `- Screenshot: ${screenshotPath}\n` +
         `- Original error: ${error instanceof Error ? error.message : String(error)}`
       );
     }
