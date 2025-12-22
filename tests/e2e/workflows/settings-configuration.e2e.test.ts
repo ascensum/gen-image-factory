@@ -1,7 +1,135 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+
+/**
+ * Injects Electron API stub with settings API to prevent "Cannot read properties of undefined" errors
+ * This is required because E2E tests run in a browser environment without Electron
+ */
+async function injectElectronStubWithSettings(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    // Skip if already injected to avoid conflicts
+    if ((window as any).electronAPI) return;
+
+    // Helper to create mock async functions with proper promise handling
+    const createAsyncFunction = () => {
+      const fn = function () {};
+      return new Proxy(fn, {
+        apply: () => Promise.resolve(undefined),
+        get: (_target, prop) => {
+          if (prop === 'then') return undefined;
+          return createAsyncFunction();
+        },
+      });
+    };
+
+    const createNamespace = () =>
+      new Proxy(
+        {},
+        {
+          get: (_target, prop) => {
+            if (prop === 'then') return undefined;
+            if (typeof prop === 'string' && prop.startsWith('on')) {
+              return () => {};
+            }
+            return createAsyncFunction();
+          },
+        }
+      );
+
+    // Default settings structure
+    const defaultSettings = {
+      apiKeys: { openai: '', piapi: '', runware: '', removeBg: '' },
+      filePaths: {
+        outputDirectory: '',
+        tempDirectory: '',
+        systemPromptFile: '',
+        keywordsFile: '',
+        qualityCheckPromptFile: '',
+        metadataPromptFile: '',
+      },
+      parameters: {
+        processMode: 'single',
+        aspectRatios: ['1:1'],
+        mjVersion: '6.1',
+        openaiModel: 'gpt-4o',
+        runwareModel: 'runware:101@1',
+        runwareDimensionsCsv: '',
+        runwareFormat: 'png',
+        variations: 1,
+        runwareAdvancedEnabled: false,
+        loraEnabled: false,
+        label: '',
+        pollingTimeout: 15,
+        pollingInterval: 1,
+        enablePollingTimeout: true,
+        keywordRandom: false,
+        count: 1,
+        generationRetryAttempts: 1,
+        generationRetryBackoffMs: 0,
+      },
+      processing: {
+        removeBg: false,
+        removeBgFailureMode: 'soft',
+        imageConvert: false,
+        imageEnhancement: false,
+        sharpening: 5,
+        saturation: 1.0,
+        convertToJpg: false,
+        convertToWebp: false,
+        trimTransparentBackground: false,
+        jpgBackground: 'white',
+        jpgQuality: 85,
+        pngQuality: 100,
+        webpQuality: 85,
+        removeBgSize: 'auto',
+      },
+      ai: { runQualityCheck: true, runMetadataGen: true },
+      advanced: { debugMode: false },
+    };
+
+    (window as any).electronAPI = new Proxy(
+      {},
+      {
+        get: (_target, prop) => {
+          if (prop === 'ping') return () => Promise.resolve('pong');
+          if (prop === 'getAppVersion') return () => Promise.resolve('0.0.0');
+          if (prop === 'getSettings') {
+            return () => Promise.resolve({ success: true, settings: defaultSettings });
+          }
+          if (prop === 'saveSettings') {
+            return () => Promise.resolve({ success: true });
+          }
+          if (prop === 'jobManagement') {
+            return {
+              getJobExecutionsWithFilters: () => Promise.resolve({
+                success: true,
+                executions: [],
+                count: 0,
+                totalCount: 0
+              }),
+              getJobStatus: () => Promise.resolve({ state: 'idle' }),
+              getJobHistory: () => Promise.resolve({ success: true, history: [] }),
+              getAllJobExecutions: () => Promise.resolve({
+                success: true,
+                executions: [],
+                count: 0
+              })
+            };
+          }
+          if (prop === 'generatedImages') {
+            return createNamespace();
+          }
+          return createAsyncFunction();
+        },
+      }
+    );
+  });
+}
 
 test.describe('Settings Configuration E2E Tests', () => {
   test.beforeEach(async ({ page }) => {
+    // Inject Electron API stub BEFORE navigating to page
+    await injectElectronStubWithSettings(page);
+    
     // Navigate to the main page
     await page.goto('/');
     

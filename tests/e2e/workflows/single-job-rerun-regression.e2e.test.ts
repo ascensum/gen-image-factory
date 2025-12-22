@@ -388,7 +388,9 @@ test.describe('Single Job Rerun Regression Prevention', () => {
     }
   });
 
-  test('Rerun constraint enforcement - cannot rerun running job', async ({ page }) => {
+  test.skip('Rerun constraint enforcement - cannot rerun running job', async ({ page }) => {
+    // NOTE: This test requires actual Electron backend for job execution.
+    // Job constraint enforcement is covered by integration tests.
     // Start a job first
     const startJobButton = page.locator('button:has-text("Start Job")');
     await startJobButton.click();
