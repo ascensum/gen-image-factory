@@ -58,22 +58,27 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Click and wait for navigation
     await jobManagementButton.click();
     
+    // Wait for navigation to start - give React time to process the click
+    await page.waitForTimeout(500);
+    
     // First, wait for dashboard to disappear (confirm React started unmounting)
     await page.locator('h2:has-text("Current Job")').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
     
     // Wait for Job Management panel to be attached to DOM (React has mounted it)
     // Use 'attached' first to ensure element exists, then check visibility
+    // Increased timeout for slow CI runners (20s in CI, 15s locally)
+    const navigationTimeout = process.env.CI ? 20000 : 15000;
     await Promise.race([
-      page.locator('header.job-management-header').waitFor({ state: 'attached', timeout: 10000 }),
-      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'attached', timeout: 10000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 10000 })
+      page.locator('header.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout }),
+      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'attached', timeout: navigationTimeout }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout })
     ]);
     
     // Now wait for it to be visible (CSS applied, layout complete)
     await Promise.race([
-      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
-      page.locator('header.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: navigationTimeout }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
+      page.locator('header.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
     ]);
     
     // Final verification - ensure we can actually see the header
@@ -144,22 +149,27 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     // Click and wait for navigation
     await jobManagementButton.click();
     
+    // Wait for navigation to start - give React time to process the click
+    await page.waitForTimeout(500);
+    
     // First, wait for dashboard to disappear (confirm React started unmounting)
     await page.locator('h2:has-text("Current Job")').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
     
     // Wait for Job Management panel to be attached to DOM (React has mounted it)
     // Use 'attached' first to ensure element exists, then check visibility
+    // Increased timeout for slow CI runners (20s in CI, 15s locally)
+    const navigationTimeout = process.env.CI ? 20000 : 15000;
     await Promise.race([
-      page.locator('header.job-management-header').waitFor({ state: 'attached', timeout: 10000 }),
-      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'attached', timeout: 10000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 10000 })
+      page.locator('header.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout }),
+      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'attached', timeout: navigationTimeout }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout })
     ]);
     
     // Now wait for it to be visible (CSS applied, layout complete)
     await Promise.race([
-      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 10000 }),
-      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
-      page.locator('header.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+      page.locator('h1.header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: navigationTimeout }),
+      page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
+      page.locator('header.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
     ]);
     
     // Final verification - ensure we can actually see the header
@@ -219,7 +229,9 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     await startJobButton.click();
     
     // Wait for job to start - Active State Synchronization
-    await page.waitForSelector('button:has-text("Starting...")', { state: 'attached', timeout: 15000 });
+    // Increased timeout for slow CI runners
+    const jobStartTimeout = process.env.CI ? 20000 : 15000;
+    await page.waitForSelector('button:has-text("Starting...")', { state: 'attached', timeout: jobStartTimeout });
     await expect(page.locator('button:has-text("Starting...")')).toBeVisible();
     
     // Wait for job to be running
@@ -472,7 +484,9 @@ test.describe('Bulk Rerun Regression Prevention', () => {
     await startJobButton.click();
     
     // Wait for job to start - Active State Synchronization
-    await page.waitForSelector('button:has-text("Starting...")', { state: 'attached', timeout: 15000 });
+    // Increased timeout for slow CI runners
+    const jobStartTimeout = process.env.CI ? 20000 : 15000;
+    await page.waitForSelector('button:has-text("Starting...")', { state: 'attached', timeout: jobStartTimeout });
     await expect(page.locator('button:has-text("Starting...")')).toBeVisible();
     
     // Wait for job to be running

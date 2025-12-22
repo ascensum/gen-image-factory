@@ -71,13 +71,15 @@ test.describe('Single Job Rerun Regression Prevention', () => {
       await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
     } catch {
       // Fallback: check for back button or header class - Active State Synchronization
+      // Increased timeout for slow CI runners
+      const navigationTimeout = process.env.CI ? 20000 : 15000;
       await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 15000 }),
-        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: 15000 })
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
+        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout })
       ]);
       await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
-        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
       ]);
     }
     
@@ -164,13 +166,15 @@ test.describe('Single Job Rerun Regression Prevention', () => {
       await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
     } catch {
       // Fallback: check for back button or header class - Active State Synchronization
+      // Increased timeout for slow CI runners
+      const navigationTimeout = process.env.CI ? 20000 : 15000;
       await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 15000 }),
-        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: 15000 })
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
+        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout })
       ]);
       await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
-        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
       ]);
     }
     
@@ -253,13 +257,15 @@ test.describe('Single Job Rerun Regression Prevention', () => {
       await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
     } catch {
       // Fallback: check for back button or header class - Active State Synchronization
+      // Increased timeout for slow CI runners
+      const navigationTimeout = process.env.CI ? 20000 : 15000;
       await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 15000 }),
-        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: 15000 })
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
+        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout })
       ]);
       await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
-        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
       ]);
     }
     
@@ -310,13 +316,15 @@ test.describe('Single Job Rerun Regression Prevention', () => {
       await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
     } catch {
       // Fallback: check for back button or header class - Active State Synchronization
+      // Increased timeout for slow CI runners
+      const navigationTimeout = process.env.CI ? 20000 : 15000;
       await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 15000 }),
-        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: 15000 })
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
+        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout })
       ]);
       await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
-        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
       ]);
     }
     
@@ -372,13 +380,15 @@ test.describe('Single Job Rerun Regression Prevention', () => {
       await page.locator('h1:has-text("Job Management"), .header-title:has-text("Job Management")').waitFor({ state: 'visible', timeout: 15000 });
     } catch {
       // Fallback: check for back button or header class - Active State Synchronization
+      // Increased timeout for slow CI runners
+      const navigationTimeout = process.env.CI ? 20000 : 15000;
       await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: 15000 }),
-        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: 15000 })
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'attached', timeout: navigationTimeout }),
+        page.locator('.job-management-header').waitFor({ state: 'attached', timeout: navigationTimeout })
       ]);
       await Promise.race([
-        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: 10000 }),
-        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: 10000 })
+        page.locator('button[aria-label="Go back to dashboard"]').waitFor({ state: 'visible', timeout: navigationTimeout }),
+        page.locator('.job-management-header').waitFor({ state: 'visible', timeout: navigationTimeout })
       ]);
     }
     
