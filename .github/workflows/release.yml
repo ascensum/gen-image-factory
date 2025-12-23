@@ -323,7 +323,15 @@ jobs:
             ### Installation
             See [Release Documentation](docs/release-guide.md) for platform-specific installation instructions.
           files: |
-            artifacts/**/*
+            artifacts/**/*.exe
+            artifacts/**/*.msix
+            artifacts/**/*.appx
+            artifacts/**/*.dmg
+            artifacts/**/*.zip
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+            artifacts/**/*SHA256SUMS.txt
+            artifacts/**/*SBOM.json
           draft: false
           prerelease: false
         env:
