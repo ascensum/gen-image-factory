@@ -5,6 +5,7 @@ console.log(' MAIN PROCESS: Electron version:', process.versions.electron);
 const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
 const isDev = process.env.NODE_ENV === 'development';
 
 // Register custom protocol as privileged (MUST be done before app.ready)
@@ -33,6 +34,10 @@ let mainWindow;
 // In-memory allowlist of directories we can serve files from (normalized absolute paths)
 let allowedRoots = new Set();
 let promptingRoots = new Set(); // throttle permission prompts by directory
+
+// Runtime environment detection: Microsoft Store vs GitHub Releases
+// This is determined at startup and used throughout the app lifecycle
+const isWindowsStore = process.windowsStore || false;
 
 function toAbsoluteDir(p) {
   try {
@@ -115,7 +120,7 @@ async function ensureAccessToPath(filePath) {
     try {
       fs.accessSync(filePath, fs.constants.R_OK);
       return true;
-    } catch (e) {
+    } catch {
       // proceed to prompt if on macOS and access is denied
       if (process.platform !== 'darwin') return false;
     }
@@ -423,6 +428,79 @@ app.whenReady().then(async () => {
   if (backendAdapter && mainWindow) {
     backendAdapter.setMainWindow(mainWindow);
   }
+
+  // Auto-update initialization
+  // Runtime environment detection is done at module level (isWindowsStore constant)
+  
+  if (!isWindowsStore) {
+    // Enable electron-updater for GitHub Releases (Windows/macOS/Linux)
+    console.log('Initializing electron-updater for GitHub Releases...');
+    
+    try {
+      // Configure auto-updater
+      autoUpdater.setFeedURL({
+        provider: 'github',
+        owner: 'ascensum',
+        repo: 'gen-image-factory'
+      });
+      
+      // Check for updates on app ready (only in production)
+      if (!isDev) {
+        autoUpdater.checkForUpdatesAndNotify();
+      }
+      
+      // Handle update events
+    autoUpdater.on('checking-for-update', () => {
+      console.log('Checking for updates...');
+      if (mainWindow) {
+        mainWindow.webContents.send('update-checking');
+      }
+    });
+    
+    autoUpdater.on('update-available', (info) => {
+      console.log('Update available:', info.version);
+      if (mainWindow) {
+        mainWindow.webContents.send('update-available', info);
+      }
+    });
+    
+    autoUpdater.on('update-not-available', (info) => {
+      console.log('Update not available');
+      if (mainWindow) {
+        mainWindow.webContents.send('update-not-available', info);
+      }
+    });
+    
+    autoUpdater.on('error', (err) => {
+      console.error('Auto-updater error:', err);
+      if (mainWindow) {
+        mainWindow.webContents.send('update-error', err.message);
+      }
+    });
+    
+    autoUpdater.on('download-progress', (progressObj) => {
+      const message = `Download speed: ${progressObj.bytesPerSecond} - Downloaded ${progressObj.percent}% (${progressObj.transferred}/${progressObj.total})`;
+      console.log(message);
+      if (mainWindow) {
+        mainWindow.webContents.send('update-download-progress', progressObj);
+      }
+    });
+    
+    autoUpdater.on('update-downloaded', (info) => {
+      console.log('Update downloaded');
+      if (mainWindow) {
+        mainWindow.webContents.send('update-downloaded', info);
+      }
+    });
+    } catch (error) {
+      console.error('Failed to initialize auto-updater:', error);
+      // Continue without auto-updater if initialization fails
+      // App will still function, but auto-updates will be unavailable
+    }
+  } else {
+    // Microsoft Store: Disable electron-updater, rely on Windows OS automatic updates
+    console.log('Running in Microsoft Store - electron-updater disabled, using Windows OS updates');
+  }
 });
 
 // Quit when all windows are closed
@@ -449,6 +527,34 @@ ipcMain.handle('ping', () => {
 
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
+});
+
+// Auto-update IPC handlers
+ipcMain.handle('update:check', async () => {
+  if (isWindowsStore) {
+    return { success: false, message: 'Updates are handled by Microsoft Store' };
+  }
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { success: true, result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('update:install', () => {
+  if (isWindowsStore) {
+    return { success: false, message: 'Updates are handled by Microsoft Store' };
+  }
+  autoUpdater.quitAndInstall();
+  return { success: true };
+});
+
+ipcMain.handle('update:get-status', () => {
+  return {
+    isWindowsStore,
+    autoUpdaterEnabled: !isWindowsStore
+  };
 });
 
 

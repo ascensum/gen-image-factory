@@ -55,23 +55,55 @@ function listFiles(dir) {
 }
 
 function hasEmoji(text) {
+  // First check for trademark symbols (™ \u2122, © \u00A9, ® \u00AE) and exclude them
+  // These are legitimate branding symbols, not decorative emojis
+  const trademarkSymbols = /[\u2122\u00A9\u00AE]/;
+  if (trademarkSymbols.test(text)) {
+    // Remove trademark symbols temporarily to check for actual emojis
+    const textWithoutTrademarks = text.replace(trademarkSymbols, '');
+    text = textWithoutTrademarks;
+  }
+  
   try {
     const reProp = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/u;
     return reProp.test(text);
   } catch (_) {
-    const reRange = /[\u203C-\u3299\u2122\u00A9\u00AE\u2194-\u21AA\u231A-\u27BF\u2B05-\u2B55\u1F000-\u1FAFF]/;
+    // Exclude trademark symbols: ™ \u2122, © \u00A9, ® \u00AE from emoji ranges
+    const reRange = /[\u203C-\u211F\u2120-\u2121\u2123-\u3299\u2194-\u21AA\u231A-\u27BF\u2B05-\u2B55\u1F000-\u1FAFF]/;
     return reRange.test(text);
   }
 }
 
 function stripEmojis(text) {
+  // Preserve trademark symbols (™ \u2122, © \u00A9, ® \u00AE) as they are legitimate branding symbols
+  const trademarkSymbols = /[\u2122\u00A9\u00AE]/g;
+  const preserved = [];
+  let preservedIndex = 0;
+  text = text.replace(trademarkSymbols, (match, offset) => {
+    preserved.push({ offset, symbol: match });
+    return `__TRADEMARK_${preservedIndex++}__`;
+  });
+  
   try {
     const re = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu;
-    return text.replace(re, '');
+    text = text.replace(re, '');
   } catch (_) {
-    const re = /[\u203C-\u3299\u2122\u00A9\u00AE\u2194-\u21AA\u231A-\u27BF\u2B05-\u2B55\u1F000-\u1FAFF]/g;
-    return text.replace(re, '');
+    // Exclude trademark symbols from emoji ranges
+    const re = /[\u203C-\u211F\u2120-\u2121\u2123-\u3299\u2194-\u21AA\u231A-\u27BF\u2B05-\u2B55\u1F000-\u1FAFF]/g;
+    text = text.replace(re, '');
   }
+  
+  // Restore trademark symbols
+  preserved.forEach(({ offset, symbol }) => {
+    text = text.replace(`__TRADEMARK_${preserved.indexOf({ offset, symbol })}__`, symbol);
+  });
+  
+  // Better approach: restore in reverse order to maintain positions
+  for (let i = preserved.length - 1; i >= 0; i--) {
+    text = text.replace(`__TRADEMARK_${i}__`, preserved[i].symbol);
+  }
+  
+  return text;
 }
 
 function main() {

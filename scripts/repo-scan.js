@@ -102,13 +102,19 @@ function getStagedFiles() {
 }
 
 // Emoji detection: prefer Unicode property escapes; fallback to wide ranges
+// Exclude trademark symbols (™ \u2122, © \u00A9, ® \u00AE) as they are legitimate branding symbols
 function hasEmoji(text) {
+  // First remove trademark symbols to check for actual emojis
+  const trademarkSymbols = /[\u2122\u00A9\u00AE]/g;
+  const textWithoutTrademarks = text.replace(trademarkSymbols, '');
+  
   try {
     const reProp = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/u;
-    return reProp.test(text);
+    return reProp.test(textWithoutTrademarks);
   } catch (_) {
-    const reRange = /[\u203C-\u3299\u2122\u00A9\u00AE\u2194-\u21AA\u231A-\u27BF\u2B05-\u2B55\u1F000-\u1FAFF]/;
-    return reRange.test(text);
+    // Exclude trademark symbols from emoji ranges
+    const reRange = /[\u203C-\u211F\u2120-\u2121\u2123-\u3299\u2194-\u21AA\u231A-\u27BF\u2B05-\u2B55\u1F000-\u1FAFF]/;
+    return reRange.test(textWithoutTrademarks);
   }
 }
 

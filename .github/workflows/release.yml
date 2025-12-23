@@ -1,0 +1,314 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+# Cancel superseded runs to avoid wasted minutes
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  security-events: write
+  actions: read
+
+# Retry helper function for network operations
+env:
+  RETRY_MAX_ATTEMPTS: 5
+  RETRY_DELAY_SECONDS: 10
+
+jobs:
+  # Quality Gates: All must pass before artifact build
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install build dependencies for native modules
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            sudo apt-get update && sudo apt-get install -y build-essential python3 libvips-dev libsecret-1-dev && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "apt-get failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "apt-get failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
+
+      - name: Install dependencies
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            npm ci --ignore-scripts && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "npm ci failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "npm ci failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
+
+      - name: Rebuild native dependencies
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            npm rebuild && break
+            if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+              echo "npm rebuild failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+              sleep ${{ env.RETRY_DELAY_SECONDS }}
+            else
+              echo "npm rebuild failed after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+              exit 1
+            fi
+          done
+
+      - name: Run unit and integration tests
+        run: npm run test:run
+
+      - name: Run npm audit (high severity only)
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            if npm audit --audit-level=high; then
+              echo "npm audit passed - no high-severity vulnerabilities found"
+              break
+            else
+              audit_exit=$?
+              if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+                echo "npm audit failed, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+                sleep ${{ env.RETRY_DELAY_SECONDS }}
+              else
+                echo "npm audit found high-severity vulnerabilities - this blocks the workflow!"
+                exit $audit_exit
+              fi
+            fi
+          done
+
+      - name: Run Socket.dev scan
+        run: |
+          for i in $(seq 1 ${{ env.RETRY_MAX_ATTEMPTS }}); do
+            socket_output=$(npx socket audit 2>&1 || true)
+            if echo "$socket_output" | grep -qiE "ETIMEDOUT|ECONNRESET|ENOTFOUND|network|timeout|failed to fetch"; then
+              if [ $i -lt ${{ env.RETRY_MAX_ATTEMPTS }} ]; then
+                echo "Socket.dev network error, retrying in ${{ env.RETRY_DELAY_SECONDS }} seconds (attempt $i/${{ env.RETRY_MAX_ATTEMPTS }})..."
+                sleep ${{ env.RETRY_DELAY_SECONDS }}
+                continue
+              else
+                echo "Socket.dev network error after ${{ env.RETRY_MAX_ATTEMPTS }} attempts"
+                exit 1
+              fi
+            fi
+            if echo "$socket_output" | grep -qi "high-risk\|critical\|malicious"; then
+              echo "High-risk supply-chain issues detected"
+              echo "$socket_output"
+              exit 1
+            fi
+            break
+          done
+
+      - name: CodeQL Security Scan
+        uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript
+          queries: security-extended,security-and-quality
+
+      - name: CodeQL Autobuild
+        uses: github/codeql-action/autobuild@v4
+
+      - name: CodeQL Analyze
+        uses: github/codeql-action/analyze@v4
+
+      - name: Semgrep Security Scan
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          python -m pip install --upgrade pip semgrep
+          semgrep --config=p/owasp-top-ten --config=p/javascript --json --json-output=semgrep.json src/ electron/main.js electron/preload.js scripts/ || semgrep_exit=$?
+          if [ "$semgrep_exit" -ne 0 ] && [ "$semgrep_exit" -ne 1 ] && [ "$semgrep_exit" -ne 7 ]; then
+            echo "ERROR: Semgrep failed to run (exit code: $semgrep_exit)"
+            exit 1
+          fi
+          results_count=$(jq '[.results[]?] | length' semgrep.json 2>/dev/null || echo 0)
+          if [ "$results_count" -gt 0 ]; then
+            echo "Semgrep found security issues"
+            exit 1
+          fi
+
+  # E2E Tests: Run on version tags before artifact build
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install build dependencies (Linux only)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update && sudo apt-get install -y build-essential python3 libvips-dev libsecret-1-dev
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Rebuild native dependencies
+        run: npm rebuild
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        env:
+          ELECTRON_DISABLE_SANDBOX: 1 # Essential for Linux CI
+          CI: true
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+            # Linux requires xvfb for headless display
+            echo "Running E2E tests on Linux with xvfb"
+            xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" npm run test:e2e -- --project=chromium
+          else
+            # Windows and macOS do not use xvfb
+            echo "Running E2E tests on ${{ matrix.os }}"
+            npm run test:e2e -- --project=chromium
+          fi
+        shell: bash
+
+  # Build artifacts for all platforms
+  build-artifacts:
+    name: Build ${{ matrix.platform }}
+    needs: [quality-gates, e2e-tests]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: win
+            os: windows-latest
+            target: win
+          - platform: mac
+            os: macos-latest
+            target: mac
+          - platform: linux
+            os: ubuntu-latest
+            target: linux
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install build dependencies (Linux only)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update && sudo apt-get install -y build-essential python3 libvips-dev libsecret-1-dev
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Rebuild native dependencies
+        run: npm rebuild
+
+      - name: Build application
+        run: npm run build
+
+      - name: Build artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          if [ "${{ matrix.platform }}" == "win" ]; then
+            npm run dist:win
+          elif [ "${{ matrix.platform }}" == "mac" ]; then
+            npm run dist:mac
+          else
+            npm run dist:linux
+          fi
+
+      - name: Generate SHA-256 checksums
+        run: |
+          if [ "${{ matrix.platform }}" == "win" ]; then
+            cd dist
+            powershell -Command "Get-ChildItem -Recurse -File | ForEach-Object { $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash; Write-Output \"$hash  $($_.Name)\" } | Out-File -Encoding utf8 SHA256SUMS.txt"
+          else
+            cd dist
+            find . -type f -exec sha256sum {} \; > SHA256SUMS.txt
+          fi
+
+      - name: Generate SBOM
+        run: |
+          npm install -g @cyclonedx/cyclonedx-npm
+          cyclonedx-npm --output-file dist/SBOM.json
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-${{ matrix.platform }}
+          path: |
+            dist/**
+            !dist/node_modules/**
+          retention-days: 30
+
+  # Create GitHub Release and upload artifacts
+  release:
+    name: Create Release
+    needs: [build-artifacts]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## Release ${{ github.ref_name }}
+            
+            ### Artifacts
+            - Windows: MSIX (Microsoft Store), NSIS installer, Portable
+            - macOS: DMG, ZIP
+            - Linux: AppImage, DEB
+            
+            ### Integrity
+            - SHA-256 checksums included for all artifacts
+            - SBOM (Software Bill of Materials) included for auditability
+            
+            ### Installation
+            See [Release Documentation](docs/release-guide.md) for platform-specific installation instructions.
+          files: |
+            artifacts/**/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

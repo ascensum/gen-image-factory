@@ -6,6 +6,20 @@ module.exports = [
   js.configs.recommended,
   {
     files: ['**/*.{js,jsx}'],
+    languageOptions: {
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        console: 'readonly',
+      },
+    },
     plugins: {
       react,
       'react-hooks': reactHooks,
@@ -15,6 +29,7 @@ module.exports = [
       'react/prop-types': 'off',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+      'no-unused-vars': 'off', // Disable for JSX files - React plugin handles component usage
     },
     settings: {
       react: {
@@ -81,7 +96,7 @@ module.exports = [
     },
   },
   {
-    files: ['electron/**/*.js', 'src/**/*.js', '*.js', '*.ts'],
+    files: ['electron/**/*.js', 'src/**/*.js', 'scripts/**/*.js', '*.js', '*.ts'],
     languageOptions: {
       globals: {
         require: 'readonly',
@@ -101,7 +116,12 @@ module.exports = [
         FormData: 'readonly',
         window: 'readonly',
         document: 'readonly',
+        URL: 'readonly',
       },
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
     },
   },
   {

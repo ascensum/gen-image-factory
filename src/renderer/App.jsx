@@ -152,6 +152,9 @@ function App() {
                 Open Dashboard
               </button>
             </div>
+            <div className="mt-4 text-xs uppercase text-slate-500 tracking-wide">
+              FROM SHIFTLINE TOOLS™
+            </div>
           </div>
         </div>
       )}

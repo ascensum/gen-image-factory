@@ -46,24 +46,102 @@
     "repo:scan": "node scripts/repo-scan.js",
     "repo:scan:staged": "node scripts/repo-scan.js --staged",
     "repo:clean": "node scripts/repo-clean.js",
-    "guardrails:check": "npm run repo:scan && npm run test:exports && npm run test:retry && npm run test:labels && npm run test:security && npm run test:job-management"
+    "guardrails:check": "npm run repo:scan && npm run test:exports && npm run test:retry && npm run test:labels && npm run test:security && npm run test:job-management",
+    "dist": "npm run build && electron-builder",
+    "dist:dir": "npm run build && electron-builder --dir",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "rebuild-icons": "node scripts/rebuild-icons.js",
+    "preview-icons": "node scripts/preview-icons.js"
   },
-  "author": "Gen Image Factory Team",
+  "author": "Shiftline Tools™",
   "license": "MIT",
   "build": {
     "appId": "com.genimage.factory",
     "productName": "Gen Image Factory",
     "mac": {
       "icon": "build/icons/mac/icon.icns",
-      "category": "public.app-category.graphics-design"
+      "category": "public.app-category.graphics-design",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
     },
     "win": {
       "icon": "build/icons/win/icon.ico",
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64",
+            "ia32"
+          ]
+        },
+        {
+          "target": "appx",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "nsis": {
+        "oneClick": false,
+        "allowToChangeInstallationDirectory": true,
+        "perMachine": false
+      },
+      "appx": {
+        "identityName": "AscensumTools.GenImageFactory",
+        "publisher": "CN=E312E730-261C-4C09-AA08-642C4C57E8F8",
+        "publisherDisplayName": "Shiftline Tools"
+      }
     },
     "linux": {
       "icon": "build/icons/png",
-      "category": "Graphics"
+      "category": "Graphics",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "desktop": {
+        "Name": "Gen Image Factory",
+        "Comment": "AI-powered image generation application",
+        "Categories": "Graphics;"
+      }
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "ascensum",
+      "repo": "gen-image-factory"
     }
   },
   "dependencies": {
@@ -73,6 +151,7 @@
     "crypto-js": "^4.2.0",
     "csv-parser": "^3.2.0",
     "dotenv": "^16.0.3",
+    "electron-updater": "^6.6.2",
     "exceljs": "^4.4.0",
     "form-data": "^4.0.0",
     "keytar": "^7.9.0",
@@ -102,6 +181,8 @@
     "@vitest/coverage-v8": "^3.2.4",
     "autoprefixer": "^10.4.21",
     "electron": "^37.2.5",
+    "electron-builder": "^26.0.12",
+    "electron-icon-builder": "^2.0.1",
     "eslint": "^9.32.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",

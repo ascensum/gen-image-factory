@@ -52,10 +52,22 @@ export default defineConfig({
   build: {
     outDir: 'electron/renderer',
     emptyOutDir: true,
+    minify: 'esbuild',
+    sourcemap: false, // Disable sourcemaps for production to reduce size
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html')
+      },
+      output: {
+        manualChunks: undefined // Let Vite handle chunking automatically
       }
+    },
+    // Ensure assets are handled correctly for Electron
+    assetsDir: 'assets',
+    // Optimize for production
+    target: 'esnext',
+    modulePreload: {
+      polyfill: true
     }
   },
   
