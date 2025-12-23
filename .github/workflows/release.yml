@@ -233,6 +233,19 @@ jobs:
       - name: Rebuild native dependencies
         run: npm rebuild
 
+      - name: Update package.json version from git tag
+        run: |
+          # Extract version from git tag (e.g., v1.0.2 -> 1.0.2)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Updating package.json version to $VERSION"
+          
+          # Update package.json version (doesn't create a commit)
+          npm version $VERSION --no-git-tag-version --allow-same-version
+          
+          # Verify the update
+          echo "Updated version: $(node -p "require('./package.json').version")"
+        shell: bash
+
       - name: Build application
         run: npm run build
 
