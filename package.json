@@ -133,9 +133,11 @@
         }
       ],
       "desktop": {
-        "Name": "Gen Image Factory",
-        "Comment": "AI-powered image generation application",
-        "Categories": "Graphics;"
+        "entry": {
+          "Name": "Gen Image Factory",
+          "Comment": "AI-powered image generation application",
+          "Categories": "Graphics;"
+        }
       }
     },
     "publish": {

@@ -247,6 +247,7 @@ jobs:
           else
             npm run dist:linux
           fi
+        shell: bash
 
       - name: Generate SHA-256 checksums
         run: |
@@ -257,6 +258,7 @@ jobs:
             cd dist
             find . -type f -exec sha256sum {} \; > SHA256SUMS.txt
           fi
+        shell: bash
 
       - name: Generate SBOM
         run: |
