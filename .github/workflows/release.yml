@@ -303,6 +303,28 @@ jobs:
         with:
           path: artifacts
 
+      - name: Filter artifacts to only installers
+        run: |
+          # Create a filtered directory with only installer files
+          mkdir -p artifacts-filtered
+          
+          # Windows installers (exclude helper executables like elevate.exe)
+          find artifacts -type f \( -name "*Setup*.exe" -o -name "Gen Image Factory*.exe" -o -name "*.msix" -o -name "*.appx" \) ! -name "elevate.exe" -exec cp {} artifacts-filtered/ \;
+          
+          # macOS installers
+          find artifacts -type f \( -name "*.dmg" -o -name "*-mac.zip" \) -exec cp {} artifacts-filtered/ \;
+          
+          # Linux installers
+          find artifacts -type f \( -name "*.AppImage" -o -name "*.deb" \) -exec cp {} artifacts-filtered/ \;
+          
+          # Checksums and SBOM
+          find artifacts -type f \( -name "*SHA256SUMS.txt" -o -name "*SBOM.json" \) -exec cp {} artifacts-filtered/ \;
+          
+          # List what will be uploaded
+          echo "Files to upload:"
+          ls -lh artifacts-filtered/
+        shell: bash
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -323,15 +345,7 @@ jobs:
             ### Installation
             See [Release Documentation](docs/release-guide.md) for platform-specific installation instructions.
           files: |
-            artifacts/**/*.exe
-            artifacts/**/*.msix
-            artifacts/**/*.appx
-            artifacts/**/*.dmg
-            artifacts/**/*.zip
-            artifacts/**/*.AppImage
-            artifacts/**/*.deb
-            artifacts/**/*SHA256SUMS.txt
-            artifacts/**/*SBOM.json
+            artifacts-filtered/*
           draft: false
           prerelease: false
         env:
