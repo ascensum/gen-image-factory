@@ -254,11 +254,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ "${{ matrix.platform }}" == "win" ]; then
-            npm run build && electron-builder --win --publish never
+            npm run build && npx electron-builder --win --publish never
           elif [ "${{ matrix.platform }}" == "mac" ]; then
-            npm run build && electron-builder --mac --publish never
+            npm run build && npx electron-builder --mac --publish never
           else
-            npm run build && electron-builder --linux --publish never
+            npm run build && npx electron-builder --linux --publish never
           fi
         shell: bash
 
