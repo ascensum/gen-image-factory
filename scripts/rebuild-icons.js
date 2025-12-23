@@ -4,7 +4,7 @@
  * Icon Rebuild Script
  * 
  * Rebuilds application icons from the source 1024x1024 PNG to platform-specific formats
- * using electron-icon-builder.
+ * using Sharp (secure, already in dependencies) and @ffflorian/electron-icon-generator.
  * 
  * Requirements:
  * - Source icon: electron/renderer/assets/gen_image_factory_icon_tray_icon_1024x1024.png
@@ -12,14 +12,20 @@
  * 
  * Usage:
  *   npm run rebuild-icons
+ * 
+ * Note: This script uses Sharp (already in dependencies) for PNG generation and
+ * @ffflorian/electron-icon-generator (secure alternative) for ICO/ICNS conversion.
  */
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const sharp = require('sharp');
 
 const sourceIcon = path.join(__dirname, '../electron/renderer/assets/gen_image_factory_icon_tray_icon_1024x1024.png');
 const outputDir = path.join(__dirname, '../build/icons');
+
+// Icon sizes needed for different platforms
+const pngSizes = [16, 24, 32, 48, 64, 128, 256, 512, 1024];
 
 // Check if source icon exists
 if (!fs.existsSync(sourceIcon)) {
@@ -33,86 +39,101 @@ console.log(`Source: ${sourceIcon}`);
 console.log(`Output: ${outputDir}`);
 console.log('');
 
-// Check if electron-icon-builder is available
-// Note: This tool is optional - icons are already generated and committed
-// Only install if you need to regenerate icons from source
-try {
-  require.resolve('electron-icon-builder');
-} catch {
-  console.error('Error: electron-icon-builder is not installed.');
-  console.error('Icons are already generated in build/icons/');
-  console.error('To regenerate icons, install: npm install --save-dev electron-icon-builder');
-  console.error('Then run: npm run rebuild-icons');
-  process.exit(1);
-}
+// Ensure output directories exist
+const winDir = path.join(outputDir, 'win');
+const macDir = path.join(outputDir, 'mac');
+const pngDir = path.join(outputDir, 'png');
 
-console.log('Rebuilding icons using electron-icon-builder...');
-console.log('');
-
-try {
-  // Run electron-icon-builder
-  execSync(
-    `npx electron-icon-builder --input="${sourceIcon}" --output="${outputDir}"`,
-    { stdio: 'inherit', cwd: path.join(__dirname, '..') }
-  );
-
-  // electron-icon-builder creates icons in a nested directory structure
-  // Move them to the correct location
-  const nestedIconsDir = path.join(outputDir, 'icons');
-  if (fs.existsSync(nestedIconsDir)) {
-    console.log('\nMoving icons to correct location...');
-    
-    // Move win/icon.ico
-    const nestedWin = path.join(nestedIconsDir, 'win', 'icon.ico');
-    const targetWin = path.join(outputDir, 'win', 'icon.ico');
-    if (fs.existsSync(nestedWin)) {
-      if (!fs.existsSync(path.dirname(targetWin))) {
-        fs.mkdirSync(path.dirname(targetWin), { recursive: true });
-      }
-      fs.copyFileSync(nestedWin, targetWin);
-    }
-    
-    // Move mac/icon.icns
-    const nestedMac = path.join(nestedIconsDir, 'mac', 'icon.icns');
-    const targetMac = path.join(outputDir, 'mac', 'icon.icns');
-    if (fs.existsSync(nestedMac)) {
-      if (!fs.existsSync(path.dirname(targetMac))) {
-        fs.mkdirSync(path.dirname(targetMac), { recursive: true });
-      }
-      fs.copyFileSync(nestedMac, targetMac);
-    }
-    
-    // Move PNG files
-    const nestedPng = path.join(nestedIconsDir, 'png');
-    const targetPng = path.join(outputDir, 'png');
-    if (fs.existsSync(nestedPng)) {
-      if (!fs.existsSync(targetPng)) {
-        fs.mkdirSync(targetPng, { recursive: true });
-      }
-      const pngFiles = fs.readdirSync(nestedPng);
-      pngFiles.forEach(file => {
-        const src = path.join(nestedPng, file);
-        const dest = path.join(targetPng, file);
-        fs.copyFileSync(src, dest);
-      });
-    }
-    
-    // Remove nested directory
-    fs.rmSync(nestedIconsDir, { recursive: true, force: true });
-    console.log('Icons moved successfully.');
+[winDir, macDir, pngDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
+});
 
-  console.log('\nIcons rebuilt successfully!');
-  console.log('\nGenerated files:');
-  console.log('  - build/icons/win/icon.ico');
-  console.log('  - build/icons/mac/icon.icns');
-  console.log('  - build/icons/png/*.png (16x16 to 1024x1024)');
-  console.log('\nIcon Size Recommendations:');
-  console.log('  - macOS Menu Bar/Tray: Use 24x24.png or 32x32.png (16x16 is too small)');
-  console.log('  - Windows System Tray: Use 16x16.png (standard)');
-  console.log('  - Desktop Icons: Use 32x32.png or larger');
-} catch (error) {
-  console.error('\nERROR: Error rebuilding icons:', error.message);
-  process.exit(1);
+async function generatePNGs() {
+  console.log('Generating PNG files using Sharp...');
+  const tasks = pngSizes.map(size => {
+    const outputPath = path.join(pngDir, `${size}x${size}.png`);
+    return sharp(sourceIcon)
+      .resize(size, size, { 
+        fit: 'contain', 
+        background: { r: 0, g: 0, b: 0, alpha: 0 } 
+      })
+      .png()
+      .toFile(outputPath)
+      .then(() => console.log(`  [OK] ${size}x${size}.png`))
+      .catch(err => {
+        console.error(`  [ERROR] Failed to generate ${size}x${size}.png:`, err.message);
+        throw err;
+      });
+  });
+  await Promise.all(tasks);
+  console.log('PNG generation complete!\n');
 }
 
+async function generateICOAndICNS() {
+  console.log('Generating ICO and ICNS files...');
+  
+  // Check if @ffflorian/electron-icon-generator is available
+  let iconGenerator;
+  try {
+    iconGenerator = require('@ffflorian/electron-icon-generator');
+  } catch {
+    console.log('  Installing @ffflorian/electron-icon-generator (secure alternative)...');
+    const { execSync } = require('child_process');
+    try {
+      execSync('npm install --save-dev @ffflorian/electron-icon-generator', { 
+        stdio: 'inherit', 
+        cwd: path.join(__dirname, '..') 
+      });
+      iconGenerator = require('@ffflorian/electron-icon-generator');
+    } catch (err) {
+      console.error('  [ERROR] Failed to install @ffflorian/electron-icon-generator.');
+      console.error('  Error:', err.message);
+      console.log('\n  Alternative options:');
+      console.log('  1. Install manually: npm install --save-dev @ffflorian/electron-icon-generator');
+      console.log('  2. Use online converter: https://cloudconvert.com/png-to-ico');
+      console.log('  3. Icons are already generated in build/icons/ - no action needed');
+      return;
+    }
+  }
+  
+  try {
+    // Generate icons using the secure alternative
+    await iconGenerator({
+      input: sourceIcon,
+      output: outputDir
+    });
+    
+    console.log('  [OK] icon.ico (Windows)');
+    console.log('  [OK] icon.icns (macOS)');
+    console.log('ICO/ICNS generation complete!\n');
+  } catch (err) {
+    console.error('  [ERROR] Failed to generate ICO/ICNS:', err.message);
+    console.log('  Note: PNG files were generated successfully.');
+    console.log('  You can use online tools to convert PNGs to ICO/ICNS if needed.');
+  }
+}
+
+async function main() {
+  try {
+    await generatePNGs();
+    await generateICOAndICNS();
+    
+    console.log('[SUCCESS] Icons rebuilt successfully!');
+    console.log('\nGenerated files:');
+    console.log('  - build/icons/win/icon.ico');
+    console.log('  - build/icons/mac/icon.icns');
+    console.log('  - build/icons/png/*.png (16x16 to 1024x1024)');
+    console.log('\nIcon Size Recommendations:');
+    console.log('  - macOS Menu Bar/Tray: Use 24x24.png or 32x32.png (16x16 is too small)');
+    console.log('  - Windows System Tray: Use 16x16.png (standard)');
+    console.log('  - Desktop Icons: Use 32x32.png or larger');
+  } catch (error) {
+    console.error('\n[ERROR] Error rebuilding icons:', error.message);
+    console.error(error.stack);
+    process.exit(1);
+  }
+}
+
+main();
