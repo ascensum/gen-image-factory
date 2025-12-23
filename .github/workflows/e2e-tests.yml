@@ -7,10 +7,8 @@ on:
     - cron: '0 3 * * *'
   # Manual trigger
   workflow_dispatch:
-  # Run on version tags (before release)
-  push:
-    tags:
-      - 'v*.*.*'
+  # Note: E2E tests for version tags are handled by release.yml workflow
+  # to avoid redundant runs and ensure tests run before artifact builds
 
 # Cancel superseded runs to avoid wasted minutes
 concurrency:

@@ -5,7 +5,8 @@ console.log(' MAIN PROCESS: Electron version:', process.versions.electron);
 const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { autoUpdater } = require('electron-updater');
+// Lazy-load electron-updater to avoid initialization issues in test environments
+// It will be required only when needed inside app.whenReady()
 const isDev = process.env.NODE_ENV === 'development';
 
 // Register custom protocol as privileged (MUST be done before app.ready)
@@ -437,6 +438,9 @@ app.whenReady().then(async () => {
     console.log('Initializing electron-updater for GitHub Releases...');
     
     try {
+      // Lazy-load electron-updater only when needed (after app is ready)
+      const { autoUpdater } = require('electron-updater');
+      
       // Configure auto-updater
       autoUpdater.setFeedURL({
         provider: 'github',
@@ -535,6 +539,8 @@ ipcMain.handle('update:check', async () => {
     return { success: false, message: 'Updates are handled by Microsoft Store' };
   }
   try {
+    // Lazy-load electron-updater when needed
+    const { autoUpdater } = require('electron-updater');
     const result = await autoUpdater.checkForUpdates();
     return { success: true, result };
   } catch (error) {
@@ -546,6 +552,8 @@ ipcMain.handle('update:install', () => {
   if (isWindowsStore) {
     return { success: false, message: 'Updates are handled by Microsoft Store' };
   }
+  // Lazy-load electron-updater when needed
+  const { autoUpdater } = require('electron-updater');
   autoUpdater.quitAndInstall();
   return { success: true };
 });
