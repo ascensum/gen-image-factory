@@ -34,11 +34,15 @@ console.log(`Output: ${outputDir}`);
 console.log('');
 
 // Check if electron-icon-builder is available
+// Note: This tool is optional - icons are already generated and committed
+// Only install if you need to regenerate icons from source
 try {
   require.resolve('electron-icon-builder');
 } catch {
   console.error('Error: electron-icon-builder is not installed.');
-  console.error('Please run: npm install --save-dev electron-icon-builder');
+  console.error('Icons are already generated in build/icons/');
+  console.error('To regenerate icons, install: npm install --save-dev electron-icon-builder');
+  console.error('Then run: npm run rebuild-icons');
   process.exit(1);
 }
 
