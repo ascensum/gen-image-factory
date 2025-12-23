@@ -103,17 +103,17 @@
             "x64"
           ]
         }
-      ],
-      "nsis": {
-        "oneClick": false,
-        "allowToChangeInstallationDirectory": true,
-        "perMachine": false
-      },
-      "appx": {
-        "identityName": "AscensumTools.GenImageFactory",
-        "publisher": "CN=E312E730-261C-4C09-AA08-642C4C57E8F8",
-        "publisherDisplayName": "Shiftline Tools"
-      }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    },
+    "appx": {
+      "identityName": "AscensumTools.GenImageFactory",
+      "publisher": "CN=E312E730-261C-4C09-AA08-642C4C57E8F8",
+      "publisherDisplayName": "Shiftline Tools"
     },
     "linux": {
       "icon": "build/icons/png",
