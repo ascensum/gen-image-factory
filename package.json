@@ -55,7 +55,10 @@
     "rebuild-icons": "node scripts/rebuild-icons.js",
     "preview-icons": "node scripts/preview-icons.js"
   },
-  "author": "Shiftline Tools™",
+  "author": {
+    "name": "Shiftline Tools™",
+    "email": "vjatseslav.jertsalov@gmail.com"
+  },
   "license": "MIT",
   "build": {
     "appId": "com.genimage.factory",
