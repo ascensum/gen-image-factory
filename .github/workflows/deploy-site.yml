@@ -44,11 +44,32 @@ jobs:
 
       - name: Verify setup
         run: |
-          echo "Current directory: $(pwd)"
-          echo "Checking public_docs from root:"
-          ls -la public_docs/ || echo "public_docs not found at root"
-          echo "Checking public_docs from website directory:"
-          cd website && ls -la ../public_docs/ || echo "public_docs not found relative to website"
+          echo "=== Repository structure ==="
+          echo "Root directory contents:"
+          ls -la | head -10
+          echo ""
+          echo "=== Checking public_docs ==="
+          if [ -d "public_docs" ]; then
+            echo "✓ public_docs found at root"
+            ls -la public_docs/ | head -5
+          else
+            echo "✗ public_docs NOT found at root"
+          fi
+          echo ""
+          echo "=== From website directory ==="
+          cd website
+          if [ -d "../public_docs" ]; then
+            echo "✓ public_docs found at ../public_docs"
+            ls -la ../public_docs/ | head -5
+          else
+            echo "✗ public_docs NOT found at ../public_docs"
+          fi
+          echo ""
+          echo "=== Docusaurus config check ==="
+          if [ -f "docusaurus.config.js" ]; then
+            echo "✓ docusaurus.config.js exists"
+            grep -A 2 "path:" docusaurus.config.js | head -3
+          fi
 
       - name: Build site
         working-directory: ./website
