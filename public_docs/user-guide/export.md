@@ -192,5 +192,5 @@ Use for:
 
 - Learn about [Job Management](job-management.md) for managing jobs
 - See [Dashboard Usage](dashboard.md) for viewing results
-- Check [Troubleshooting](../../troubleshooting/common-issues.md) for help
+- Check [Troubleshooting](/troubleshooting/common-issues) for help
 

@@ -81,6 +81,6 @@ If the AppImage file won't execute:
 If you continue to experience issues:
 
 1. Check the application logs (available in Settings → Debug mode)
-2. Review the [User Guide](../user-guide/) for detailed feature documentation
+2. Review the [User Guide](/user-guide/settings) for detailed feature documentation
 3. Visit the project's GitHub repository for additional support
 

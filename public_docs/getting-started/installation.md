@@ -70,7 +70,7 @@ After installation, you can verify the installation by:
 
 ## Next Steps
 
-Once installed, see the [User Guide](../user-guide/) for information on:
+Once installed, see the [User Guide](/user-guide/settings) for information on:
 - Configuring your settings
 - Starting your first job
 - Managing job history

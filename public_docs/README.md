@@ -12,7 +12,7 @@ Welcome to the Gen Image Factory documentation. This directory contains user-fac
 ## Getting Help
 
 If you need assistance:
-1. Check the [Troubleshooting](troubleshooting/) section for common issues
-2. Review the [User Guide](user-guide/) for detailed feature documentation
-3. See [Installation Guide](getting-started/installation.md) for setup instructions
+1. Check the [Troubleshooting](/troubleshooting/common-issues) section for common issues
+2. Review the [User Guide](/user-guide/settings) for detailed feature documentation
+3. See [Installation Guide](/getting-started/installation) for setup instructions
 

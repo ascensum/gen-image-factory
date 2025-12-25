@@ -96,7 +96,7 @@ module.exports = [
     },
   },
   {
-    files: ['electron/**/*.js', 'src/**/*.js', 'scripts/**/*.js', '*.js', '*.ts'],
+    files: ['electron/**/*.js', 'src/**/*.js', 'scripts/**/*.js', 'website/**/*.js', '*.js', '*.ts'],
     languageOptions: {
       globals: {
         require: 'readonly',
@@ -122,6 +122,14 @@ module.exports = [
     rules: {
       'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
+    },
+  },
+  {
+    files: ['website/src/**/*.{tsx,jsx}'],
+    languageOptions: {
+      globals: {
+        React: 'readonly',
+      },
     },
   },
   {
