@@ -42,14 +42,19 @@ jobs:
         working-directory: ./website
         run: npm ci
 
-      - name: Verify public_docs path
+      - name: Verify setup
         run: |
-          ls -la ../public_docs || echo "public_docs not found at ../public_docs"
-          ls -la public_docs || echo "public_docs not found at public_docs"
+          echo "Current directory: $(pwd)"
+          echo "Checking public_docs from root:"
+          ls -la public_docs/ || echo "public_docs not found at root"
+          echo "Checking public_docs from website directory:"
+          cd website && ls -la ../public_docs/ || echo "public_docs not found relative to website"
 
       - name: Build site
         working-directory: ./website
-        run: npm run build
+        run: |
+          echo "Building from: $(pwd)"
+          npm run build 2>&1 | tee build.log || (cat build.log && exit 1)
         env:
           NODE_ENV: production
 
