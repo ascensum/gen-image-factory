@@ -25,6 +25,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Optional: Wait for CI to pass (uncomment if you want deploy to wait for CI)
+    # needs: []  # Remove this line and add 'needs: [ci-job-name]' if you want to wait for CI
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,9 +42,16 @@ jobs:
         working-directory: ./website
         run: npm ci
 
+      - name: Verify public_docs path
+        run: |
+          ls -la ../public_docs || echo "public_docs not found at ../public_docs"
+          ls -la public_docs || echo "public_docs not found at public_docs"
+
       - name: Build site
         working-directory: ./website
         run: npm run build
+        env:
+          NODE_ENV: production
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
