@@ -75,7 +75,12 @@ jobs:
         working-directory: ./website
         run: |
           echo "Building from: $(pwd)"
-          npm run build 2>&1 | tee build.log || (cat build.log && exit 1)
+          echo "Node version: $(node --version)"
+          echo "NPM version: $(npm --version)"
+          echo "Checking if public_docs is accessible:"
+          ls -la ../public_docs/ || echo "ERROR: public_docs not found!"
+          echo "Starting build..."
+          npm run build
         env:
           NODE_ENV: production
 
