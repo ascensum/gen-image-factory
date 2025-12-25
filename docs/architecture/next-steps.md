@@ -33,12 +33,12 @@ This architecture document provides the complete technical blueprint for the enh
 6. **Story 1.12**: Advanced Export & File Management - ZIP+Excel export and file operations
 
 ### **CI/CD & DevSecOps (Architectural Deliverables)**
-1. Add local pre-commit gate (fast): `.husky/pre-commit` running ESLint (no warnings), `npm run test:critical`, Semgrep (Electron + JS), optional `npm audit --omit=dev`.
+1. Add local pre-commit gate (fast): `.husky/pre-commit` running ESLint (no warnings), `npm run test:critical`, Semgrep (OWASP Top 10 + JS), optional `npm audit --omit=dev`.
 2. Add cloud QA (GitHub Actions): `.github/workflows/ci.yml` with build, tests, CodeQL, Semgrep, audit on push to `main`.
-3. Add `.semgrep.yml` to manage local overrides; keep public packs as base (`p/owasp-electron`, `p/javascript`).
+3. Semgrep configuration: Uses command-line flags (`--config=p/owasp-top-ten --config=p/javascript`) due to Semgrep 1.146.0 YAML config compatibility limitation. Path exclusions via `.semgrepignore`. **Note**: `p/owasp-electron` does not exist; `p/owasp-top-ten` covers Electron security concerns.
 4. Optional: release build on tags with `electron-builder --publish never` and upload artifacts to release draft.
-5. Refinements: CI concurrency (cancel in-progress), Semgrep excludes and pinned rulesets, weekly scheduled CodeQL.
-6. Manual unsigned releases on demand: Add `workflow_dispatch` that builds matrix artifacts and publishes to GitHub Releases (no auto-update; keep prior releases for rollback).
+5. Refinements: CI concurrency (cancel in-progress), Semgrep excludes via `.semgrepignore`, weekly scheduled CodeQL.
+6. Automated release pipeline (Story 1.21): Triggered by Git Tags (`v*.*.*`) automatically builds `electron-builder` artifacts and uploads to GitHub Releases; Windows uses Microsoft Store (mandatory) with MSIX packages; GitHub Releases (secondary, unsigned) for advanced users; macOS/Linux use GitHub Releases with `electron-updater` for automatic updates; SHA-256 checksums and SBOM required for every release.
 
 ### **Security Enhancement Path**
 1. **Story 1.13**: Security Hardening - Encrypted database and memory protection

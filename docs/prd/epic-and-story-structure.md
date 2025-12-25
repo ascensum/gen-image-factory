@@ -11,7 +11,7 @@
 - Story 10 (UI Visual Cleanup & Consistency): Done; unified progress behavior, counters/filters correctness, and labeling parity applied.
 - Provider swap to Runware: Done; Runware is default; Midjourney‑specific UI actions removed.
 - Export UX: Updated; single‑job Excel via modal (.xlsx) and bulk ZIP export via modal; `exceljs` used end‑to‑end.
-- Distribution policy: Initial releases are manual and unsigned via GitHub Releases; auto‑update is planned for a later phase after signing/notarization.
+- Distribution policy: Automated release pipeline triggered by Git Tags (Story 1.21); Windows uses Microsoft Store (mandatory, primary) with MSIX packages; GitHub Releases (secondary, unsigned) for advanced users; macOS/Linux use GitHub Releases with `electron-updater` for automatic updates.
 
 1.  **Foundation: Setup Basic Electron Shell**
     - Create Electron main process
@@ -138,12 +138,65 @@
     - Provide npm scripts for targeted subsets (DB, settings, story-1.7)
     - Remediate failing tests introduced after Story 1.9 development, excluding unit/integration/E2E already green and covered by the HySky pre-commit script
 
-19. **Distribution: Implement Application Packaging** (Detailed story to be drafted by Scrum Master)
+19. **Testing Coverage Elevation** (Story 1.19)
+    - Implement comprehensive test coverage for critical scenarios (Settings, JobRunner, RetryExecutor)
+    - Define must-not-regress scenario suite
+    - Achieve ≥70% coverage targets for stable API-like modules
+    - Create scenario-driven testing approach for orchestration modules
+
+20. **Setup Quality Gates & CI** (Story 1.20) - (DONE)
+    - Implement mandatory local pre-commit quality gates (ESLint, critical tests, Semgrep, Socket.dev)
+    - Create comprehensive CI pipeline with build, tests, CodeQL, Semgrep, Socket.dev, npm audit
+    - Configure E2E test execution workflows (nightly, version tags, manual dispatch)
+    - Add scheduled CodeQL weekly security scans
+    - Optimize E2E test execution strategy (chromium-only for manual/tag runs, full cross-browser for nightly)
+    - Document quality gate process and test-to-scenario mapping
+
+20.1. **Fix E2E Test Failures** (Story 1.20.1) - (DONE - Rescoped)
+    - Investigate and fix all viable E2E test failures (65 active tests now pass)
+    - Address timing/race condition issues using Active State Synchronization pattern
+    - Improve test reliability and resilience for CI environment (sandbox args, timeouts, Electron API stubs)
+    - Ensure tests work in both local and CI environments (cross-platform: macOS, Windows, Linux)
+    - Properly skip tests with expected limitations (19 tests: 17 require Electron backend, 2 have flaky UI rendering)
+    - Document root causes, fixes, and test coverage analysis
+    - **Outcome**: All active E2E tests pass consistently; skipped tests are documented with rationale and integration test coverage references
+
+21. **Distribution: Implement Application Packaging** (Story 1.21)
     - Configure Electron Builder for cross-platform packaging (NFR3)
     - Generate distributable installers for Windows, macOS, and Linux
-    - Initial distribution: manual unsigned releases via GitHub Releases (keep history for rollback)
-    - Auto‑update: planned for later after signing/notarization; disabled initially
+    - **Automated Release Pipeline**: Triggered by Git Tags (e.g., `v*.*.*`) automatically builds artifacts and uploads to GitHub Releases
+    - **Windows Distribution**: Microsoft Store (mandatory, primary) with MSIX packages; GitHub Releases (secondary, unsigned) for advanced users
+    - **macOS/Linux**: GitHub Releases with `electron-updater` for automatic updates
+    - **Auto-Update**: Conditional based on runtime environment (Windows Store uses OS updates; GitHub Releases uses `electron-updater`)
+    - **Artifact Integrity**: SHA-256 checksums and SBOM required for every release
     - Create deployment documentation
     - Optimize Vite build for production
 
-**Testing Strategy**: Each story includes comprehensive testing tasks covering unit tests, integration tests, and end-to-end validation as appropriate for the story scope. TypeScript will provide additional type safety during development. Story 1.17 specifically addresses the testing requirements for the foundational components from Story 1.1. Story 1.18 stabilizes unit and integration tests to ensure CI reliability and alignment with current architecture.
+## Epic 2: Project Documentation Website
+
+**Epic Goal**: This epic will deliver a public-facing documentation website that provides user-friendly documentation for the desktop application while maintaining a clear separation from internal project documentation (PRD, stories, architecture).
+
+**User Stories (in implementation order):**
+
+1. **Docs Structure Migration & Firewall** (Story 2.1)
+    - Create `docs/public_docs/` directory structure for user-facing documentation
+    - Migrate user-facing documentation components (dashboard usage, settings, workflows, export functionality)
+    - Implement privacy firewall to exclude internal documentation (PRD, stories, architecture)
+    - Verify no sensitive internal information is exposed in public docs
+    - Document migration process and firewall rules
+
+2. **Docusaurus Scaffolding & Branding** (Story 2.2)
+    - Install and scaffold Docusaurus in `/website` directory
+    - Configure site to consume content from `../docs/public_docs/`
+    - Apply Tauri Dark Mode theme and branding to match desktop application
+    - Set up basic site structure, navigation, and sidebar
+    - Validate local development and build process
+
+3. **Website Deployment** (Story 2.3)
+    - Create GitHub Actions workflow for automated deployment
+    - Configure custom domain and DNS settings
+    - Set up automated deployment on push to `main`
+    - Enable HTTPS and validate deployment process
+    - Document rollback procedures
+
+**Testing Strategy**: Each story includes comprehensive testing tasks covering unit tests, integration tests, and end-to-end validation as appropriate for the story scope. TypeScript will provide additional type safety during development. Story 1.17 specifically addresses the testing requirements for the foundational components from Story 1.1. Story 1.18 stabilizes unit and integration tests to ensure CI reliability and alignment with current architecture. Story 1.19 elevates test coverage with must-not-regress scenarios. Story 1.20 implements quality gates and CI infrastructure with optimized E2E test execution strategy.

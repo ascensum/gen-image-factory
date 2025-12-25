@@ -112,24 +112,26 @@ Defaults enforced in the Electron app:
 - `webSecurity: true`
 
 Process enforcement:
-- Semgrep runs locally (pre-commit) on staged files and in CI (full repo) with `p/owasp-electron` and `p/javascript` packs; high‑risk findings fail CI.
+- Semgrep runs locally (pre-commit) on staged files and in CI (full repo) with `p/owasp-top-ten` and `p/javascript` packs; CI fails on **any Semgrep error** (not just high-risk findings) to prevent silent failures. **Note**: `p/owasp-electron` does not exist in Semgrep registry; `p/owasp-top-ten` covers Electron security concerns.
 - CodeQL runs in CI for JavaScript; security alerts must be addressed.
 - IPC channels are whitelisted and validated via preload; inputs are sanitized.
 - Renderer applies strict CSP; no `eval()` or remote code loading is allowed.
 
 Configuration hygiene:
-- `.semgrep.yml` pins ruleset versions and excludes heavy/generated paths (e.g., `node_modules`, `playwright-report`, built assets) to keep scans fast and reproducible.
+- Semgrep configuration uses command-line flags (`--config=p/owasp-top-ten --config=p/javascript`) due to Semgrep 1.146.0 YAML config compatibility limitation. Path exclusions handled via `.semgrepignore` (e.g., `node_modules`, `playwright-report`, built assets) to keep scans fast and reproducible.
 
-## Unsigned Builds Policy (Initial Phase)
+## Distribution and Build Policy (Story 1.21)
 
-- The application will distribute unsigned binaries via GitHub Releases initially.
-- Users must explicitly accept OS warnings (Undefined/Unknown Publisher) during install:
-  - macOS: Right‑click → Open (Gatekeeper prompt) for .app/.dmg/.zip
-  - Windows: SmartScreen warning; proceed anyway
-  - Linux: Typically no warning; may need executable bit
-- Auto-update is intentionally disabled at this stage; all updates are manual installs from Releases.
-- Rollback is manual: Users download and reinstall an older version from the Releases page.
-- Future path (optional): enable signing/notarization and app store submissions, then adopt auto-update with `electron-updater` and allow‑downgrade policies as needed.
+- **Automated Release Pipeline**: Triggered by Git Tags (e.g., `v*.*.*`) automatically builds `electron-builder` artifacts and uploads to GitHub Releases
+- **Windows Distribution**: 
+  - **Primary (Mandatory)**: Microsoft Store with MSIX packages (signed by Microsoft Store, no user warnings)
+  - **Secondary**: GitHub Releases with unsigned artifacts (for advanced users; users must accept OS warnings)
+- **macOS/Linux Distribution**: GitHub Releases with unsigned artifacts; users must explicitly accept OS warnings during install
+- **Auto-Update**: 
+  - Windows (Microsoft Store): Automatic updates via Windows OS (no `electron-updater` needed)
+  - Windows (GitHub Releases) / macOS / Linux: `electron-updater` with GitHub Releases as provider (conditional based on runtime environment)
+- **Artifact Integrity**: SHA-256 checksums and SBOM (Software Bill of Materials) required for every release
+- **Rollback**: Users can download and reinstall any prior version from Releases
 
 ### **Planned UI Messages (Story 1.13)**
 ```typescript

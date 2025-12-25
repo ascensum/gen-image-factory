@@ -19,7 +19,10 @@ As a solo developer (no PR flow for now), enforce hygiene and security via local
   - After risky cleanups, run `npm run guardrails:check` manually before tagging a release.
 
 * **Deployment Approach**: The application will be packaged into distributable, platform-specific installers using **`electron-builder`**.
-* **Auto-Updates**: Not enabled initially. Users update manually by downloading new assets from **GitHub Releases**. In the future, after signing/notarization and (optionally) App Store/Microsoft Store submission, **`electron-updater`** can be enabled with GitHub Releases as the provider.
+* **Auto-Updates**: Conditional based on runtime environment (Story 1.21):
+  - **Windows (Microsoft Store)**: Automatic updates via Windows OS (Store handles updates, no `electron-updater` needed)
+  - **Windows (GitHub Releases) / macOS / Linux**: `electron-updater` with GitHub Releases as provider (implemented in Story 1.21)
+  - Application code detects runtime environment (`process.windowsStore`) and enables/disables `electron-updater` accordingly
 * **Monitoring**: The application will rely on user-submitted bug reports via GitHub Issues, supported by the **"Debug Mode"** logging feature. The application will log detailed errors to a local file when in debug mode.
 
 ## Current State vs Plan (2025-11-02)
@@ -31,61 +34,127 @@ As a solo developer (no PR flow for now), enforce hygiene and security via local
   - Add `electron-builder` as a devDependency.
   - Add scripts: `"dist": "npm run build && electron-builder"`, and `"release": "npm run build && electron-builder --publish always"` (after CI is ready and `GH_TOKEN` configured).
 
-### Manual Release and Rollback (Unsigned)
-- Policy: Publish unsigned artifacts; no auto-update. Users accept "Unknown/Undefined Publisher" prompts per OS and install manually.
-- Release channel: GitHub Releases (mark as prerelease by default). Keep all historical releases to enable rollback.
-- Rollback: Users can download and reinstall any prior version from Releases. Document this in the README/website.
-- Workflow: Provide a manual, on-demand `workflow_dispatch` in GitHub Actions that:
-  - Accepts inputs (version, prerelease flag, release notes URL/summary)
-  - Builds a matrix of artifacts (Windows NSIS/portable, macOS dmg/zip, Linux AppImage/deb)
-  - Publishes to the specified GitHub Release (create/update) using `GH_TOKEN`
-  - Does not enable auto-update; no code-signing required initially
+### Release and Distribution Strategy (Story 1.21)
 
-### Auto-Updates
-- Planned: Use `electron-updater` with GitHub Releases as provider.
-- Current: No `electron-updater` dependency or `autoUpdater` wiring in `electron/main.js`.
-- Action:
-  - Add `electron-updater` dependency.
-  - Initialize `autoUpdater` in `electron/main.js` (check for updates on app ready, handle update events, and expose a minimal IPC to trigger checks).
-  - Configure `publish` in `electron-builder` (GitHub provider) and set `GH_TOKEN` in CI.
+**Windows Distribution (Primary - Mandatory):**
+- **Microsoft Store distribution is mandatory** for Windows users.
+- Rationale: Free code signing, avoids SmartScreen/Defender warnings, provides automatic trust and update channel.
+- Requirements:
+  - Build **MSIX** package in CI (not NSIS/portable)
+  - Do **not** sign locally
+  - Upload MSIX to Microsoft Store
+  - Microsoft Store handles code signing, certificate management, and secure distribution
+- **Update Logic:** Application code must detect runtime environment (`process.windowsStore`):
+  - **If Store:** Disable internal `electron-updater`. Rely on Windows OS updates.
+  - **If GitHub:** Enable `electron-updater` to poll GitHub Releases.
+
+**GitHub Releases (Secondary):**
+- Triggered on version tags (`v*`):
+  - Publish build artifacts to GitHub Releases
+  - Windows artifacts published here may be **unsigned** (for advanced users)
+  - GitHub Releases serve as open-source artifact archive and manual install option
+- **Artifact Requirements:**
+  - All platforms: Windows (MSIX for Store, unsigned for GitHub), macOS (unsigned `.dmg` or `.zip`), Linux (`.AppImage`, `.deb`, or `.rpm`)
+  - **SHA-256 checksum file** must be generated alongside binaries for integrity verification
+  - **SBOM (Software Bill of Materials)** must be generated for every release (using `cyclonedx-npm` or similar free tool)
+- **Rollback:** Users can download and reinstall any prior version from Releases. Document this in the README/website.
+- **Build Isolation:** Builds must run on clean runner instances (GitHub Actions standard). No local builds accepted for release candidates.
+
+### Auto-Updates (Story 1.21)
+
+**Platform-Specific Update Strategy:**
+
+- **Windows (Microsoft Store):**
+  - Disable internal `electron-updater` when running from Store
+  - Rely on Windows OS automatic updates via Microsoft Store
+  - Application code must detect `process.windowsStore` and disable `electron-updater` accordingly
+
+- **Windows (GitHub Releases) / macOS / Linux:**
+  - Use `electron-updater` with GitHub Releases as provider
+  - Implementation: `electron-updater` dependency, `autoUpdater` initialization in `electron/main.js`
+  - Check for updates on app ready, handle update events, expose IPC to trigger manual checks
+  - Configure `publish` in `electron-builder` (GitHub provider) and set `GH_TOKEN` in CI
+  - Only enable `electron-updater` when NOT running from Microsoft Store
 
 ### CI/CD
-- Planned: CI should run unit/integration/E2E tests and produce signed build artifacts for macOS/Windows/Linux; releases published from tags.
-- Current: No CI workflows are present in the repository.
-- Action:
-  - Add GitHub Actions workflows:
-    - `ci.yml`: install deps, cache, run `vitest run`, selected integration tests, and Playwright E2E in headless mode.
-    - `build.yml`: on tag, run `electron-builder` matrix for mac/win/linux to produce artifacts; upload artifacts to release draft.
-  - Configure required secrets (e.g., `GH_TOKEN`).
+- **Current State:** CI workflows are present in the repository (see `.github/workflows/ci.yml` - Story 1.20).
+- **Architecture:** Follows the two-layer approach:
+  - **Layer 1:** Local pre-commit validation (fast, blocking)
+  - **Layer 2:** CI/CD on GitHub (deep validation, security scanning, release automation)
 
 ### CI/CD Workflow Design (Solo Dev, direct-to-main)
 
 - **Triggers:**
-  - **Clean Room Validation:** `on: push` to `main`.
-    - Purpose: Verify build and tests pass on a clean machine (eliminates "works on my machine").
-    - Jobs: Build, Unit/Integration Tests, E2E Tests (Headless).
+  - **CI: QA & Security Stage:** `on: push` to `main`.
+    - Purpose: Deep security analysis, supply-chain protection, and validation on clean machine.
+    - Jobs: Build, Unit/Integration Tests, Security-Sensitive Logic Tests, Static Analysis (Semgrep, CodeQL), Supply-Chain Scans (Socket.dev, npm audit).
     - Failure Policy: Blocking. Fix immediately.
+    - **Note:** E2E tests are periodic/optional (nightly, on version tags, or manual via `workflow_dispatch`), not on every push.
   - **Automated Release Pipeline:** `on: push` tags (e.g., `v*.*.*`).
-    - Purpose: Create and publish release artifacts.
+    - Purpose: Create and publish release artifacts with integrity guarantees.
     - Jobs: `electron-builder` matrix (Windows/Mac/Linux).
-    - Output: Signed/Unsigned artifacts uploaded to GitHub Releases.
+    - Output: Build artifacts with SHA-256 checksums and SBOM (Software Bill of Materials) uploaded to GitHub Releases.
 
-- **Cloud QA jobs (minimal):**
-  - Build → `npm ci && npm run build`
-  - Tests → `npm test`
-  - CodeQL → `github/codeql-action` (Javascript)
-  - Semgrep → `npx semgrep --config p/owasp-electron --error`
-  - Audit → `npm audit` (or rely on Dependabot)
+- **CI Jobs (aligned with prioritized architecture):**
+  - **Dependency Installation:** `npm ci --ignore-scripts` (supply-chain safe, enforces lockfile, blocks install-time malware)
+  - **Build:** `npm run build`
+  - **Tests:** Unit tests, integration tests, security-sensitive logic tests (on every push)
+  - **Static Analysis:**
+    - Semgrep (full scan, broader ruleset)
+    - CodeQL (JavaScript)
+    - npm audit (high severity only)
+    - Socket.dev CLI (`npx socket audit`)
+  - **Supply-Chain Protection (Mandatory):**
+    - Lockfile usage (`npm ci --ignore-scripts`)
+    - Socket.dev scanning
+    - Dependabot enabled for npm ecosystem
+    - Pinned action versions
+    - Minimal permissions (`contents: read`)
 
 - **Refinements:**
-  - **Clean Room Validation:** A lightweight GitHub Action runs on every push to `main` to verify the build/tests work on a clean machine.
-  - **Automated Release Pipeline:** A GitHub Action triggered by **Git Tags** (e.g., `v1.0.0`) automatically builds `electron-builder` artifacts (Windows/Mac/Linux) and uploads them to GitHub Releases.
-  - Concurrency: use a `concurrency` group on `main` with `cancel-in-progress: true` to stop outdated runs.
-  - Scheduled security: add a weekly CodeQL scheduled job in addition to push events.
-  - Semgrep hygiene: exclude heavy directories (`node_modules`, `playwright-report`, `web-bundles`, built assets) and pin rule versions via `.semgrep.yml`.
+  - **Clean Room Validation:** CI runs on every push to `main` to verify build/tests on a clean machine.
+  - **Automated Release Pipeline:** Triggered by **Git Tags** (e.g., `v1.0.0`) automatically builds `electron-builder` artifacts and uploads to GitHub Releases.
+  - **Concurrency:** Uses `concurrency` group on `main` with `cancel-in-progress: true` to stop outdated runs.
+  - **Scheduled Security:** Weekly CodeQL scheduled job in addition to push events.
+  - **Semgrep Hygiene:** Exclude heavy directories (`node_modules`, `playwright-report`, `web-bundles`, built assets) via `.semgrepignore`. Configuration uses command-line flags (`--config=p/owasp-top-ten --config=p/javascript`) due to Semgrep 1.146.0 YAML config compatibility limitation. **Note**: `p/owasp-electron` does not exist; `p/owasp-top-ten` covers Electron security concerns.
+  - **Artifact Integrity:** Every release must include SHA-256 checksums and SBOM (Software Bill of Materials) for auditability.
 
 ### Code-Signing (Future)
 - Not configured yet. Document platform-specific signing steps (Apple Developer ID, Windows code signing) before public distribution.
+
+### Documentation Website Deployment (Epic 2)
+
+**Overview:**
+- **Technology:** Docusaurus static site generator
+- **Location:** `/website` directory (separate from main Electron app)
+- **Content Source:** `docs/public_docs/` directory (privacy firewall enforced)
+- **Deployment Target:** GitHub Pages (or alternative hosting provider)
+
+**Deployment Strategy:**
+- **Automated Deployment:** GitHub Actions workflow (`.github/workflows/deploy-site.yml`)
+- **Trigger:** Push to `main` branch or manual `workflow_dispatch`
+- **Build Process:** 
+  - Install dependencies in `/website` directory (`npm ci`)
+  - Build Docusaurus site (`npm run build`)
+  - Deploy static site from `/website/build` to GitHub Pages
+- **Custom Domain:** Configured via CNAME file in `/website/static/`
+- **HTTPS:** Automatic via GitHub Pages (Let's Encrypt)
+
+**Privacy Firewall:**
+- **Content Source:** Only `docs/public_docs/` is included in build
+- **Excluded:** All internal documentation (PRD, stories, architecture, logs) is explicitly excluded
+- **Validation:** Deployment workflow validates privacy firewall before deployment
+
+**Deployment Workflow:**
+- Build runs in clean CI environment
+- Deployment gated by successful build
+- Rollback via commit revert or manual redeploy
+- Deployment status visible in GitHub Actions
+
+**Related Stories:**
+- Story 2.1: Docs Structure Migration & Firewall
+- Story 2.2: Docusaurus Scaffolding & Branding
+- Story 2.3: Website Deployment
 
 ## Security Deployment Considerations
 

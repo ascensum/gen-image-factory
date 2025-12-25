@@ -35,10 +35,21 @@
     - Settings integration tests aligned to `BackendAdapter` with mocks for `keytar` and Electron dialogs.
     - Centralized mocks and helpers in `tests/setup.ts` to avoid native module invocation during tests.
 
-7.  **NFR7**: CI must enforce quality gates: unit/integration/E2E tests, CodeQL, and Semgrep (Electron + JavaScript packs). High‑risk findings fail CI; optional `npm audit` may run locally or in CI.
+7.  **NFR7**: CI must enforce quality gates: unit/integration/E2E tests, CodeQL, and Semgrep security scanning.
+   - **CodeQL**: JavaScript/TypeScript analysis with security-extended and security-and-quality query suites. CodeQL must run on every push AND as a weekly scheduled job to catch security drift.
+   - **Semgrep**: Security scanning using `p/owasp-top-ten` and `p/javascript` rulesets (configured via command-line flags due to Semgrep 1.146.0 YAML config compatibility limitation). **Note**: The `p/owasp-electron` ruleset does not exist in the Semgrep registry (returns HTTP 404); `p/owasp-top-ten` provides comprehensive coverage for Electron security concerns. The `p/typescript` ruleset is excluded as the JavaScript ruleset covers TypeScript code. Path exclusions are handled via `.semgrepignore`. CI fails on **any Semgrep error** (not just high-risk findings) to prevent silent failures where security scanning isn't working but CI shows green.
+   - **Socket.dev**: Supply-chain risk detection for npm dependencies
+   - **npm audit**: `npm audit` (high severity only) **must** run in CI and fail workflow on high-severity vulnerabilities.
+   - **E2E Tests**: E2E tests must run periodically: nightly scheduled run, on version tags (before release), and via manual workflow_dispatch. E2E tests are NOT required on every push (too slow). **Optimization Strategy**: Manual/workflow_dispatch/tag runs use chromium-only execution (~3x faster) for quick feedback; nightly scheduled runs execute full cross-browser suite (chromium, firefox, webkit) to catch browser-specific regressions. Tests use 2 workers for parallelization, reducing execution time from 35+ minutes to ~20 minutes for full suite. **E2E Test Scope**: E2E tests focus on UI/navigation workflows and user-facing interactions. All active E2E tests must pass (tests that require Electron backend or have flaky UI rendering are properly skipped with documentation). Backend functionality and business logic are validated through integration tests, which provide comprehensive coverage for Electron-specific functionality and job execution workflows.
+   - High‑risk findings from CodeQL or Semgrep fail CI; network retry logic (5 attempts with 10-second delays) ensures transient failures don't cause false negatives.
 
 ## Compatibility Requirements
 
 1.  **CR1**: The integration of the existing backend modules shall require minimal refactoring of their core logic to function within the Electron environment.
 2.  **CR2**: The application must support all existing configuration options and workflows through the new UI.
-3.  ~~CR3: To ensure compatibility with "Flying Upload" ...~~ *(Removed for MVP)* 
+3.  ~~CR3: To ensure compatibility with "Flying Upload" ...~~ *(Removed for MVP)*
+
+## UI/UX Branding
+
+1.  **BR1**: The application must display "FROM SHIFTLINE TOOLS™" on the splash screen as the primary brand identifier.
+2.  **BR2**: The legacy 'GIMF' acronym and icon are strictly deprecated and must not be used in production builds or any user-facing interfaces. 

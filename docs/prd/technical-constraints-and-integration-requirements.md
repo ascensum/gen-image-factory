@@ -31,6 +31,31 @@ The final application will be packaged using `electron-builder` to generate dist
 
 ### Release and CI Policy (2025-11-02)
 
-- Manual unsigned releases via GitHub Releases; keep historical releases for rollback.
-- Provide a `workflow_dispatch` that builds matrix artifacts (macOS/Windows/Linux) and publishes to the selected Release; auto‑update is disabled initially.
-- CI quality gates: run unit/integration/E2E tests, CodeQL (JavaScript), and Semgrep (Electron + JavaScript packs). High‑risk findings fail CI; optional `npm audit` may run locally or in CI.
+- **Automated Release Pipeline**: Triggered by Git Tags (e.g., `v*.*.*`) automatically builds `electron-builder` artifacts and uploads to GitHub Releases (Story 1.21)
+- **Artifact Integrity**: SHA-256 checksums and SBOM (Software Bill of Materials) required for every release
+- **Auto-Update**: Conditional based on runtime environment (Windows Store uses OS updates; GitHub Releases uses `electron-updater`)
+- Historical releases kept for rollback capability
+- CI quality gates: run unit/integration/E2E tests, CodeQL (JavaScript/TypeScript with security-extended queries), Semgrep (OWASP Top 10 + JavaScript - see NFR7), Socket.dev (supply-chain scanning), and `npm audit` (high severity only, mandatory in CI). CodeQL must run on every push AND as a weekly scheduled job to catch security drift. E2E tests run periodically (nightly scheduled, on version tags, or manual via workflow_dispatch), not on every push. All active E2E tests must pass (tests requiring Electron backend are properly skipped; backend functionality is covered by integration tests). High‑risk findings fail CI; network retry logic ensures reliability.
+
+### Dual-Channel Distribution Policy
+
+- **Windows Distribution**:
+  - **Primary Channel**: Microsoft Store ($0 cost signed MSIX packages) - mandatory distribution channel
+  - **Secondary Channel**: GitHub Releases (unsigned NSIS installer) - for advanced users requiring offline installation or bypassing Store restrictions
+- **macOS/Linux Distribution**:
+  - **Primary Channel**: GitHub Releases with `electron-updater` support for automatic updates
+
+### Microsoft Store Identity Profile
+
+The Microsoft Store Identity Profile is immutable and defines the internal vs. public brand separation:
+
+- **Identity Name**: `AscensumTools.GenImageFactory` (Internal only - not user-visible)
+- **Publisher**: `CN=E312E730-261C-4C09-AA08-642C4C57E8F8`
+- **Publisher Display Name**: `Shiftline Tools` (User-visible brand)
+- **Store ID**: `9P0D8CQ3R86F`
+
+**Critical Constraint**: The "Ascensum" identity name must be hidden behind the "Shiftline Tools" display brand in all user-visible areas. No references to "Ascensum" or "AscensumTools" may appear in the application UI, splash screens, about dialogs, or any user-facing documentation.
+
+### Deployment Assets
+
+- **System-Level Icons**: Production installers must use the textless version of the circular Factory Logo for all system-level icons (.ico, .icns, .png).
