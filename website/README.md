@@ -2,6 +2,8 @@
 
 This directory contains the Docusaurus-based documentation website for Gen Image Factory.
 
+<!-- Trigger deployment workflow -->
+
 ## Overview
 
 The documentation site is built with Docusaurus and consumes content from `../public_docs/`. The site is configured with:
