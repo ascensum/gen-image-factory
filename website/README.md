@@ -2,7 +2,7 @@
 
 This directory contains the Docusaurus-based documentation website for Gen Image Factory.
 
-<!-- Trigger deployment workflow -->
+<!-- Deployment ready - CNAME verified -->
 
 ## Overview
 
