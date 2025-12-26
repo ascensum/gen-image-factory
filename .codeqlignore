@@ -1,0 +1,38 @@
+# CodeQL ignore list
+# Exclude build artifacts, dependencies, and generated files
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+release/
+web-bundles/
+
+# Electron renderer build output (Vite-generated assets)
+electron/renderer/
+
+# Testing artifacts
+coverage/
+playwright-report/
+test-results/
+
+# Media and binary files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.pdf
+*.woff
+*.woff2
+*.ttf
+*.eot
+
+# Package files
+package-lock.json
+*.asar
+

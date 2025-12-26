@@ -135,7 +135,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y jq
           python -m pip install --upgrade pip semgrep
-          semgrep --config=p/owasp-top-ten --config=p/javascript --json --json-output=semgrep.json src/ electron/main.js electron/preload.js scripts/ || semgrep_exit=$?
+          semgrep --config=p/owasp-top-ten --config=p/javascript --exclude=electron/renderer/** --json --json-output=semgrep.json src/ electron/main.js electron/preload.js scripts/ || semgrep_exit=$?
           if [ "$semgrep_exit" -ne 0 ] && [ "$semgrep_exit" -ne 1 ] && [ "$semgrep_exit" -ne 7 ]; then
             echo "ERROR: Semgrep failed to run (exit code: $semgrep_exit)"
             exit 1

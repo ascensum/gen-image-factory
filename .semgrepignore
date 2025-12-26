@@ -8,6 +8,7 @@ out/
 release/
 web-bundles/
 electron/renderer/**  # Vite build output, not source code (exclude entire directory recursively)
+electron/renderer/assets/**  # Explicitly exclude assets directory (build artifacts, images, CSS, JS bundles)
 *.asar
 package-lock.json
 
