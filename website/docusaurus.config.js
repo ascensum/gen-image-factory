@@ -3,11 +3,39 @@
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const {themes} = require('prism-react-renderer');
+const fs = require('fs');
+const path = require('path');
+
+// Function to fetch latest version from GitHub Releases (synchronous with fallback)
+function getLatestVersionFromGitHubSync() {
+  try {
+    // Try to read from cache file first (updated by build script)
+    const cacheFile = path.join(__dirname, '.version-cache.json');
+    if (fs.existsSync(cacheFile)) {
+      const cache = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+      // Use cache if it's less than 1 hour old
+      if (Date.now() - cache.timestamp < 3600000) {
+        return cache.version;
+      }
+    }
+  } catch (_error) {
+    // Ignore cache errors
+  }
+  
+  // Fallback to package.json
+  const rootPackageJson = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8')
+  );
+  return rootPackageJson.version || '1.0.0';
+}
+
+// Get version - use cached GitHub version or fallback to package.json
+const appVersion = getLatestVersionFromGitHubSync();
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Gen Image Factory',
-  tagline: 'AI-powered image generation and processing',
+  tagline: 'AI-powered image generation and processing by Shiftline Tools',
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -62,6 +90,29 @@ const config = {
     ],
   ],
 
+  plugins: [
+    [
+      '@docusaurus/plugin-google-gtag',
+      {
+        trackingID: 'G-X2N1PZ3PYX',
+        anonymizeIP: true,
+      },
+    ],
+  ],
+
+  customFields: {
+    appVersion: appVersion,
+  },
+
+  // Inject consent mode script before GA4 loads
+  scripts: [
+    {
+      src: '/consent-mode.js',
+      async: false,
+      defer: false,
+    },
+  ],
+
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
@@ -69,7 +120,7 @@ const config = {
       image: 'img/docusaurus-social-card.jpg',
       colorMode: {
         defaultMode: 'dark',
-        disableSwitch: false,
+        disableSwitch: true,
         respectPrefersColorScheme: false,
       },
       navbar: {
@@ -80,10 +131,22 @@ const config = {
         },
         items: [
           {
+            type: 'doc',
+            docId: 'about',
+            position: 'right',
+            label: 'About',
+          },
+          {
             type: 'docSidebar',
             sidebarId: 'docsSidebar',
-            position: 'left',
+            position: 'right',
             label: 'Documentation',
+          },
+          {
+            type: 'doc',
+            docId: 'resources',
+            position: 'right',
+            label: 'Resources',
           },
           {
             type: 'doc',
@@ -122,8 +185,34 @@ const config = {
               },
             ],
           },
+          {
+            title: 'Shiftline Tools',
+            items: [
+              {
+                label: 'About',
+                to: '/about',
+              },
+              {
+                label: 'GitHub',
+                href: 'https://github.com/ShiftlineTools/gen-image-factory',
+              },
+            ],
+          },
+          {
+            title: 'Legal',
+            items: [
+              {
+                label: 'Privacy Policy',
+                to: '/legal/privacy-policy',
+              },
+              {
+                label: 'Terms of Service',
+                to: '/legal/terms-of-service',
+              },
+            ],
+          },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Gen Image Factory. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} Shiftline Tools.`,
       },
       prism: {
         theme: themes.github,
