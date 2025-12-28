@@ -21,6 +21,11 @@ const sidebars = {
       label: 'Home',
     },
     {
+      type: 'doc',
+      id: 'about',
+      label: 'About',
+    },
+    {
       type: 'category',
       label: 'Getting Started',
       items: [
@@ -51,6 +56,19 @@ const sidebars = {
       items: [
         'support/contact',
       ],
+    },
+    {
+      type: 'category',
+      label: 'Legal',
+      items: [
+        'legal/privacy-policy',
+        'legal/terms-of-service',
+      ],
+    },
+    {
+      type: 'doc',
+      id: 'resources',
+      label: 'Resources',
     },
   ],
 };
