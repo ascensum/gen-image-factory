@@ -108,3 +108,6 @@ user_settings_terminal_logs.txt
 qc_failed_image_review_logs.txt
 *_logs.txt
 *terminal_logs.txt
+
+# Design iteration files
+.superdesign/
