@@ -21,6 +21,21 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
+// Sanitize strings for safe logging (prevent log injection)
+// Removes all control characters, newlines, and other dangerous characters
+function sanitizeForLog(input) {
+  if (typeof input !== 'string') {
+    return String(input);
+  }
+  // Remove all control characters (0x00-0x1F, 0x7F-0x9F), newlines, carriage returns
+  // Also remove backspaces, form feeds, and other potentially dangerous characters
+  return input
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001F\u007F-\u009F\n\r\b\f\t\v]/g, '')
+    .replace(/\\/g, '') // Remove backslashes to prevent escape sequence injection
+    .substring(0, 1000);
+}
+
 const GITHUB_OWNER = 'ShiftlineTools';
 const GITHUB_REPO = 'gen-image-factory';
 const GITHUB_API = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
@@ -28,19 +43,31 @@ const GITHUB_API = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/
 // Get version from command line args
 const version = process.argv[2] || 'latest';
 
-if (!version) {
-  console.error('Usage: node scripts/extract-release-notes.js <version|latest>');
-  console.error('Example: node scripts/extract-release-notes.js v1.0.9');
-  process.exit(1);
+// Validate version input to prevent injection attacks
+function validateVersion(version) {
+  if (!version || version === 'latest') {
+    return version;
+  }
+  // Allow only alphanumeric, dots, hyphens, and 'v' prefix (semantic versioning)
+  if (!/^v?[\d.]+(-[\w.]+)?$/.test(version)) {
+    throw new Error(`Invalid version format: ${version}. Expected format: v1.0.0 or 1.0.0`);
+  }
+  return version;
 }
+
+const validatedVersion = validateVersion(version);
 
 function fetchRelease(version) {
   return new Promise((resolve, reject) => {
+    // Sanitize version for URL to prevent injection
+    const sanitizedVersion = version === 'latest' ? 'latest' : encodeURIComponent(version);
     const url = version === 'latest' 
       ? `${GITHUB_API}/latest`
-      : `${GITHUB_API}/tags/${version}`;
+      : `${GITHUB_API}/tags/${sanitizedVersion}`;
     
-    console.log(`Fetching release notes from: ${url}`);
+    // Sanitize URL for logging to prevent log injection
+    const sanitizedUrl = sanitizeForLog(url);
+    console.log(`Fetching release notes from: ${sanitizedUrl}`);
     
     https.get(url, {
       headers: {
@@ -60,16 +87,23 @@ function fetchRelease(version) {
             const release = JSON.parse(data);
             resolve(release);
           } catch (error) {
-            reject(new Error(`Failed to parse response: ${error.message}`));
+            const sanitizedMsg = sanitizeForLog(error.message);
+            reject(new Error(`Failed to parse response: ${sanitizedMsg}`));
           }
         } else if (res.statusCode === 404) {
-          reject(new Error(`Release not found: ${version}`));
+          // Sanitize version for error message to prevent log injection
+          const sanitizedVersionForError = sanitizeForLog(version);
+          reject(new Error(`Release not found: ${sanitizedVersionForError}`));
         } else {
-          reject(new Error(`GitHub API error: ${res.statusCode} - ${data}`));
+          // Sanitize response data to prevent injection
+          const sanitizedData = sanitizeForLog(data.substring(0, 200));
+          reject(new Error(`GitHub API error: ${res.statusCode} - ${sanitizedData}`));
         }
       });
     }).on('error', (error) => {
-      reject(new Error(`Network error: ${error.message}`));
+      // Sanitize error message to prevent log injection
+      const sanitizedMsg = sanitizeForLog(error.message);
+      reject(new Error(`Network error: ${sanitizedMsg}`));
     });
   });
 }
@@ -101,9 +135,9 @@ function formatForStore(releaseBody) {
 
 async function main() {
   try {
-    console.log(`\nExtracting release notes for: ${version}\n`);
+    console.log(`\nExtracting release notes for: ${validatedVersion}\n`);
     
-    const release = await fetchRelease(version);
+    const release = await fetchRelease(validatedVersion);
     
     console.log(`Found release: ${release.tag_name} (${release.name || release.tag_name})\n`);
     console.log('=' .repeat(80));
@@ -119,15 +153,28 @@ async function main() {
     console.log();
     
     // Optionally save to file
-    const outputFile = path.join(process.cwd(), `release-notes-${release.tag_name.replace(/^v/, '')}.txt`);
-    fs.writeFileSync(outputFile, storeFormatted, 'utf8');
-    console.log(`Saved to: ${outputFile}`);
+    // Sanitize tag_name to prevent path traversal attacks
+    const sanitizedTag = release.tag_name.replace(/^v/, '').replace(/[^a-zA-Z0-9.-]/g, '');
+    if (!sanitizedTag || sanitizedTag.includes('..') || sanitizedTag.includes('/') || sanitizedTag.includes('\\')) {
+      throw new Error('Invalid tag name detected - potential path traversal attack');
+    }
+    const outputFile = path.join(process.cwd(), `release-notes-${sanitizedTag}.txt`);
+    // Ensure the resolved path is within the current working directory (prevent path traversal)
+    const resolvedPath = path.resolve(outputFile);
+    const cwd = path.resolve(process.cwd());
+    if (!resolvedPath.startsWith(cwd)) {
+      throw new Error('Path traversal detected - output file must be within current directory');
+    }
+    fs.writeFileSync(resolvedPath, storeFormatted, 'utf8');
+    console.log(`Saved to: ${resolvedPath}`);
     console.log();
     console.log('Copy the text above and paste it into Microsoft Partner Center → "What\'s New" field');
     console.log();
     
   } catch (error) {
-    console.error('Error:', error.message);
+    // Sanitize error message to prevent log injection
+    const sanitizedMsg = sanitizeForLog(error.message);
+    console.error('Error:', sanitizedMsg);
     process.exit(1);
   }
 }
