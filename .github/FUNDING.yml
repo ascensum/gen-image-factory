@@ -1,0 +1,28 @@
+# Funding Configuration for Gen Image Factory
+# This file enables the "Sponsor" button on GitHub
+
+# Buy Me a Coffee
+# Replace with your actual Buy Me a Coffee username when available
+# custom: ['https://buymeacoffee.com/yourusername']
+
+# GitHub Sponsors
+# Enable GitHub Sponsors by uncommenting the line below
+# github: ShiftlineTools
+
+# Ko-fi
+ko_fi: shiftlinetools
+
+# Other funding platforms (uncomment and configure as needed)
+# patreon: yourusername
+# open_collective: your-org-name
+# tidelift: npm/gen-image-factory
+# community_bridge: your-project-name
+# liberapay: yourusername
+# issuehunt: yourusername
+# otechie: yourusername
+# lfx_crowdfunding: your-project-name
+
+# Custom funding links
+# Add custom funding links as needed
+# custom: ['https://example.com/donate', 'https://another-platform.com/yourpage']
+

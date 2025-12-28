@@ -1,0 +1,37 @@
+changelog:
+  exclude:
+    labels:
+      - skip-release
+  categories:
+    - title: "🚀 Features"
+      labels:
+        - feature
+        - enhancement
+    - title: "🐛 Bug Fixes"
+      labels:
+        - bug
+        - fix
+    - title: "🛡️ Security & Dependencies"
+      labels:
+        - dependencies
+        - security
+        - automated
+    - title: "🧹 Maintenance"
+      labels:
+        - chore
+        - maintenance
+    - title: "📚 Documentation"
+      labels:
+        - documentation
+        - docs
+    - title: "♻️ Refactoring"
+      labels:
+        - refactor
+    - title: "⚡ Performance"
+      labels:
+        - performance
+    - title: "🧪 Testing"
+      labels:
+        - test
+        - testing
+

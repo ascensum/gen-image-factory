@@ -1,0 +1,35 @@
+version: 2
+updates:
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    # Open pull requests for version updates
+    open-pull-requests-limit: 10
+    # Group updates to reduce PR noise
+    groups:
+      # Group all patch and minor updates together
+      production-dependencies:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Labels for Dependabot PRs
+    labels:
+      - "dependencies"
+      - "automated"
+    # Commit message preferences
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    # Ignore specific dependencies if needed
+    ignore:
+      # Add any dependencies you want to manually manage
+      # - dependency-name: "package-name"
+      #   update-types: ["version-update:semver-major"]
+

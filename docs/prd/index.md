@@ -6,5 +6,6 @@
 - [Requirements](./requirements.md)
 - [User Interface Enhancement Goals](./user-interface-enhancement-goals.md)
 - [Technical Constraints and Integration Requirements](./technical-constraints-and-integration-requirements.md)
+- [Organizational Structure and Brand Identity](./organizational-structure-and-brand-identity.md)
 - [Epic and Story Structure](./epic-and-story-structure.md)
 - [Next Steps](./next-steps.md) 

@@ -66,7 +66,7 @@ Deliverable: `.husky/pre-commit` script enforcing the above.
   - Unit + Integration tests: `npm test`
   - CodeQL scan: `github/codeql-action` (free for public repos)
   - Semgrep scan: `npx semgrep --config p/owasp-top-ten --config p/javascript --error` (full codebase). **Note**: `p/owasp-electron` does not exist; using `p/owasp-top-ten` + `p/javascript` instead.
-  - Dependency check: `npm audit` and/or Dependabot alerts
+  - Dependency check: `npm audit` and/or Dependabot alerts (Dependabot configured via `.github/dependabot.yml` with weekly updates, grouped PRs, and optional auto-merge)
   - Optional artifact build: `electron-builder --publish never` (no release)
 - Fail workflow on high-risk findings from CodeQL or Semgrep.
 
@@ -113,7 +113,7 @@ These are statically checked via Semgrep (Electron rules) and validated in code 
 ### Maintenance
 
 - Keep CI YAML minimal; prefer official actions and public rule packs
-- Dependabot enabled for vulnerable dependency PRs
+- Dependabot configured for vulnerable dependency PRs (`.github/dependabot.yml` with weekly updates, grouped minor/patch PRs, optional auto-merge, PR limit of 10 open PRs). Dependabot PRs run full CI suite to catch breakages before merge.
 - Revisit critical test set quarterly to ensure fast, representative coverage
 
 ## Overview
@@ -498,7 +498,7 @@ The critical test suite is optimized to cover all Story 1.19 must-not-regress sc
 **Supply-Chain Protection (Mandatory)**:
 - Lockfile usage (`npm ci --ignore-scripts`)
 - Socket.dev scanning in CI
-- Dependabot enabled for npm ecosystem (separate configuration)
+- Dependabot configured for npm ecosystem (`.github/dependabot.yml` with weekly updates on Mondays at 9:00 AM, grouped minor/patch PRs, optional auto-merge support, PR limit of 10 open PRs). Dependabot PRs run full CI suite to catch breakages before merge.
 - GitHub Actions hygiene: pinned action versions, minimal permissions (`contents: read`)
 - **Artifact Integrity & Provenance**: CI must generate an **SBOM (Software Bill of Materials)** for every release (using `cyclonedx-npm` or similar free tool) - *Future enhancement*
 

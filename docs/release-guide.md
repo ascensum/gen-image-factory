@@ -25,7 +25,7 @@ The release pipeline is triggered automatically when a version tag is pushed to 
    - SHA-256 checksums file for all artifacts
    - SBOM (Software Bill of Materials) for auditability
 
-4. **GitHub Release**: Artifacts are automatically uploaded to GitHub Releases
+4. **GitHub Release**: Artifacts are automatically uploaded to GitHub Releases with auto-generated release notes
 
 5. **Microsoft Store Upload**: MSIX package is built and ready for Microsoft Store submission (manual upload required)
 
@@ -43,7 +43,20 @@ If you need to create a release manually:
 
 3. **Verify Release**: Check GitHub Releases page for the new release
 
-4. **Microsoft Store Submission**: Upload the MSIX package to Microsoft Store Partner Center
+4. **Extract Release Notes for Microsoft Store**:
+   ```bash
+   # Extract release notes for the latest release
+   npm run release-notes:latest
+   
+   # Or for a specific version
+   npm run release-notes v1.0.9
+   ```
+   This will display formatted release notes and save them to a file for easy copy-paste into Microsoft Partner Center.
+
+5. **Microsoft Store Submission**: 
+   - Upload the MSIX package to Microsoft Store Partner Center
+   - Paste the release notes (from step 4) into the "What's New" field
+   - Complete store listing and submit for certification
 
 ## Platform-Specific Installation
 
@@ -126,11 +139,13 @@ If a release has issues, users can rollback by:
 
 ### Process
 1. Build MSIX package (automated in CI on version tags)
-2. Log in to Microsoft Partner Center
-3. Create new submission or update existing app
-4. Upload MSIX package
-5. Complete store listing information
-6. Submit for certification
+2. Extract release notes using `npm run release-notes:latest` or `npm run release-notes <version>`
+3. Log in to Microsoft Partner Center
+4. Create new submission or update existing app
+5. Upload MSIX package
+6. Paste release notes into "What's New" field (from step 2)
+7. Complete store listing information
+8. Submit for certification
 
 ### $0 Cost Strategy
 Microsoft Store distribution is free for developers. No code signing certificates or fees required. Microsoft handles:

@@ -172,6 +172,12 @@
     - Create deployment documentation
     - Optimize Vite build for production
 
+22. **Repository Documentation for Microsoft Store Review** (Story 1.22)
+    - Create comprehensive README.md with Shiftline Tools branding
+    - Create SECURITY.md with security policy and vulnerability reporting
+    - Create .github/FUNDING.yml with funding/donation links
+    - Ensure all documentation meets Microsoft Store review requirements
+
 ## Epic 2: Project Documentation Website
 
 **Epic Goal**: This epic will deliver a public-facing documentation website that provides user-friendly documentation for the desktop application while maintaining a clear separation from internal project documentation (PRD, stories, architecture).
@@ -198,5 +204,23 @@
     - Set up automated deployment on push to `main`
     - Enable HTTPS and validate deployment process
     - Document rollback procedures
+
+4. **Legal Pages for Microsoft Store Compliance** (Story 2.5)
+    - Create Privacy Policy page (required for Microsoft Store certification)
+    - Create Terms of Service page (required for Microsoft Store certification)
+    - Integrate legal pages into website navigation and footer
+    - Ensure content meets Microsoft Store requirements
+
+5. **Website Hero Home Page and Resources Page** (Story 2.6)
+    - Create professional hero/home page (replaces standard docs index)
+    - Create resources/affiliate page for transparency about third-party services
+    - Update website routing and navigation
+    - Ensure professional presentation with Shiftline Tools branding
+
+6. **Microsoft Store Identity Migration** (Story 2.7)
+    - Migrate Microsoft Store identity from personal account to Shiftline Tools organization
+    - Update package.json and all documentation with new identity
+    - Validate build and submission process with new identity
+    - Document migration process and checklist
 
 **Testing Strategy**: Each story includes comprehensive testing tasks covering unit tests, integration tests, and end-to-end validation as appropriate for the story scope. TypeScript will provide additional type safety during development. Story 1.17 specifically addresses the testing requirements for the foundational components from Story 1.1. Story 1.18 stabilizes unit and integration tests to ensure CI reliability and alignment with current architecture. Story 1.19 elevates test coverage with must-not-regress scenarios. Story 1.20 implements quality gates and CI infrastructure with optimized E2E test execution strategy.

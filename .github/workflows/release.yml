@@ -330,19 +330,22 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
+          generate_release_notes: true
           body: |
-            ## Release ${{ github.ref_name }}
+            ## What's Changed in this Version
             
-            ### Artifacts
-            - Windows: MSIX (Microsoft Store), NSIS installer, Portable
-            - macOS: DMG, ZIP
-            - Linux: AppImage, DEB
+            <!-- GitHub will automatically insert categorized changes here based on .github/release.yml -->
             
-            ### Integrity
+            ### 📦 Artifacts
+            - **Windows**: MSIX (Microsoft Store), NSIS installer, Portable
+            - **macOS**: DMG, ZIP
+            - **Linux**: AppImage, DEB
+            
+            ### 🔒 Integrity
             - SHA-256 checksums included for all artifacts
             - SBOM (Software Bill of Materials) included for auditability
             
-            ### Installation
+            ### 📥 Installation
             See [Release Documentation](docs/release-guide.md) for platform-specific installation instructions.
           files: |
             artifacts-filtered/*

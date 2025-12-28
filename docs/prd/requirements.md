@@ -40,6 +40,7 @@
    - **Semgrep**: Security scanning using `p/owasp-top-ten` and `p/javascript` rulesets (configured via command-line flags due to Semgrep 1.146.0 YAML config compatibility limitation). **Note**: The `p/owasp-electron` ruleset does not exist in the Semgrep registry (returns HTTP 404); `p/owasp-top-ten` provides comprehensive coverage for Electron security concerns. The `p/typescript` ruleset is excluded as the JavaScript ruleset covers TypeScript code. Path exclusions are handled via `.semgrepignore`. CI fails on **any Semgrep error** (not just high-risk findings) to prevent silent failures where security scanning isn't working but CI shows green.
    - **Socket.dev**: Supply-chain risk detection for npm dependencies
    - **npm audit**: `npm audit` (high severity only) **must** run in CI and fail workflow on high-severity vulnerabilities.
+   - **Dependabot**: Automated dependency updates configured via `.github/dependabot.yml` with weekly update schedule (Mondays at 9:00 AM), grouped minor/patch PRs, and optional auto-merge support. Dependabot PRs run full CI suite (tests, security scans) to catch breakages before merge. PR limit set to 10 open PRs at a time with `dependencies` and `automated` labels for proper categorization.
    - **E2E Tests**: E2E tests must run periodically: nightly scheduled run, on version tags (before release), and via manual workflow_dispatch. E2E tests are NOT required on every push (too slow). **Optimization Strategy**: Manual/workflow_dispatch/tag runs use chromium-only execution (~3x faster) for quick feedback; nightly scheduled runs execute full cross-browser suite (chromium, firefox, webkit) to catch browser-specific regressions. Tests use 2 workers for parallelization, reducing execution time from 35+ minutes to ~20 minutes for full suite. **E2E Test Scope**: E2E tests focus on UI/navigation workflows and user-facing interactions. All active E2E tests must pass (tests that require Electron backend or have flaky UI rendering are properly skipped with documentation). Backend functionality and business logic are validated through integration tests, which provide comprehensive coverage for Electron-specific functionality and job execution workflows.
    - High‑risk findings from CodeQL or Semgrep fail CI; network retry logic (5 attempts with 10-second delays) ensures transient failures don't cause false negatives.
 
@@ -52,4 +53,14 @@
 ## UI/UX Branding
 
 1.  **BR1**: The application must display "FROM SHIFTLINE TOOLS™" on the splash screen as the primary brand identifier.
-2.  **BR2**: The legacy 'GIMF' acronym and icon are strictly deprecated and must not be used in production builds or any user-facing interfaces. 
+2.  **BR2**: The legacy 'GIMF' acronym and icon are strictly deprecated and must not be used in production builds or any user-facing interfaces.
+
+## Legal Documentation Requirements
+
+1.  **LR1**: Privacy Policy page must be created on the documentation website and meet Microsoft Store certification requirements. Policy must cover: data collection practices, API key storage security, local data handling, third-party services disclosure (OpenAI, Runware, Remove.bg), user rights, and individual developer privacy policy (not corporate entity).
+
+2.  **LR2**: Terms of Service page must be created on the documentation website and meet Microsoft Store certification requirements. Terms must cover: software license terms (individual developer), usage restrictions, liability disclaimers, Microsoft Store terms compliance, API usage terms, and intellectual property rights.
+
+3.  **LR3**: Security policy (SECURITY.md) must be created at repository root level and include: security policy statement, vulnerability reporting process, security contact information, data handling and privacy commitments, API key storage security, and update policy.
+
+4.  **LR4**: Repository-level documentation (README.md, SECURITY.md) must be professional, comprehensive, and include Shiftline Tools branding. README.md must include installation instructions, links to documentation website, Microsoft Store badge/link, and support information. 

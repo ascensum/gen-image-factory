@@ -1,6 +1,10 @@
-# Public Documentation
+# Gen Image Factory
+
+**Made by [Shiftline Tools](https://github.com/ShiftlineTools)**
 
 Welcome to the Gen Image Factory documentation. This directory contains user-facing documentation to help you get started, configure the application, and use its features.
+
+Gen Image Factory is a professional AI-powered image generation and processing tool, developed by an individual developer under the Shiftline Tools brand.
 
 ## Documentation Sections
 

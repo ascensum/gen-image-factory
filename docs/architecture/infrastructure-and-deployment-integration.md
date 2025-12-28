@@ -57,6 +57,13 @@ As a solo developer (no PR flow for now), enforce hygiene and security via local
   - All platforms: Windows (MSIX for Store, unsigned for GitHub), macOS (unsigned `.dmg` or `.zip`), Linux (`.AppImage`, `.deb`, or `.rpm`)
   - **SHA-256 checksum file** must be generated alongside binaries for integrity verification
   - **SBOM (Software Bill of Materials)** must be generated for every release (using `cyclonedx-npm` or similar free tool)
+- **Release Notes Automation (Story 1.21):**
+  - GitHub native release notes generation configured via `.github/release.yml` for automatic categorization of changes
+  - Release workflow uses `generate_release_notes: true` to auto-generate categorized release notes from commit messages
+  - Helper script `scripts/extract-release-notes.js` available for Microsoft Store submission (extracts formatted release notes from GitHub Releases)
+  - npm scripts: `release-notes` and `release-notes:latest` for easy access to release notes
+  - Release notes follow Conventional Commits format for proper categorization (features, fixes, dependencies, etc.)
+  - Dependabot PRs are automatically labeled with `dependencies` and `automated` labels for proper categorization in release notes
 - **Rollback:** Users can download and reinstall any prior version from Releases. Document this in the README/website.
 - **Build Isolation:** Builds must run on clean runner instances (GitHub Actions standard). No local builds accepted for release candidates.
 
@@ -107,7 +114,7 @@ As a solo developer (no PR flow for now), enforce hygiene and security via local
   - **Supply-Chain Protection (Mandatory):**
     - Lockfile usage (`npm ci --ignore-scripts`)
     - Socket.dev scanning
-    - Dependabot enabled for npm ecosystem
+    - Dependabot configured for npm ecosystem (`.github/dependabot.yml`) with weekly updates (Mondays at 9:00 AM), grouped minor/patch PRs, optional auto-merge support, and PR limit of 10 open PRs. Dependabot PRs run full CI suite to catch breakages before merge.
     - Pinned action versions
     - Minimal permissions (`contents: read`)
 
@@ -121,6 +128,35 @@ As a solo developer (no PR flow for now), enforce hygiene and security via local
 
 ### Code-Signing (Future)
 - Not configured yet. Document platform-specific signing steps (Apple Developer ID, Windows code signing) before public distribution.
+
+### Microsoft Store Identity Management
+
+**Current Identity (Legacy - Personal Account):**
+- Identity Name: `AscensumTools.GenImageFactory` (immutable Store identity, internal only)
+- Publisher: `CN=E312E730-261C-4C09-AA08-642C4C57E8F8`
+- Publisher Display Name: `Shiftline Tools` (user-visible brand)
+- Store ID: `9P0D8CQ3R86F`
+- Configuration: `package.json#build.appx`
+
+**Identity Migration Process (Story 2.7):**
+- Create new Microsoft Store identity in Partner Center connected to Shiftline Tools brand
+- Obtain new Identity Name, Publisher ID, and Store ID
+- Update `package.json#build.appx` with new identity properties
+- Update all documentation references (`docs/microsoft-store-guide.md`, PRD, Architecture)
+- Validate MSIX package builds with new identity
+- Verify package can be submitted to Store with new identity
+- Document migration checklist and process
+
+**Configuration Management:**
+- Store identity properties are centralized in `package.json#build.appx`
+- All documentation must reference the same identity properties
+- Identity changes require updates to: package.json, microsoft-store-guide.md, PRD, Architecture docs
+- CI/CD workflows may need updates if identity affects build process
+
+**Build Process Impact:**
+- Identity properties are embedded in MSIX package during build
+- Identity changes require new package builds (cannot update existing packages)
+- Identity validation should be part of build verification process
 
 ### Documentation Website Deployment (Epic 2)
 
@@ -151,10 +187,29 @@ As a solo developer (no PR flow for now), enforce hygiene and security via local
 - Rollback via commit revert or manual redeploy
 - Deployment status visible in GitHub Actions
 
+**Website Page Structure:**
+- **Home Page**: Custom React component (`website/src/pages/index.tsx` or `.js`) with hero section, Shiftline Tools branding, key features, and call-to-action buttons
+- **Documentation Pages**: Markdown files in `public_docs/` consumed by Docusaurus
+- **Legal Pages**: Privacy Policy and Terms of Service in `public_docs/legal/` or `public_docs/`
+- **Resources Page**: Markdown or React component for affiliate links and third-party service credits
+- **Routing**: Docusaurus routes home page to custom React component, documentation to markdown files
+
+**Custom React Components:**
+- Hero home page component replaces standard docs index
+- Resources/affiliate page component (optional, can be markdown)
+- Components must maintain privacy firewall (no internal docs references)
+
+**Privacy Firewall Validation:**
+- All new pages must be validated to ensure no internal documentation references
+- Legal pages must be accessible from footer and sidebar navigation
+- Resources page must maintain transparency about third-party services
+
 **Related Stories:**
 - Story 2.1: Docs Structure Migration & Firewall
 - Story 2.2: Docusaurus Scaffolding & Branding
 - Story 2.3: Website Deployment
+- Story 2.5: Legal Pages for Microsoft Store Compliance
+- Story 2.6: Website Hero Home Page and Resources Page
 
 ## Security Deployment Considerations
 

@@ -2,22 +2,21 @@
 
 This guide will help you install Gen Image Factory on your system.
 
+**Gen Image Factory** is developed by an individual developer under the **Shiftline Tools** brand.
+
 ## Windows
 
-### Microsoft Store (Recommended)
+### Microsoft Store (Coming Soon)
 
-The easiest way to install Gen Image Factory on Windows is through the Microsoft Store:
+Gen Image Factory will be available on the Microsoft Store soon. This will provide the easiest installation method with automatic updates.
 
-1. Open Microsoft Store
-2. Search for "Gen Image Factory"
-3. Click "Install"
-4. Updates are handled automatically by Windows
+**Coming Soon**: We're working on making Gen Image Factory available through the Microsoft Store. Check back soon for updates!
 
-### GitHub Releases (Advanced Users)
+### GitHub Releases (Current Method)
 
 If you prefer to install from GitHub Releases:
 
-1. Download the NSIS installer (`.exe`) from [GitHub Releases](https://github.com/your-org/gen-image-factory/releases)
+1. Download the NSIS installer (`.exe`) from [GitHub Releases](https://github.com/ShiftlineTools/gen-image-factory/releases)
 2. Run the installer
 3. Accept the "Unknown Publisher" warning (artifacts are unsigned)
 4. Follow the installation wizard
@@ -26,7 +25,7 @@ If you prefer to install from GitHub Releases:
 
 ## macOS
 
-1. Download the DMG file from [GitHub Releases](https://github.com/your-org/gen-image-factory/releases)
+1. Download the DMG file from [GitHub Releases](https://github.com/ShiftlineTools/gen-image-factory/releases)
 2. Open the DMG file
 3. Drag the application to Applications folder
 4. Open the application (may require right-click → Open on first launch due to unsigned status)
@@ -38,7 +37,7 @@ If you prefer to install from GitHub Releases:
 
 ### AppImage
 
-1. Download the AppImage file from [GitHub Releases](https://github.com/your-org/gen-image-factory/releases)
+1. Download the AppImage file from [GitHub Releases](https://github.com/ShiftlineTools/gen-image-factory/releases)
 2. Make it executable:
    ```bash
    chmod +x Gen-Image-Factory-*.AppImage
@@ -50,7 +49,7 @@ If you prefer to install from GitHub Releases:
 
 ### DEB (Ubuntu/Debian)
 
-1. Download the DEB package from [GitHub Releases](https://github.com/your-org/gen-image-factory/releases)
+1. Download the DEB package from [GitHub Releases](https://github.com/ShiftlineTools/gen-image-factory/releases)
 2. Install using:
    ```bash
    sudo dpkg -i gen-image-factory_*.deb
@@ -75,4 +74,10 @@ Once installed, see the [User Guide](/user-guide/settings) for information on:
 - Starting your first job
 - Managing job history
 - Exporting results
+
+## Legal Information
+
+For information about how Gen Image Factory handles your data and the terms of use, please review:
+- [Privacy Policy](/legal/privacy-policy) - Learn how we handle your data and protect your privacy
+- [Terms of Service](/legal/terms-of-service) - Review the terms and conditions for using Gen Image Factory
 
