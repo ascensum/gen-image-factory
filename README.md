@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/ShiftlineTools/gen-image-factory/main/src/renderer/assets/logo-square.svg" width="100" alt="Gen Image Factory Logo" />
 </p>
 
-# Gen Image Factory
+<h1 align="center">Gen Image Factory</h1>
 
 <p align="center">
   <img src="https://img.shields.io/github/v/release/ShiftlineTools/gen-image-factory?label=Latest%20Release&color=3b82f6&style=flat-square" alt="Version" />
