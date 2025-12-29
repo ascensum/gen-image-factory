@@ -18,6 +18,11 @@ export default function MobileSidebarContent(): React.JSX.Element {
   // Filter to only show items in the 'right' position (our main nav items)
   const rightItems = navbarItems.filter((item) => item.position === 'right');
   
+  // If no items, return empty to avoid rendering issues
+  if (rightItems.length === 0) {
+    return <ul className="navbar-sidebar__items" />;
+  }
+  
   return (
     <ul className="navbar-sidebar__items">
       <li className="navbar-sidebar__item">
