@@ -158,5 +158,5 @@ Statistics update automatically as you run more jobs.
 
 - Learn about [Job Management](job-management.md) for advanced features
 - See [Failed Images Review](failed-images-review.md) for managing failed images (QC failures, technical processing failures, retry failures)
-- Check [Troubleshooting](/troubleshooting/common-issues) if you encounter issues
+- Check [Troubleshooting](/docs/troubleshooting/common-issues) if you encounter issues
 

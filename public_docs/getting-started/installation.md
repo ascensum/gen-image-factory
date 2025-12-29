@@ -69,7 +69,7 @@ After installation, you can verify the installation by:
 
 ## Next Steps
 
-Once installed, see the [User Guide](/user-guide/settings) for information on:
+Once installed, see the [User Guide](/docs/user-guide/settings) for information on:
 - Configuring your settings
 - Starting your first job
 - Managing job history
@@ -78,6 +78,6 @@ Once installed, see the [User Guide](/user-guide/settings) for information on:
 ## Legal Information
 
 For information about how Gen Image Factory handles your data and the terms of use, please review:
-- [Privacy Policy](/legal/privacy-policy) - Learn how we handle your data and protect your privacy
-- [Terms of Service](/legal/terms-of-service) - Review the terms and conditions for using Gen Image Factory
+- [Privacy Policy](/docs/legal/privacy-policy) - Learn how we handle your data and protect your privacy
+- [Terms of Service](/docs/legal/terms-of-service) - Review the terms and conditions for using Gen Image Factory
 

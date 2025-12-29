@@ -23,9 +23,9 @@ We aim to respond to all inquiries within 2-3 business days.
 ## Additional Resources
 
 Before contacting support, you may find answers in:
-- [Troubleshooting Guide](/troubleshooting/common-issues) - Common issues and solutions
-- [User Guide](/user-guide/settings) - Detailed feature documentation
-- [Getting Started](/getting-started/installation) - Installation and setup instructions
+- [Troubleshooting Guide](/docs/troubleshooting/common-issues) - Common issues and solutions
+- [User Guide](/docs/user-guide/settings) - Detailed feature documentation
+- [Getting Started](/docs/getting-started/installation) - Installation and setup instructions
 
 ---
 

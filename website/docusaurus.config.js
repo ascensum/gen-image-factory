@@ -78,7 +78,7 @@ const config = {
         docs: {
           sidebarPath: './sidebars.js',
           path: '../public_docs',
-          routeBasePath: '/', // Serve docs at root
+          // routeBasePath: '/', // Removed to allow src/pages/index.tsx to serve home
           // Remove edit links for now
           editUrl: undefined,
         },
@@ -164,11 +164,11 @@ const config = {
             items: [
               {
                 label: 'Getting Started',
-                to: '/getting-started/installation',
+                to: '/docs/getting-started/installation',
               },
               {
                 label: 'User Guide',
-                to: '/user-guide/settings',
+                to: '/docs/user-guide/settings',
               },
             ],
           },
@@ -177,11 +177,11 @@ const config = {
             items: [
               {
                 label: 'Contact Us',
-                to: '/support/contact',
+                to: '/docs/support/contact',
               },
               {
                 label: 'Troubleshooting',
-                to: '/troubleshooting/common-issues',
+                to: '/docs/troubleshooting/common-issues',
               },
             ],
           },
@@ -190,7 +190,7 @@ const config = {
             items: [
               {
                 label: 'About',
-                to: '/about',
+                to: '/docs/about',
               },
               {
                 label: 'GitHub',
@@ -203,11 +203,11 @@ const config = {
             items: [
               {
                 label: 'Privacy Policy',
-                to: '/legal/privacy-policy',
+                to: '/docs/legal/privacy-policy',
               },
               {
                 label: 'Terms of Service',
-                to: '/legal/terms-of-service',
+                to: '/docs/legal/terms-of-service',
               },
             ],
           },

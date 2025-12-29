@@ -223,5 +223,5 @@ The Failed Images Review panel has multiple tabs to help you organize and manage
 
 - Learn about [Job Management](job-management.md) for managing job history
 - See [Dashboard Usage](dashboard.md) for starting new jobs
-- Check [Troubleshooting](/troubleshooting/common-issues) for common issues
+- Check [Troubleshooting](/docs/troubleshooting/common-issues) for common issues
 

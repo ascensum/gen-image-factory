@@ -14,29 +14,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import styles from './index.module.css';
-
-// PARTNER_DATA - Config-as-Code approach for easy link management
-const PARTNER_DATA = {
-  integratedApis: [
-    { name: 'RUNWARE.COM', link: 'https://runware.com' },
-    { name: 'OPENAI', link: 'https://openai.com' },
-    { name: 'REMOVE.BG', link: 'https://www.remove.bg' }
-  ],
-  recommendedApps: [
-    {
-      id: 'topaz-gigapixel',
-      name: 'Topaz Labs Gigapixel',
-      description: 'AI-powered image upscaling and enhancement',
-      link: 'https://www.topazlabs.com/topaz-gigapixel' // Temporary - will swap to affiliate link when approved
-    },
-    {
-      id: 'flying-upload',
-      name: 'Flying Upload',
-      description: 'Professional file upload and management solution',
-      link: 'https://flyingupload.com/' // Temporary - will swap to affiliate link when approved
-    }
-  ]
-};
+import { PARTNER_DATA } from '../data/ecosystem';
 
 export default function Home(): React.JSX.Element {
   const { siteConfig } = useDocusaurusContext();
@@ -112,7 +90,7 @@ export default function Home(): React.JSX.Element {
               <a href="#download" className={`${styles.btn} ${styles.btnPrimary}`} aria-label="Download Gen Image Factory">
                 <Download className={styles.ctaIcon} /> Download
               </a>
-              <Link to="/getting-started/installation" className={`${styles.btn} ${styles.btnSecondary}`} aria-label="View Documentation">
+              <Link to="/docs/getting-started/installation" className={`${styles.btn} ${styles.btnSecondary}`} aria-label="View Documentation">
                 <BookOpen className={styles.ctaIcon} /> Documentation
               </Link>
               <a href="#microsoft-store" className={`${styles.btn} ${styles.btnSecondary}`} aria-label="Get from Microsoft Store">

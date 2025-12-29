@@ -42,7 +42,7 @@ Gen Image Factory uses the following third-party APIs to deliver its features:
 
 **Service Availability**: Shiftline Tools is not responsible for third-party API availability, data handling, or service interruptions. For issues related to third-party services, please contact the respective service provider directly.
 
-For more detailed information about API usage terms, please see our [Terms of Service](/legal/terms-of-service#api-usage-terms).
+For more detailed information about API usage terms, please see our [Terms of Service](/docs/legal/terms-of-service#api-usage-terms).
 
 ## Affiliate and Monetization Disclosure
 
@@ -60,9 +60,9 @@ To keep Gen Image Factory open-source and independent, Shiftline Tools participa
 
 All third-party services are properly credited and linked above. Gen Image Factory integrates with these services through their respective APIs to provide you with powerful AI-powered image generation and processing capabilities.
 
-We believe in transparency and want you to understand exactly how Gen Image Factory works and what services it relies on. If you have any questions about our use of third-party services, please [contact us](/support/contact).
+We believe in transparency and want you to understand exactly how Gen Image Factory works and what services it relies on. If you have any questions about our use of third-party services, please [contact us](/docs/support/contact).
 
 ---
 
-**Note**: Gen Image Factory requires API keys for OpenAI and Runware services. These keys are stored securely using your operating system's credential manager. For detailed terms regarding API usage, please refer to our [Terms of Service](/legal/terms-of-service).
+**Note**: Gen Image Factory requires API keys for OpenAI and Runware services. These keys are stored securely using your operating system's credential manager. For detailed terms regarding API usage, please refer to our [Terms of Service](/docs/legal/terms-of-service).
 
