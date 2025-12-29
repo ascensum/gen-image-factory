@@ -90,6 +90,9 @@ html[data-theme='dark'] {
 /* Typography - Force Inter/system-sans */
 html {
   font-size: 16px;
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 body {
@@ -98,6 +101,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #050505 !important;
   color: #ffffff !important;
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -184,18 +190,65 @@ pre code {
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
-/* Navbar - Glassmorphism: Transparent with Backdrop Blur */
+/* Prevent horizontal overflow globally */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Ensure main content doesn't overflow */
+main {
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Navbar - Glassmorphism: Transparent with Backdrop Blur - Full Width */
 .navbar {
   position: sticky !important;
   top: 0 !important;
   z-index: 1000 !important;
   min-height: 70px !important;
-  padding: 0.75rem 1rem !important;
+  padding: 0.75rem 0 !important;
   background-color: transparent !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* On mobile, keep navbar sticky but ensure dropdown works */
+@media (max-width: 996px) {
+  .navbar {
+    position: sticky !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+}
+
+/* Navbar Inner - Constrain content to container width but allow full-width navbar */
+.navbar__inner {
+  max-width: var(--ifm-container-width) !important;
+  margin: 0 auto !important;
+  width: 100% !important;
+  padding: 0 1rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+/* Prevent center-align on wide monitors in Safari */
+@media (min-width: 1440px) {
+  .navbar__inner {
+    max-width: var(--ifm-container-width-xl) !important;
+  }
 }
 
 .navbar__logo {
@@ -300,6 +353,17 @@ pre code {
 /* Main content area */
 .main-wrapper {
   background-color: #050505 !important;
+  overflow-x: hidden !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Prevent horizontal overflow on all containers */
+.container,
+.container-fluid,
+.row {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
 }
 
 /* Cards and surfaces - Gray borders */
@@ -392,13 +456,160 @@ pre code {
   }
 }
 
+/* Mobile Menu - Universal Sidebar Styling for Swizzled Component */
+@media (max-width: 996px) {
+  /* Sidebar drawer positioning and base styles */
+  .navbar-sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    width: 80% !important;
+    max-width: 300px !important;
+    background-color: #0a0a0a !important;
+    border-right: 1px solid #3b82f6 !important;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3) !important;
+    z-index: 1001 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Hidden state - off screen */
+  .navbar-sidebar[aria-hidden="true"] {
+    transform: translateX(-100%) !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  /* Visible state - slide in */
+  .navbar-sidebar[aria-hidden="false"],
+  body.navbar-sidebar--show .navbar-sidebar {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+  }
+
+  /* Force the swizzled menu items to be visible on EVERY page */
+  .navbar-sidebar__items, 
+  .menu__list, 
+  .menu__list-item {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    border-left: none !important; /* Remove any left border from menu items */
+    border-right: none !important; /* Remove any right border from menu items */
+  }
+
+  /* Style the links for the Industrial Zen look - override global menu__link styles */
+  .navbar-sidebar .menu__link,
+  .navbar-sidebar .menu__link.menu__link--active {
+    font-family: var(--ifm-font-family-monospace) !important;
+    color: #ffffff !important;
+    padding: 18px 20px !important;
+    border-bottom: 1px solid #222 !important;
+    border-left: none !important; /* Remove left border from global menu__link rule */
+    border-right: none !important;
+    border-top: none !important;
+    background: transparent !important;
+    opacity: 0.8;
+    display: block !important;
+    text-decoration: none !important;
+  }
+
+  .navbar-sidebar .menu__link:hover {
+    color: #3b82f6 !important;
+    opacity: 1 !important;
+  }
+
+  /* Collision protection for the first item */
+  .navbar-sidebar .menu__list-item:first-child {
+    margin-top: 60px !important;
+  }
+  
+  /* Kill the 'Back to Main' ghost button */
+  .navbar-sidebar__back, .clean-btn {
+    display: none !important;
+  }
+
+  /* Hide sidebar brand to prevent duplication */
+  .navbar-sidebar__brand {
+    display: none !important;
+  }
+
+  /* Ensure hamburger toggle button is visible and properly aligned */
+  .navbar__toggle {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 1002 !important;
+    position: relative !important;
+    margin-left: 0.5rem !important; /* Small margin from logo, not auto */
+  }
+
+  /* Ensure logo and brand don't get overlapped and stay in place */
+  .navbar__brand,
+  .navbar__logo {
+    position: relative !important;
+    z-index: 1001 !important;
+    flex-shrink: 0 !important;
+    margin-right: auto !important; /* Push logo to left, hamburger to right */
+  }
+
+  /* Close button styling */
+  .navbar-sidebar__close {
+    color: #3b82f6 !important;
+    background-color: transparent !important;
+    border: none !important;
+    padding: 0.75rem !important;
+    cursor: pointer !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 1002 !important;
+  }
+
+  .navbar-sidebar__close:hover {
+    color: #60a5fa !important;
+    background-color: rgba(59, 130, 246, 0.1) !important;
+  }
+
+  /* Backdrop overlay */
+  .navbar-sidebar__backdrop {
+    background-color: rgba(0, 0, 0, 0.6) !important;
+    z-index: 1000 !important;
+  }
+
+  /* Prevent body scroll when sidebar is open */
+  body.navbar-sidebar--show {
+    overflow: hidden !important;
+  }
+}
+
+
 @media (max-width: 996px) {
   .navbar {
     min-height: 64px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    position: sticky !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
   }
   
   .navbar__logo,
   .navbar__brand img {
     height: 2rem !important;
+  }
+  
+  .navbar__inner {
+    width: 100% !important;
+    max-width: 100% !important; /* Full width on mobile */
+    margin: 0 auto !important; /* Safari layout alignment - still center content */
+    padding: 0 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important; /* Logo left, hamburger right */
+    gap: 0.5rem !important; /* Space between logo and hamburger */
   }
 }

@@ -11,8 +11,32 @@ import {
   Zap,
   Database,
   Monitor,
+  ExternalLink,
 } from 'lucide-react';
 import styles from './index.module.css';
+
+// PARTNER_DATA - Config-as-Code approach for easy link management
+const PARTNER_DATA = {
+  integratedApis: [
+    { name: 'RUNWARE.COM', link: 'https://runware.com' },
+    { name: 'OPENAI', link: 'https://openai.com' },
+    { name: 'REMOVE.BG', link: 'https://www.remove.bg' }
+  ],
+  recommendedApps: [
+    {
+      id: 'topaz-gigapixel',
+      name: 'Topaz Labs Gigapixel',
+      description: 'AI-powered image upscaling and enhancement',
+      link: 'https://www.topazlabs.com/topaz-gigapixel' // Temporary - will swap to affiliate link when approved
+    },
+    {
+      id: 'flying-upload',
+      name: 'Flying Upload',
+      description: 'Professional file upload and management solution',
+      link: 'https://flyingupload.com/' // Temporary - will swap to affiliate link when approved
+    }
+  ]
+};
 
 export default function Home(): React.JSX.Element {
   const { siteConfig } = useDocusaurusContext();
@@ -98,6 +122,28 @@ export default function Home(): React.JSX.Element {
           </div>
         </section>
 
+        {/* Integrated Platforms/APIs Section */}
+        <section className={styles.integratedApisSection}>
+          <div className={styles.container}>
+            <div className={`${styles.apiLinks} ${styles.fadeInUp} ${styles.delay1}`}>
+              {PARTNER_DATA.integratedApis.map((api, index) => (
+                <a
+                  key={index}
+                  href={api.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.apiLink}
+                >
+                  {api.name} <ExternalLink size={16} />
+                </a>
+              ))}
+            </div>
+            <p className={`${styles.apiDisclosure} ${styles.fadeInUp} ${styles.delay2}`}>
+              *Optional API integrations for professional workflows.
+            </p>
+          </div>
+        </section>
+
         {/* Features Section */}
         <section className={styles.featuresSection}>
           <div className={styles.container}>
@@ -173,6 +219,36 @@ export default function Home(): React.JSX.Element {
                 </p>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Recommended Apps Section */}
+        <section className={styles.recommendedAppsSection}>
+          <div className={styles.container}>
+            <h2 className={`${styles.sectionTitle} ${styles.fadeInUp}`}>
+              Recommended Apps
+            </h2>
+
+            <div className={styles.recommendedApps}>
+              {PARTNER_DATA.recommendedApps.map((app) => (
+                <div key={app.id} className={`${styles.recommendedAppCard} ${styles.fadeInUp}`}>
+                  <h3 className={styles.recommendedAppTitle}>{app.name}</h3>
+                  <p className={styles.recommendedAppDescription}>{app.description}</p>
+                  <a
+                    href={app.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.recommendedAppButton}
+                  >
+                    LEARN MORE →
+                  </a>
+                </div>
+              ))}
+            </div>
+
+            <p className={styles.recommendedAppsDisclosure}>
+              *Shiftline Tools recommends software used in our internal pro workflows.
+            </p>
           </div>
         </section>
 

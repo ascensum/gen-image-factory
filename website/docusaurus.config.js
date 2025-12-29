@@ -137,8 +137,8 @@ const config = {
             label: 'About',
           },
           {
-            type: 'docSidebar',
-            sidebarId: 'docsSidebar',
+            type: 'doc',
+            docId: 'getting-started/installation',
             position: 'right',
             label: 'Documentation',
           },
