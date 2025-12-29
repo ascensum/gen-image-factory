@@ -205,6 +205,7 @@ main {
 }
 
 /* Navbar - Glassmorphism: Transparent with Backdrop Blur - Full Width */
+/* NOTE: backdrop-filter can cause issues with mobile sidebar - see https://github.com/facebook/docusaurus/issues/6996 */
 .navbar {
   position: sticky !important;
   top: 0 !important;
@@ -212,8 +213,11 @@ main {
   min-height: 70px !important;
   padding: 0.75rem 0 !important;
   background-color: transparent !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
+  /* Temporarily disable backdrop-filter to fix mobile sidebar issues */
+  /* backdrop-filter: blur(12px) !important; */
+  /* -webkit-backdrop-filter: blur(12px) !important; */
+  /* Use semi-transparent background instead for glassmorphism effect */
+  background-color: rgba(5, 5, 5, 0.8) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow: none !important;
   width: 100% !important;
@@ -295,6 +299,14 @@ main {
 .menu__link {
   border-left: 2px solid transparent;
   color: #a3a3a3 !important;
+}
+
+/* Ensure mobile sidebar menu links override global menu rules */
+@media (max-width: 996px) {
+  .navbar-sidebar .menu__link {
+    /* Override global .menu__link rules for mobile sidebar */
+    border-left: none !important; /* Will be set by mobile-specific rules */
+  }
 }
 
 .menu__link:hover {
@@ -459,9 +471,13 @@ main {
   }
 
   /* Ensure navbar doesn't constrain sidebar */
+  /* Fix for backdrop-filter issue: https://github.com/facebook/docusaurus/issues/6996 */
   .navbar {
     overflow: visible !important;
     position: relative !important;
+    /* Disable backdrop-filter on mobile to prevent sidebar issues */
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   /* Style the Sidebar Drawer - Must overflow page content */
@@ -481,22 +497,58 @@ main {
   }
 
   /* Ensure items are visible regardless of page context */
+  /* Force visibility on all page types (homepage, static pages, docs pages) */
+  /* Override any global menu rules that might hide items */
   .navbar-sidebar__items, 
-  .menu__list, 
-  .menu__list-item {
+  .navbar-sidebar .navbar-sidebar__items,
+  .navbar-sidebar__items .menu__list, 
+  .navbar-sidebar__items .menu__list-item,
+  .navbar-sidebar .menu__list, 
+  .navbar-sidebar .menu__list-item,
+  /* Target nested structures that might exist on static pages */
+  .navbar-sidebar .navbar-sidebar__item .menu__list,
+  .navbar-sidebar .navbar-sidebar__item .menu__list-item {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    height: auto !important;
+    min-height: auto !important;
+  }
+  
+  /* Ensure NavbarItem components render properly */
+  .navbar-sidebar .navbar__item,
+  .navbar-sidebar .navbar__link,
+  .navbar-sidebar .navbar__item > *,
+  .navbar-sidebar .navbar__link > * {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
   }
+  
+  /* Override any global .menu rules that might hide items in sidebar */
+  .navbar-sidebar .menu,
+  .navbar-sidebar .menu * {
+    display: block !important;
+  }
+  
+  .navbar-sidebar .menu__list-item {
+    display: list-item !important;
+  }
 
   /* The Zen Menu Links */
-  .navbar-sidebar .menu__link {
+  /* Target all possible link classes that might be used */
+  .navbar-sidebar .menu__link,
+  .navbar-sidebar .navbar__link,
+  .navbar-sidebar a.menu__link,
+  .navbar-sidebar a.navbar__link {
     font-family: var(--ifm-font-family-monospace) !important;
     color: #ffffff !important;
     padding: 1.25rem 1.5rem !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
     background: transparent !important;
     opacity: 0.8;
+    display: block !important;
+    visibility: visible !important;
   }
 
   .navbar-sidebar .menu__link--active {
