@@ -1,43 +1,37 @@
-import React from 'react';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
-import NavbarItem from '@theme/NavbarItem';
+import React, {type ReactNode} from 'react';
+import {useThemeConfig} from '@docusaurus/theme-common';
+import {useNavbarMobileSidebar} from '@docusaurus/theme-common/internal';
+import NavbarItem, {type Props as NavbarItemConfig} from '@theme/NavbarItem';
+
+// Local implementation of useNavbarItems (matches Docusaurus internal pattern)
+function useNavbarItems() {
+  // TODO temporary casting until ThemeConfig type is improved
+  return useThemeConfig().navbar.items as NavbarItemConfig[];
+}
 
 /**
  * MobileSidebar/Content - Override to always show only navbar items
  * This ensures consistent mobile navigation across all pages (Home, Static Pages, Docs)
- * Single Source of Truth: Always renders the primary navbar items from docusaurus.config.js
+ * Based on Docusaurus PrimaryMenu pattern but simplified to ignore contextual sidebars
+ * 
+ * Note: This component is not currently used - PrimaryMenu is used instead
  */
-export default function MobileSidebarContent(): React.JSX.Element {
-  const {siteConfig} = useDocusaurusContext();
+export default function NavbarMobileSidebarContent(): ReactNode {
+  const mobileSidebar = useNavbarMobileSidebar();
   
-  // Get navbar items from config (primary menu items)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const themeConfig = siteConfig.themeConfig as any;
-  const navbarItems = (themeConfig?.navbar?.items || []) as Array<Record<string, unknown>>;
-  
-  // Filter to only show items in the 'right' position (our main nav items)
-  const rightItems = navbarItems.filter((item) => item.position === 'right');
-  
-  // Debug: Log to console to verify component is rendering
-  // eslint-disable-next-line no-console
-  console.log('[MobileSidebar] Rendering with', rightItems.length, 'items');
-  
-  // If no items, return empty to avoid rendering issues
-  if (rightItems.length === 0) {
-    return <ul className="navbar-sidebar__items" />;
-  }
-  
+  // Get all navbar items - this ensures we get global items on all pages
+  const items = useNavbarItems();
+
   return (
-    <ul className="navbar-sidebar__items">
-      <li className="navbar-sidebar__item">
-        <ul className="menu__list">
-          {rightItems.map((item, i) => (
-            <li key={i} className="menu__list-item">
-              <NavbarItem {...item} />
-            </li>
-          ))}
-        </ul>
-      </li>
+    <ul className="menu__list">
+      {items.map((item, i) => (
+        <NavbarItem
+          mobile
+          {...item}
+          onClick={() => mobileSidebar.toggle()}
+          key={i}
+        />
+      ))}
     </ul>
   );
 }
