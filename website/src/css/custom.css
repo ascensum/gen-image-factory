@@ -269,6 +269,18 @@ nav.navbar.navbar--fixed-top {
   color: #ffffff !important;
 }
 
+/* Hide navbar title on mobile to make room for search */
+@media (max-width: 995px) {
+  .navbar__title {
+    display: none !important;
+  }
+  
+  /* Reduce logo margin on mobile since title is hidden */
+  .navbar__logo {
+    margin-right: 0.5rem !important;
+  }
+}
+
 .navbar__brand {
   height: auto;
 }
@@ -317,16 +329,22 @@ nav.navbar.navbar--fixed-top {
     opacity: 1 !important;
   }
 
-  /* Active state - Shiftline Blue */
+  /* Active state - Shiftline Blue - Only match actual active states */
   .navbar__item--active,
   .navbar__link--active,
-  .navbar__item[class*="active"],
-  .navbar__link[class*="active"],
-  .navbar__item > a[class*="active"],
-  .navbar__link > a[class*="active"] {
+  .navbar__item > a.navbar__link--active,
+  .navbar__link > a.navbar__link--active {
     color: #3b82f6 !important;
     opacity: 1 !important;
     font-weight: bold !important;
+  }
+  
+  /* Ensure non-active items stay white */
+  .navbar__item:not(.navbar__item--active),
+  .navbar__link:not(.navbar__link--active),
+  .navbar__item > a:not(.navbar__link--active),
+  .navbar__link > a:not(.navbar__link--active) {
+    color: #ffffff !important;
   }
 }
 
@@ -866,7 +884,32 @@ nav.navbar.navbar--fixed-top {
   font-family: var(--ifm-font-family-monospace) !important;
   font-size: 0.9rem !important;
   padding: 0.5rem 1rem !important;
+  padding-left: 2.5rem !important; /* Make room for search icon */
   transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+/* Ensure search icon is always visible */
+.navbar__search-icon {
+  position: absolute !important;
+  left: 0.75rem !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+  color: #a3a3a3 !important;
+  transition: color 0.2s ease !important;
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Search icon container positioning */
+.navbar__search {
+  position: relative !important;
+}
+
+.navbar__search-input:focus + .navbar__search-icon,
+.navbar__search:hover .navbar__search-icon,
+.navbar__search-input:not(:placeholder-shown) ~ .navbar__search-icon {
+  color: #3b82f6 !important;
 }
 
 .navbar__search-input:focus {
@@ -940,6 +983,30 @@ nav.navbar.navbar--fixed-top {
   border-radius: 2px !important;
 }
 
+/* Highlighted search terms on target page (when navigating from search) */
+mark,
+[data-search-highlight] {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+  color: #3b82f6 !important;
+  font-weight: bold !important;
+  padding: 0.15rem 0.25rem !important;
+  border-radius: 3px !important;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Ensure mark tags are visible in all contexts */
+.markdown mark,
+.theme-doc-markdown mark,
+article mark,
+main mark {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+  color: #3b82f6 !important;
+  font-weight: bold !important;
+  padding: 0.15rem 0.25rem !important;
+  border-radius: 3px !important;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2) !important;
+}
+
 /* Search Result Footer (breadcrumb/path) */
 .search-local-popover .search-result-footer {
   color: #666 !important;
@@ -969,15 +1036,39 @@ nav.navbar.navbar--fixed-top {
   box-shadow: none !important;
 }
 
-/* Search Icon */
-.navbar__search-icon {
-  color: #a3a3a3 !important;
-  transition: color 0.2s ease !important;
-}
+/* OS-aware keyboard shortcut display - Add modifier based on OS */
+/* macOS: Show ⌘K, Windows/Linux: Show Ctrl+K */
+/* Note: The plugin shows just "K", but we can enhance it with CSS pseudo-elements */
+/* The actual shortcut works correctly (Cmd+K on Mac, Ctrl+K on Windows/Linux) */
 
-.navbar__search-input:focus + .navbar__search-icon,
-.navbar__search:hover .navbar__search-icon {
-  color: #3b82f6 !important;
+/* Mobile search optimizations */
+@media (max-width: 995px) {
+  /* Make search more compact on mobile */
+  .navbar__search-input {
+    min-width: 120px !important;
+    max-width: 180px !important;
+    font-size: 0.85rem !important;
+    padding: 0.4rem 0.75rem !important;
+    padding-left: 2.25rem !important;
+  }
+  
+  /* Ensure search icon is visible and properly positioned on mobile */
+  .navbar__search-icon {
+    left: 0.6rem !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+  
+  /* Hide keyboard shortcut on mobile (saves space) */
+  .navbar__search-keyboard-shortcut {
+    display: none !important;
+  }
+  
+  /* Make search container flex properly on mobile */
+  .navbar__search {
+    flex: 0 0 auto !important;
+    margin-left: 0.5rem !important;
+  }
 }
 
 /* Search Container */
