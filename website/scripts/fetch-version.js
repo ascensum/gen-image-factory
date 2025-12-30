@@ -19,17 +19,29 @@ const path = require('path');
 
 // Sanitize strings for safe logging (prevent log injection)
 // Removes all control characters, newlines, and other dangerous characters
+// Applies sanitization repeatedly to prevent bypasses
 function sanitizeForLog(input) {
   if (typeof input !== 'string') {
     return String(input);
   }
-  // Remove all control characters (0x00-0x1F, 0x7F-0x9F), newlines, carriage returns
-  // Also remove backspaces, form feeds, and other potentially dangerous characters
-  return input
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u001F\u007F-\u009F\n\r\b\f\t\v]/g, '')
-    .replace(/\\/g, '') // Remove backslashes to prevent escape sequence injection
-    .substring(0, 1000);
+  let sanitized = input;
+  let previous;
+  // Apply sanitization repeatedly until no more changes to prevent bypasses
+  do {
+    previous = sanitized;
+    // Remove all control characters (0x00-0x1F, 0x7F-0x9F), newlines, carriage returns
+    // Also remove backspaces, form feeds, and other potentially dangerous characters
+    sanitized = sanitized
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\u0000-\u001F\u007F-\u009F\n\r\b\f\t\v]/g, '')
+      .replace(/\\/g, '') // Remove backslashes to prevent escape sequence injection
+      .replace(/%0a/gi, '') // Remove URL-encoded newlines
+      .replace(/%0d/gi, '') // Remove URL-encoded carriage returns
+      .replace(/%0A/gi, '') // Remove URL-encoded newlines (uppercase)
+      .replace(/%0D/gi, ''); // Remove URL-encoded carriage returns (uppercase)
+  } while (sanitized !== previous);
+  
+  return sanitized.substring(0, 1000);
 }
 
 const GITHUB_OWNER = 'ShiftlineTools';
@@ -88,8 +100,9 @@ async function main() {
     
   } catch (error) {
     // Sanitize error message to prevent log injection
-    const sanitizedMsg = sanitizeForLog(error.message);
-    console.warn(`Warning: Could not fetch version from GitHub: ${sanitizedMsg}`);
+    // Use separate arguments instead of template string interpolation for extra safety
+    const sanitizedMsg = sanitizeForLog(error.message || 'Unknown error');
+    console.warn('Warning: Could not fetch version from GitHub:', sanitizedMsg);
     console.warn('   Falling back to package.json version in docusaurus.config.js');
     process.exit(0); // Don't fail the build, just use fallback
   }
