@@ -1097,3 +1097,112 @@ main mark {
 .search-local-popover::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3) !important;
 }
+
+/* ========================================
+   BACK TO TOP BUTTON - MACHINE UI ELEMENT
+   ======================================== */
+
+/* Back to Top Button - Technical Machine UI */
+.backToTopButton {
+  background-color: #0d0d0d !important;
+  border: 2px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.5rem !important;
+  color: #ffffff !important;
+  font-family: var(--ifm-font-family-monospace) !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  padding: 0.75rem 1.25rem !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: fixed !important;
+  bottom: 2rem !important;
+  right: 2rem !important;
+  z-index: 999 !important;
+}
+
+.backToTopButton:hover {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border-color: #3b82f6 !important;
+  color: #3b82f6 !important;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  transform: translateY(-2px) !important;
+}
+
+.backToTopButton:active {
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Mobile back to top button */
+@media (max-width: 996px) {
+  .backToTopButton {
+    bottom: 1.5rem !important;
+    right: 1.5rem !important;
+    padding: 0.625rem 1rem !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+/* ========================================
+   FOOTER - INDUSTRIAL ZEN STYLING
+   ======================================== */
+
+/* Footer - Monospace + Uppercase */
+.footer {
+  background-color: #050505 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.footer__title,
+.footer__link-item,
+.footer__link-item a {
+  font-family: var(--ifm-font-family-monospace) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 0.875rem !important;
+  color: #ffffff !important;
+}
+
+.footer__link-item a {
+  color: #a3a3a3 !important;
+  transition: color 0.2s ease !important;
+}
+
+.footer__link-item a:hover {
+  color: #3b82f6 !important;
+}
+
+.footer__copyright {
+  font-family: var(--ifm-font-family-monospace) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 0.75rem !important;
+  color: #666 !important;
+}
+
+/* Footer - Center align on mobile */
+@media (max-width: 996px) {
+  .footer__links {
+    text-align: center !important;
+  }
+
+  .footer__col {
+    text-align: center !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .footer__title {
+    text-align: center !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .footer__link-item {
+    text-align: center !important;
+  }
+
+  .footer__copyright {
+    text-align: center !important;
+  }
+}

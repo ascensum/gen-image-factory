@@ -167,6 +167,7 @@ const config = {
           },
         ],
       },
+      backToTopButton: true,
       footer: {
         style: 'dark',
         links: [

@@ -131,6 +131,9 @@ export default function Home(): React.JSX.Element {
         {/* Integrated Platforms/APIs Section */}
         <section className={styles.integratedApisSection}>
           <div className={styles.container}>
+            <h2 className={`${styles.sectionTitle} ${styles.fadeInUp}`}>
+              INTEGRATION PLATFORMS / APIs
+            </h2>
             <div className={`${styles.apiLinks} ${styles.fadeInUp} ${styles.delay1}`}>
               {PARTNER_DATA.integratedApis.map((api, index) => (
                 <a
