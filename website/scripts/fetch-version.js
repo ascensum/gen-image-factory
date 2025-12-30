@@ -18,30 +18,20 @@ const fs = require('fs');
 const path = require('path');
 
 // Sanitize strings for safe logging (prevent log injection)
-// Removes all control characters, newlines, and other dangerous characters
-// Applies sanitization repeatedly to prevent bypasses
+// Removes newline and other control characters, and limits overall length.
 function sanitizeForLog(input) {
-  if (typeof input !== 'string') {
+  if (input === null || input === undefined) {
     return String(input);
   }
-  let sanitized = input;
-  let previous;
-  // Apply sanitization repeatedly until no more changes to prevent bypasses
-  do {
-    previous = sanitized;
-    // Remove all control characters (0x00-0x1F, 0x7F-0x9F), newlines, carriage returns
-    // Also remove backspaces, form feeds, and other potentially dangerous characters
-    sanitized = sanitized
-      // eslint-disable-next-line no-control-regex
-      .replace(/[\u0000-\u001F\u007F-\u009F\n\r\b\f\t\v]/g, '')
-      .replace(/\\/g, '') // Remove backslashes to prevent escape sequence injection
-      .replace(/%0a/gi, '') // Remove URL-encoded newlines
-      .replace(/%0d/gi, '') // Remove URL-encoded carriage returns
-      .replace(/%0A/gi, '') // Remove URL-encoded newlines (uppercase)
-      .replace(/%0D/gi, ''); // Remove URL-encoded carriage returns (uppercase)
-  } while (sanitized !== previous);
-  
-  return sanitized.substring(0, 1000);
+  let str = typeof input === 'string' ? input : String(input);
+  // Remove all ASCII control characters, including CR/LF, tabs, etc.
+  // eslint-disable-next-line no-control-regex
+  str = str.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+  // Limit length to avoid log flooding
+  if (str.length > 1000) {
+    str = str.substring(0, 1000);
+  }
+  return str;
 }
 
 const GITHUB_OWNER = 'ShiftlineTools';
