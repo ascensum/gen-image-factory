@@ -850,3 +850,159 @@ nav.navbar.navbar--fixed-top {
     margin: 0 !important;
   }
 }
+
+/* ========================================
+   FULL-TEXT SEARCH - INDUSTRIAL ZEN STYLING
+   ======================================== */
+
+/* Search Input - Glassmorphism matching navbar */
+.navbar__search-input {
+  background-color: rgba(13, 13, 13, 0.7) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.5rem !important;
+  color: #ffffff !important;
+  font-family: var(--ifm-font-family-monospace) !important;
+  font-size: 0.9rem !important;
+  padding: 0.5rem 1rem !important;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.navbar__search-input:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+  outline: none !important;
+}
+
+.navbar__search-input::placeholder {
+  color: #a3a3a3 !important;
+  opacity: 0.7 !important;
+}
+
+/* Search Popover/Results Container */
+.search-local-popover {
+  background-color: #0d0d0d !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 12px 28px 0 rgba(0, 0, 0, 0.3), 0 2px 4px 0 rgba(0, 0, 0, 0.2) !important;
+  margin-top: 0.5rem !important;
+  max-height: 60vh !important;
+  overflow-y: auto !important;
+  padding: 0 !important;
+}
+
+/* Search Results List */
+.search-local-popover .search-result {
+  background-color: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 1rem 1.25rem !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.search-local-popover .search-result:hover,
+.search-local-popover .search-result--active {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border-left: 4px solid #3b82f6 !important;
+}
+
+.search-local-popover .search-result:last-child {
+  border-bottom: none !important;
+}
+
+/* Search Result Title */
+.search-local-popover .search-result-title {
+  color: #ffffff !important;
+  font-family: var(--ifm-font-family-monospace) !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.5px !important;
+  line-height: 1.5 !important;
+  margin-bottom: 0.5rem !important;
+  text-transform: uppercase !important;
+}
+
+/* Search Result Snippet/Content */
+.search-local-popover .search-result-snippet {
+  color: #a3a3a3 !important;
+  font-family: var(--ifm-font-family-monospace) !important;
+  font-size: 0.85rem !important;
+  line-height: 1.6 !important;
+  margin: 0 !important;
+}
+
+/* Highlighted search terms in results */
+.search-local-popover mark {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  color: #3b82f6 !important;
+  font-weight: bold !important;
+  padding: 0.1rem 0.2rem !important;
+  border-radius: 2px !important;
+}
+
+/* Search Result Footer (breadcrumb/path) */
+.search-local-popover .search-result-footer {
+  color: #666 !important;
+  font-family: var(--ifm-font-family-monospace) !important;
+  font-size: 0.75rem !important;
+  margin-top: 0.5rem !important;
+  opacity: 0.7 !important;
+}
+
+/* No Results Message */
+.search-local-popover .search-result-empty {
+  color: #a3a3a3 !important;
+  font-family: var(--ifm-font-family-monospace) !important;
+  padding: 2rem 1.25rem !important;
+  text-align: center !important;
+}
+
+/* Keyboard Shortcut Indicator (K key) */
+.navbar__search-keyboard-shortcut {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.25rem !important;
+  color: #a3a3a3 !important;
+  font-family: var(--ifm-font-family-monospace) !important;
+  font-size: 0.75rem !important;
+  padding: 0.25rem 0.5rem !important;
+  box-shadow: none !important;
+}
+
+/* Search Icon */
+.navbar__search-icon {
+  color: #a3a3a3 !important;
+  transition: color 0.2s ease !important;
+}
+
+.navbar__search-input:focus + .navbar__search-icon,
+.navbar__search:hover .navbar__search-icon {
+  color: #3b82f6 !important;
+}
+
+/* Search Container */
+.navbar__search {
+  transition: all 0.2s ease !important;
+}
+
+.navbar__search:hover .navbar__search-input {
+  border-color: rgba(59, 130, 246, 0.5) !important;
+}
+
+/* Scrollbar for search results */
+.search-local-popover::-webkit-scrollbar {
+  width: 8px !important;
+}
+
+.search-local-popover::-webkit-scrollbar-track {
+  background: #1a1a1a !important;
+}
+
+.search-local-popover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 4px !important;
+}
+
+.search-local-popover::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+}
