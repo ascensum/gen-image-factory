@@ -205,7 +205,7 @@ main {
 }
 
 /* Navbar - Glassmorphism: Transparent with Backdrop Blur - Full Width */
-/* CRITICAL: backdrop-filter must NOT be applied on mobile (< 1000px) because it breaks the mobile sidebar */
+/* CRITICAL: backdrop-filter must NOT be applied on mobile (< 996px) because it breaks the mobile sidebar */
 /* On mobile, .navbar-sidebar becomes a child of .navbar, and backdrop-filter on parent breaks it */
 /* Use specific selector nav.navbar.navbar--fixed-top to match Docusaurus structure */
 nav.navbar.navbar--fixed-top {
@@ -230,9 +230,9 @@ nav.navbar.navbar--fixed-top {
   transform: none !important;
 }
 
-/* Apply backdrop-filter ONLY on desktop (>= 1000px) to avoid breaking mobile sidebar */
-/* Mobile menu is from 0px-999px, desktop menu is from 1000px+ */
-@media (min-width: 1000px) {
+/* Apply backdrop-filter ONLY on desktop (>= 996px) to avoid breaking mobile sidebar */
+/* Mobile menu is from 0px-995px, desktop menu is from 996px+ */
+@media (min-width: 996px) {
   nav.navbar.navbar--fixed-top {
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
@@ -278,7 +278,8 @@ nav.navbar.navbar--fixed-top {
   width: auto !important;
 }
 
-/* Navbar Links - Gray */
+/* Navbar Links - Industrial Zen Style (Desktop) */
+/* Base state - will be overridden for desktop with Industrial Zen styling */
 .navbar__item,
 .navbar__link {
   color: #a3a3a3 !important;
@@ -287,6 +288,46 @@ nav.navbar.navbar--fixed-top {
 .navbar__item:hover,
 .navbar__link:hover {
   color: #ffffff !important;
+}
+
+/* Desktop Navbar - Industrial Zen Styling (matches mobile menu) */
+@media (min-width: 996px) {
+  .navbar__item,
+  .navbar__link,
+  .navbar__item > a,
+  .navbar__link > a,
+  .navbar__item a,
+  .navbar__link a {
+    font-family: var(--ifm-font-family-monospace) !important;
+    font-size: 0.9rem !important;
+    color: #ffffff !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    opacity: 0.8 !important;
+    transition: opacity 0.2s ease, color 0.2s ease !important;
+  }
+
+  .navbar__item:hover,
+  .navbar__link:hover,
+  .navbar__item > a:hover,
+  .navbar__link > a:hover,
+  .navbar__item a:hover,
+  .navbar__link a:hover {
+    color: #3b82f6 !important;
+    opacity: 1 !important;
+  }
+
+  /* Active state - Shiftline Blue */
+  .navbar__item--active,
+  .navbar__link--active,
+  .navbar__item[class*="active"],
+  .navbar__link[class*="active"],
+  .navbar__item > a[class*="active"],
+  .navbar__link > a[class*="active"] {
+    color: #3b82f6 !important;
+    opacity: 1 !important;
+    font-weight: bold !important;
+  }
 }
 
 /* Hide theme toggle completely */
