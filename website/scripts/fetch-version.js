@@ -19,14 +19,26 @@ const path = require('path');
 
 // Sanitize strings for safe logging (prevent log injection)
 // Removes newline and other control characters, and limits overall length.
+// Applies sanitization repeatedly to prevent bypasses (e.g., URL-encoded newlines)
 function sanitizeForLog(input) {
   if (input === null || input === undefined) {
     return String(input);
   }
   let str = typeof input === 'string' ? input : String(input);
-  // Remove all ASCII control characters, including CR/LF, tabs, etc.
-  // eslint-disable-next-line no-control-regex
-  str = str.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+  let previous;
+  // Apply sanitization repeatedly until no more changes to prevent bypasses
+  do {
+    previous = str;
+    // Remove all ASCII control characters, including CR/LF, tabs, etc.
+    // eslint-disable-next-line no-control-regex
+    str = str.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+    // Remove backslashes to prevent escape sequence injection
+    str = str.replace(/\\/g, '');
+    // Remove URL-encoded newlines and carriage returns (prevents bypasses)
+    str = str.replace(/%0a/gi, '').replace(/%0d/gi, '');
+    str = str.replace(/%0A/gi, '').replace(/%0D/gi, '');
+  } while (str !== previous);
+  
   // Limit length to avoid log flooding
   if (str.length > 1000) {
     str = str.substring(0, 1000);
