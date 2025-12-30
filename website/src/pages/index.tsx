@@ -144,10 +144,10 @@ export default function Home(): React.JSX.Element {
                 </a>
               ))}
             </div>
-            <p className={`${styles.apiDisclosure} ${styles.fadeInUp} ${styles.delay2}`}>
-              *Optional API integrations for professional workflows.
-            </p>
           </div>
+          <p className={`${styles.apiDisclosure} ${styles.fadeInUp} ${styles.delay2}`}>
+            *Optional API integrations for professional workflows.
+          </p>
         </section>
 
         {/* Features Section */}
