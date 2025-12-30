@@ -286,7 +286,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1rem;
   padding: 2rem;
-  transition: all 0.3s ease;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease, box-shadow 0.3s ease !important;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -294,9 +294,10 @@
 
 /* Hover - Transition border to Blue */
 .featureCard:hover {
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
-  transform: translateY(-2px);
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 25px rgba(59, 130, 246, 0.15) !important;
+  transform: translateY(-5px);
+  text-decoration: none !important;
 }
 
 .featureCard:focus {

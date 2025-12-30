@@ -439,6 +439,14 @@ nav.navbar.navbar--fixed-top {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 0.5rem;
   color: #ffffff !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease !important;
+}
+
+.card:hover {
+  transform: translateY(-5px) !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 25px rgba(59, 130, 246, 0.15) !important;
+  text-decoration: none !important;
 }
 
 .admonition-heading {

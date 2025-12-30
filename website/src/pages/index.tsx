@@ -12,9 +12,37 @@ import {
   Database,
   Monitor,
   ExternalLink,
+  FileText,
 } from 'lucide-react';
 import styles from './index.module.css';
 import { PARTNER_DATA } from '../data/ecosystem';
+import clsx from 'clsx';
+
+interface FeatureItem {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  link: string;
+  className?: string;
+  openInNewTab?: boolean;
+}
+
+function Feature({title, description, icon, link, className, openInNewTab}: FeatureItem) {
+  const isExternal = link.startsWith('http') || openInNewTab;
+  return (
+    <Link 
+      to={link} 
+      className={clsx(styles.featureCard, className)}
+      target={isExternal ? '_blank' : undefined}
+      rel={isExternal ? 'noopener noreferrer' : undefined}
+      style={{ display: 'block', height: '100%', color: 'inherit', cursor: 'pointer', textDecoration: 'none' }}
+    >
+      {icon}
+      <h3 className={styles.featureTitle}>{title}</h3>
+      <p className={styles.featureDescription}>{description}</p>
+    </Link>
+  );
+}
 
 export default function Home(): React.JSX.Element {
   const { siteConfig } = useDocusaurusContext();
@@ -130,53 +158,60 @@ export default function Home(): React.JSX.Element {
             </h2>
 
             <div className={styles.featuresGrid}>
-              <div className={`${styles.featureCard} ${styles.fadeInUp}`} tabIndex={0}>
-                <BrainCircuit className={styles.featureIcon} aria-hidden="true" />
-                <h3 className={styles.featureTitle}>AI-Powered Generation</h3>
-                <p className={styles.featureDescription}>
-                  Leverage advanced AI models for high-quality image creation with intelligent processing capabilities.
-                </p>
-              </div>
-
-              <div className={`${styles.featureCard} ${styles.fadeInUp} ${styles.delay1}`} tabIndex={0}>
-                <ShieldCheck className={styles.featureIcon} aria-hidden="true" />
-                <h3 className={styles.featureTitle}>Quality Control</h3>
-                <p className={styles.featureDescription}>
-                  Automated quality assessment using AI to ensure consistent, professional-grade image output.
-                </p>
-              </div>
-
-              <div className={`${styles.featureCard} ${styles.fadeInUp} ${styles.delay2}`} tabIndex={0}>
-                <Zap className={styles.featureIcon} aria-hidden="true" />
-                <h3 className={styles.featureTitle}>Batch Processing</h3>
-                <p className={styles.featureDescription}>
-                  Process multiple images efficiently with optimized workflows and sequential job execution.
-                </p>
-              </div>
-
-              <div className={`${styles.featureCard} ${styles.fadeInUp} ${styles.delay3}`} tabIndex={0}>
-                <Database className={styles.featureIcon} aria-hidden="true" />
-                <h3 className={styles.featureTitle}>Metadata Generation</h3>
-                <p className={styles.featureDescription}>
-                  Automatic metadata creation for generated images with comprehensive tagging and organization.
-                </p>
-              </div>
-
-              <div className={`${styles.featureCard} ${styles.fadeInUp} ${styles.delay1}`} tabIndex={0}>
-                <Monitor className={styles.featureIcon} aria-hidden="true" />
-                <h3 className={styles.featureTitle}>Cross-Platform</h3>
-                <p className={styles.featureDescription}>
-                  Available for Windows, macOS, and Linux with native performance and platform integration.
-                </p>
-              </div>
-
-              <div className={`${styles.featureCard} ${styles.fadeInUp} ${styles.delay2}`} tabIndex={0}>
-                <Store className={styles.featureIcon} aria-hidden="true" />
-                <h3 className={styles.featureTitle}>Microsoft Store</h3>
-                <p className={styles.featureDescription}>
-                  Available on Windows through Microsoft Store for easy installation and automatic updates.
-                </p>
-              </div>
+              {([
+                {
+                  title: 'Keyword & Template Lab',
+                  description: 'Integrate external .txt prompt templates and .csv keyword libraries for automated image orchestration and metadata control.',
+                  icon: <FileText className={styles.featureIcon} aria-hidden="true" />,
+                  link: '/docs/user-guide/settings#template-configuration',
+                  className: `${styles.fadeInUp}`,
+                },
+                {
+                  title: 'AI-Powered Generation',
+                  description: 'Leverage advanced AI models for high-quality image creation with intelligent processing capabilities.',
+                  icon: <BrainCircuit className={styles.featureIcon} aria-hidden="true" />,
+                  link: '/docs/user-guide/settings#required-api-keys',
+                  className: `${styles.fadeInUp} ${styles.delay1}`,
+                },
+                {
+                  title: 'Quality Control',
+                  description: 'Automated quality assessment using AI to ensure consistent, professional-grade image output.',
+                  icon: <ShieldCheck className={styles.featureIcon} aria-hidden="true" />,
+                  link: '/docs/user-guide/failed-images-review',
+                  className: `${styles.fadeInUp} ${styles.delay2}`,
+                },
+                {
+                  title: 'Batch Processing',
+                  description: 'Process multiple images efficiently with optimized workflows and sequential job execution.',
+                  icon: <Zap className={styles.featureIcon} aria-hidden="true" />,
+                  link: '/docs/user-guide/settings#job-configuration',
+                  className: `${styles.fadeInUp} ${styles.delay3}`,
+                },
+                {
+                  title: 'Metadata Generation',
+                  description: 'Automatic metadata creation for generated images with comprehensive tagging and organization.',
+                  icon: <Database className={styles.featureIcon} aria-hidden="true" />,
+                  link: '/docs/user-guide/settings#job-configuration',
+                  className: `${styles.fadeInUp} ${styles.delay1}`,
+                },
+                {
+                  title: 'Cross-Platform',
+                  description: 'Available for Windows, macOS, and Linux with native performance and platform integration.',
+                  icon: <Monitor className={styles.featureIcon} aria-hidden="true" />,
+                  link: '/docs/getting-started/installation',
+                  className: `${styles.fadeInUp} ${styles.delay2}`,
+                },
+              ] as FeatureItem[]).map((feature, index) => (
+                <Feature
+                  key={index}
+                  title={feature.title}
+                  description={feature.description}
+                  icon={feature.icon}
+                  link={feature.link}
+                  className={feature.className}
+                  openInNewTab={feature.openInNewTab}
+                />
+              ))}
             </div>
           </div>
         </section>
