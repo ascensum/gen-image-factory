@@ -114,7 +114,14 @@ function formatForStore(releaseBody) {
   }
   
   // Remove HTML comments (like the one we added for GitHub auto-generation)
-  let formatted = releaseBody.replace(/<!--[\s\S]*?-->/g, '');
+  // Apply replacement repeatedly until no more matches to prevent incomplete sanitization
+  // This prevents bypasses like: <!<!-- comment --> which becomes <! after first pass
+  let formatted = releaseBody;
+  let previous;
+  do {
+    previous = formatted;
+    formatted = formatted.replace(/<!--[\s\S]*?-->/g, '');
+  } while (formatted !== previous);
   
   // Remove GitHub-specific markdown that might not render well in Store
   // Keep basic formatting (headers, lists, bold)
