@@ -91,7 +91,18 @@ export default function Home(): React.JSX.Element {
             </div>
 
             {/* Main Heading */}
-            <h1 className={`${styles.heroTitle} ${styles.fadeInUp} ${styles.delay1}`}>
+            <h1 
+              className={`${styles.heroTitle} ${styles.fadeInUp} ${styles.delay1}`}
+              style={{
+                fontWeight: 800,
+                letterSpacing: '-0.03em',
+                background: 'linear-gradient(to bottom, #ffffff 20%, #a3a3a3 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                color: 'transparent'
+              }}
+            >
               Gen Image Factory
             </h1>
 
@@ -128,30 +139,32 @@ export default function Home(): React.JSX.Element {
           </div>
         </section>
 
-        {/* Integrated Platforms/APIs Section */}
+        {/* Integrated Platforms/APIs Section - Engine Room */}
+        <div className={styles.container}>
+          <h2 className={`${styles.sectionTitle} ${styles.fadeInUp}`} style={{marginTop: '4rem'}}>
+            Integration Platforms/Apis
+          </h2>
+        </div>
         <section className={styles.integratedApisSection}>
           <div className={styles.container}>
-            <h2 className={`${styles.sectionTitle} ${styles.fadeInUp}`}>
-              INTEGRATION PLATFORMS / APIs
-            </h2>
-            <div className={`${styles.apiLinks} ${styles.fadeInUp} ${styles.delay1}`}>
+            <div className={`integration-brand-links ${styles.fadeInUp} ${styles.delay1}`} style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '1.5rem', marginTop: 0}}>
               {PARTNER_DATA.integratedApis.map((api, index) => (
                 <a
                   key={index}
                   href={api.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={styles.apiLink}
+                  style={{fontWeight: 900, fontSize: 'clamp(1.5rem, 6vw, 3rem)', color: '#ffffff', textDecoration: 'none', letterSpacing: '-2px', opacity: 0.8, display: 'inline-flex', alignItems: 'center', gap: '0.75rem', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace', lineHeight: 1.2}}
                 >
-                  {api.name} <ExternalLink size={16} />
+                  {api.name} <ExternalLink size={24} />
                 </a>
               ))}
             </div>
           </div>
-          <p className={`${styles.apiDisclosure} ${styles.fadeInUp} ${styles.delay2}`}>
-            *Optional API integrations for professional workflows.
-          </p>
         </section>
+        <div className={`integration-helper ${styles.fadeInUp} ${styles.delay2}`} style={{textAlign: 'center', fontSize: '0.75rem', color: '#a3a3a3', marginTop: '1rem', marginBottom: '2rem', fontFamily: 'var(--ifm-font-family-monospace)', padding: '0 1rem'}}>
+          *Optional API integrations for professional workflows.
+        </div>
 
         {/* Features Section */}
         <section className={styles.featuresSection}>

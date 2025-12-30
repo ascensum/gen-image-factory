@@ -476,13 +476,52 @@ nav.navbar.navbar--fixed-top {
   border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
+/* Override ALL heading styles within TOC */
+.table-of-contents h1,
+.table-of-contents h2,
+.table-of-contents h3,
+.table-of-contents h4,
+.table-of-contents h5,
+.table-of-contents h6 {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  line-height: 1.5 !important;
+  color: #a3a3a3 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 .table-of-contents__link {
   color: #a3a3a3 !important;
+  font-size: 0.875rem !important; /* Prevent huge links */
+  line-height: 1.5 !important;
+  font-weight: normal !important;
 }
 
 .table-of-contents__link:hover,
 .table-of-contents__link--active {
   color: #ffffff !important;
+}
+
+/* Ensure TOC headings are normal size */
+.table-of-contents__link strong,
+.table-of-contents__link b,
+.table-of-contents strong,
+.table-of-contents b {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+}
+
+/* Override any nested elements in TOC */
+.table-of-contents * {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+}
+
+/* But allow links to have their own color */
+.table-of-contents a {
+  font-size: 0.875rem !important;
+  color: #a3a3a3 !important;
 }
 
 /* Scrollbars - Thin and dark with gray */
@@ -985,26 +1024,43 @@ nav.navbar.navbar--fixed-top {
 
 /* Highlighted search terms on target page (when navigating from search) */
 mark,
-[data-search-highlight] {
+[data-search-highlight],
+mark[data-search-highlight] {
   background-color: rgba(59, 130, 246, 0.3) !important;
   color: #3b82f6 !important;
   font-weight: bold !important;
   padding: 0.15rem 0.25rem !important;
   border-radius: 3px !important;
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2) !important;
+  display: inline !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Ensure mark tags are visible in all contexts */
 .markdown mark,
 .theme-doc-markdown mark,
 article mark,
-main mark {
+main mark,
+.theme-doc-markdown p mark,
+.markdown p mark,
+article p mark,
+main p mark,
+.theme-doc-markdown h1 mark,
+.theme-doc-markdown h2 mark,
+.theme-doc-markdown h3 mark,
+.markdown h1 mark,
+.markdown h2 mark,
+.markdown h3 mark {
   background-color: rgba(59, 130, 246, 0.3) !important;
   color: #3b82f6 !important;
   font-weight: bold !important;
   padding: 0.15rem 0.25rem !important;
   border-radius: 3px !important;
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2) !important;
+  display: inline !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Search Result Footer (breadcrumb/path) */
@@ -1099,49 +1155,184 @@ main mark {
 }
 
 /* ========================================
+   HERO TITLE - METALLIC FORGED-STEEL LOOK
+   ======================================== */
+
+/* Hero title is styled in index.module.css as .heroTitle */
+/* This selector targets any hero title globally if needed */
+h1.heroTitle,
+[class*="heroTitle"],
+[class*="hero-title"] {
+  font-weight: 800 !important;
+  letter-spacing: -0.03em !important;
+  background: linear-gradient(to bottom, #ffffff 20%, #a3a3a3 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+/* ========================================
+   INTEGRATION SECTION - ENGINE ROOM
+   ======================================== */
+
+/* High-specificity selectors to override any module CSS */
+div.integration-header,
+.integration-header {
+  font-family: var(--ifm-font-family-monospace) !important;
+  font-size: 0.7rem !important;
+  color: #3b82f6 !important;
+  letter-spacing: 2px !important;
+  text-align: center !important;
+  margin-bottom: 1.5rem !important;
+  margin-top: 4rem !important;
+  text-transform: uppercase !important;
+  line-height: 1.5 !important;
+}
+
+div.integration-brand-links,
+.integration-brand-links {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 1.5rem !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Only style links within the integration-brand-links container */
+div.integration-brand-links a,
+.integration-brand-links a {
+  font-weight: 900 !important;
+  font-size: clamp(1.5rem, 6vw, 3rem) !important; /* Responsive scaling like section headers */
+  color: #ffffff !important;
+  text-decoration: none !important;
+  letter-spacing: -2px !important;
+  opacity: 0.8 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace !important;
+  transition: all 0.3s ease !important;
+  line-height: 1.2 !important;
+}
+
+div.integration-brand-links a:hover,
+.integration-brand-links a:hover {
+  color: #3b82f6 !important;
+  opacity: 1.0 !important;
+  text-shadow: 0 0 20px rgba(59, 130, 246, 0.6), 0 0 40px rgba(59, 130, 246, 0.3) !important;
+  transform: scale(1.05) !important;
+}
+
+div.integration-helper,
+.integration-helper {
+  text-align: center !important;
+  font-size: 0.75rem !important;
+  color: #a3a3a3 !important;
+  margin-top: 1rem !important;
+  margin-bottom: 2rem !important;
+  font-family: var(--ifm-font-family-monospace) !important;
+  padding: 0 1rem !important;
+  line-height: 1.5 !important;
+}
+
+/* Mobile responsive for integration section */
+@media (max-width: 996px) {
+  .integration-brand-links {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 1.25rem !important;
+  }
+
+  .integration-brand-links a {
+    font-size: clamp(1.5rem, 6vw, 3rem) !important; /* Consistent with base style */
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  /* Disable hover effects on mobile */
+  .integration-brand-links a:hover {
+    color: #ffffff !important;
+    opacity: 0.8 !important;
+    text-shadow: none !important;
+    transform: none !important;
+  }
+
+  /* Active touch feedback for integration links */
+  .integration-brand-links a:active,
+  .integration-brand-links a:focus {
+    color: #3b82f6 !important;
+    opacity: 1.0 !important;
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.6), 0 0 40px rgba(59, 130, 246, 0.3) !important;
+    transform: scale(0.95) !important;
+  }
+
+  .integration-header {
+    font-size: 0.6rem !important;
+    letter-spacing: 1.5px !important;
+  }
+
+  .integration-helper {
+    font-size: 0.7rem !important;
+  }
+}
+
+/* ========================================
    BACK TO TOP BUTTON - MACHINE UI ELEMENT
    ======================================== */
 
-/* Back to Top Button - Technical Machine UI */
-.backToTopButton {
+/* High-Specificity Back to Top Force */
+.theme-back-to-top-button {
+  display: flex !important; /* Force flex display when Docusaurus triggers it */
+  z-index: 9999 !important; /* Sit above Bento and Footer layers */
   background-color: #0d0d0d !important;
-  border: 2px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 0.5rem !important;
-  color: #ffffff !important;
-  font-family: var(--ifm-font-family-monospace) !important;
-  font-size: 0.875rem !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.1em !important;
-  text-transform: uppercase !important;
-  padding: 0.75rem 1.25rem !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  position: fixed !important;
-  bottom: 2rem !important;
-  right: 2rem !important;
-  z-index: 999 !important;
-}
-
-.backToTopButton:hover {
-  background-color: rgba(59, 130, 246, 0.1) !important;
-  border-color: #3b82f6 !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   color: #3b82f6 !important;
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-  transform: translateY(-2px) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  right: 2rem !important;
+  bottom: 2rem !important;
+  width: 50px !important;
+  height: 50px !important;
+  position: fixed !important;
+  border-radius: 4px !important;
+  transition: all 0.2s ease-in-out !important;
+  cursor: pointer !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-.backToTopButton:active {
+/* Ensure the icon inside is also visible */
+.theme-back-to-top-button svg {
+  color: #3b82f6 !important;
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.theme-back-to-top-button:hover {
+  background-color: #1a1a1a !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4) !important;
+}
+
+.theme-back-to-top-button:active {
   transform: translateY(0) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* Mobile back to top button */
 @media (max-width: 996px) {
-  .backToTopButton {
+  .theme-back-to-top-button {
     bottom: 1.5rem !important;
     right: 1.5rem !important;
-    padding: 0.625rem 1rem !important;
-    font-size: 0.75rem !important;
+    width: 45px !important;
+    height: 45px !important;
+  }
+
+  .theme-back-to-top-button svg {
+    width: 24px !important;
+    height: 24px !important;
   }
 }
 
@@ -1186,23 +1377,135 @@ main mark {
 @media (max-width: 996px) {
   .footer__links {
     text-align: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .footer__col {
     text-align: center !important;
     margin-bottom: 2rem !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .footer__title {
     text-align: center !important;
     margin-bottom: 1rem !important;
+    width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
   }
 
   .footer__link-item {
+    text-align: center !important;
+    display: block !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    text-align: center !important;
+  }
+
+  .footer__link-item a {
+    text-align: center !important;
+    display: block !important;
+    width: 100% !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
     text-align: center !important;
   }
 
   .footer__copyright {
     text-align: center !important;
+    width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  /* Ensure footer list items are centered */
+  .footer__items {
+    text-align: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    list-style: none !important;
+  }
+
+  .footer__item {
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  /* Center all footer content */
+  .footer__link {
+    text-align: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  ul.footer__items {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  li.footer__item {
+    text-align: center !important;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    margin: 0 auto !important;
+  }
+
+  /* Force center alignment for all footer links */
+  .footer a {
+    text-align: center !important;
+    display: inline-block !important;
+    margin: 0 auto !important;
+    text-align: center !important;
+  }
+
+  /* Additional selectors for Docusaurus footer structure */
+  .footer .container {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .footer .row {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  .footer .col {
+    text-align: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
   }
 }
