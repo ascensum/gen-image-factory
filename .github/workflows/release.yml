@@ -252,34 +252,35 @@ jobs:
       - name: Build artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Force these into the environment so electron-builder.js can see them
           MS_STORE_IDENTITY_NAME: ${{ secrets.MS_STORE_IDENTITY_NAME }}
           MS_STORE_PUBLISHER_ID: ${{ secrets.MS_STORE_PUBLISHER_ID }}
           MS_STORE_PUBLISHER_DISPLAY_NAME: ${{ secrets.MS_STORE_PUBLISHER_DISPLAY_NAME }}
+        shell: pwsh
         run: |
-          echo "Building for platform: ${{ matrix.platform }}"
-          
-          # Use different logic for Windows to handle the environment correctly
-          if [ "${{ matrix.platform }}" == "win" ]; then
-            # We use 'npx electron-builder' directly and ensure the shell picks up env vars
+          Write-Host "Building for platform: ${{ matrix.platform }}"
+          if ("${{ matrix.platform }}" -eq "win") {
             npx electron-builder --config electron-builder.js --win --x64 --publish never
-          elif [ "${{ matrix.platform }}" == "mac" ]; then
+          } elseif ("${{ matrix.platform }}" -eq "mac") {
             npx electron-builder --config electron-builder.js --mac --publish never
-          else
+          } else {
             npx electron-builder --config electron-builder.js --linux --publish never
-          fi
-        shell: bash
+          }
 
       - name: Generate SHA-256 checksums
+        shell: pwsh
         run: |
-          if [ "${{ matrix.platform }}" == "win" ]; then
-            cd dist
-            powershell -Command "Get-ChildItem -Recurse -File | ForEach-Object { $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash; Write-Output \"$hash  $($_.Name)\" } | Out-File -Encoding utf8 SHA256SUMS.txt"
-          else
-            cd dist
-            find . -type f -exec sha256sum {} \; > SHA256SUMS.txt
-          fi
-        shell: bash
+          if (-Not (Test-Path "dist")) {
+            Write-Error "ERROR: 'dist' directory was not created! Listing directory for debug:"
+            Get-ChildItem -Recurse | Select-Object FullName
+            exit 1
+          }
+          Set-Location dist
+          Get-ChildItem -Recurse -File | ForEach-Object {
+            if ($_.Name -ne "SHA256SUMS.txt") {
+              $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+              "$hash  $($_.Name)" | Out-File -FilePath "SHA256SUMS.txt" -Append -Encoding utf8
+            }
+          }
 
       - name: Generate SBOM
         run: |
