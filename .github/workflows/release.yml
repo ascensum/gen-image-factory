@@ -264,16 +264,17 @@ jobs:
           echo "Verifying config file exists..."
           ls -la electron-builder.js || echo "Config file not found"
           echo "Starting electron-builder..."
+          echo "Running command: npx electron-builder --config electron-builder.js --${{ matrix.platform }} --publish never"
           set +e
           if [ "${{ matrix.platform }}" == "win" ]; then
-            npx electron-builder --config electron-builder.js --win --publish never 2>&1 | tee electron-builder-output.log
-            BUILD_EXIT=$?
+            npx electron-builder --config electron-builder.js --win --publish never --x64 2>&1 | tee electron-builder-output.log
+            BUILD_EXIT=${PIPESTATUS[0]}
           elif [ "${{ matrix.platform }}" == "mac" ]; then
             npx electron-builder --config electron-builder.js --mac --publish never 2>&1 | tee electron-builder-output.log
-            BUILD_EXIT=$?
+            BUILD_EXIT=${PIPESTATUS[0]}
           else
             npx electron-builder --config electron-builder.js --linux --publish never 2>&1 | tee electron-builder-output.log
-            BUILD_EXIT=$?
+            BUILD_EXIT=${PIPESTATUS[0]}
           fi
           set -e
           echo "electron-builder exit code: $BUILD_EXIT"
