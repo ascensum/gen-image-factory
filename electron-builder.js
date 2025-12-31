@@ -12,6 +12,11 @@
  * For CI/CD, these values come from GitHub Secrets.
  */
 
+// Load .env file for local development (if not in CI)
+if (!process.env.CI && require('fs').existsSync('.env')) {
+  require('dotenv').config();
+}
+
 const baseConfig = {
   appId: 'com.genimage.factory',
   productName: 'Gen Image Factory',
