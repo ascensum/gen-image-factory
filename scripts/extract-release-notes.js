@@ -178,7 +178,7 @@ async function main() {
     const clean = sanitize(msg);
 
     // 4. Use separate arguments (The "Sink")
-    console.error('Error:', clean);
+    console.error('Error:', JSON.stringify(clean));
     process.exit(1);
   }
 }

@@ -84,7 +84,10 @@ async function main() {
     const clean = sanitize(msg);
 
     // 4. Use separate arguments (The "Sink")
-    console.warn('Warning: GitHub fetch failed:', clean);
+    console.warn(
+      'Warning: GitHub fetch failed:',
+      JSON.stringify(clean)
+    );
     console.warn('Falling back to package.json version');
     process.exit(0);
   }
