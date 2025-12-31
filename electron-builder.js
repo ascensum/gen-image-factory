@@ -20,6 +20,9 @@ if (!process.env.CI && require('fs').existsSync('.env')) {
 const baseConfig = {
   appId: 'com.genimage.factory',
   productName: 'Gen Image Factory',
+  directories: {
+    output: 'dist'
+  },
   files: [
     'electron/**/*',
     'package.json'

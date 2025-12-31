@@ -266,19 +266,25 @@ jobs:
           echo "Starting electron-builder..."
           set +e
           if [ "${{ matrix.platform }}" == "win" ]; then
-            npx electron-builder --config electron-builder.js --win --publish never 2>&1
+            npx electron-builder --config electron-builder.js --win --publish never 2>&1 | tee electron-builder-output.log
             BUILD_EXIT=$?
           elif [ "${{ matrix.platform }}" == "mac" ]; then
-            npx electron-builder --config electron-builder.js --mac --publish never 2>&1
+            npx electron-builder --config electron-builder.js --mac --publish never 2>&1 | tee electron-builder-output.log
             BUILD_EXIT=$?
           else
-            npx electron-builder --config electron-builder.js --linux --publish never 2>&1
+            npx electron-builder --config electron-builder.js --linux --publish never 2>&1 | tee electron-builder-output.log
             BUILD_EXIT=$?
           fi
           set -e
           echo "electron-builder exit code: $BUILD_EXIT"
+          echo "electron-builder output:"
+          cat electron-builder-output.log || echo "No output log found"
+          echo "Checking current directory structure..."
+          find . -maxdepth 2 -type d -name "dist" -o -name "build" -o -name "out" 2>/dev/null | head -20
           echo "Checking if dist directory was created..."
           ls -la dist/ || echo "dist directory not found"
+          echo "Listing all files in current directory..."
+          ls -la | head -30
           if [ $BUILD_EXIT -ne 0 ]; then
             echo "ERROR: electron-builder failed with exit code $BUILD_EXIT"
             exit $BUILD_EXIT
