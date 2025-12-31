@@ -58,6 +58,7 @@ const baseConfig = {
       }
     ]
   },
+  appx: {},
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
@@ -93,7 +94,7 @@ const baseConfig = {
 
 // Inject Microsoft Store identity from environment variables
 if (process.env.MS_STORE_IDENTITY_NAME && process.env.MS_STORE_PUBLISHER_ID && process.env.MS_STORE_PUBLISHER_DISPLAY_NAME) {
-  baseConfig.win.appx = {
+  baseConfig.appx = {
     identityName: process.env.MS_STORE_IDENTITY_NAME,
     publisher: process.env.MS_STORE_PUBLISHER_ID,
     publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME
