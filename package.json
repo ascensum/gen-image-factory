@@ -50,7 +50,7 @@
     "guardrails:check": "npm run repo:scan && npm run test:exports && npm run test:retry && npm run test:labels && npm run test:security && npm run test:job-management",
     "dist": "npm run build && electron-builder",
     "dist:dir": "npm run build && electron-builder --dir",
-    "dist:win": "npm run build && electron-builder --win",
+    "dist:win": "node scripts/inject-store-identity.js && npm run build && electron-builder --win",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:linux": "npm run build && electron-builder --linux",
     "rebuild-icons": "node scripts/rebuild-icons.js",
@@ -117,9 +117,9 @@
       "perMachine": false
     },
     "appx": {
-      "identityName": "ShiftlineTools.GenImageFactory",
-      "publisher": "CN=25094057-9D25-4368-831B-EF71134D46D6",
-      "publisherDisplayName": "Shiftline Tools"
+      "identityName": "",
+      "publisher": "",
+      "publisherDisplayName": ""
     },
     "linux": {
       "icon": "build/icons/png",

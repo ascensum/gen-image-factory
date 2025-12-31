@@ -246,6 +246,24 @@ jobs:
           echo "Updated version: $(node -p "require('./package.json').version")"
         shell: bash
 
+      - name: Inject Microsoft Store identity from secrets
+        run: |
+          # Inject Store identity values from GitHub secrets into package.json
+          node -e "
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          pkg.build.appx.identityName = process.env.MS_STORE_IDENTITY_NAME;
+          pkg.build.appx.publisher = process.env.MS_STORE_PUBLISHER_ID;
+          pkg.build.appx.publisherDisplayName = process.env.MS_STORE_PUBLISHER_DISPLAY_NAME;
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n', 'utf8');
+          console.log('Injected Store identity from secrets into package.json');
+          "
+        env:
+          MS_STORE_IDENTITY_NAME: ${{ secrets.MS_STORE_IDENTITY_NAME }}
+          MS_STORE_PUBLISHER_ID: ${{ secrets.MS_STORE_PUBLISHER_ID }}
+          MS_STORE_PUBLISHER_DISPLAY_NAME: ${{ secrets.MS_STORE_PUBLISHER_DISPLAY_NAME }}
+        shell: bash
+
       - name: Build application
         run: npm run build
 
