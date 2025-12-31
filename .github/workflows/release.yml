@@ -258,19 +258,31 @@ jobs:
         run: |
           echo "Building for platform: ${{ matrix.platform }}"
           echo "Checking electron-builder installation..."
-          npx electron-builder --version || echo "electron-builder not found"
+          npx electron-builder --version 2>&1 || echo "electron-builder not found"
+          echo "Verifying build output exists..."
+          ls -la electron/renderer/ || echo "Build output not found"
           echo "Verifying config file exists..."
           ls -la electron-builder.js || echo "Config file not found"
           echo "Starting electron-builder..."
+          set +e
           if [ "${{ matrix.platform }}" == "win" ]; then
-            npx electron-builder --config electron-builder.js --win --publish never
+            npx electron-builder --config electron-builder.js --win --publish never 2>&1
+            BUILD_EXIT=$?
           elif [ "${{ matrix.platform }}" == "mac" ]; then
-            npx electron-builder --config electron-builder.js --mac --publish never
+            npx electron-builder --config electron-builder.js --mac --publish never 2>&1
+            BUILD_EXIT=$?
           else
-            npx electron-builder --config electron-builder.js --linux --publish never
+            npx electron-builder --config electron-builder.js --linux --publish never 2>&1
+            BUILD_EXIT=$?
           fi
+          set -e
+          echo "electron-builder exit code: $BUILD_EXIT"
           echo "Checking if dist directory was created..."
           ls -la dist/ || echo "dist directory not found"
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "ERROR: electron-builder failed with exit code $BUILD_EXIT"
+            exit $BUILD_EXIT
+          fi
         shell: bash
 
       - name: Generate SHA-256 checksums

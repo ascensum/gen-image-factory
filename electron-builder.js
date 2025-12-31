@@ -20,6 +20,10 @@ if (!process.env.CI && require('fs').existsSync('.env')) {
 const baseConfig = {
   appId: 'com.genimage.factory',
   productName: 'Gen Image Factory',
+  files: [
+    'electron/**/*',
+    'package.json'
+  ],
   mac: {
     icon: 'build/icons/mac/icon.icns',
     category: 'public.app-category.graphics-design',
