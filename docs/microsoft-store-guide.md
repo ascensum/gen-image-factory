@@ -24,10 +24,14 @@ Microsoft Store distribution is completely free for developers:
    - Complete account verification
 
 2. **App Identity Configuration**:
-   - Identity Name: `ShiftlineTools.GenImageFactory` (immutable Store identity)
-   - Publisher: `CN=25094057-9D25-4368-831B-EF71134D46D6`
-   - Publisher Display Name: `Shiftline Tools`
-   - Store ID: `9P761655KPBW`
+   - Identity Name: Stored in GitHub secret `MS_STORE_IDENTITY_NAME` (immutable Store identity)
+   - Publisher: Stored in GitHub secret `MS_STORE_PUBLISHER_ID`
+   - Publisher Display Name: Stored in GitHub secret `MS_STORE_PUBLISHER_DISPLAY_NAME`
+   - Store ID: Stored in GitHub secret `MS_STORE_STORE_ID`
+   - Package Family Name (PFN): Stored in GitHub secret `MS_STORE_PACKAGE_FAMILY_NAME`
+   - Package SID: Stored in GitHub secret `MS_STORE_PACKAGE_SID`
+   
+   **Note**: See `docs/microsoft-store-secrets-setup.md` for secret configuration details.
 
 3. **MSIX Package**:
    - Built automatically by CI on version tags
@@ -44,13 +48,18 @@ The app is already configured for Microsoft Store in `package.json`:
     "win": {
       "appx": {
         "identityName": "ShiftlineTools.GenImageFactory",
-        "publisher": "CN=25094057-9D25-4368-831B-EF71134D46D6",
+        "publisher": "CN=<PUBLISHER_ID>",
         "publisherDisplayName": "Shiftline Tools"
       }
     }
   }
 }
 ```
+
+**Note**: 
+- The actual `publisher` value is stored in GitHub secret `MS_STORE_PUBLISHER_ID`
+- These values in `package.json` are required for electron-builder to embed identity in the MSIX package during build
+- See `docs/microsoft-store-secrets-setup.md` for secret configuration
 
 ## Submission Process
 

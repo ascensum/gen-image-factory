@@ -50,12 +50,14 @@ The final application will be packaged using `electron-builder` to generate dist
 
 The Microsoft Store Identity Profile is immutable and defines the internal vs. public brand separation:
 
-- **Identity Name**: `ShiftlineTools.GenImageFactory` (Internal only - not user-visible)
-- **Publisher**: `CN=25094057-9D25-4368-831B-EF71134D46D6`
-- **Publisher Display Name**: `Shiftline Tools` (User-visible brand)
-- **Store ID**: `9P761655KPBW`
-- **Package Family Name (PFN)**: `ShiftlineTools.GenImageFactory_0gwrxd6wp7ebt`
-- **Package SID**: `S-1-15-2-1705884162-2587684083-2754433856-416162892-334062652-2777467336-848623385`
+- **Identity Name**: Stored in GitHub secret `MS_STORE_IDENTITY_NAME` (Internal only - not user-visible)
+- **Publisher**: Stored in GitHub secret `MS_STORE_PUBLISHER_ID`
+- **Publisher Display Name**: Stored in GitHub secret `MS_STORE_PUBLISHER_DISPLAY_NAME` (User-visible brand)
+- **Store ID**: Stored in GitHub secret `MS_STORE_STORE_ID`
+- **Package Family Name (PFN)**: Stored in GitHub secret `MS_STORE_PACKAGE_FAMILY_NAME`
+- **Package SID**: Stored in GitHub secret `MS_STORE_PACKAGE_SID`
+
+**Configuration**: Values are stored in GitHub secrets for security and CI/CD automation. See `docs/microsoft-store-secrets-setup.md` for setup instructions.
 
 ### Deployment Assets
 

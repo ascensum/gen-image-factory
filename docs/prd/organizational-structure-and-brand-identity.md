@@ -49,11 +49,13 @@ This document defines the organizational structure, brand identity strategy, and
 ### Internal Identity: Shiftline Tools Organization
 
 **Shiftline Tools** is the Microsoft Store organization identity:
-- **Identity Name**: `ShiftlineTools.GenImageFactory` (immutable Store identity)
-- **Publisher**: `CN=25094057-9D25-4368-831B-EF71134D46D6`
-- **Store ID**: `9P761655KPBW`
-- **Package Family Name (PFN)**: `ShiftlineTools.GenImageFactory_0gwrxd6wp7ebt`
-- **Package SID**: `S-1-15-2-1705884162-2587684083-2754433856-416162892-334062652-2777467336-848623385`
+- **Identity Name**: Stored in GitHub secret `MS_STORE_IDENTITY_NAME` (immutable Store identity)
+- **Publisher**: Stored in GitHub secret `MS_STORE_PUBLISHER_ID`
+- **Store ID**: Stored in GitHub secret `MS_STORE_STORE_ID`
+- **Package Family Name (PFN)**: Stored in GitHub secret `MS_STORE_PACKAGE_FAMILY_NAME`
+- **Package SID**: Stored in GitHub secret `MS_STORE_PACKAGE_SID`
+
+**See**: `docs/microsoft-store-secrets-setup.md` for secret configuration details.
 
 ## Microsoft Store Identity Management
 
@@ -61,14 +63,15 @@ This document defines the organizational structure, brand identity strategy, and
 
 The application uses a Microsoft Store identity connected to the Shiftline Tools organization:
 
-- **Identity Name**: `ShiftlineTools.GenImageFactory` (immutable Store identity, internal only)
-- **Publisher**: `CN=25094057-9D25-4368-831B-EF71134D46D6`
-- **Publisher Display Name**: `Shiftline Tools` (user-visible brand)
-- **Store ID**: `9P761655KPBW`
-- **Package Family Name (PFN)**: `ShiftlineTools.GenImageFactory_0gwrxd6wp7ebt`
-- **Package SID**: `S-1-15-2-1705884162-2587684083-2754433856-416162892-334062652-2777467336-848623385`
+- **Identity Name**: Stored in GitHub secret `MS_STORE_IDENTITY_NAME` (immutable Store identity, internal only)
+- **Publisher**: Stored in GitHub secret `MS_STORE_PUBLISHER_ID`
+- **Publisher Display Name**: Stored in GitHub secret `MS_STORE_PUBLISHER_DISPLAY_NAME` (user-visible brand)
+- **Store ID**: Stored in GitHub secret `MS_STORE_STORE_ID`
+- **Package Family Name (PFN)**: Stored in GitHub secret `MS_STORE_PACKAGE_FAMILY_NAME`
+- **Package SID**: Stored in GitHub secret `MS_STORE_PACKAGE_SID`
 
-**Configuration Location**: `package.json#build.appx`
+**Configuration Location**: `package.json#build.appx` (values required for electron-builder)
+**Secrets Configuration**: See `docs/microsoft-store-secrets-setup.md`
 
 **Migration Completed**: Story 2.7 migration from legacy personal account identity completed.
 
