@@ -116,8 +116,8 @@
       "perMachine": false
     },
     "appx": {
-      "identityName": "AscensumTools.GenImageFactory",
-      "publisher": "CN=E312E730-261C-4C09-AA08-642C4C57E8F8",
+      "identityName": "ShiftlineTools.GenImageFactory",
+      "publisher": "CN=25094057-9D25-4368-831B-EF71134D46D6",
       "publisherDisplayName": "Shiftline Tools"
     },
     "linux": {

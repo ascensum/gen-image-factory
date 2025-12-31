@@ -50,12 +50,12 @@ The final application will be packaged using `electron-builder` to generate dist
 
 The Microsoft Store Identity Profile is immutable and defines the internal vs. public brand separation:
 
-- **Identity Name**: `AscensumTools.GenImageFactory` (Internal only - not user-visible)
-- **Publisher**: `CN=E312E730-261C-4C09-AA08-642C4C57E8F8`
+- **Identity Name**: `ShiftlineTools.GenImageFactory` (Internal only - not user-visible)
+- **Publisher**: `CN=25094057-9D25-4368-831B-EF71134D46D6`
 - **Publisher Display Name**: `Shiftline Tools` (User-visible brand)
-- **Store ID**: `9P0D8CQ3R86F`
-
-**Critical Constraint**: The "Ascensum" identity name must be hidden behind the "Shiftline Tools" display brand in all user-visible areas. No references to "Ascensum" or "AscensumTools" may appear in the application UI, splash screens, about dialogs, or any user-facing documentation.
+- **Store ID**: `9P761655KPBW`
+- **Package Family Name (PFN)**: `ShiftlineTools.GenImageFactory_0gwrxd6wp7ebt`
+- **Package SID**: `S-1-15-2-1705884162-2587684083-2754433856-416162892-334062652-2777467336-848623385`
 
 ### Deployment Assets
 

@@ -24,9 +24,10 @@ Microsoft Store distribution is completely free for developers:
    - Complete account verification
 
 2. **App Identity Configuration**:
-   - Identity Name: `AscensumTools.GenImageFactory` (immutable Store identity)
-   - Publisher: `CN=E312E730-261C-4C09-AA08-642C4C57E8F8`
+   - Identity Name: `ShiftlineTools.GenImageFactory` (immutable Store identity)
+   - Publisher: `CN=25094057-9D25-4368-831B-EF71134D46D6`
    - Publisher Display Name: `Shiftline Tools`
+   - Store ID: `9P761655KPBW`
 
 3. **MSIX Package**:
    - Built automatically by CI on version tags
@@ -42,8 +43,8 @@ The app is already configured for Microsoft Store in `package.json`:
   "build": {
     "win": {
       "appx": {
-        "identityName": "AscensumTools.GenImageFactory",
-        "publisher": "CN=E312E730-261C-4C09-AA08-642C4C57E8F8",
+        "identityName": "ShiftlineTools.GenImageFactory",
+        "publisher": "CN=25094057-9D25-4368-831B-EF71134D46D6",
         "publisherDisplayName": "Shiftline Tools"
       }
     }
