@@ -21,7 +21,8 @@ const baseConfig = {
   appId: 'com.genimage.factory',
   productName: 'Gen Image Factory',
   directories: {
-    output: 'dist'
+    output: 'dist', // MUST BE EXPLICIT
+    buildResources: 'build'
   },
   // Enable asar packaging to compress files
   asar: true,
@@ -49,20 +50,8 @@ const baseConfig = {
   },
   win: {
     icon: 'build/icons/win/icon.ico',
-    target: [
-      {
-        target: 'nsis',
-        arch: ['x64', 'ia32']
-      },
-      {
-        target: 'portable',
-        arch: ['x64', 'ia32']
-      },
-      {
-        target: 'appx',
-        arch: ['x64']
-      }
-    ]
+    target: ['appx', 'nsis'], // Ensure appx (MSIX) is here for the store, nsis for GitHub releases
+    publisherName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || undefined
   },
   appx: {},
   nsis: {
