@@ -163,7 +163,7 @@ export default function Home(): React.JSX.Element {
           </div>
         </section>
         <div className={`integration-helper ${styles.fadeInUp} ${styles.delay2}`} style={{textAlign: 'center', fontSize: '0.75rem', color: '#a3a3a3', marginTop: '1rem', marginBottom: '2rem', fontFamily: 'var(--ifm-font-family-monospace)', padding: '0 1rem'}}>
-          *Optional API integrations for professional workflows.
+          *API integrations for professional workflows.
         </div>
 
         {/* Features Section */}
