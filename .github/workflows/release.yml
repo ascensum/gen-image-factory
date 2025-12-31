@@ -252,43 +252,21 @@ jobs:
       - name: Build artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Force these into the environment so electron-builder.js can see them
           MS_STORE_IDENTITY_NAME: ${{ secrets.MS_STORE_IDENTITY_NAME }}
           MS_STORE_PUBLISHER_ID: ${{ secrets.MS_STORE_PUBLISHER_ID }}
           MS_STORE_PUBLISHER_DISPLAY_NAME: ${{ secrets.MS_STORE_PUBLISHER_DISPLAY_NAME }}
         run: |
           echo "Building for platform: ${{ matrix.platform }}"
-          echo "Checking electron-builder installation..."
-          npx electron-builder --version 2>&1 || echo "electron-builder not found"
-          echo "Verifying build output exists..."
-          ls -la electron/renderer/ || echo "Build output not found"
-          echo "Verifying config file exists..."
-          ls -la electron-builder.js || echo "Config file not found"
-          echo "Starting electron-builder..."
-          echo "Running command: npx electron-builder --config electron-builder.js --${{ matrix.platform }} --publish never"
-          set +e
+          
+          # Use different logic for Windows to handle the environment correctly
           if [ "${{ matrix.platform }}" == "win" ]; then
-            npx electron-builder --config electron-builder.js --win --publish never --x64 2>&1 | tee electron-builder-output.log
-            BUILD_EXIT=${PIPESTATUS[0]}
+            # We use 'npx electron-builder' directly and ensure the shell picks up env vars
+            npx electron-builder --config electron-builder.js --win --x64 --publish never
           elif [ "${{ matrix.platform }}" == "mac" ]; then
-            npx electron-builder --config electron-builder.js --mac --publish never 2>&1 | tee electron-builder-output.log
-            BUILD_EXIT=${PIPESTATUS[0]}
+            npx electron-builder --config electron-builder.js --mac --publish never
           else
-            npx electron-builder --config electron-builder.js --linux --publish never 2>&1 | tee electron-builder-output.log
-            BUILD_EXIT=${PIPESTATUS[0]}
-          fi
-          set -e
-          echo "electron-builder exit code: $BUILD_EXIT"
-          echo "electron-builder output:"
-          cat electron-builder-output.log || echo "No output log found"
-          echo "Checking current directory structure..."
-          find . -maxdepth 2 -type d -name "dist" -o -name "build" -o -name "out" 2>/dev/null | head -20
-          echo "Checking if dist directory was created..."
-          ls -la dist/ || echo "dist directory not found"
-          echo "Listing all files in current directory..."
-          ls -la | head -30
-          if [ $BUILD_EXIT -ne 0 ]; then
-            echo "ERROR: electron-builder failed with exit code $BUILD_EXIT"
-            exit $BUILD_EXIT
+            npx electron-builder --config electron-builder.js --linux --publish never
           fi
         shell: bash
 
