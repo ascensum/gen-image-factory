@@ -25,25 +25,14 @@ const baseConfig = {
   },
   // Enable asar packaging to compress files
   asar: true,
-  // Only include necessary files (electron-builder automatically includes node_modules from dependencies)
+  // Include necessary files (electron-builder automatically includes node_modules from dependencies)
   files: [
-    'electron/main.js',
-    'electron/preload.js',
-    'electron/renderer/**/*',
-    'package.json',
-    '!**/node_modules/**/{CHANGELOG.md,README.md,README,readme.md,readme}',
-    '!**/node_modules/**/{test,__tests__,tests,powered-test,example,examples}',
-    '!**/node_modules/**/*.d.ts',
-    '!**/node_modules/**/*.map',
-    '!**/node_modules/**/.{bin,hg,svn,git}',
-    '!**/node_modules/**/{.nyc_output,coverage,.nyc_output}',
-    '!**/node_modules/**/*.{md,ts,tsx,jsx}',
-    '!**/node_modules/**/.{eslint,prettier,jest,ava}rc*',
-    '!**/node_modules/**/.{travis,appveyor}.yml',
-    '!**/node_modules/**/.{yarn,npm}.lock',
-    '!**/node_modules/**/package-lock.json',
-    '!**/node_modules/**/yarn.lock'
+    'electron/**/*',
+    'package.json'
   ],
+  // Exclude unnecessary files to reduce bundle size
+  // Note: These exclusions apply to files within the included directories
+  // electron-builder will still include production node_modules automatically
   mac: {
     icon: 'build/icons/mac/icon.icns',
     category: 'public.app-category.graphics-design',
