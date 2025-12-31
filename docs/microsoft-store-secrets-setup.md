@@ -58,15 +58,18 @@ env:
   PUBLISHER_ID: ${{ secrets.MS_STORE_PUBLISHER_ID }}
 ```
 
-## Note on package.json
+## Configuration File
 
-The `package.json` file still needs to contain `identityName`, `publisher`, and `publisherDisplayName` for electron-builder to work correctly. These values are required at build time and are embedded in the MSIX package.
+The electron-builder configuration is in `electron-builder.js` (not in `package.json`). This JavaScript file reads environment variables directly, so no values are stored in the repository.
 
-However, storing them in secrets provides:
-- Centralized management
-- Easy updates without code changes
-- Better security practices
-- Ability to reference in CI/CD workflows for validation
+**For local development:**
+- Create a `.env` file in the project root (see `.env.example`)
+- Copy `.env.example` to `.env` and fill in your values
+- The `.env` file is gitignored and won't be committed
+
+**For CI/CD:**
+- Values are automatically injected from GitHub Secrets as environment variables
+- No manual configuration needed
 
 ## Security Best Practices
 

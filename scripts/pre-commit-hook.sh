@@ -191,10 +191,12 @@ if [ -n "$non_test_files" ]; then
         exit 1
     fi
     
-    # Check for .env files being committed
-    if echo "$non_test_files" | grep -E "\.env$|\.env\."; then
+    # Check for .env files being committed (allow .env.example)
+    env_files=$(echo "$non_test_files" | grep -E "\.env$|\.env\." | grep -v "\.env\.example$" || echo "")
+    if [ -n "$env_files" ]; then
         print_status "ERROR" ".env files detected in staged files!"
         echo ".env files should never be committed. They are in .gitignore for a reason."
+        echo "Note: .env.example is allowed (template file)."
         exit 1
     fi
 fi
