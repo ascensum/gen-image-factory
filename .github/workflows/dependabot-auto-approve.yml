@@ -1,7 +1,7 @@
 name: Dependabot Auto-Approve
 
 on:
-  pull_request:
+  pull_request_target:
 
 permissions:
   pull-requests: write
@@ -19,13 +19,63 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-      # Approve and set auto-merge for Minor/Patch updates
+      # Approve and enable auto-merge for Minor/Patch updates
       - name: Auto-approve and Enable Auto-merge
         if: steps.metadata.outputs.update-type != 'version-update:semver-major'
-        run: |
-          gh pr review --approve "$PR_URL"
-          gh pr merge --auto --squash "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            
+            // Approve the PR
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              event: 'APPROVE'
+            });
+            
+            // Enable auto-merge with squash strategy using GraphQL
+            const mutation = `
+              mutation enableAutoMerge($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!) {
+                enablePullRequestAutoMerge(input: {
+                  pullRequestId: $pullRequestId,
+                  mergeMethod: $mergeMethod
+                }) {
+                  pullRequest {
+                    autoMergeRequest {
+                      enabledAt
+                      mergeMethod
+                    }
+                  }
+                }
+              }
+            `;
+            
+            // Get PR node ID first
+            const prQuery = `
+              query getPR($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    id
+                  }
+                }
+              }
+            `;
+            
+            const prResult = await github.graphql(prQuery, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              number: prNumber
+            });
+            
+            const pullRequestId = prResult.repository.pullRequest.id;
+            
+            // Enable auto-merge
+            await github.graphql(mutation, {
+              pullRequestId: pullRequestId,
+              mergeMethod: 'SQUASH'
+            });
+            
+            console.log(`Approved and enabled auto-merge for PR #${prNumber}`);
 
