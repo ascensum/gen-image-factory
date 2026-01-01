@@ -35,7 +35,10 @@ const config = {
   win: {
     icon: 'build/icons/win/icon.ico',
     // Always include NSIS, conditionally include APPX when Store requirements are met
-    target: isStoreBuild ? ['appx', 'nsis'] : ['nsis']
+    target: isStoreBuild ? ['appx', 'nsis'] : ['nsis'],
+    // Required workaround: electron-builder cannot extract publisher name from PFX certificate
+    // This must be set to avoid ERR_ELECTRON_BUILDER_CANNOT_EXECUTE signing error
+    publisherName: process.env.MS_STORE_PUBLISHER_ID
   },
   linux: {
     icon: 'build/icons/png',
