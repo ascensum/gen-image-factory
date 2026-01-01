@@ -249,6 +249,43 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Validate renderer build output
+        shell: pwsh
+        run: |
+          Write-Host "=== Validating Renderer Build Output ===" -ForegroundColor Cyan
+          
+          # Check if electron/renderer exists (Vite outputs here)
+          if (-Not (Test-Path "electron/renderer")) {
+            Write-Error "ERROR: electron/renderer directory not found after build!"
+            Write-Host "Listing electron/ directory:"
+            if (Test-Path "electron") {
+              Get-ChildItem -Path "electron" -Recurse | Select-Object FullName | Format-Table -AutoSize
+            } else {
+              Write-Host "electron/ directory does not exist!"
+            }
+            exit 1
+          }
+          
+          Write-Host "electron/renderer exists. Contents:" -ForegroundColor Green
+          Get-ChildItem -Path "electron/renderer" -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize
+          
+          # Check for critical files
+          $requiredFiles = @("electron/renderer/index.html", "electron/main.js", "electron/preload.js")
+          $missingFiles = @()
+          
+          foreach ($file in $requiredFiles) {
+            if (-Not (Test-Path $file)) {
+              $missingFiles += $file
+            }
+          }
+          
+          if ($missingFiles.Count -gt 0) {
+            Write-Error "ERROR: Required files missing: $($missingFiles -join ', ')"
+            exit 1
+          }
+          
+          Write-Host "All required files present!" -ForegroundColor Green
+
       - name: Debug Windows MSIX Build (Windows only)
         if: matrix.platform == 'win'
         env:
@@ -364,7 +401,8 @@ jobs:
             
             Write-Host "`n=== DEBUG: Directory Structure After Build ===" -ForegroundColor Cyan
             Write-Host "Current directory: $(Get-Location)"
-            Write-Host "`nChecking for dist directory:"
+            
+            # Comprehensive check for dist directory
             if (Test-Path "dist") {
               Write-Host "dist/ exists with contents:" -ForegroundColor Green
               Get-ChildItem -Path "dist" -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
@@ -376,6 +414,11 @@ jobs:
               Get-ChildItem -Recurse -Filter "*.msix" -ErrorAction SilentlyContinue | Select-Object FullName
               Get-ChildItem -Recurse -Filter "*.appx" -ErrorAction SilentlyContinue | Select-Object FullName
               Get-ChildItem -Recurse -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object FullName
+              
+              # Check for electron-builder cache or temp directories
+              Write-Host "`nChecking for electron-builder cache/temp directories:"
+              Get-ChildItem -Directory -Filter "*electron*" -ErrorAction SilentlyContinue | Select-Object FullName
+              Get-ChildItem -Directory -Filter "*builder*" -ErrorAction SilentlyContinue | Select-Object FullName
             }
             
             # Fail if build failed or dist doesn't exist
@@ -386,6 +429,8 @@ jobs:
             
             if (-Not (Test-Path "dist")) {
               Write-Host "ERROR: Build succeeded but dist/ directory was not created!" -ForegroundColor Red
+              Write-Host "This usually means electron-builder couldn't find the required files or encountered a configuration error."
+              Write-Host "Please check the electron-builder output above for warnings or errors."
               exit 1
             }
           } elseif ("${{ matrix.platform }}" -eq "mac") {
