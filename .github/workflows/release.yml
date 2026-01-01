@@ -444,10 +444,13 @@ jobs:
             }
             
             Write-Host "Using direct path: $builderPath"
-            Write-Host "Command: & $builderPath --config electron-builder.config.js --win --x64 --publish never --log-level=debug"
+            Write-Host "Command: & $builderPath --config electron-builder.config.js --win --x64 --publish never"
+            
+            # Set debug environment variable for electron-builder verbose output
+            $env:DEBUG = "electron-builder*"
             
             # Capture both stdout and stderr
-            $output = & $builderPath --config electron-builder.config.js --win --x64 --publish never --log-level=debug 2>&1
+            $output = & $builderPath --config electron-builder.config.js --win --x64 --publish never 2>&1
             $buildExitCode = $LASTEXITCODE
             
             # Display all output
