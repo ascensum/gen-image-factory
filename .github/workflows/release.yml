@@ -255,19 +255,17 @@ jobs:
           MS_STORE_IDENTITY_NAME: ${{ secrets.MS_STORE_IDENTITY_NAME }}
           MS_STORE_PUBLISHER_ID: ${{ secrets.MS_STORE_PUBLISHER_ID }}
           MS_STORE_PUBLISHER_DISPLAY_NAME: ${{ secrets.MS_STORE_PUBLISHER_DISPLAY_NAME }}
-          DEBUG: electron-builder # This will show us EXACTLY why it skips
         shell: pwsh
         run: |
-          # 1. Rename config to avoid Windows file-association bugs
-          Copy-Item electron-builder.js electron-builder.config.js -Force
+          Write-Host "Building for platform: ${{ matrix.platform }}"
           
-          Write-Host "Starting Build for ${{ matrix.platform }}..."
-          
-          # 2. Run with explicit config path
+          # Use npx to run electron-builder using the standard .js config
           if ("${{ matrix.platform }}" -eq "win") {
-            npx electron-builder --config electron-builder.config.js --win --x64 --publish never
+            npx electron-builder --config electron-builder.js --win --x64 --publish never
+          } elseif ("${{ matrix.platform }}" -eq "mac") {
+            npx electron-builder --config electron-builder.js --mac --publish never
           } else {
-            npx electron-builder --config electron-builder.config.js --${{ matrix.platform }} --publish never
+            npx electron-builder --config electron-builder.js --linux --publish never
           }
 
       - name: Generate SHA-256 checksums
