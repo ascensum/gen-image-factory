@@ -306,7 +306,7 @@ jobs:
           
           Write-Host "`nAll required files present!" -ForegroundColor Green
           Write-Host "Renderer location: ${rendererPath}" -ForegroundColor Cyan
-          Write-Host "electron-builder.js files array includes: electron/**/* (which covers ${rendererPath})" -ForegroundColor Cyan
+          Write-Host "electron-builder.config.js files array includes: electron/**/* (which covers ${rendererPath})" -ForegroundColor Cyan
 
       - name: Debug Windows MSIX Build (Windows only)
         if: matrix.platform == 'win'
@@ -363,11 +363,11 @@ jobs:
             Write-Host "dist/ does not exist yet"
           }
           
-          Write-Host "`n=== DEBUG: electron-builder.js Configuration ===" -ForegroundColor Cyan
-          if (Test-Path "electron-builder.js") {
-            Get-Content "electron-builder.js" | Write-Host
+          Write-Host "`n=== DEBUG: electron-builder.config.js Configuration ===" -ForegroundColor Cyan
+          if (Test-Path "electron-builder.config.js") {
+            Get-Content "electron-builder.config.js" | Write-Host
           } else {
-            Write-Host "ERROR: electron-builder.js not found!" -ForegroundColor Red
+            Write-Host "ERROR: electron-builder.config.js not found!" -ForegroundColor Red
           }
 
       - name: Build artifacts
@@ -399,52 +399,55 @@ jobs:
               Write-Host "CSC_KEY_PASSWORD: $($env:CSC_KEY_PASSWORD -ne $null ? 'SET' : 'NOT SET')"
             }
             
-            Write-Host "`n=== DEBUG: Verifying Renderer Files Before Electron-Builder ===" -ForegroundColor Cyan
-            Write-Host "Checking renderer files location:"
-            
-            $rendererFound = $false
-            if (Test-Path "dist/renderer") {
-              Write-Host "✓ Found renderer in: dist/renderer" -ForegroundColor Green
-              Get-ChildItem -Path "dist/renderer" -Recurse -File | Select-Object FullName | Format-Table -AutoSize
-              $rendererFound = $true
-            }
-            
-            if (Test-Path "electron/renderer") {
-              Write-Host "✓ Found renderer in: electron/renderer" -ForegroundColor Green
-              Get-ChildItem -Path "electron/renderer" -Recurse -File | Select-Object FullName | Format-Table -AutoSize
-              $rendererFound = $true
-            }
-            
-            if (-Not $rendererFound) {
-              Write-Error "ERROR: Renderer files not found in dist/renderer or electron/renderer!"
-              Write-Host "This will cause electron-builder to fail silently."
+            # Pre-Build Verification: Check for renderer files
+            Write-Host "`n=== Pre-Build Verification: Renderer Files ===" -ForegroundColor Cyan
+            if (-Not (Test-Path "electron/renderer/index.html")) {
+              Write-Error "ERROR: Renderer Missing - electron/renderer/index.html not found!"
+              Write-Host "This is a critical file required for the Electron app. Build cannot proceed."
+              Write-Host "`nChecking electron/ directory structure:"
+              if (Test-Path "electron") {
+                Get-ChildItem -Path "electron" -Recurse | Select-Object FullName | Format-Table -AutoSize
+              } else {
+                Write-Host "electron/ directory does not exist!"
+              }
               exit 1
             }
+            Write-Host "Renderer verified: electron/renderer/index.html exists" -ForegroundColor Green
             
-            Write-Host "`n=== DEBUG: Checking Application Files Before Build ===" -ForegroundColor Cyan
-            Write-Host "Checking electron/ directory:"
-            if (Test-Path "electron") {
-              Write-Host "electron/ structure:"
-              Get-ChildItem -Path "electron" -Recurse -File | Select-Object FullName | Format-Table -AutoSize
+            # Enhanced Debugging: Environment and Tools
+            Write-Host "`n=== Debugging: Environment and Tools ===" -ForegroundColor Cyan
+            Write-Host "npx version:"
+            npx --version
+            Write-Host "`nelectron-builder version (direct path):"
+            if (Test-Path "./node_modules/.bin/electron-builder.cmd") {
+              & ./node_modules/.bin/electron-builder.cmd --version 2>&1 | ForEach-Object { Write-Host $_ }
             } else {
-              Write-Host "ERROR: electron/ directory not found!" -ForegroundColor Red
-              exit 1
+              Write-Host "WARNING: ./node_modules/.bin/electron-builder.cmd not found!" -ForegroundColor Yellow
             }
             
-            Write-Host "`n=== DEBUG: Testing Combined Build (NSIS + APPX) ===" -ForegroundColor Cyan
-            Write-Host "Running: npx electron-builder --config electron-builder.js --win --x64 --publish never --log-level=debug"
-            Write-Host "Environment check:"
-            Write-Host "  CSC_LINK: $($env:CSC_LINK -ne $null ? 'SET' : 'NOT SET')"
-            Write-Host "  MS_STORE_IDENTITY_NAME: $($env:MS_STORE_IDENTITY_NAME -ne $null ? 'SET' : 'NOT SET')"
-            Write-Host "  MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET' : 'NOT SET')"
+            Write-Host "`nEnvironment Variables (masked):"
+            Write-Host "  CSC_LINK: $($env:CSC_LINK -ne $null ? 'SET (path: ' + $env:CSC_LINK + ')' : 'NOT SET')"
+            Write-Host "  MS_STORE_IDENTITY_NAME: $($env:MS_STORE_IDENTITY_NAME -ne $null ? 'SET (length: ' + $env:MS_STORE_IDENTITY_NAME.Length + ')' : 'NOT SET')"
+            Write-Host "  MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET (starts with CN=: ' + $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=') + ')' : 'NOT SET')"
             Write-Host "  isStoreBuild should be: $($env:CSC_LINK -and $env:MS_STORE_IDENTITY_NAME -and $env:MS_STORE_PUBLISHER_ID -and $env:MS_STORE_PUBLISHER_ID.StartsWith('CN='))"
             
-            # Run electron-builder directly and capture ALL output
-            Write-Host "`n=== Running Electron-Builder ===" -ForegroundColor Cyan
-            Write-Host "Command: npx electron-builder --config electron-builder.js --win --x64 --publish never --log-level=debug"
+            # Run electron-builder using direct path to avoid npx ambiguity
+            Write-Host "`n=== Running Electron-Builder (Direct Path) ===" -ForegroundColor Cyan
+            $builderPath = "./node_modules/.bin/electron-builder.cmd"
+            if (-Not (Test-Path $builderPath)) {
+              Write-Error "ERROR: electron-builder.cmd not found at $builderPath"
+              Write-Host "Checking node_modules/.bin directory:"
+              if (Test-Path "./node_modules/.bin") {
+                Get-ChildItem -Path "./node_modules/.bin" -Filter "*electron*" | Select-Object Name
+              }
+              exit 1
+            }
+            
+            Write-Host "Using direct path: $builderPath"
+            Write-Host "Command: & $builderPath --config electron-builder.config.js --win --x64 --publish never --log-level=debug"
             
             # Capture both stdout and stderr
-            $output = & npx electron-builder --config electron-builder.js --win --x64 --publish never --log-level=debug 2>&1
+            $output = & $builderPath --config electron-builder.config.js --win --x64 --publish never --log-level=debug 2>&1
             $buildExitCode = $LASTEXITCODE
             
             # Display all output
@@ -456,13 +459,6 @@ jobs:
             }
             
             Write-Host "`nBuild exit code: $buildExitCode" -ForegroundColor $(if ($buildExitCode -eq 0) { "Green" } else { "Red" })
-            
-            # Additional debugging: check if electron-builder is actually installed
-            Write-Host "`n=== Debugging Electron-Builder Installation ===" -ForegroundColor Cyan
-            Write-Host "Checking npx version:"
-            npx --version
-            Write-Host "`nChecking if electron-builder is available:"
-            npx electron-builder --version 2>&1 | ForEach-Object { Write-Host $_ }
             
             Write-Host "`n=== DEBUG: Directory Structure After Build ===" -ForegroundColor Cyan
             Write-Host "Current directory: $(Get-Location)"
@@ -496,12 +492,14 @@ jobs:
               Write-Host "ERROR: Build succeeded but dist/ directory was not created!" -ForegroundColor Red
               Write-Host "This usually means electron-builder couldn't find the required files or encountered a configuration error."
               Write-Host "Please check the electron-builder output above for warnings or errors."
+              Write-Host "`nFull project structure for debugging:"
+              Get-ChildItem -Recurse | Select-Object FullName | Format-Table -AutoSize
               exit 1
             }
           } elseif ("${{ matrix.platform }}" -eq "mac") {
-            npx electron-builder --config electron-builder.js --mac --publish never
+            npx electron-builder --config electron-builder.config.js --mac --publish never
           } else {
-            npx electron-builder --config electron-builder.js --linux --publish never
+            npx electron-builder --config electron-builder.config.js --linux --publish never
           }
 
       - name: Generate SHA-256 checksums

@@ -60,7 +60,7 @@ env:
 
 ## Configuration File
 
-The electron-builder configuration is in `electron-builder.js` (not in `package.json`). This JavaScript file reads environment variables directly, so no values are stored in the repository.
+The electron-builder configuration is in `electron-builder.config.js` (not in `package.json`). This JavaScript file reads environment variables directly, so no values are stored in the repository.
 
 **For local development:**
 - Create a `.env` file in the project root (see `.env.example`)
