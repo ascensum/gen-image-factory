@@ -444,14 +444,53 @@ jobs:
             }
             
             Write-Host "Using direct path: $builderPath"
-            Write-Host "Command: & $builderPath --config electron-builder.config.js --win --x64 --publish never"
             
             # Set debug environment variable for electron-builder verbose output
             $env:DEBUG = "electron-builder*"
             
-            # Capture both stdout and stderr
-            $output = & $builderPath --config electron-builder.config.js --win --x64 --publish never 2>&1
-            $buildExitCode = $LASTEXITCODE
+            # Build APPX and NSIS separately to avoid certificate extraction issues
+            # Step 1: Build APPX with signing (requires certificate)
+            Write-Host "`n=== Building APPX (with signing) ===" -ForegroundColor Cyan
+            $appxOutput = & $builderPath --config electron-builder.config.js --win --x64 --publish never --target appx 2>&1
+            $appxExitCode = $LASTEXITCODE
+            
+            Write-Host "APPX Build exit code: $appxExitCode" -ForegroundColor $(if ($appxExitCode -eq 0) { "Green" } else { "Red" })
+            if ($appxOutput) {
+              $appxOutput | ForEach-Object { Write-Host $_ }
+            }
+            
+            if ($appxExitCode -ne 0) {
+              Write-Host "ERROR: APPX build failed with exit code $appxExitCode" -ForegroundColor Red
+              exit 1
+            }
+            
+            # Step 2: Build NSIS without signing (unset CSC_LINK to avoid certificate issues)
+            Write-Host "`n=== Building NSIS (without signing) ===" -ForegroundColor Cyan
+            $originalCscLink = $env:CSC_LINK
+            $originalCscKeyPassword = $env:CSC_KEY_PASSWORD
+            $env:CSC_LINK = $null
+            $env:CSC_KEY_PASSWORD = $null
+            
+            $nsisOutput = & $builderPath --config electron-builder.config.js --win --x64 --publish never --target nsis 2>&1
+            $nsisExitCode = $LASTEXITCODE
+            
+            # Restore original values
+            $env:CSC_LINK = $originalCscLink
+            $env:CSC_KEY_PASSWORD = $originalCscKeyPassword
+            
+            Write-Host "NSIS Build exit code: $nsisExitCode" -ForegroundColor $(if ($nsisExitCode -eq 0) { "Green" } else { "Red" })
+            if ($nsisOutput) {
+              $nsisOutput | ForEach-Object { Write-Host $_ }
+            }
+            
+            if ($nsisExitCode -ne 0) {
+              Write-Host "ERROR: NSIS build failed with exit code $nsisExitCode" -ForegroundColor Red
+              exit 1
+            }
+            
+            # Combined output for display
+            $output = @($appxOutput) + @($nsisOutput)
+            $buildExitCode = if ($appxExitCode -eq 0 -and $nsisExitCode -eq 0) { 0 } else { 1 }
             
             # Display all output
             Write-Host "`n=== Electron-Builder Output ===" -ForegroundColor Cyan

@@ -34,13 +34,9 @@ const config = {
   },
   win: {
     icon: 'build/icons/win/icon.ico',
-    // Build both APPX (signed) and NSIS (unsigned) for Store builds
-    // APPX signing uses appx.publisher (works fine)
-    // NSIS will be unsigned to avoid "Cannot extract publisher name" error
-    target: isStoreBuild ? ['appx', 'nsis'] : ['nsis'],
-    // Disable code signing for NSIS installer
-    // APPX signing is handled separately via appx.publisher
-    forceCodeSigning: false
+    // Target will be set dynamically via command line --win flag
+    // APPX and NSIS are built separately to avoid certificate issues
+    target: isStoreBuild ? ['appx'] : ['nsis']
   },
   linux: {
     icon: 'build/icons/png',
