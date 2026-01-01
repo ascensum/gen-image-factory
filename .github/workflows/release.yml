@@ -254,28 +254,48 @@ jobs:
         run: |
           Write-Host "=== Validating Renderer Build Output ===" -ForegroundColor Cyan
           
-          # Check if electron/renderer exists (Vite outputs here)
-          if (-Not (Test-Path "electron/renderer")) {
-            Write-Error "ERROR: electron/renderer directory not found after build!"
-            Write-Host "Listing electron/ directory:"
+          # Check renderer file location (could be in dist/renderer or electron/renderer)
+          $rendererPath = $null
+          if (Test-Path "dist/renderer") {
+            $rendererPath = "dist/renderer"
+            Write-Host "Found renderer files in: dist/renderer" -ForegroundColor Green
+          } elseif (Test-Path "electron/renderer") {
+            $rendererPath = "electron/renderer"
+            Write-Host "Found renderer files in: electron/renderer" -ForegroundColor Green
+          } else {
+            Write-Error "ERROR: Renderer files not found in either dist/renderer or electron/renderer!"
+            Write-Host "`nChecking dist/ directory:"
+            if (Test-Path "dist") {
+              Get-ChildItem -Path "dist" -Recurse | Select-Object FullName | Format-Table -AutoSize
+            } else {
+              Write-Host "dist/ directory does not exist"
+            }
+            Write-Host "`nChecking electron/ directory:"
             if (Test-Path "electron") {
               Get-ChildItem -Path "electron" -Recurse | Select-Object FullName | Format-Table -AutoSize
             } else {
-              Write-Host "electron/ directory does not exist!"
+              Write-Host "electron/ directory does not exist"
             }
             exit 1
           }
           
-          Write-Host "electron/renderer exists. Contents:" -ForegroundColor Green
-          Get-ChildItem -Path "electron/renderer" -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize
+          Write-Host "`nRenderer files in $rendererPath:" -ForegroundColor Cyan
+          Get-ChildItem -Path $rendererPath -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize
           
-          # Check for critical files
-          $requiredFiles = @("electron/renderer/index.html", "electron/main.js", "electron/preload.js")
+          # Check for critical files based on detected location
+          $requiredFiles = @()
+          if ($rendererPath -eq "electron/renderer") {
+            $requiredFiles = @("electron/renderer/index.html", "electron/main.js", "electron/preload.js")
+          } else {
+            $requiredFiles = @("dist/renderer/index.html", "electron/main.js", "electron/preload.js")
+          }
+          
           $missingFiles = @()
-          
           foreach ($file in $requiredFiles) {
             if (-Not (Test-Path $file)) {
               $missingFiles += $file
+            } else {
+              Write-Host "✓ Found: $file" -ForegroundColor Green
             }
           }
           
@@ -284,7 +304,9 @@ jobs:
             exit 1
           }
           
-          Write-Host "All required files present!" -ForegroundColor Green
+          Write-Host "`n✓ All required files present!" -ForegroundColor Green
+          Write-Host "Renderer location: $rendererPath" -ForegroundColor Cyan
+          Write-Host "electron-builder.js files array includes: electron/**/* (which covers $rendererPath)" -ForegroundColor Cyan
 
       - name: Debug Windows MSIX Build (Windows only)
         if: matrix.platform == 'win'
@@ -377,12 +399,36 @@ jobs:
               Write-Host "CSC_KEY_PASSWORD: $($env:CSC_KEY_PASSWORD -ne $null ? 'SET' : 'NOT SET')"
             }
             
+            Write-Host "`n=== DEBUG: Verifying Renderer Files Before Electron-Builder ===" -ForegroundColor Cyan
+            Write-Host "Checking renderer files location:"
+            
+            $rendererFound = $false
+            if (Test-Path "dist/renderer") {
+              Write-Host "✓ Found renderer in: dist/renderer" -ForegroundColor Green
+              Get-ChildItem -Path "dist/renderer" -Recurse -File | Select-Object FullName | Format-Table -AutoSize
+              $rendererFound = $true
+            }
+            
+            if (Test-Path "electron/renderer") {
+              Write-Host "✓ Found renderer in: electron/renderer" -ForegroundColor Green
+              Get-ChildItem -Path "electron/renderer" -Recurse -File | Select-Object FullName | Format-Table -AutoSize
+              $rendererFound = $true
+            }
+            
+            if (-Not $rendererFound) {
+              Write-Error "ERROR: Renderer files not found in dist/renderer or electron/renderer!"
+              Write-Host "This will cause electron-builder to fail silently."
+              exit 1
+            }
+            
             Write-Host "`n=== DEBUG: Checking Application Files Before Build ===" -ForegroundColor Cyan
             Write-Host "Checking electron/ directory:"
             if (Test-Path "electron") {
+              Write-Host "electron/ structure:"
               Get-ChildItem -Path "electron" -Recurse -File | Select-Object FullName | Format-Table -AutoSize
             } else {
               Write-Host "ERROR: electron/ directory not found!" -ForegroundColor Red
+              exit 1
             }
             
             Write-Host "`n=== DEBUG: Testing Combined Build (NSIS + APPX) ===" -ForegroundColor Cyan
