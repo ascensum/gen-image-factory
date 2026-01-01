@@ -249,6 +249,68 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Debug Windows MSIX Build (Windows only)
+        if: matrix.platform == 'win'
+        env:
+          MS_STORE_IDENTITY_NAME: ${{ secrets.MS_STORE_IDENTITY_NAME }}
+          MS_STORE_PUBLISHER_ID: ${{ secrets.MS_STORE_PUBLISHER_ID }}
+          MS_STORE_PUBLISHER_DISPLAY_NAME: ${{ secrets.MS_STORE_PUBLISHER_DISPLAY_NAME }}
+          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+        shell: pwsh
+        run: |
+          Write-Host "=== DEBUG: Environment Variables Check ===" -ForegroundColor Cyan
+          Write-Host "MS_STORE_IDENTITY_NAME: $($env:MS_STORE_IDENTITY_NAME -ne $null ? 'SET (length: ' + $env:MS_STORE_IDENTITY_NAME.Length + ')' : 'NOT SET')"
+          Write-Host "MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET (starts with CN=: ' + $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=') + ')' : 'NOT SET')"
+          Write-Host "MS_STORE_PUBLISHER_DISPLAY_NAME: $($env:MS_STORE_PUBLISHER_DISPLAY_NAME -ne $null ? 'SET' : 'NOT SET')"
+          Write-Host "WINDOWS_PFX_BASE64: $($env:WINDOWS_PFX_BASE64 -ne $null ? 'SET (length: ' + $env:WINDOWS_PFX_BASE64.Length + ')' : 'NOT SET')"
+          Write-Host "WINDOWS_PFX_PASSWORD: $($env:WINDOWS_PFX_PASSWORD -ne $null ? 'SET' : 'NOT SET')"
+          
+          Write-Host "`n=== DEBUG: Certificate Validation ===" -ForegroundColor Cyan
+          if ($env:WINDOWS_PFX_BASE64) {
+            try {
+              $pfxBytes = [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64)
+              $pfxPath = Join-Path $env:RUNNER_TEMP "cert.pfx"
+              [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
+              Write-Host "PFX file written to: $pfxPath"
+              Write-Host "PFX file size: $((Get-Item $pfxPath).Length) bytes"
+              
+              # Try to read the certificate
+              try {
+                $cert = Get-PfxCertificate -FilePath $pfxPath -Password (ConvertTo-SecureString -String $env:WINDOWS_PFX_PASSWORD -AsPlainText -Force)
+                Write-Host "Certificate validated successfully"
+                Write-Host "Certificate subject: $($cert.Subject)"
+                Write-Host "Certificate issuer: $($cert.Issuer)"
+                Write-Host "Certificate thumbprint: $($cert.Thumbprint)"
+              } catch {
+                Write-Host "ERROR: Failed to read PFX certificate: $_" -ForegroundColor Red
+              }
+            } catch {
+              Write-Host "ERROR: Failed to decode or write PFX: $_" -ForegroundColor Red
+            }
+          } else {
+            Write-Host "WARNING: WINDOWS_PFX_BASE64 is not set" -ForegroundColor Yellow
+          }
+          
+          Write-Host "`n=== DEBUG: Directory Structure Before Build ===" -ForegroundColor Cyan
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "`nTop-level files and directories:"
+          Get-ChildItem -Depth 0 | Select-Object Name, Mode, Length | Format-Table -AutoSize
+          Write-Host "`nChecking for dist directory:"
+          if (Test-Path "dist") {
+            Write-Host "dist/ exists with contents:"
+            Get-ChildItem -Path "dist" -Recurse | Select-Object FullName | Format-Table -AutoSize
+          } else {
+            Write-Host "dist/ does not exist yet"
+          }
+          
+          Write-Host "`n=== DEBUG: electron-builder.js Configuration ===" -ForegroundColor Cyan
+          if (Test-Path "electron-builder.js") {
+            Get-Content "electron-builder.js" | Write-Host
+          } else {
+            Write-Host "ERROR: electron-builder.js not found!" -ForegroundColor Red
+          }
+
       - name: Build artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -274,8 +336,48 @@ jobs:
               $env:CSC_KEY_PASSWORD = $env:WINDOWS_PFX_PASSWORD
               
               Write-Host "Code-signing certificate configured: $pfxPath"
+              Write-Host "CSC_LINK: $env:CSC_LINK"
+              Write-Host "CSC_KEY_PASSWORD: $($env:CSC_KEY_PASSWORD -ne $null ? 'SET' : 'NOT SET')"
             }
-            npx electron-builder --config electron-builder.js --win --x64 --publish never
+            
+            Write-Host "`n=== DEBUG: Testing NSIS Build First ===" -ForegroundColor Cyan
+            $nsisExitCode = 0
+            try {
+              npx electron-builder --config electron-builder.js --win nsis --x64 --publish never --log-level=debug
+              $nsisExitCode = $LASTEXITCODE
+              Write-Host "NSIS build exit code: $nsisExitCode" -ForegroundColor $(if ($nsisExitCode -eq 0) { "Green" } else { "Red" })
+            } catch {
+              Write-Host "NSIS build failed with error: $_" -ForegroundColor Red
+              $nsisExitCode = 1
+            }
+            
+            Write-Host "`n=== DEBUG: Testing APPX Build ===" -ForegroundColor Cyan
+            $appxExitCode = 0
+            try {
+              npx electron-builder --config electron-builder.js --win appx --x64 --publish never --log-level=debug
+              $appxExitCode = $LASTEXITCODE
+              Write-Host "APPX build exit code: $appxExitCode" -ForegroundColor $(if ($appxExitCode -eq 0) { "Green" } else { "Red" })
+            } catch {
+              Write-Host "APPX build failed with error: $_" -ForegroundColor Red
+              $appxExitCode = 1
+            }
+            
+            Write-Host "`n=== DEBUG: Build Summary ===" -ForegroundColor Cyan
+            Write-Host "NSIS exit code: $nsisExitCode"
+            Write-Host "APPX exit code: $appxExitCode"
+            
+            if ($nsisExitCode -ne 0 -and $appxExitCode -ne 0) {
+              Write-Host "ERROR: Both NSIS and APPX builds failed!" -ForegroundColor Red
+              exit 1
+            }
+            
+            Write-Host "`n=== DEBUG: Directory Structure After Build ===" -ForegroundColor Cyan
+            if (Test-Path "dist") {
+              Write-Host "dist/ exists with contents:"
+              Get-ChildItem -Path "dist" -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+            } else {
+              Write-Host "WARNING: dist/ was not created!" -ForegroundColor Yellow
+            }
           } elseif ("${{ matrix.platform }}" -eq "mac") {
             npx electron-builder --config electron-builder.js --mac --publish never
           } else {
