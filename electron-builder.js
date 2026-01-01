@@ -2,13 +2,9 @@
  * Electron Builder Configuration
  */
 
-// Only try to load dotenv if we are NOT in CI and the package exists
+// Safe load for dotenv
 if (!process.env.CI) {
-  try {
-    require('dotenv').config();
-  } catch (_e) {
-    // dotenv not found, skipping local env load
-  }
+  try { require('dotenv').config(); } catch (_e) {}
 }
 
 const baseConfig = {
@@ -30,14 +26,25 @@ const baseConfig = {
   },
   win: {
     icon: 'build/icons/win/icon.ico',
-    // We use MSIX for Store and NSIS for GitHub Releases
-    target: ['msix', 'nsis'], 
-    publisherName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || undefined
+    // Removed 'publisherName' from here - it was causing the crash
+    target: ['appx', 'nsis'] 
   },
   linux: {
     icon: 'build/icons/png',
     category: 'Graphics',
     target: ['AppImage', 'deb']
+  },
+  // Re-mapped to 'appx' which is the correct schema key
+  appx: {
+    identityName: process.env.MS_STORE_IDENTITY_NAME,
+    publisher: process.env.MS_STORE_PUBLISHER_ID,
+    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || 'Shiftline Tools',
+    installLocation: 'Custom',
+    allowElevation: true
+  },
+  nsis: {
+    oneClick: false,
+    allowToChangeInstallationDirectory: true
   },
   publish: {
     provider: 'github',
@@ -45,16 +52,5 @@ const baseConfig = {
     repo: 'gen-image-factory'
   }
 };
-
-// Inject Microsoft Store identity if variables are present
-if (process.env.MS_STORE_IDENTITY_NAME && process.env.MS_STORE_PUBLISHER_ID) {
-  baseConfig.msix = {
-    identityName: process.env.MS_STORE_IDENTITY_NAME,
-    publisher: process.env.MS_STORE_PUBLISHER_ID,
-    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || 'Shiftline Tools',
-    installLocation: 'Custom',
-    allowElevation: true
-  };
-}
 
 module.exports = baseConfig;
