@@ -1,5 +1,6 @@
 /**
  * Electron Builder Configuration
+ * Cleaned for v26 Schema Compatibility
  */
 
 // Safe load for dotenv
@@ -7,7 +8,7 @@ if (!process.env.CI) {
   try { require('dotenv').config(); } catch (_e) {}
 }
 
-const baseConfig = {
+module.exports = {
   appId: 'com.genimage.factory',
   productName: 'Gen Image Factory',
   directories: {
@@ -17,7 +18,8 @@ const baseConfig = {
   asar: true,
   files: [
     'electron/**/*',
-    'package.json'
+    'package.json',
+    'dist/renderer/**/*' 
   ],
   mac: {
     icon: 'build/icons/mac/icon.icns',
@@ -26,7 +28,7 @@ const baseConfig = {
   },
   win: {
     icon: 'build/icons/win/icon.ico',
-    // Removed 'publisherName' from here - it was causing the crash
+    // DO NOT add publisherName here, it's invalid in v26
     target: ['appx', 'nsis'] 
   },
   linux: {
@@ -34,13 +36,11 @@ const baseConfig = {
     category: 'Graphics',
     target: ['AppImage', 'deb']
   },
-  // Re-mapped to 'appx' which is the correct schema key
+  // 'appx' is the ONLY valid key for Microsoft Store settings in the schema
   appx: {
-    identityName: process.env.MS_STORE_IDENTITY_NAME,
-    publisher: process.env.MS_STORE_PUBLISHER_ID,
-    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || 'Shiftline Tools',
-    installLocation: 'Custom',
-    allowElevation: true
+    identityName: process.env.MS_STORE_IDENTITY_NAME || undefined,
+    publisher: process.env.MS_STORE_PUBLISHER_ID || undefined,
+    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || 'Shiftline Tools'
   },
   nsis: {
     oneClick: false,
@@ -52,5 +52,3 @@ const baseConfig = {
     repo: 'gen-image-factory'
   }
 };
-
-module.exports = baseConfig;
