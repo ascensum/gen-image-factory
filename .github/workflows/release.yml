@@ -255,14 +255,26 @@ jobs:
           MS_STORE_IDENTITY_NAME: ${{ secrets.MS_STORE_IDENTITY_NAME }}
           MS_STORE_PUBLISHER_ID: ${{ secrets.MS_STORE_PUBLISHER_ID }}
           MS_STORE_PUBLISHER_DISPLAY_NAME: ${{ secrets.MS_STORE_PUBLISHER_DISPLAY_NAME }}
-          # Disable code-signing auto-discovery to prevent silent APPX failures
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
         shell: pwsh
         run: |
           Write-Host "Building for platform: ${{ matrix.platform }}"
           
-          # Use npx to run electron-builder using the standard .js config
+          # For Windows, decode the base64 PFX and set up code-signing
           if ("${{ matrix.platform }}" -eq "win") {
+            if ($env:WINDOWS_PFX_BASE64) {
+              # Decode base64 PFX and write to temp file
+              $pfxBytes = [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64)
+              $pfxPath = Join-Path $env:RUNNER_TEMP "cert.pfx"
+              [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
+              
+              # Set electron-builder code-signing variables
+              $env:CSC_LINK = $pfxPath
+              $env:CSC_KEY_PASSWORD = $env:WINDOWS_PFX_PASSWORD
+              
+              Write-Host "Code-signing certificate configured: $pfxPath"
+            }
             npx electron-builder --config electron-builder.js --win --x64 --publish never
           } elseif ("${{ matrix.platform }}" -eq "mac") {
             npx electron-builder --config electron-builder.js --mac --publish never

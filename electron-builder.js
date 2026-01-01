@@ -8,8 +8,9 @@ if (!process.env.CI) {
   try { require('dotenv').config(); } catch (_e) {}
 }
 
-// Check if all Microsoft Store requirements are met
+// Check if all Microsoft Store requirements are met AND signing certificate exists
 const isStoreBuild = 
+  process.env.CSC_LINK && // Code-signing certificate must exist
   process.env.MS_STORE_IDENTITY_NAME && 
   process.env.MS_STORE_PUBLISHER_ID && 
   process.env.MS_STORE_PUBLISHER_ID.startsWith('CN=');
@@ -33,7 +34,7 @@ const config = {
   },
   win: {
     icon: 'build/icons/win/icon.ico',
-    // Conditionally include APPX target only when Store requirements are met
+    // Always include NSIS, conditionally include APPX when Store requirements are met
     target: isStoreBuild ? ['appx', 'nsis'] : ['nsis']
   },
   linux: {

@@ -5,6 +5,13 @@
 .env.test
 .env.production
 
+# Certificate files (stored as GitHub Secrets)
+.certs/
+*.pfx
+*.pem
+*.key
+*.crt
+
 # Logs - Comprehensive protection against API key leaks
 *.log
 npm-debug.log*
