@@ -349,32 +349,17 @@ jobs:
             }
             
             Write-Host "`n=== DEBUG: Testing Combined Build (NSIS + APPX) ===" -ForegroundColor Cyan
-            # Build both targets together instead of separately
             Write-Host "Running: npx electron-builder --config electron-builder.js --win --x64 --publish never --log-level=debug"
+            Write-Host "Environment check:"
+            Write-Host "  CSC_LINK: $($env:CSC_LINK -ne $null ? 'SET' : 'NOT SET')"
+            Write-Host "  MS_STORE_IDENTITY_NAME: $($env:MS_STORE_IDENTITY_NAME -ne $null ? 'SET' : 'NOT SET')"
+            Write-Host "  MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET' : 'NOT SET')"
+            Write-Host "  isStoreBuild should be: $($env:CSC_LINK -and $env:MS_STORE_IDENTITY_NAME -and $env:MS_STORE_PUBLISHER_ID -and $env:MS_STORE_PUBLISHER_ID.StartsWith('CN='))"
             
-            # Capture output properly in PowerShell
-            $buildOutput = ""
-            $buildExitCode = 0
-            
-            # Run electron-builder and capture all output
-            $process = Start-Process -FilePath "npx" -ArgumentList "electron-builder", "--config", "electron-builder.js", "--win", "--x64", "--publish", "never", "--log-level=debug" -NoNewWindow -Wait -PassThru -RedirectStandardOutput "electron-builder-output.txt" -RedirectStandardError "electron-builder-error.txt"
-            $buildExitCode = $process.ExitCode
-            
-            # Read the output files
-            if (Test-Path "electron-builder-output.txt") {
-              $buildOutput = Get-Content "electron-builder-output.txt" -Raw
-              Write-Host "=== Electron-Builder Output ===" -ForegroundColor Cyan
-              Write-Host $buildOutput
-            }
-            
-            if (Test-Path "electron-builder-error.txt") {
-              $errorOutput = Get-Content "electron-builder-error.txt" -Raw
-              if ($errorOutput) {
-                Write-Host "=== Electron-Builder Errors ===" -ForegroundColor Red
-                Write-Host $errorOutput
-              }
-            }
-            
+            # Run electron-builder directly and capture output
+            Write-Host "`n=== Running Electron-Builder ===" -ForegroundColor Cyan
+            npx electron-builder --config electron-builder.js --win --x64 --publish never --log-level=debug
+            $buildExitCode = $LASTEXITCODE
             Write-Host "`nBuild exit code: $buildExitCode" -ForegroundColor $(if ($buildExitCode -eq 0) { "Green" } else { "Red" })
             
             Write-Host "`n=== DEBUG: Directory Structure After Build ===" -ForegroundColor Cyan
