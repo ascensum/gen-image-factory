@@ -255,6 +255,8 @@ jobs:
           MS_STORE_IDENTITY_NAME: ${{ secrets.MS_STORE_IDENTITY_NAME }}
           MS_STORE_PUBLISHER_ID: ${{ secrets.MS_STORE_PUBLISHER_ID }}
           MS_STORE_PUBLISHER_DISPLAY_NAME: ${{ secrets.MS_STORE_PUBLISHER_DISPLAY_NAME }}
+          # Disable code-signing auto-discovery to prevent silent APPX failures
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         shell: pwsh
         run: |
           Write-Host "Building for platform: ${{ matrix.platform }}"

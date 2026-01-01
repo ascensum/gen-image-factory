@@ -8,7 +8,13 @@ if (!process.env.CI) {
   try { require('dotenv').config(); } catch (_e) {}
 }
 
-module.exports = {
+// Check if all Microsoft Store requirements are met
+const isStoreBuild = 
+  process.env.MS_STORE_IDENTITY_NAME && 
+  process.env.MS_STORE_PUBLISHER_ID && 
+  process.env.MS_STORE_PUBLISHER_ID.startsWith('CN=');
+
+const config = {
   appId: 'com.genimage.factory',
   productName: 'Gen Image Factory',
   directories: {
@@ -18,8 +24,7 @@ module.exports = {
   asar: true,
   files: [
     'electron/**/*',
-    'package.json',
-    'dist/renderer/**/*' 
+    'package.json'
   ],
   mac: {
     icon: 'build/icons/mac/icon.icns',
@@ -28,19 +33,13 @@ module.exports = {
   },
   win: {
     icon: 'build/icons/win/icon.ico',
-    // DO NOT add publisherName here, it's invalid in v26
-    target: ['appx', 'nsis'] 
+    // Conditionally include APPX target only when Store requirements are met
+    target: isStoreBuild ? ['appx', 'nsis'] : ['nsis']
   },
   linux: {
     icon: 'build/icons/png',
     category: 'Graphics',
     target: ['AppImage', 'deb']
-  },
-  // 'appx' is the ONLY valid key for Microsoft Store settings in the schema
-  appx: {
-    identityName: process.env.MS_STORE_IDENTITY_NAME || undefined,
-    publisher: process.env.MS_STORE_PUBLISHER_ID || undefined,
-    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || 'Shiftline Tools'
   },
   nsis: {
     oneClick: false,
@@ -52,3 +51,14 @@ module.exports = {
     repo: 'gen-image-factory'
   }
 };
+
+// Only include appx config if Store build is enabled
+if (isStoreBuild) {
+  config.appx = {
+    identityName: process.env.MS_STORE_IDENTITY_NAME,
+    publisher: process.env.MS_STORE_PUBLISHER_ID,
+    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || 'Shiftline Tools'
+  };
+}
+
+module.exports = config;
