@@ -451,7 +451,7 @@ jobs:
             # Build APPX and NSIS separately to avoid certificate extraction issues
             # Step 1: Build APPX with signing (requires certificate)
             Write-Host "`n=== Building APPX (with signing) ===" -ForegroundColor Cyan
-            $appxOutput = & $builderPath --config electron-builder.config.js --win --x64 --publish never --target appx 2>&1
+            $appxOutput = & $builderPath --config electron-builder.config.js --win appx --x64 --publish never 2>&1
             $appxExitCode = $LASTEXITCODE
             
             Write-Host "APPX Build exit code: $appxExitCode" -ForegroundColor $(if ($appxExitCode -eq 0) { "Green" } else { "Red" })
@@ -468,15 +468,15 @@ jobs:
             Write-Host "`n=== Building NSIS (without signing) ===" -ForegroundColor Cyan
             $originalCscLink = $env:CSC_LINK
             $originalCscKeyPassword = $env:CSC_KEY_PASSWORD
-            $env:CSC_LINK = $null
-            $env:CSC_KEY_PASSWORD = $null
+            Remove-Item Env:\CSC_LINK -ErrorAction SilentlyContinue
+            Remove-Item Env:\CSC_KEY_PASSWORD -ErrorAction SilentlyContinue
             
-            $nsisOutput = & $builderPath --config electron-builder.config.js --win --x64 --publish never --target nsis 2>&1
+            $nsisOutput = & $builderPath --config electron-builder.config.js --win nsis --x64 --publish never 2>&1
             $nsisExitCode = $LASTEXITCODE
             
             # Restore original values
-            $env:CSC_LINK = $originalCscLink
-            $env:CSC_KEY_PASSWORD = $originalCscKeyPassword
+            if ($originalCscLink) { $env:CSC_LINK = $originalCscLink }
+            if ($originalCscKeyPassword) { $env:CSC_KEY_PASSWORD = $originalCscKeyPassword }
             
             Write-Host "NSIS Build exit code: $nsisExitCode" -ForegroundColor $(if ($nsisExitCode -eq 0) { "Green" } else { "Red" })
             if ($nsisOutput) {
