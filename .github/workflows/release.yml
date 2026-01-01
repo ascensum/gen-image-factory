@@ -439,11 +439,30 @@ jobs:
             Write-Host "  MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET' : 'NOT SET')"
             Write-Host "  isStoreBuild should be: $($env:CSC_LINK -and $env:MS_STORE_IDENTITY_NAME -and $env:MS_STORE_PUBLISHER_ID -and $env:MS_STORE_PUBLISHER_ID.StartsWith('CN='))"
             
-            # Run electron-builder directly and capture output
+            # Run electron-builder directly and capture ALL output
             Write-Host "`n=== Running Electron-Builder ===" -ForegroundColor Cyan
-            npx electron-builder --config electron-builder.js --win --x64 --publish never --log-level=debug
+            Write-Host "Command: npx electron-builder --config electron-builder.js --win --x64 --publish never --log-level=debug"
+            
+            # Capture both stdout and stderr
+            $output = & npx electron-builder --config electron-builder.js --win --x64 --publish never --log-level=debug 2>&1
             $buildExitCode = $LASTEXITCODE
+            
+            # Display all output
+            Write-Host "`n=== Electron-Builder Output ===" -ForegroundColor Cyan
+            if ($output) {
+              $output | ForEach-Object { Write-Host $_ }
+            } else {
+              Write-Host "WARNING: No output from electron-builder!" -ForegroundColor Yellow
+            }
+            
             Write-Host "`nBuild exit code: $buildExitCode" -ForegroundColor $(if ($buildExitCode -eq 0) { "Green" } else { "Red" })
+            
+            # Additional debugging: check if electron-builder is actually installed
+            Write-Host "`n=== Debugging Electron-Builder Installation ===" -ForegroundColor Cyan
+            Write-Host "Checking npx version:"
+            npx --version
+            Write-Host "`nChecking if electron-builder is available:"
+            npx electron-builder --version 2>&1 | ForEach-Object { Write-Host $_ }
             
             Write-Host "`n=== DEBUG: Directory Structure After Build ===" -ForegroundColor Cyan
             Write-Host "Current directory: $(Get-Location)"
