@@ -279,7 +279,7 @@ jobs:
             exit 1
           }
           
-          Write-Host "`nRenderer files in $rendererPath:" -ForegroundColor Cyan
+          Write-Host "`nRenderer files in ${rendererPath}:" -ForegroundColor Cyan
           Get-ChildItem -Path $rendererPath -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize
           
           # Check for critical files based on detected location
@@ -295,7 +295,7 @@ jobs:
             if (-Not (Test-Path $file)) {
               $missingFiles += $file
             } else {
-              Write-Host "✓ Found: $file" -ForegroundColor Green
+              Write-Host "Found: $file" -ForegroundColor Green
             }
           }
           
@@ -304,9 +304,9 @@ jobs:
             exit 1
           }
           
-          Write-Host "`n✓ All required files present!" -ForegroundColor Green
-          Write-Host "Renderer location: $rendererPath" -ForegroundColor Cyan
-          Write-Host "electron-builder.js files array includes: electron/**/* (which covers $rendererPath)" -ForegroundColor Cyan
+          Write-Host "`nAll required files present!" -ForegroundColor Green
+          Write-Host "Renderer location: ${rendererPath}" -ForegroundColor Cyan
+          Write-Host "electron-builder.js files array includes: electron/**/* (which covers ${rendererPath})" -ForegroundColor Cyan
 
       - name: Debug Windows MSIX Build (Windows only)
         if: matrix.platform == 'win'
