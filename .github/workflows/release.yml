@@ -340,26 +340,25 @@ jobs:
               Write-Host "CSC_KEY_PASSWORD: $($env:CSC_KEY_PASSWORD -ne $null ? 'SET' : 'NOT SET')"
             }
             
-            Write-Host "`n=== DEBUG: Testing NSIS Build First ===" -ForegroundColor Cyan
-            $nsisExitCode = 0
-            try {
-              npx electron-builder --config electron-builder.js --win nsis --x64 --publish never --log-level=debug
-              $nsisExitCode = $LASTEXITCODE
-              Write-Host "NSIS build exit code: $nsisExitCode" -ForegroundColor $(if ($nsisExitCode -eq 0) { "Green" } else { "Red" })
-            } catch {
-              Write-Host "NSIS build failed with error: $_" -ForegroundColor Red
-              $nsisExitCode = 1
+            Write-Host "`n=== DEBUG: Checking Application Files Before Build ===" -ForegroundColor Cyan
+            Write-Host "Checking electron/ directory:"
+            if (Test-Path "electron") {
+              Get-ChildItem -Path "electron" -Recurse -File | Select-Object FullName | Format-Table -AutoSize
+            } else {
+              Write-Host "ERROR: electron/ directory not found!" -ForegroundColor Red
             }
             
-            Write-Host "`n=== DEBUG: Testing APPX Build ===" -ForegroundColor Cyan
-            $appxExitCode = 0
+            Write-Host "`n=== DEBUG: Testing Combined Build (NSIS + APPX) ===" -ForegroundColor Cyan
+            # Build both targets together instead of separately
+            $buildExitCode = 0
             try {
-              npx electron-builder --config electron-builder.js --win appx --x64 --publish never --log-level=debug
-              $appxExitCode = $LASTEXITCODE
-              Write-Host "APPX build exit code: $appxExitCode" -ForegroundColor $(if ($appxExitCode -eq 0) { "Green" } else { "Red" })
+              $output = npx electron-builder --config electron-builder.js --win --x64 --publish never --log-level=debug 2>&1
+              $buildExitCode = $LASTEXITCODE
+              Write-Host $output
+              Write-Host "`nBuild exit code: $buildExitCode" -ForegroundColor $(if ($buildExitCode -eq 0) { "Green" } else { "Red" })
             } catch {
-              Write-Host "APPX build failed with error: $_" -ForegroundColor Red
-              $appxExitCode = 1
+              Write-Host "Build failed with error: $_" -ForegroundColor Red
+              $buildExitCode = 1
             }
             
             Write-Host "`n=== DEBUG: Build Summary ===" -ForegroundColor Cyan
