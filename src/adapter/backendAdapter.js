@@ -5,13 +5,13 @@ const path = require('path');
 const fs = require('fs').promises;
 const crypto = require('crypto');
 const os = require('os');
-const { JobConfiguration } = require('../database/models/JobConfiguration');
-const { JobExecution } = require('../database/models/JobExecution');
-const { GeneratedImage } = require('../database/models/GeneratedImage');
-const { JobRunner } = require('../services/jobRunner');
-const RetryExecutor = require('../services/retryExecutor');
-const { ErrorTranslationService } = require('../services/errorTranslation');
-const { safeLogger } = require('../utils/logMasking');
+const { JobConfiguration } = require(path.join(__dirname, '../database/models/JobConfiguration'));
+const { JobExecution } = require(path.join(__dirname, '../database/models/JobExecution'));
+const { GeneratedImage } = require(path.join(__dirname, '../database/models/GeneratedImage'));
+const { JobRunner } = require(path.join(__dirname, '../services/jobRunner'));
+const RetryExecutor = require(path.join(__dirname, '../services/retryExecutor'));
+const { ErrorTranslationService } = require(path.join(__dirname, '../services/errorTranslation'));
+const { safeLogger } = require(path.join(__dirname, '../utils/logMasking'));
 
 // Service names for keytar
 const SERVICE_NAME = 'GenImageFactory';

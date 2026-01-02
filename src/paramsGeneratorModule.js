@@ -1,6 +1,6 @@
 const { OpenAI } = require("openai");
 const path = require('path');
-const { logDebug } = require('./utils/logDebug');
+const { logDebug } = require(path.join(__dirname, './utils/logDebug'));
 require('dotenv').config();
 
 async function paramsGeneratorModule(

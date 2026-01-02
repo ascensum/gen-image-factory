@@ -2,9 +2,9 @@ const EventEmitter = require('events');
 const path = require('path');
 const fs = require('fs').promises;
 const os = require('os');
-const { processImage } = require('../producePictureModule');
-const aiVision = require('../aiVision');
-const { JobConfiguration } = require('../database/models/JobConfiguration');
+const { processImage } = require(path.join(__dirname, '../producePictureModule'));
+const aiVision = require(path.join(__dirname, '../aiVision'));
+const { JobConfiguration } = require(path.join(__dirname, '../database/models/JobConfiguration'));
 
 /**
  * RetryExecutor - Handles post-processing retry for failed images

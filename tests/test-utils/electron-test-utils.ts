@@ -267,13 +267,13 @@ export const runMainProcessWithMocks = async (
         },
       }
     }
-    if (moduleId === '../src/adapter/backendAdapter') {
+    if (moduleId.endsWith('src/adapter/backendAdapter')) {
       return { BackendAdapter: BackendAdapterMock }
     }
-    if (moduleId === '../src/database/models/JobConfiguration') {
+    if (moduleId.endsWith('src/database/models/JobConfiguration')) {
       return { JobConfiguration: jobConfigurationMock }
     }
-    if (moduleId === '../src/database/models/GeneratedImage') {
+    if (moduleId.endsWith('src/database/models/GeneratedImage')) {
       return { GeneratedImage: generatedImageMock }
     }
     return fallbackRequire(moduleId)

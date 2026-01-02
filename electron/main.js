@@ -24,11 +24,11 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 // Initialize Backend Adapter
-const { BackendAdapter } = require('../src/adapter/backendAdapter');
+const { BackendAdapter } = require(path.join(__dirname, '../src/adapter/backendAdapter'));
 
 // JobConfiguration for dynamic, cross-platform default and saved paths
-const { JobConfiguration } = require('../src/database/models/JobConfiguration');
-const { GeneratedImage } = require('../src/database/models/GeneratedImage');
+const { JobConfiguration } = require(path.join(__dirname, '../src/database/models/JobConfiguration'));
+const { GeneratedImage } = require(path.join(__dirname, '../src/database/models/GeneratedImage'));
 
 let mainWindow;
 

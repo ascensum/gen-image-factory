@@ -6,8 +6,8 @@ const FormData = require('form-data'); // Uncommented to fix runtime error
 const path = require('path');
 const sharp = require("sharp");
 const { Blob } = require('node:buffer'); // Import Blob
-const { logDebug } = require('./utils/logDebug'); // Corrected path
-const aiVision = require('./aiVision');
+const { logDebug } = require(path.join(__dirname, './utils/logDebug')); // Corrected path
+const aiVision = require(path.join(__dirname, './aiVision'));
 const { randomUUID } = require('node:crypto');
 //const ngrok = require('ngrok'); // Removed ngrok dependency
 //require("dotenv").config(); // dotenv is already required in index.js

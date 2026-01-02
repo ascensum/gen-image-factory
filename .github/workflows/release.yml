@@ -559,6 +559,21 @@ jobs:
             npx electron-builder --config electron-builder.config.js --linux --publish never
           }
 
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Production Smoke Test
+        env:
+          ELECTRON_DISABLE_SANDBOX: 1
+          CI: true
+        run: |
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" npx playwright test tests/e2e/workflows/production-smoke.e2e.test.js
+          else
+            npx playwright test tests/e2e/workflows/production-smoke.e2e.test.js
+          fi
+        shell: bash
+
       - name: Generate SHA-256 checksums
         shell: pwsh
         run: |
@@ -611,7 +626,7 @@ jobs:
           mkdir -p artifacts-filtered
           
           # Windows installers (exclude helper executables like elevate.exe)
-          find artifacts -type f \( -name "*Setup*.exe" -o -name "Gen Image Factory*.exe" -o -name "*.msix" -o -name "*.appx" \) ! -name "elevate.exe" -exec cp {} artifacts-filtered/ \;
+          find artifacts -type f \( -name "*Setup*.exe" -o -name "GenImageFactory*.exe" -o -name "*.msix" -o -name "*.appx" \) ! -name "elevate.exe" -exec cp {} artifacts-filtered/ \;
           
           # macOS installers
           find artifacts -type f \( -name "*.dmg" -o -name "*-mac.zip" \) -exec cp {} artifacts-filtered/ \;

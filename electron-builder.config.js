@@ -16,7 +16,7 @@ const isStoreBuild =
 
 const config = {
   appId: 'com.genimage.factory',
-  productName: 'Gen Image Factory',
+  productName: 'GenImageFactory',
   directories: {
     output: 'dist',
     buildResources: 'build'
@@ -24,6 +24,10 @@ const config = {
   asar: true,
   files: [
     'electron/**/*',
+    'src/**/*',
+    '!src/database/transactionManager.js',
+    '!src/database/backupManager.js',
+    '!src/database/migrations/**/*',
     'package.json'
   ],
   mac: {

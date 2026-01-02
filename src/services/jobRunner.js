@@ -2,12 +2,12 @@ const { EventEmitter } = require('events');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs').promises;
-const { logDebug } = require('../utils/logDebug');
+const { logDebug } = require(path.join(__dirname, '../utils/logDebug'));
 
 // Import existing CLI modules
-const producePictureModule = require('../producePictureModule');
-const paramsGeneratorModule = require('../paramsGeneratorModule');
-const aiVision = require('../aiVision');
+const producePictureModule = require(path.join(__dirname, '../producePictureModule'));
+const paramsGeneratorModule = require(path.join(__dirname, '../paramsGeneratorModule'));
+const aiVision = require(path.join(__dirname, '../aiVision'));
 
 // Base progress steps - clean 2-step structure
 const BASE_PROGRESS_STEPS = [

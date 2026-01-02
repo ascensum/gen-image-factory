@@ -1,8 +1,9 @@
 const { OpenAI } = require("openai");
 const fs = require('fs').promises;
-const { logDebug } = require('./utils/logDebug');
-const defaultMetadataPrompt = require('./constant/defaultMetadataPrompt');
-const defaultQualityCheckPrompt = require('./constant/defaultQualityCheckPrompt');
+const path = require('path');
+const { logDebug } = require(path.join(__dirname, './utils/logDebug'));
+const defaultMetadataPrompt = require(path.join(__dirname, './constant/defaultMetadataPrompt'));
+const defaultQualityCheckPrompt = require(path.join(__dirname, './constant/defaultQualityCheckPrompt'));
 
 /**
  * Checks the technical quality of an image using OpenAI's Vision API.
