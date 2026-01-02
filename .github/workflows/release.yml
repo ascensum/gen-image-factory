@@ -429,7 +429,7 @@ jobs:
             Write-Host "  CSC_LINK: $($env:CSC_LINK -ne $null ? 'SET (path: ' + $env:CSC_LINK + ')' : 'NOT SET')"
             Write-Host "  MS_STORE_IDENTITY_NAME: $($env:MS_STORE_IDENTITY_NAME -ne $null ? 'SET (length: ' + $env:MS_STORE_IDENTITY_NAME.Length + ')' : 'NOT SET')"
             Write-Host "  MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET (starts with CN=: ' + $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=') + ')' : 'NOT SET')"
-            Write-Host "  isStoreBuild should be: $($env:CSC_LINK -and $env:MS_STORE_IDENTITY_NAME -and $env:MS_STORE_PUBLISHER_ID -and $env:MS_STORE_PUBLISHER_ID.StartsWith('CN='))"
+            Write-Host "  isStoreBuild should be: $($env:MS_STORE_IDENTITY_NAME -and $env:MS_STORE_PUBLISHER_ID -and $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=')) (Note: CSC_LINK is not required for isStoreBuild anymore)"
             
             # Run electron-builder using direct path to avoid npx ambiguity
             Write-Host "`n=== Running Electron-Builder (Direct Path) ===" -ForegroundColor Cyan
@@ -632,6 +632,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           generate_release_notes: true
+          overwrite: true
           body: |
             ## What's Changed in this Version
             
