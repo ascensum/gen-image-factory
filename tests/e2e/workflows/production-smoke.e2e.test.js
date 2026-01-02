@@ -18,17 +18,28 @@ const getExecutablePath = () => {
   const distDir = path.join(projectRoot, 'dist')
   
   if (process.platform === 'darwin') {
-    // macOS path
-    const macPath = path.join(distDir, 'mac', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory')
-    if (fs.existsSync(macPath)) return macPath
+    // macOS paths
+    const paths = [
+      path.join(distDir, 'mac', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory'),
+      path.join(distDir, 'mac-arm64', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory'),
+      path.join(distDir, 'mac-universal', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory')
+    ]
+    for (const p of paths) {
+      if (fs.existsSync(p)) return p
+    }
   } else if (process.platform === 'win32') {
     // Windows path
     const winPath = path.join(distDir, 'win-unpacked', 'GenImageFactory.exe')
     if (fs.existsSync(winPath)) return winPath
   } else if (process.platform === 'linux') {
-    // Linux path
-    const linuxPath = path.join(distDir, 'linux-unpacked', 'GenImageFactory')
-    if (fs.existsSync(linuxPath)) return linuxPath
+    // Linux paths
+    const paths = [
+      path.join(distDir, 'linux-unpacked', 'GenImageFactory'),
+      path.join(distDir, 'linux-x64-unpacked', 'GenImageFactory')
+    ]
+    for (const p of paths) {
+      if (fs.existsSync(p)) return p
+    }
   }
   
   return null

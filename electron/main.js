@@ -381,6 +381,16 @@ app.whenReady().then(async () => {
   // Make backendAdapter globally accessible so other modules can use it
   global.backendAdapter = backendAdapter;
   
+  // Ensure database tables exist before reconciliation
+  try {
+    if (backendAdapter && typeof backendAdapter.ensureInitialized === 'function') {
+      console.log(' Ensuring BackendAdapter is initialized...');
+      await backendAdapter.ensureInitialized();
+    }
+  } catch (initErr) {
+    console.warn(' BackendAdapter initialization check failed:', initErr.message);
+  }
+  
   // Reconcile orphaned "running" job executions from previous sessions
   try {
     if (backendAdapter && backendAdapter.jobExecution && typeof backendAdapter.jobExecution.reconcileOrphanedRunningJobs === 'function') {
