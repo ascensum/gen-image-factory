@@ -36,7 +36,8 @@ const config = {
     icon: 'build/icons/win/icon.ico',
     // Target will be set dynamically via command line --win flag
     // APPX and NSIS are built separately to avoid certificate issues
-    target: isStoreBuild ? ['appx'] : ['nsis']
+    target: isStoreBuild ? ['appx'] : ['nsis'],
+    publisherName: process.env.MS_STORE_PUBLISHER_ID
   },
   linux: {
     icon: 'build/icons/png',
