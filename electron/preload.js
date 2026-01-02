@@ -80,21 +80,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getAllGeneratedImages: (options) => ipcRenderer.invoke('generated-image:get-all', options),
   },
   
-  // Configuration
-  getConfiguration: () => ipcRenderer.invoke('settings:get-configuration'),
-  getJobConfigurationById: (id) => ipcRenderer.invoke('job-configuration:get-by-id', id),
-  getJobConfigurationForImage: (imageId) => ipcRenderer.invoke('job-configuration:get-by-image-id', imageId),
-  getJobExecutionByImageId: (imageId) => ipcRenderer.invoke('job-execution:get-by-image-id', imageId),
-  updateJobConfiguration: (id, settingsObject) => ipcRenderer.invoke('job-configuration:update', id, settingsObject),
-  updateJobConfigurationName: (id, newName) => ipcRenderer.invoke('job-configuration:update-name', id, newName),
-  openExportsFolder: () => ipcRenderer.invoke('open-exports-folder'),
-  revealInFolder: (fullPath) => ipcRenderer.invoke('reveal-in-folder', fullPath),
-  exportJobToExcel: (jobId) => ipcRenderer.invoke('job-execution:export-to-excel', { jobId }),
-  
-  // Generated Images
-  generatedImages: {
-    saveGeneratedImage: (image) => ipcRenderer.invoke('generated-image:save', image),
-    getGeneratedImage: (id) => ipcRenderer.invoke('generated-image:get', { id }),
+      // Configuration
+      getJobConfigurationById: (id) => ipcRenderer.invoke('job-configuration:get-by-id', id),
+      getJobConfigurationForImage: (imageId) => ipcRenderer.invoke('job-configuration:get-by-image-id', imageId),
+      getJobExecutionByImageId: (imageId) => ipcRenderer.invoke('job-execution:get-by-image-id', imageId),
+      updateJobConfiguration: (id, settingsObject) => ipcRenderer.invoke('job-configuration:update', id, settingsObject),
+      updateJobConfigurationName: (id, newName) => ipcRenderer.invoke('job-configuration:update-name', id, newName),
+      openExportsFolder: () => ipcRenderer.invoke('open-exports-folder'),
+          revealInFolder: (fullPath) => ipcRenderer.invoke('reveal-in-folder', fullPath),
+          
+          // Generated Images
+          generatedImages: {
+            saveGeneratedImage: (image) => ipcRenderer.invoke('generated-image:save', image),    getGeneratedImage: (id) => ipcRenderer.invoke('generated-image:get', { id }),
     getGeneratedImagesByExecution: (executionId) => ipcRenderer.invoke('generated-image:get-by-execution', executionId),
     getAllGeneratedImages: (options) => ipcRenderer.invoke('generated-image:get-all', options),
     updateGeneratedImage: (id, image) => ipcRenderer.invoke('generated-image:update', { id, image }),

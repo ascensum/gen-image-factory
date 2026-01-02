@@ -414,6 +414,7 @@ async function producePictureModule(
       
       // Use settings path for temp writes
       const tempDir = config.tempDirectory || './pictures/generated';
+      let inputImagePath = null;
 
       // Download the image
       try {
@@ -449,7 +450,7 @@ async function producePictureModule(
           // Fallback to png if unknown
           inferredExt = '.png';
         }
-        const inputImagePath = path.resolve(path.join(tempDir, `${imgNameBase}${imageSuffix}${inferredExt}`));
+        inputImagePath = path.resolve(path.join(tempDir, `${imgNameBase}${imageSuffix}${inferredExt}`));
         await fs.mkdir(path.dirname(inputImagePath), { recursive: true });
         await fs.writeFile(inputImagePath, response.data);
         logDebug(`Image downloaded and saved to ${inputImagePath}`); // Use global logDebug
@@ -487,8 +488,10 @@ async function producePictureModule(
       } catch (error) {
         console.error('Error during image processing steps:', error);
         try {
-          await fs.unlink(inputImagePath); // Attempt to clean up failed image
-        } catch (e) { /* ignore */ }
+          if (inputImagePath) {
+            await fs.unlink(inputImagePath); // Attempt to clean up failed image
+          }
+        } catch (_e) { /* ignore */ }
         continue; // Skip to the next image
       }
     }

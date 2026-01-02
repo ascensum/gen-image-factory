@@ -238,7 +238,7 @@ class GeneratedImage {
   async checkAndMigrateTable() {
     return new Promise((resolve, reject) => {
       // Check if the current table has the NOT NULL constraint
-      this.db.get("PRAGMA table_info(generated_images)", (err, rows) => {
+      this.db.get("PRAGMA table_info(generated_images)", (err, _rows) => {
         if (err) {
           console.warn('Could not check table schema, skipping migration:', err);
           resolve();
@@ -551,10 +551,9 @@ class GeneratedImage {
   }
 
   async deleteGeneratedImage(id) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        // First, get the image data to find the file path
-        const imageResult = await this.getGeneratedImage(id);
+    return new Promise((resolve, reject) => {
+      // First, get the image data to find the file path
+      this.getGeneratedImage(id).then(imageResult => {
         if (!imageResult.success || !imageResult.image) {
           reject(new Error(`Image ${id} not found`));
           return;
@@ -566,24 +565,21 @@ class GeneratedImage {
         // Delete the database record first
         const sql = 'DELETE FROM generated_images WHERE id = ?';
         
-        this.db.run(sql, [id], async (err) => {
+        this.db.run(sql, [id], (err) => {
           if (err) {
-            console.error('Error deleting generated image from database:', err);
             reject(err);
           } else {
-            console.log('Generated image deleted from database successfully');
-            
-            // Now delete the actual file
+            // Delete the file from the filesystem if it exists
             if (filePath) {
-              await this.deleteImageFile(filePath);
+              const fsP = require('fs').promises;
+              fsP.unlink(filePath).catch(fileErr => {
+                console.warn(`️ Failed to delete image file ${filePath}:`, fileErr.message);
+              });
             }
-            
-            resolve({ success: true, deletedRows: this.changes, fileDeleted: !!filePath });
+            resolve({ success: true, changes: this.changes });
           }
         });
-      } catch (error) {
-        reject(error);
-      }
+      }).catch(reject);
     });
   }
 
@@ -800,116 +796,142 @@ class GeneratedImage {
     });
   }
 
-  async bulkDeleteGeneratedImages(imageIds) {
-    return new Promise(async (resolve, reject) => {
+    async bulkDeleteGeneratedImages(imageIds) {
       if (!Array.isArray(imageIds) || imageIds.length === 0) {
-        resolve({ success: false, error: 'No image IDs provided' });
-        return;
+        return { success: false, error: 'No image IDs provided' };
       }
-
-      try {
+  
+      return new Promise((resolve, reject) => {
         // First, get all image data to find file paths
-        const imagesToDelete = [];
-        for (const id of imageIds) {
-          const imageResult = await this.getGeneratedImage(id);
-          if (imageResult.success && imageResult.image) {
-            imagesToDelete.push(imageResult.image);
-          }
-        }
-
-        // Delete the database records
-        const placeholders = imageIds.map(() => '?').join(',');
-        const sql = `DELETE FROM generated_images WHERE id IN (${placeholders})`;
+        const getPromises = imageIds.map(id => this.getGeneratedImage(id));
         
-        this.db.run(sql, imageIds, async (err) => {
-          if (err) {
-            console.error('Error bulk deleting generated images from database:', err);
-            reject(err);
-          } else {
-            console.log(`Bulk deleted ${this.changes} generated images from database`);
-            
-            // Now delete all the actual files
-            let filesDeleted = 0;
-            for (const image of imagesToDelete) {
-              const filePath = image.finalImagePath || image.tempImagePath;
-              if (filePath) {
-                const deleted = await this.deleteImageFile(filePath);
-                if (deleted) filesDeleted++;
-              }
-            }
-            
-            resolve({ 
-              success: true, 
-              deletedRows: this.changes, 
-              filesDeleted,
-              totalImages: imagesToDelete.length
-            });
-          }
-        });
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
-  async cleanupOldImages(daysToKeep = 30) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        // First, get all old images to find file paths
-        const sql = `
-          SELECT id, final_image_path, temp_image_path 
-          FROM generated_images 
-          WHERE created_at < datetime('now', '-${daysToKeep} days')
-        `;
-        
-        this.db.all(sql, [], async (err, rows) => {
-          if (err) {
-            console.error('Error getting old images for cleanup:', err);
-            reject(err);
-            return;
-          }
-
-          if (rows.length === 0) {
-            console.log('No old images to clean up');
-            resolve({ success: true, deletedRows: 0, filesDeleted: 0 });
-            return;
-          }
-
+        Promise.all(getPromises).then(results => {
+          const imagesToDelete = results
+            .filter(res => res.success && res.image)
+            .map(res => res.image);
+  
           // Delete the database records
-          const deleteSql = `
-            DELETE FROM generated_images 
-            WHERE created_at < datetime('now', '-${daysToKeep} days')
-          `;
+          const placeholders = imageIds.map(() => '?').join(',');
+          const sql = `DELETE FROM generated_images WHERE id IN (${placeholders})`;
           
-          this.db.run(deleteSql, [], async (err) => {
+          this.db.run(sql, imageIds, (err) => {
             if (err) {
-              console.error('Error cleaning up old images from database:', err);
+              console.error('Error bulk deleting generated images from database:', err);
               reject(err);
             } else {
-              console.log(`Cleaned up ${this.changes} old generated images from database`);
+              const changes = this.changes;
+              console.log(`Bulk deleted ${changes} generated images from database`);
               
               // Now delete all the actual files
+              const fsP = require('fs').promises;
               let filesDeleted = 0;
-              for (const row of rows) {
-                const filePath = row.final_image_path || row.temp_image_path;
+              const unlinkPromises = imagesToDelete.map(image => {
+                const filePath = image.finalImagePath || image.tempImagePath;
                 if (filePath) {
-                  const deleted = await this.deleteImageFile(filePath);
-                  if (deleted) filesDeleted++;
+                  return fsP.unlink(filePath).then(() => {
+                    filesDeleted++;
+                  }).catch(_e => {
+                    console.warn(`️ Failed to delete file ${filePath}:`, _e.message);
+                  });
                 }
-              }
+                return Promise.resolve();
+              });
               
-              resolve({ 
-                success: true, 
-                deletedRows: this.changes, 
-                filesDeleted,
-                totalImages: rows.length
+              Promise.all(unlinkPromises).then(() => {
+                resolve({
+                  success: true,
+                  deletedRows: changes,
+                  filesDeleted,
+                  totalImages: imagesToDelete.length
+                });
+              }).catch(_err => {
+                // Even if unlinks fail, we resolve success because DB records are gone
+                resolve({
+                  success: true,
+                  deletedRows: changes,
+                  filesDeleted,
+                  totalImages: imagesToDelete.length,
+                  warning: 'Some files could not be deleted'
+                });
               });
             }
           });
+        }).catch(reject);
+      });
+    }
+  async cleanupOldImages(daysToKeep = 30) {
+    return new Promise((resolve, reject) => {
+      // First, get all old images to find file paths
+      const sql = `
+        SELECT id, final_image_path, temp_image_path 
+        FROM generated_images 
+        WHERE created_at < datetime('now', '-${daysToKeep} days')
+      `;
+      
+      this.db.all(sql, [], (err, rows) => {
+        if (err) {
+          console.error('Error getting old images for cleanup:', err);
+          reject(err);
+          return;
+        }
+
+        if (rows.length === 0) {
+          console.log('No old images to clean up');
+          resolve({ success: true, deletedRows: 0, filesDeleted: 0 });
+          return;
+        }
+
+        // Delete the database records
+        const deleteSql = `
+          DELETE FROM generated_images 
+          WHERE created_at < datetime('now', '-${daysToKeep} days')
+        `;
+        
+        this.db.run(deleteSql, [], (err) => {
+          if (err) {
+            console.error('Error cleaning up old images from database:', err);
+            reject(err);
+          } else {
+            const changes = this.changes;
+            console.log(`Cleaned up ${changes} old generated images from database`);
+            
+            // Now delete all the actual files
+            const fsP = require('fs').promises;
+            let filesDeleted = 0;
+            const unlinkPromises = [];
+            
+            for (const row of rows) {
+              const filePath = row.final_image_path || row.temp_image_path;
+              if (filePath) {
+                unlinkPromises.push(
+                  fsP.unlink(filePath).then(() => {
+                    filesDeleted++;
+                  }).catch(_e => {
+                    console.warn(`️ Failed to delete file ${filePath}:`, _e.message);
+                  })
+                );
+              }
+            }
+            
+            Promise.all(unlinkPromises).then(() => {
+              resolve({ 
+                success: true, 
+                deletedRows: changes, 
+                filesDeleted,
+                totalImages: rows.length
+              });
+            }).catch(_err => {
+              resolve({ 
+                success: true, 
+                deletedRows: changes, 
+                filesDeleted,
+                totalImages: rows.length,
+                warning: 'Some files could not be deleted'
+              });
+            });
+          }
         });
-      } catch (error) {
-        reject(error);
-      }
+      });
     });
   }
 

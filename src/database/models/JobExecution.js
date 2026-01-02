@@ -211,9 +211,9 @@ class JobExecution {
   }
 
   async migrateTable() {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       // Check if we need to migrate the configuration_id column
-      this.db.get("PRAGMA table_info(job_executions)", (err, rows) => {
+      this.db.get("PRAGMA table_info(job_executions)", (err, _rows) => {
         if (err) {
           console.error('Error checking table schema:', err);
           resolve(); // Continue anyway
@@ -658,10 +658,8 @@ class JobExecution {
   }
 
   async updateJobExecutionStatistics(executionId) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        // Calculate statistics from actual images
-        const statsResult = await this.calculateJobExecutionStatistics(executionId);
+    return new Promise((resolve, reject) => {
+      this.calculateJobExecutionStatistics(executionId).then(statsResult => {
         if (!statsResult.success) {
           reject(new Error('Failed to calculate statistics'));
           return;
@@ -689,10 +687,10 @@ class JobExecution {
             });
           }
         });
-      } catch (error) {
+      }).catch(error => {
         console.error('Error in updateJobExecutionStatistics:', error);
         reject(error);
-      }
+      });
     });
   }
 
@@ -739,7 +737,6 @@ class JobExecution {
           params.push(toDate);
         }
       } else if (filters.dateRange && filters.dateRange !== 'all') {
-        const now = new Date();
         let startDate = new Date();
         
         switch (filters.dateRange) {
@@ -842,7 +839,6 @@ class JobExecution {
           params.push(toDate);
         }
       } else if (filters.dateRange && filters.dateRange !== 'all') {
-        const now = new Date();
         let startDate = new Date();
         
         switch (filters.dateRange) {

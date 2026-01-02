@@ -2,7 +2,6 @@ const { EventEmitter } = require('events');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs').promises;
-const { logDebug } = require(path.join(__dirname, '../utils/logDebug'));
 
 // Import existing CLI modules
 const producePictureModule = require(path.join(__dirname, '../producePictureModule'));
@@ -77,22 +76,22 @@ class JobRunner extends EventEmitter {
   /**
    * Per-generation orchestration to support partial success
    */
-  async _generateImagesPerGeneration(config, parameters, generations) {
+  async _generateImagesPerGeneration(_config, parameters, generations) {
     const startTime = Date.now();
     try {
       // Compute expected variations per generation dynamically; no fixed "4 per gen" legacy
       const allProcessed = [];
       let expectedTotalAcrossGens = 0;
       // Derive per-call timeout: enabled -> minutes to ms, else default 30s
-      const enableTimeoutFlag = config?.parameters?.enablePollingTimeout === true;
-      const timeoutMinutesRaw = Number(config?.parameters?.pollingTimeout);
+      const enableTimeoutFlag = _config?.parameters?.enablePollingTimeout === true;
+      const timeoutMinutesRaw = Number(_config?.parameters?.pollingTimeout);
       const perCallTimeoutMs = enableTimeoutFlag && Number.isFinite(timeoutMinutesRaw)
         ? Math.max(1000, timeoutMinutesRaw * 60 * 1000)
         : 30_000;
 
       for (let genIndex = 0; genIndex < generations; genIndex += 1) {
         // Determine expected variations for this generation (clamped)
-        const requestedVariationsCfg = Math.max(1, Number((config.parameters && config.parameters.variations) || 1));
+        const requestedVariationsCfg = Math.max(1, Number((_config.parameters && _config.parameters.variations) || 1));
         const maxVariationsAllowed = Math.max(1, Math.min(20, Math.floor(10000 / Math.max(1, generations))));
         const effectiveVariationsForGen = Math.min(requestedVariationsCfg, maxVariationsAllowed);
         expectedTotalAcrossGens += effectiveVariationsForGen;
@@ -100,7 +99,7 @@ class JobRunner extends EventEmitter {
         // Re-generate parameters per generation to rotate keywords/prompts
         let genParameters;
         try {
-          const cfgForGen = { ...config, __forceSequentialIndex: genIndex, __perGen: true };
+          const cfgForGen = { ..._config, __forceSequentialIndex: genIndex, __perGen: true };
           // Enforce timeout on per-generation parameter generation to avoid orphaned runs on network loss
           genParameters = await this.withTimeout(
             this.generateParameters(cfgForGen),
@@ -114,12 +113,12 @@ class JobRunner extends EventEmitter {
             message: `Parameters generated for generation ${genIndex + 1}/${generations}`,
             metadata: { generationIndex: genIndex, hasPrompt: !!genParameters?.prompt }
           });
-        } catch (paramErr) {
+        } catch (_paramErr) {
           this._logStructured({
             level: 'error',
             stepName: 'initialization',
             subStep: 'parameter_generation_per_gen_error',
-            message: `Parameter generation failed for generation ${genIndex + 1}: ${paramErr.message}`,
+            message: `Parameter generation failed for generation ${genIndex + 1}: ${_paramErr.message}`,
             errorCode: 'PARAM_GEN_ERROR',
             metadata: { generationIndex: genIndex }
           });
@@ -132,9 +131,9 @@ class JobRunner extends EventEmitter {
         const settings = {
           prompt: genParameters.prompt,
           promptContext: genParameters.promptContext,
-          apiKeys: config.apiKeys,
+          apiKeys: _config.apiKeys,
           // Pass through full parameters so provider-specific fields are available
-          parameters: { ...(config.parameters || {}) }
+          parameters: { ...(_config.parameters || {}) }
         };
 
         this._logStructured({
@@ -142,12 +141,12 @@ class JobRunner extends EventEmitter {
           stepName: 'image_generation',
           subStep: 'call_module',
           message: `Calling producePictureModule (generation ${genIndex + 1}/${generations})`,
-          metadata: { imgNameBase, prompt: parameters.prompt, hasApiKeys: !!config.apiKeys }
+          metadata: { imgNameBase, prompt: parameters.prompt, hasApiKeys: !!_config.apiKeys }
         });
 
         let result;
-        const maxRetries = Math.max(0, Number(config.parameters?.generationRetryAttempts ?? 1));
-        const backoffMs = Math.max(0, Number(config.parameters?.generationRetryBackoffMs ?? 0));
+        const maxRetries = Math.max(0, Number(_config.parameters?.generationRetryAttempts ?? 1));
+        const backoffMs = Math.max(0, Number(_config.parameters?.generationRetryBackoffMs ?? 0));
         for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
           try {
             if (attempt > 0) {
@@ -163,7 +162,7 @@ class JobRunner extends EventEmitter {
               }
             }
             // Build module config with per-generation context and Runware parameters
-            const cfgForGen = { ...config, __forceSequentialIndex: genIndex, __perGen: true };
+            const cfgForGen = { ..._config, __forceSequentialIndex: genIndex, __perGen: true };
             // Enforce total images cap: generations × variations ≤ 10000 (variations 1–20)
             const requestedVariations = Math.max(1, Math.min(20, Number(cfgForGen.parameters?.variations || 1)));
             const maxAllowed = Math.max(1, Math.min(20, Math.floor(10000 / Math.max(1, generations))));
@@ -182,13 +181,13 @@ class JobRunner extends EventEmitter {
               generationIndex: genIndex,
               variations: effectiveVariations,
               // Surface Runware-specific params also on config for module convenience
-              runwareDimensionsCsv: (config.parameters && config.parameters.runwareDimensionsCsv) || ''
+              runwareDimensionsCsv: (_config.parameters && _config.parameters.runwareDimensionsCsv) || ''
             };
 
             result = await producePictureModule.producePictureModule(
               settings,
               imgNameBase,
-              (config.ai && config.ai.metadataPrompt) ? config.ai.metadataPrompt : null,
+              (_config.ai && _config.ai.metadataPrompt) ? _config.ai.metadataPrompt : null,
               moduleConfig
             );
             if (attempt > 0) {
@@ -256,7 +255,7 @@ class JobRunner extends EventEmitter {
           try {
             const failures = Array.isArray(result.failedItems) ? result.failedItems : [];
             if (this.backendAdapter && this.databaseExecutionId && failures.length > 0) {
-              const effectiveProc = (this.jobConfiguration && this.jobConfiguration.processing) ? this.jobConfiguration.processing : (config.processing || {});
+              const effectiveProc = (this.jobConfiguration && this.jobConfiguration.processing) ? this.jobConfiguration.processing : (_config.processing || {});
               for (const f of failures) {
                 if (!f || !f.mappingId) continue;
                 const generatedImage = {
@@ -320,38 +319,37 @@ class JobRunner extends EventEmitter {
       });
 
       return allProcessed;
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      this._logStructured({ level: 'error', stepName: 'image_generation', subStep: 'error', message: `Image generation failed: ${error.message}`, durationMs: duration, errorCode: 'IMAGE_GEN_ERROR' });
-      throw new Error(`Failed to generate images: ${error.message}`);
-    }
-  }
-
-  _buildModuleConfig(config, parameters) {
-    const processingEnabled = !(config.ai?.runQualityCheck === true);
+          } catch (_error) {
+            const duration = Date.now() - startTime;
+            this._logStructured({ level: 'error', stepName: 'image_generation', subStep: 'error', message: `Image generation failed: ${_error.message}`, durationMs: duration, errorCode: 'IMAGE_GEN_ERROR' });
+            throw new Error(`Failed to generate images: ${_error.message}`);
+          }
+        }
+    
+        _buildModuleConfig(_config, parameters) {    const processingEnabled = !(_config.ai?.runQualityCheck === true);
     return {
-      removeBg: processingEnabled ? (config.processing?.removeBg || false) : false,
-      imageConvert: processingEnabled ? (config.processing?.imageConvert || false) : false,
-      convertToJpg: processingEnabled ? (config.processing?.convertToJpg || false) : false,
-      convertToWebp: processingEnabled ? (config.processing?.convertToWebp || false) : false,
-      trimTransparentBackground: processingEnabled ? (config.processing?.trimTransparentBackground || false) : false,
-      aspectRatios: Array.isArray(parameters.aspectRatios) ? parameters.aspectRatios : (Array.isArray(config.parameters?.aspectRatios) ? config.parameters.aspectRatios : (typeof config.parameters?.aspectRatios === 'string' ? [config.parameters.aspectRatios] : ['1:1'])),
-      pollingTimeout: config.parameters?.enablePollingTimeout ? (config.parameters?.pollingTimeout || 15) : null,
-      pollingInterval: config.parameters?.pollingInterval || 1,
-      processMode: config.parameters?.processMode || 'single',
-      removeBgSize: processingEnabled ? (config.processing?.removeBgSize || 'preview') : 'preview',
-      runQualityCheck: config.ai?.runQualityCheck || false,
+      removeBg: processingEnabled ? (_config.processing?.removeBg || false) : false,
+      imageConvert: processingEnabled ? (_config.processing?.imageConvert || false) : false,
+      convertToJpg: processingEnabled ? (_config.processing?.convertToJpg || false) : false,
+      convertToWebp: processingEnabled ? (_config.processing?.convertToWebp || false) : false,
+      trimTransparentBackground: processingEnabled ? (_config.processing?.trimTransparentBackground || false) : false,
+      aspectRatios: Array.isArray(parameters.aspectRatios) ? parameters.aspectRatios : (Array.isArray(_config.parameters?.aspectRatios) ? _config.parameters.aspectRatios : (typeof _config.parameters?.aspectRatios === 'string' ? [_config.parameters.aspectRatios] : ['1:1'])),
+      pollingTimeout: _config.parameters?.enablePollingTimeout ? (_config.parameters?.pollingTimeout || 15) : null,
+      pollingInterval: _config.parameters?.pollingInterval || 1,
+      processMode: _config.parameters?.processMode || 'single',
+      removeBgSize: processingEnabled ? (_config.processing?.removeBgSize || 'preview') : 'preview',
+      runQualityCheck: _config.ai?.runQualityCheck || false,
       // Always handle metadata in JobRunner after images are persisted
       runMetadataGen: false,
-      imageEnhancement: processingEnabled ? (config.processing?.imageEnhancement || false) : false,
-      sharpening: processingEnabled ? (config.processing?.sharpening || 0) : 0,
-      saturation: processingEnabled ? (config.processing?.saturation || 1) : 1,
-      jpgBackground: processingEnabled ? (config.processing?.jpgBackground || 'white') : 'white',
-      jpgQuality: processingEnabled ? (config.processing?.jpgQuality || 85) : 85,
-      pngQuality: processingEnabled ? (config.processing?.pngQuality || 100) : 100,
-      webpQuality: processingEnabled ? (config.processing?.webpQuality || 85) : 85,
-      outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
-      tempDirectory: config.filePaths?.tempDirectory || './pictures/generated'
+      imageEnhancement: processingEnabled ? (_config.processing?.imageEnhancement || false) : false,
+      sharpening: processingEnabled ? (_config.processing?.sharpening || 0) : 0,
+      saturation: processingEnabled ? (_config.processing?.saturation || 1) : 1,
+      jpgBackground: processingEnabled ? (_config.processing?.jpgBackground || 'white') : 'white',
+      jpgQuality: processingEnabled ? (_config.processing?.jpgQuality || 85) : 85,
+      pngQuality: processingEnabled ? (_config.processing?.pngQuality || 100) : 100,
+      webpQuality: processingEnabled ? (_config.processing?.webpQuality || 85) : 85,
+      outputDirectory: _config.filePaths?.tempDirectory || './pictures/generated',
+      tempDirectory: _config.filePaths?.tempDirectory || './pictures/generated'
     };
   }
 
@@ -393,7 +391,7 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Job configuration (not used in simplified version)
    * @returns {Array} Always returns the 2 base progress steps
    */
-  _getEnabledProgressSteps(config) {
+  _getEnabledProgressSteps(_config) {
     // Always return the 2 base steps - they're all required
     return BASE_PROGRESS_STEPS;
   }
@@ -472,7 +470,7 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Job configuration object
    * @returns {Promise<Object>} Job result
    */
-  async startJob(config) {
+  async startJob(_config) {
     try {
       
       // Check if job is already running
@@ -489,7 +487,7 @@ class JobRunner extends EventEmitter {
       
       // Validate configuration
       console.log(' Validating configuration...');
-      const validationResult = this.validateConfiguration(config);
+      const validationResult = this.validateConfiguration(_config);
       if (!validationResult.valid) {
         console.log(' Configuration validation failed:', validationResult.error);
         return {
@@ -502,40 +500,40 @@ class JobRunner extends EventEmitter {
 
       // Normalize processing sub-object if present
       try {
-        if (config && config.processing) {
+        if (_config && _config.processing) {
           const { normalizeProcessingSettings } = require('../utils/processing');
-          config.processing = normalizeProcessingSettings(config.processing);
+          _config.processing = normalizeProcessingSettings(_config.processing);
         }
-      } catch (e) {
+      } catch (_e) {
         // Continue without fatal error
       }
 
       // Load custom QC and Metadata prompt templates from files for regular jobs/reruns
       try {
         // Ensure ai object exists
-        config.ai = config.ai || {};
-        if (config.filePaths?.qualityCheckPromptFile) {
+        _config.ai = _config.ai || {};
+        if (_config.filePaths?.qualityCheckPromptFile) {
           try {
-            const qcText = await fs.readFile(config.filePaths.qualityCheckPromptFile, 'utf8');
+            const qcText = await fs.readFile(_config.filePaths.qualityCheckPromptFile, 'utf8');
             if (qcText && qcText.trim() !== '') {
-              config.ai.qualityCheckPrompt = qcText;
+              _config.ai.qualityCheckPrompt = qcText;
             }
-          } catch (e) {
-            console.warn('JobRunner: Failed to load qualityCheckPromptFile:', e.message);
+          } catch (_err) {
+            console.warn('JobRunner: Failed to load qualityCheckPromptFile:', _err.message);
           }
         }
-        if (config.filePaths?.metadataPromptFile) {
+        if (_config.filePaths?.metadataPromptFile) {
           try {
-            const mdText = await fs.readFile(config.filePaths.metadataPromptFile, 'utf8');
+            const mdText = await fs.readFile(_config.filePaths.metadataPromptFile, 'utf8');
             if (mdText && mdText.trim() !== '') {
-              config.ai.metadataPrompt = mdText;
+              _config.ai.metadataPrompt = mdText;
             }
-          } catch (e) {
-            console.warn('JobRunner: Failed to load metadataPromptFile:', e.message);
+          } catch (_err) {
+            console.warn('JobRunner: Failed to load metadataPromptFile:', _err.message);
           }
         }
-      } catch (e) {
-        console.warn('JobRunner: prompt template load skipped:', e.message);
+      } catch (_e) {
+        console.warn('JobRunner: prompt template load skipped:', _e.message);
       }
 
       // Initialize job
@@ -562,7 +560,7 @@ class JobRunner extends EventEmitter {
         generatedImages: 0,      // Renamed from successfulImages for clarity
         failedImages: 0,
         gensDone: 0,
-        totalGenerations: Math.max(1, Number(config?.parameters?.count || 1))
+        totalGenerations: Math.max(1, Number(_config?.parameters?.count || 1))
       };
       this.completedSteps = [];
       this.isStopping = false;
@@ -573,7 +571,7 @@ class JobRunner extends EventEmitter {
       
       // If previous job was completed, log it for debugging
       if (wasCompleted) {
-
+        console.log(' Previous job was completed - resetting for new run');
       }
 
       console.log(' Job state initialized:', this.jobState);
@@ -581,14 +579,13 @@ class JobRunner extends EventEmitter {
       // Emit progress update
       this.emitProgress('initialization', 0, 'Initializing job configuration...');
 
-      // Set environment variables from config
+      // Set environment variables from _config
       try {
-        this.setEnvironmentFromConfig(config);
-  
-      } catch (error) {
-        console.error(' Error in setEnvironmentFromConfig:', error);
-        console.error(' Error stack:', error.stack);
-        throw error; // Re-throw to prevent silent failure
+        this.setEnvironmentFromConfig(_config);
+      } catch (_e) {
+        console.error(' Error in setEnvironmentFromConfig:', _e);
+        console.error(' Error stack:', _e.stack);
+        throw _e; // Re-throw to prevent silent failure
       }
 
       // Initialize backend adapter
@@ -615,19 +612,19 @@ class JobRunner extends EventEmitter {
         } else {
           console.warn("️ MODULE LOAD: No backend adapter available - job executions will not be saved to database");
         }
-      } catch (error) {
-        console.error(' MODULE LOAD: Could not initialize backend adapter for database integration:', error);
-        console.error(' MODULE LOAD: Error stack:', error.stack);
+      } catch (_error) {
+        console.error(' MODULE LOAD: Could not initialize backend adapter for database integration:', _error);
+        console.error(' MODULE LOAD: Error stack:', _error.stack);
         console.warn(' MODULE LOAD: Job executions will not be saved to database');
         console.warn(' MODULE LOAD: Frontend will continue to show no data');
       }
 
       // Store the job configuration for progress step filtering
-      this.jobConfiguration = config;
+      this.jobConfiguration = _config;
       
       
       // Update progress steps based on job configuration
-      PROGRESS_STEPS = this._getEnabledProgressSteps(config);
+      PROGRESS_STEPS = this._getEnabledProgressSteps(_config);
       
       // Start the job execution
       
@@ -654,15 +651,15 @@ class JobRunner extends EventEmitter {
         this.persistedLabel = null;
       }
 
-      this.currentJob = this.executeJob(config, jobId);
+      this.currentJob = this.executeJob(_config, jobId);
       // Save job execution to database if backendAdapter is available
       // BUT NOT during reruns (reruns are handled by the backend rerun handler)
       if (this.backendAdapter && !this.isRerun) {
         try {
           console.log(" Saving job execution to database...");
           // Compute a persisted fallback label if none provided
-          const providedLabel = (config && config.parameters && typeof config.parameters.label === 'string')
-            ? config.parameters.label.trim()
+          const providedLabel = (_config && _config.parameters && typeof _config.parameters.label === 'string')
+            ? _config.parameters.label.trim()
             : '';
           // BackendAdapter now injects a fallback label into config.parameters.label when missing.
           const fallbackLabel = providedLabel !== '' ? providedLabel : `job_${Date.now()}`;
@@ -680,7 +677,7 @@ class JobRunner extends EventEmitter {
             // Persist execution-level snapshot of effective settings (without API keys)
             configurationSnapshot: (() => {
               try {
-                const { apiKeys, ...sanitized } = (config || {});
+                const { apiKeys, ...sanitized } = (_config || {});
                 if (sanitized && sanitized.parameters) {
                   const adv = sanitized.parameters.runwareAdvanced || {};
                   const flag = sanitized.parameters.runwareAdvancedEnabled;
@@ -702,13 +699,13 @@ class JobRunner extends EventEmitter {
                 // Ensure processing.removeBgFailureMode is persisted in execution snapshot
                 try {
                   if (!sanitized.processing) sanitized.processing = {};
-                  const modeFromConfig = (config && config.processing && config.processing.removeBgFailureMode) ? String(config.processing.removeBgFailureMode) : undefined;
+                  const modeFromConfig = (_config && _config.processing && _config.processing.removeBgFailureMode) ? String(_config.processing.removeBgFailureMode) : undefined;
                   const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
                   const mode = modeFromConfig || existing;
                   sanitized.processing.removeBgFailureMode = (mode === 'mark_failed' || mode === 'approve') ? mode : (mode ? mode : 'approve');
-                } catch {}
+                } catch (_e) {}
                 return sanitized || null;
-              } catch {
+              } catch (_e) {
                 return null;
               }
             })()
@@ -731,8 +728,8 @@ class JobRunner extends EventEmitter {
           } else {
             console.warn('️ saveResult missing required fields:', saveResult);
           }
-        } catch (error) {
-          console.error(" Failed to save job execution to database:", error);
+        } catch (_error) {
+          console.error(" Failed to save job execution to database:", _error);
         }
       } else if (this.isRerun) {
         console.log(" Rerun mode - skipping JobRunner database save (handled by backend rerun handler)");
@@ -751,14 +748,14 @@ class JobRunner extends EventEmitter {
         message: 'Job started successfully'
       };
 
-    } catch (error) {
-      console.error(' Error starting job in JobRunner:', error);
+    } catch (_error) {
+      console.error(' Error starting job in JobRunner:', _error);
       this.jobState.status = 'error';
-      this.jobState.error = error.message;
+      this.jobState.error = _error.message;
       
       return {
         success: false,
-        error: error.message,
+        error: _error.message,
         code: 'JOB_START_ERROR'
       };
     }
@@ -850,31 +847,31 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Configuration to validate
    * @returns {Object} Validation result
    */
-  validateConfiguration(config) {
+  validateConfiguration(_config) {
     console.log(' validateConfiguration called');
     // Never log raw API keys
     // do not log apiKeys presence explicitly
-    console.log(' config.filePaths:', config.filePaths);
-    console.log(' config.parameters:', config.parameters);
+    console.log(' _config.filePaths:', _config.filePaths);
+    console.log(' _config.parameters:', _config.parameters);
     
     // Check required API keys
-    if (!config.apiKeys || !config.apiKeys.openai) {
+    if (!_config.apiKeys || !_config.apiKeys.openai) {
       console.log(' Required credential missing: openai');
       return { valid: false, error: 'OpenAI API key is required' };
     }
-    if (!config.apiKeys.runware) {
+    if (!_config.apiKeys.runware) {
       console.log(' Required credential missing: runware');
       return { valid: false, error: 'Runware API key is required' };
     }
 
     // Check file paths
-    if (!config.filePaths || !config.filePaths.outputDirectory) {
+    if (!_config.filePaths || !_config.filePaths.outputDirectory) {
       console.log(' Output directory missing');
       return { valid: false, error: 'Output directory is required' };
     }
 
     // Check parameters
-    if (!config.parameters || !config.parameters.processMode) {
+    if (!_config.parameters || !_config.parameters.processMode) {
       console.log(' Process mode missing');
       return { valid: false, error: 'Process mode is required' };
     }
@@ -885,28 +882,28 @@ class JobRunner extends EventEmitter {
 
   /**
    * Set environment variables from configuration
-   * @param {Object} config - Job configuration
+   * @param {Object} _config - Job configuration
    */
-  setEnvironmentFromConfig(config) {
+  setEnvironmentFromConfig(_config) {
     // Never log raw API keys or even variable presence details
     console.log(' Credentials checked');
     
     // Set API keys
-    if (config.apiKeys.openai) {
-      process.env.OPENAI_API_KEY = config.apiKeys.openai;
+    if (_config.apiKeys.openai) {
+      process.env.OPENAI_API_KEY = _config.apiKeys.openai;
       console.log(' Provider initialized: openai');
     }
-    if (config.apiKeys.runware) {
-      process.env.RUNWARE_API_KEY = config.apiKeys.runware;
+    if (_config.apiKeys.runware) {
+      process.env.RUNWARE_API_KEY = _config.apiKeys.runware;
       console.log(' Provider initialized: runware');
     }
-    if (config.apiKeys.removeBg) {
-      process.env.REMOVE_BG_API_KEY = config.apiKeys.removeBg;
+    if (_config.apiKeys.removeBg) {
+      process.env.REMOVE_BG_API_KEY = _config.apiKeys.removeBg;
       console.log(' Provider initialized: remove.bg');
     }
 
     // Set other environment variables as needed
-    if (config.advanced && config.advanced.debugMode) {
+    if (_config.advanced && _config.advanced.debugMode) {
       process.env.DEBUG_MODE = 'true';
       console.log(' Debug mode enabled');
     }
@@ -962,15 +959,27 @@ class JobRunner extends EventEmitter {
    * @param {string} jobId - Job ID
    * @returns {Promise<void>}
    */
-  async executeJob(config, jobId) {
+  async executeJob(_config, jobId) {
     try {
       console.log(' Starting job execution with clean 2-step workflow...');
       
       // Create AbortController to support immediate abort on force stop
       try {
-        this.abortController = new (global.AbortController || require('abort-controller'))();
-      } catch {
-        this.abortController = new AbortController();
+        const AC = global.AbortController || (function() {
+          try {
+            return require('abort-controller');
+          } catch (_e) {
+            return null;
+          }
+        })();
+        
+        if (AC) {
+          this.abortController = new AC();
+        } else {
+          console.warn('AbortController not available - force stop might not be immediate');
+        }
+      } catch (_e) {
+        console.warn('Failed to initialize AbortController:', _e.message);
       }
       
             // Step 1: Initialization (includes parameter generation)
@@ -985,12 +994,12 @@ class JobRunner extends EventEmitter {
       // Apply initialization timeout using the same Generation Timeout (pollingTimeout, minutes)
       // - If enabled: use exact user value (minutes) with safe fallback to 30s if missing/NaN
       // - If disabled: default to 30s (no extra cap)
-      const pollingTimeoutMinutes = Number(config?.parameters?.pollingTimeout);
-      const initTimeoutMs = (config?.parameters?.enablePollingTimeout === true)
+      const pollingTimeoutMinutes = Number(_config?.parameters?.pollingTimeout);
+      const initTimeoutMs = (_config?.parameters?.enablePollingTimeout === true)
         ? (Number.isFinite(pollingTimeoutMinutes) ? pollingTimeoutMinutes * 60 * 1000 : 30_000)
         : 30_000;
       const parameters = await this.withTimeout(
-        this.generateParameters({ ...config, __abortSignal: this.abortController?.signal }),
+        this.generateParameters({ ..._config, __abortSignal: this.abortController?.signal }),
         initTimeoutMs,
         'Initialization (parameter generation) timed out'
       );
@@ -1018,21 +1027,21 @@ class JobRunner extends EventEmitter {
       
       let images;
       try {
-        images = await this.generateImages({ ...config, __abortSignal: this.abortController?.signal }, parameters);
+        images = await this.generateImages({ ..._config, __abortSignal: this.abortController?.signal }, parameters);
         this._logStructured({
           level: 'info',
           stepName: 'image_generation',
           subStep: 'complete',
           message: ` Generated ${images?.length || 0} images successfully`
         });
-      } catch (error) {
+      } catch (_error) {
         this._logStructured({
           level: 'error',
           stepName: 'image_generation',
           subStep: 'error',
-          message: ` Image generation failed: ${error.message}`
+          message: ` Image generation failed: ${_error.message}`
         });
-        throw error;
+        throw _error;
       }
       
       // Save images to database with correct paths
@@ -1067,7 +1076,7 @@ class JobRunner extends EventEmitter {
                 
             const rawPrompt = image.metadata?.prompt || 'Generated image';
             const displayPrompt = sanitizePromptForRunware(rawPrompt);
-                const effectiveProc = (this.jobConfiguration && this.jobConfiguration.processing) ? this.jobConfiguration.processing : (config.processing || {});
+                const effectiveProc = (this.jobConfiguration && this.jobConfiguration.processing) ? this.jobConfiguration.processing : (_config.processing || {});
                 const generatedImage = {
                   imageMappingId: image.mappingId || `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                   executionId: executionId,
@@ -1155,21 +1164,21 @@ class JobRunner extends EventEmitter {
                   } catch {}
                 }
               }
-            } catch (immediateMoveErr) {
-              console.error(' Immediate move (QC disabled) failed:', immediateMoveErr);
+            } catch (_immediateMoveErr) {
+              console.error(' Immediate move (QC disabled) failed:', _immediateMoveErr);
               try {
                 this._logStructured({
                   level: 'error',
                   stepName: 'image_generation',
                   subStep: 'immediate_move_exception',
                   message: 'QC disabled: exception during immediate move',
-                  metadata: { error: String(immediateMoveErr && immediateMoveErr.message || immediateMoveErr) }
+                  metadata: { error: String(_immediateMoveErr && _immediateMoveErr.message || _immediateMoveErr) }
                 });
               } catch {}
             }
           }
-        } catch (error) {
-          console.error(" Failed to save generated images to database:", error);
+        } catch (_error) {
+          console.error(" Failed to save generated images to database:", _error);
         }
       } else {
         console.warn("️ No backendAdapter available or no images - generated images will not be saved to database");
@@ -1202,6 +1211,11 @@ class JobRunner extends EventEmitter {
               if (!sourcePath) continue;
               try { fs.accessSync(sourcePath); } catch { continue; }
               let pathForFinal = sourcePath;
+              // Declare at a higher scope so they are available for the move/reconcile logic below
+              let processingConfig = {};
+              let removeBgProcessingThrew = false;
+              let skipFinalDueToMarkFailed = false;
+
               // If QC was enabled and image is approved, apply processing before moving to final
               if (this.jobConfiguration?.ai?.runQualityCheck === true) {
                 try {
@@ -1236,7 +1250,8 @@ class JobRunner extends EventEmitter {
                   const effectiveRemoveBgFailureMode = (perImageProcessing && perImageProcessing.removeBgFailureMode)
                     ? perImageProcessing.removeBgFailureMode
                     : (proc.removeBgFailureMode || 'approve');
-                  const processingConfig = {
+                  
+                  processingConfig = {
                     tempDirectory: tempProcessingDir,
                     outputDirectory: tempProcessingDir,
                     _softFailures: [],
@@ -1259,9 +1274,9 @@ class JobRunner extends EventEmitter {
                     processingConfig.pollingTimeout = timeoutMinutesCfg;
                   }
                   // Guard flag: in Mark Failed mode with remove.bg enabled, do not move to final unless remove.bg applied successfully
-                  let skipFinalDueToMarkFailed = false;
+                  skipFinalDueToMarkFailed = false;
                   // Track if processing threw, for a consolidated override later
-                  let removeBgProcessingThrew = false;
+                  removeBgProcessingThrew = false;
                   try {
                     if (processingConfig.removeBg === true && String(processingConfig.removeBgFailureMode || 'approve') === 'mark_failed') {
                       skipFinalDueToMarkFailed = true;
@@ -1790,76 +1805,75 @@ class JobRunner extends EventEmitter {
               // console.log(" Verification - job execution after update:", JSON.stringify(verifyResult, null, 2));
               console.log(" About to update job execution with keys:", Object.keys(updatedJobExecution));
               console.log(" Job execution update successful, changes:", verifyResult.changes);
-            } catch (verifyError) {
-              console.error(" Failed to verify job execution update:", verifyError);
-            }
-          }
-        } catch (error) {
-          console.error(" Failed to update job execution in database:", error);
-        }
-      } else {
-        console.warn("️ No backendAdapter available - job execution will not be saved to database");
-      }
-      
-
-      
-      // Check if there are bulk rerun jobs in the queue and process the next one
-      if (this.backendAdapter && this.isRerun) {
-        try {
-          console.log(' Checking for next bulk rerun job in queue...');
-          const nextJobResult = await this.backendAdapter.processNextBulkRerunJob();
-          if (nextJobResult.success) {
-            console.log(` Started next bulk rerun job: ${nextJobResult.message}`);
-          } else if (nextJobResult.message === 'No jobs in queue') {
-            console.log(' No more bulk rerun jobs in queue');
-          } else {
-            console.log(` Next bulk rerun job not ready: ${nextJobResult.message}`);
-          }
-        } catch (error) {
-          console.error(' Error processing next bulk rerun job:', error);
-        }
-      }
-
-    } catch (error) {
-      console.error(' Job execution error:', error);
-      this.jobState.status = 'error';
-      this.jobState.error = error.message;
-      this.jobState.endTime = new Date();
-      
-      // Save error state to database if backendAdapter is available
-      if (this.backendAdapter) {
-        try {
-          console.log(" Updating job execution with error status in database...");
-          const errorJobExecution = {
-            configurationId: this.configurationId, // Preserve the configuration ID
-            startedAt: this.jobState.startTime,
-            completedAt: this.jobState.endTime,
-            status: "failed",
-            totalImages: this.jobState.totalImages || 0,
-            generatedImages: this.jobState.generatedImages || 0,
-            failedImages: this.jobState.failedImages || 0,
-            errorMessage: error.message,
-            label: this.persistedLabel || null
-          };
-          
-          const updateResult = await this.backendAdapter.updateJobExecution(this.databaseExecutionId, errorJobExecution);
-          console.log(" Job execution error status updated in database:", updateResult);
-        } catch (dbError) {
-          console.error(" Failed to update job execution error status in database:", dbError);
-        }
-      } else {
-        console.warn("️ No backendAdapter available - job error status will not be saved to database");
-      }
-      
-      this.emit('error', {
-        jobId: jobId,
-        error: error.message,
-        code: 'JOB_EXECUTION_ERROR',
-        timestamp: new Date(),
-        userMessage: 'Job execution failed. Please check the configuration and try again.',
-        retryable: true
-      });
-
+                      } catch (verifyError) {
+                        console.error(" Failed to verify job execution update:", verifyError);
+                      }
+                    }
+                  } catch (_error) {
+                    console.error(" Failed to update job execution in database:", _error);
+                  }
+                } else {
+                  console.warn("️ No backendAdapter available - job execution will not be saved to database");
+                }
+                
+            
+                
+                // Check if there are bulk rerun jobs in the queue and process the next one
+                if (this.backendAdapter && this.isRerun) {
+                  try {
+                    console.log(' Checking for next bulk rerun job in queue...');
+                    const nextJobResult = await this.backendAdapter.processNextBulkRerunJob();
+                    if (nextJobResult.success) {
+                      console.log(` Started next bulk rerun job: ${nextJobResult.message}`);
+                    } else if (nextJobResult.message === 'No jobs in queue') {
+                      console.log(' No more bulk rerun jobs in queue');
+                    } else {
+                      console.log(` Next bulk rerun job not ready: ${nextJobResult.message}`);
+                    }
+                  } catch (_error) {
+                    console.error(' Error processing next bulk rerun job:', _error);
+                  }
+                }
+            
+              } catch (_error) {
+                console.error(' Job execution error:', _error);
+                this.jobState.status = 'error';
+                this.jobState.error = _error.message;
+                this.jobState.endTime = new Date();
+                
+                // Save error state to database if backendAdapter is available
+                if (this.backendAdapter) {
+                  try {
+                    console.log(" Updating job execution with error status in database...");
+                    const errorJobExecution = {
+                      configurationId: this.configurationId, // Preserve the configuration ID
+                      startedAt: this.jobState.startTime,
+                      completedAt: this.jobState.endTime,
+                      status: "failed",
+                      totalImages: this.jobState.totalImages || 0,
+                      generatedImages: this.jobState.generatedImages || 0,
+                      failedImages: this.jobState.failedImages || 0,
+                      errorMessage: _error.message,
+                      label: this.persistedLabel || null
+                    };
+                    
+                    const updateResult = await this.backendAdapter.updateJobExecution(this.databaseExecutionId, errorJobExecution);
+                    console.log(" Job execution error status updated in database:", updateResult);
+                  } catch (dbError) {
+                    console.error(" Failed to update job execution error status in database:", dbError);
+                  }
+                } else {
+                  console.warn("️ No backendAdapter available - job error status will not be saved to database");
+                }
+                
+                this.emit('error', {
+                  jobId: jobId,
+                  error: _error.message,
+                  code: 'JOB_EXECUTION_ERROR',
+                  timestamp: new Date(),
+                  userMessage: 'Job execution failed. Please check the configuration and try again.',
+                  retryable: true
+                });
       // If this was part of a bulk rerun, advance the queue even on failure
       if (this.backendAdapter && this.isRerun) {
         try {
@@ -1884,10 +1898,10 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Job configuration
    * @returns {Promise<Object>} Generated parameters
    */
-  async generateParameters(config) {
+  async generateParameters(_config) {
     const startTime = Date.now();
     try {
-      const abortSignal = config?.__abortSignal;
+      const abortSignal = _config?.__abortSignal;
       this._logStructured({
         level: 'info',
         stepName: 'initialization',
@@ -1895,12 +1909,12 @@ class JobRunner extends EventEmitter {
         message: 'Starting parameter generation',
         updateProgress: true, // Update progress state for major step transition
         metadata: { 
-          configKeys: Object.keys(config || {}).filter(key => key !== 'apiKeys'),
-          hasApiKeys: !!config?.apiKeys,
-          hasParameters: !!config?.parameters,
-          hasProcessing: !!config?.processing,
-          hasAI: !!config?.ai,
-          hasFilePaths: !!config?.filePaths
+          configKeys: Object.keys(_config || {}).filter(key => key !== 'apiKeys'),
+          hasApiKeys: !!_config?.apiKeys,
+          hasParameters: !!_config?.parameters,
+          hasProcessing: !!_config?.processing,
+          hasAI: !!_config?.ai,
+          hasFilePaths: !!_config?.filePaths
         }
       });
 
@@ -1910,9 +1924,9 @@ class JobRunner extends EventEmitter {
       
       try {
         // Read keywords file
-        if (config.filePaths?.keywordsFile) {
+        if (_config.filePaths?.keywordsFile) {
           const fs = require('fs').promises;
-          const keywordsContent = await fs.readFile(config.filePaths.keywordsFile, 'utf8');
+          const keywordsContent = await fs.readFile(_config.filePaths.keywordsFile, 'utf8');
           
           // Check if this is a CSV file (contains commas and quotes)
           if (keywordsContent.includes(',') && keywordsContent.includes('"')) {
@@ -1921,15 +1935,15 @@ class JobRunner extends EventEmitter {
             if (lines.length > 1) { // Need at least header + one data row
               const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
               // Choose data row based on keywordRandom toggle
-              const keywordRandom = !!(config.parameters && config.parameters.keywordRandom);
+              const keywordRandom = !!(_config.parameters && _config.parameters.keywordRandom);
               const dataStartIndex = 1;
               const dataEndIndex = lines.length - 1;
               let chosenIndex;
               if (keywordRandom) {
                 chosenIndex = dataStartIndex + Math.floor(Math.random() * (dataEndIndex - dataStartIndex + 1));
-              } else if (config.__perGen && Number.isInteger(config.__forceSequentialIndex)) {
+              } else if (_config.__perGen && Number.isInteger(_config.__forceSequentialIndex)) {
                 const span = (dataEndIndex - dataStartIndex + 1);
-                chosenIndex = dataStartIndex + (config.__forceSequentialIndex % span);
+                chosenIndex = dataStartIndex + (_config.__forceSequentialIndex % span);
               } else {
                 chosenIndex = dataStartIndex;
               }
@@ -1947,7 +1961,7 @@ class JobRunner extends EventEmitter {
                 stepName: 'initialization',
                 subStep: 'csv_parsed',
                 message: `Parsed CSV keywords: ${JSON.stringify(csvRow)}`,
-                metadata: { keywordsFile: config.filePaths.keywordsFile, csvRow, headers }
+                metadata: { keywordsFile: _config.filePaths.keywordsFile, csvRow, headers }
               });
             }
           } else {
@@ -1955,9 +1969,9 @@ class JobRunner extends EventEmitter {
             const keywordsList = keywordsContent.trim().split('\n').filter(line => line.trim());
             
             if (keywordsList.length > 0) {
-              const keywordRandom = !!(config.parameters && config.parameters.keywordRandom);
-              const seqIndex = (config.__perGen && Number.isInteger(config.__forceSequentialIndex))
-                ? (config.__forceSequentialIndex % keywordsList.length)
+              const keywordRandom = !!(_config.parameters && _config.parameters.keywordRandom);
+              const seqIndex = (_config.__perGen && Number.isInteger(_config.__forceSequentialIndex))
+                ? (_config.__forceSequentialIndex % keywordsList.length)
                 : 0;
               const index = keywordRandom ? Math.floor(Math.random() * keywordsList.length) : seqIndex;
               keywords = keywordsList[index].trim();
@@ -1966,22 +1980,22 @@ class JobRunner extends EventEmitter {
                 stepName: 'initialization',
                 subStep: 'txt_parsed',
                 message: `Read TXT keywords: ${keywords}`,
-                metadata: { keywordsFile: config.filePaths.keywordsFile, selectedKeyword: keywords, keywordRandom, seqIndex }
+                metadata: { keywordsFile: _config.filePaths.keywordsFile, selectedKeyword: keywords, keywordRandom, seqIndex }
               });
             }
           }
         }
         
         // Read system prompt template
-        if (config.filePaths?.systemPromptFile) {
+        if (_config.filePaths?.systemPromptFile) {
           const fs = require('fs').promises;
-          systemPrompt = await fs.readFile(config.filePaths.systemPromptFile, 'utf8');
+          systemPrompt = await fs.readFile(_config.filePaths.systemPromptFile, 'utf8');
           this._logStructured({
             level: 'debug',
             stepName: 'initialization',
             subStep: 'system_prompt_read',
             message: `Read system prompt template from file`,
-            metadata: { systemPromptFile: config.filePaths.systemPromptFile, systemPromptLength: systemPrompt.length }
+            metadata: { systemPromptFile: _config.filePaths.systemPromptFile, systemPromptLength: systemPrompt.length }
           });
         }
       } catch (fileError) {
@@ -1990,12 +2004,12 @@ class JobRunner extends EventEmitter {
           stepName: 'initialization',
           subStep: 'file_read_warning',
           message: `Warning: Could not read keywords or system prompt files, using defaults`,
-          metadata: { error: fileError.message, keywordsFile: config.filePaths?.keywordsFile, systemPromptFile: config.filePaths?.systemPromptFile }
+          metadata: { error: fileError.message, keywordsFile: _config.filePaths?.keywordsFile, systemPromptFile: _config.filePaths?.systemPromptFile }
         });
       }
       
       // Ensure aspectRatios is always an array; support comma-separated input like "16:9,1:1,9:16"
-      let aspectRatios = config.parameters?.aspectRatios || ['1:1'];
+      let aspectRatios = _config.parameters?.aspectRatios || ['1:1'];
       if (typeof aspectRatios === 'string') {
         const raw = aspectRatios;
         aspectRatios = raw.includes(',')
@@ -2005,7 +2019,7 @@ class JobRunner extends EventEmitter {
         aspectRatios = ['1:1'];
       }
       
-      const mjVersion = config.parameters?.mjVersion || '6';
+      const mjVersion = _config.parameters?.mjVersion || '6';
       
       // Reduced verbosity: avoid legacy Midjourney-style log spam in dashboard
       this._logStructured({
@@ -2023,9 +2037,9 @@ class JobRunner extends EventEmitter {
         subStep: 'generate',
         message: 'Calling paramsGeneratorModule',
         metadata: { 
-          hasSystemPrompt: !!config.parameters?.systemPrompt,
-          systemPromptLength: config.parameters?.systemPrompt?.length || 0,
-          openaiModel: config.parameters?.openaiModel 
+          hasSystemPrompt: !!_config.parameters?.systemPrompt,
+          systemPromptLength: _config.parameters?.systemPrompt?.length || 0,
+          openaiModel: _config.parameters?.openaiModel 
         }
       });
       
@@ -2037,7 +2051,7 @@ class JobRunner extends EventEmitter {
           mjVersion: mjVersion,
           // Do not append MJ flags for non-Midjourney provider (Runware)
           appendMjVersion: false,
-          openaiModel: config.parameters?.openaiModel || 'gpt-4o',
+          openaiModel: _config.parameters?.openaiModel || 'gpt-4o',
           signal: abortSignal
         }
       );
@@ -2065,20 +2079,20 @@ class JobRunner extends EventEmitter {
       
       return enhancedParameters;
       
-    } catch (error) {
+    } catch (_error) {
       const duration = Date.now() - startTime;
       this._logStructured({
         level: 'error',
         stepName: 'initialization',
         subStep: 'parameter_generation_error',
-        message: `Parameter generation failed: ${error.message}`,
+        message: `Parameter generation failed: ${_error.message}`,
         durationMs: duration,
         errorCode: 'PARAM_GEN_ERROR',
-        metadata: { error: error.message, stack: error.stack }
+        metadata: { error: _error.message, stack: _error.stack }
       });
       
-      console.error(' Error generating parameters:', error);
-      throw new Error(`Failed to generate parameters: ${error.message}`);
+      console.error(' Error generating parameters:', _error);
+      throw new Error(`Failed to generate parameters: ${_error.message}`);
     }
   }
 
@@ -2088,14 +2102,14 @@ class JobRunner extends EventEmitter {
    * @param {Object} parameters - Generated parameters
    * @returns {Promise<Array>} Generated images
    */
-  async generateImages(config, parameters) {
+  async generateImages(_config, parameters) {
     const startTime = Date.now();
     try {
-      const abortSignal = config?.__abortSignal;
+      const abortSignal = _config?.__abortSignal;
       // If multiple generations requested, run per-generation orchestration to allow partial success
-      const __genCount = Math.max(1, Number(config?.parameters?.count || 1));
+      const __genCount = Math.max(1, Number(_config?.parameters?.count || 1));
       if (__genCount > 1) {
-        return await this._generateImagesPerGeneration(config, parameters, __genCount);
+        return await this._generateImagesPerGeneration(_config, parameters, __genCount);
       }
       this._logStructured({
         level: 'info',
@@ -2104,55 +2118,55 @@ class JobRunner extends EventEmitter {
         message: 'Starting image generation',
         updateProgress: true, // Update progress state for major step transition
         metadata: { 
-          totalImages: config.parameters?.processMode === 'single' ? 1 : 4,
+          totalImages: _config.parameters?.processMode === 'single' ? 1 : 4,
           aspectRatios: parameters.aspectRatios,
-          processMode: config.parameters?.processMode
+          processMode: _config.parameters?.processMode
         }
       });
 
 
       
       // Prepare the configuration for producePictureModule
-      console.log(` JobRunner: DEBUG - config.filePaths:`, JSON.stringify(config.filePaths, null, 2));
+      console.log(` JobRunner: DEBUG - _config.filePaths:`, JSON.stringify(_config.filePaths, null, 2));
       // Clarify directory mapping in logs: temp is where generator writes first; final move goes to outputDirectory
-      console.log(` JobRunner: DEBUG - OUTPUT directory (final):`, config.filePaths?.outputDirectory);
-      console.log(` JobRunner: DEBUG - TEMP directory (initial writes):`, config.filePaths?.tempDirectory);
+      console.log(` JobRunner: DEBUG - OUTPUT directory (final):`, _config.filePaths?.outputDirectory);
+      console.log(` JobRunner: DEBUG - TEMP directory (initial writes):`, _config.filePaths?.tempDirectory);
       
       // When QC is enabled, defer processing until retry flows (QC-first design)
-      const processingEnabled = !(config.ai?.runQualityCheck === true);
-      const requestedVariations = Math.max(1, Math.min(20, Number(config.parameters?.variations || 1)));
+      const processingEnabled = !(_config.ai?.runQualityCheck === true);
+      const requestedVariations = Math.max(1, Math.min(20, Number(_config.parameters?.variations || 1)));
       const effectiveVariations = Math.min(requestedVariations, 20);
       const moduleConfig = {
-        removeBg: processingEnabled ? (config.processing?.removeBg || false) : false,
-        removeBgFailureMode: processingEnabled ? ((config.processing && (config.processing).removeBgFailureMode) || 'soft') : 'soft',
-        imageConvert: processingEnabled ? (config.processing?.imageConvert || false) : false,
-        convertToJpg: processingEnabled ? (config.processing?.convertToJpg || false) : false,
-        trimTransparentBackground: processingEnabled ? (config.processing?.trimTransparentBackground || false) : false,
+        removeBg: processingEnabled ? (_config.processing?.removeBg || false) : false,
+        removeBgFailureMode: processingEnabled ? ((_config.processing && (_config.processing).removeBgFailureMode) || 'soft') : 'soft',
+        imageConvert: processingEnabled ? (_config.processing?.imageConvert || false) : false,
+        convertToJpg: processingEnabled ? (_config.processing?.convertToJpg || false) : false,
+        trimTransparentBackground: processingEnabled ? (_config.processing?.trimTransparentBackground || false) : false,
         aspectRatios: Array.isArray(parameters.aspectRatios)
           ? parameters.aspectRatios
-          : (Array.isArray(config.parameters?.aspectRatios)
-              ? config.parameters.aspectRatios
-              : (typeof config.parameters?.aspectRatios === 'string'
-                  ? (config.parameters.aspectRatios.includes(',')
-                      ? config.parameters.aspectRatios.split(',').map(r => r.trim()).filter(Boolean)
-                      : [config.parameters.aspectRatios.trim()])
+          : (Array.isArray(_config.parameters?.aspectRatios)
+              ? _config.parameters.aspectRatios
+              : (typeof _config.parameters?.aspectRatios === 'string'
+                  ? (_config.parameters.aspectRatios.includes(',')
+                      ? _config.parameters.aspectRatios.split(',').map(r => r.trim()).filter(Boolean)
+                      : [_config.parameters.aspectRatios.trim()])
                   : ['1:1'])),
-        pollingTimeout: config.parameters?.enablePollingTimeout ? (config.parameters?.pollingTimeout || 15) : null, // 15 minutes if enabled, null if disabled
-        pollingInterval: config.parameters?.pollingInterval || 1, // 1 minute (from parameters settings)
-        processMode: config.parameters?.processMode || 'single',
-        removeBgSize: processingEnabled ? (config.processing?.removeBgSize || 'preview') : 'preview',
-        runQualityCheck: config.ai?.runQualityCheck || false,
-        runMetadataGen: config.ai?.runMetadataGen || false,
+        pollingTimeout: _config.parameters?.enablePollingTimeout ? (_config.parameters?.pollingTimeout || 15) : null, // 15 minutes if enabled, null if disabled
+        pollingInterval: _config.parameters?.pollingInterval || 1, // 1 minute (from parameters settings)
+        processMode: _config.parameters?.processMode || 'single',
+        removeBgSize: processingEnabled ? (_config.processing?.removeBgSize || 'preview') : 'preview',
+        runQualityCheck: _config.ai?.runQualityCheck || false,
+        runMetadataGen: _config.ai?.runMetadataGen || false,
         // Image enhancement settings
-        imageEnhancement: processingEnabled ? (config.processing?.imageEnhancement || false) : false,
-        sharpening: processingEnabled ? (config.processing?.sharpening || 0) : 0,
-        saturation: processingEnabled ? (config.processing?.saturation || 1) : 1,
-        jpgBackground: processingEnabled ? (config.processing?.jpgBackground || 'white') : 'white',
-        jpgQuality: processingEnabled ? (config.processing?.jpgQuality || 90) : 90,
-        pngQuality: processingEnabled ? (config.processing?.pngQuality || 100) : 100,
+        imageEnhancement: processingEnabled ? (_config.processing?.imageEnhancement || false) : false,
+        sharpening: processingEnabled ? (_config.processing?.sharpening || 0) : 0,
+        saturation: processingEnabled ? (_config.processing?.saturation || 1) : 1,
+        jpgBackground: processingEnabled ? (_config.processing?.jpgBackground || 'white') : 'white',
+        jpgQuality: processingEnabled ? (_config.processing?.jpgQuality || 90) : 90,
+        pngQuality: processingEnabled ? (_config.processing?.pngQuality || 100) : 100,
         // Paths (QC-first): generator writes to temp first; later we move to outputDirectory
-        outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
-        tempDirectory: config.filePaths?.tempDirectory || './pictures/generated',
+        outputDirectory: _config.filePaths?.outputDirectory || './pictures/generated',
+        tempDirectory: _config.filePaths?.tempDirectory || './pictures/generated',
         variations: effectiveVariations
       };
       if (abortSignal) {
@@ -2188,7 +2202,7 @@ class JobRunner extends EventEmitter {
       // can read parameters (e.g., runwareAdvancedEnabled) and processing controls.
       // Sanitize advanced params at execution time: if toggle is not explicitly ON,
       // do not pass any advanced parameters downstream.
-      const sanitizedParameters = { ...(config.parameters || {}) };
+      const sanitizedParameters = { ...(_config.parameters || {}) };
       if (sanitizedParameters.runwareAdvancedEnabled !== true) {
         // Preserve LoRA (not an advanced-only control) by lifting it to top-level before clearing
         const adv = sanitizedParameters.runwareAdvanced || {};
@@ -2202,7 +2216,7 @@ class JobRunner extends EventEmitter {
         }
       }
       const settings = {
-        ...config,
+        ..._config,
         parameters: sanitizedParameters,
         prompt: parameters.prompt,
         promptContext: parameters.promptContext
@@ -2222,7 +2236,7 @@ class JobRunner extends EventEmitter {
         metadata: { 
           imgNameBase,
           prompt: parameters.prompt,
-          hasApiKeys: !!config.apiKeys
+          hasApiKeys: !!_config.apiKeys
         }
       });
       
@@ -2230,7 +2244,7 @@ class JobRunner extends EventEmitter {
       const result = await producePictureModule.producePictureModule(
         settings, // Pass settings with API keys as first parameter
         imgNameBase,
-        (config.ai && config.ai.metadataPrompt) ? config.ai.metadataPrompt : null, // custom metadata prompt from file if provided
+        (_config.ai && _config.ai.metadataPrompt) ? _config.ai.metadataPrompt : null, // custom metadata prompt from file if provided
         moduleConfig
       );
       
@@ -2465,20 +2479,20 @@ class JobRunner extends EventEmitter {
         throw new Error('No images were generated or invalid result format');
       }
       
-    } catch (error) {
+    } catch (_e) {
       const duration = Date.now() - startTime;
       this._logStructured({
         level: 'error',
         stepName: 'image_generation',
         subStep: 'error',
-        message: `Image generation failed: ${error.message}`,
+        message: `Image generation failed: ${_e.message}`,
         durationMs: duration,
         errorCode: 'IMAGE_GEN_ERROR',
-        metadata: { error: error.message, stack: error.stack }
+        metadata: { error: _e.message, stack: _e.stack }
       });
       
-      console.error(' Error generating images:', error);
-      throw new Error(`Failed to generate images: ${error.message}`);
+      console.error(' Error generating images:', _e);
+      throw new Error(`Failed to generate images: ${_e.message}`);
     }
   }
 
@@ -2488,14 +2502,8 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Job configuration
    * @returns {Promise<void>}
    */
-  async removeBackgrounds(images, config) {
-    try {
-
-      
-    } catch (error) {
-      console.error(' Error during background removal:', error);
-      throw new Error(`Background removal failed: ${error.message}`);
-    }
+  async removeBackgrounds(_images, _config) {
+    // Placeholder for future implementation
   }
 
   /**
@@ -2532,8 +2540,8 @@ class JobRunner extends EventEmitter {
         console.warn('️ Failed to get saved images - not an array:', images);
         return [];
       }
-    } catch (error) {
-      console.error(' Error getting saved images:', error);
+    } catch (_error) {
+      console.error(' Error getting saved images:', _error);
       return [];
     }
   }
@@ -2544,226 +2552,210 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Job configuration
    * @returns {Promise<void>}
    */
-  async runQualityChecks(images, config) {
-    const startTime = Date.now();
-    try {
-      this._logStructured({
-        level: 'info',
-        stepName: 'ai_operations',
-        subStep: 'quality_check_start',
-        message: `Starting quality checks for ${images.length} images`,
-        updateProgress: true, // Update progress state for major step transition
-        metadata: { 
-          imageCount: images.length,
-          openaiModel: config.parameters?.openaiModel || "gpt-4o",
-          hasQualityCheckPrompt: !!config.ai?.qualityCheckPrompt
-        }
-      });
-      
-
-
-      
-      // Derive a per-image QC timeout: use Generation Timeout when enabled, otherwise default 30s
-      const pollingTimeoutMinutesQC = Number(config?.parameters?.pollingTimeout);
-      const qcTimeoutMs = (config?.parameters?.enablePollingTimeout === true)
-        ? (Number.isFinite(pollingTimeoutMinutesQC) ? pollingTimeoutMinutesQC * 60 * 1000 : 30_000)
-        : 30_000;
-      
-      for (const image of images) {
-        if (this.isStopping) return;
+      async runQualityChecks(images, _config) {
+        const startTime = Date.now();
         
         this._logStructured({
           level: 'info',
           stepName: 'ai_operations',
-          subStep: 'quality_check_image',
-          imageIndex: images.indexOf(image),
-          message: `Running quality check on image ${images.indexOf(image) + 1}/${images.length}`,
+          subStep: 'quality_check_start',
+          message: `Starting quality checks for ${images.length} images`,
+          updateProgress: true, // Update progress state for major step transition
           metadata: { 
-            imagePath: (image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path),
-            imageMappingId: (image.imageMappingId || image.image_mapping_id || image.mappingId || image.id),
-            imageId: image.id
+            imageCount: images.length,
+            openaiModel: this.jobConfiguration?.parameters?.openaiModel || "gpt-4o",
+            hasQualityCheckPrompt: !!this.jobConfiguration?.ai?.qualityCheckPrompt
           }
         });
-        
-
-        
-        let result;
+          
         try {
-          const qcInputPath = image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path;
-          if (!qcInputPath) {
-            throw new Error('QC input path is missing');
-          }
-          // Wrap QC call with timeout so network/DNS issues don't stall the entire job for too long
-          result = await this.withTimeout(
-            aiVision.runQualityCheck(
-            qcInputPath, // Use finalImagePath when available, otherwise tempImagePath
-            config.parameters?.openaiModel || "gpt-4o",
-            config.ai?.qualityCheckPrompt || null
-            ),
-            qcTimeoutMs,
-            'Quality check timed out'
-          );
-        } catch (aiError) {
-          throw aiError;
-        }
-        
-        if (result) {
-          this._logStructured({
-            level: 'info',
-            stepName: 'ai_operations',
-            subStep: 'quality_check_result',
-            imageIndex: images.indexOf(image),
-            message: `Quality check completed: ${result.passed ? 'PASSED' : 'FAILED'}`,
-            metadata: { 
-              passed: result.passed,
-              reason: result.reason,
-              imagePath: (image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path)
-            }
-          });
+          // Derive a per-image QC timeout: use Generation Timeout when enabled, otherwise default 30s
+          const pollingTimeoutMinutesQC = Number(this.jobConfiguration?.parameters?.pollingTimeout);
+          const qcTimeoutMs = (this.jobConfiguration?.parameters?.enablePollingTimeout === true)
+            ? (Number.isFinite(pollingTimeoutMinutesQC) ? pollingTimeoutMinutesQC * 60 * 1000 : 30_000)
+            : 30_000;
           
-          image.qualityDetails = result;
-          
-          // Update QC status in database based on quality check result
-          const mappingKey = image.imageMappingId || image.image_mapping_id || image.mappingId || image.id;
-          if (this.backendAdapter && mappingKey) {
-            try {
-              const qcStatus = result.passed ? "approved" : "qc_failed";
-              const qcReason = result.reason || (result.passed ? "Quality check passed" : "Quality check failed");
-              
-              this._logStructured({
-                level: 'info',
-                stepName: 'ai_operations',
-                subStep: 'quality_check_db_update',
-                imageIndex: images.indexOf(image),
-                message: `Updating QC status in database: ${qcStatus}`,
-                metadata: { 
-                  qcStatus,
-                  qcReason,
-                  imageMappingId: mappingKey
-                }
-              });
-              
-              await this.backendAdapter.updateQCStatusByMappingId(mappingKey, qcStatus, qcReason);
-              
-              // Also update the local image object
-              image.qcStatus = qcStatus;
-              image.qcReason = qcReason;
-            } catch (dbError) {
-              this._logStructured({
-                level: 'error',
-                stepName: 'ai_operations',
-                subStep: 'quality_check_db_error',
-                imageIndex: images.indexOf(image),
-                message: `Failed to update QC status in database: ${dbError.message}`,
-                errorCode: 'QC_DB_UPDATE_ERROR',
-                metadata: { 
-                  error: dbError.message,
-                  imageMappingId: mappingKey
-                }
-              });
-              
-
-            }
-          } else {
+          for (const image of images) {
+            if (this.isStopping) return;
+            
             this._logStructured({
-              level: 'warn',
-              stepName: 'quality_check',
-              subStep: 'skip_db',
+              level: 'info',
+              stepName: 'ai_operations',
+              subStep: 'quality_check_image',
               imageIndex: images.indexOf(image),
-              message: 'Skipping database update - missing backendAdapter or imageMappingId',
+              message: `Running quality check on image ${images.indexOf(image) + 1}/${images.length}`,
               metadata: { 
-                hasBackendAdapter: !!this.backendAdapter,
-                imageMappingId: (image.imageMappingId || image.image_mapping_id || image.mappingId || image.id)
+                imagePath: (image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path),
+                imageMappingId: (image.imageMappingId || image.image_mapping_id || image.mappingId || image.id),
+                imageId: image.id
               }
             });
             
-
-          }
-        } else {
-          this._logStructured({
-            level: 'warn',
-            stepName: 'ai_operations',
-            subStep: 'quality_check_no_result',
-            imageIndex: images.indexOf(image),
-            message: 'Quality check returned no result',
-            metadata: { imagePath: (image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path) }
-          });
-          
-          image.qualityDetails = { error: "Quality check failed" };
-          
-          // Update QC status to failed in database
-          const mappingKey2 = image.imageMappingId || image.image_mapping_id || image.mappingId || image.id;
-          if (this.backendAdapter && mappingKey2) {
-            try {
+            let result;
+            const qcInputPath = image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path;
+            if (!qcInputPath) {
+              throw new Error('QC input path is missing');
+            }
+            // Wrap QC call with timeout so network/DNS issues don't stall the entire job for too long
+            result = await this.withTimeout(
+              aiVision.runQualityCheck(
+                qcInputPath, // Use finalImagePath when available, otherwise tempImagePath
+                this.jobConfiguration?.parameters?.openaiModel || "gpt-4o",
+                this.jobConfiguration?.ai?.qualityCheckPrompt || null
+              ),
+              qcTimeoutMs,
+              'Quality check timed out'
+            );
+            
+            if (result) {
               this._logStructured({
                 level: 'info',
                 stepName: 'ai_operations',
-                subStep: 'quality_check_db_update_failed',
+                subStep: 'quality_check_result',
                 imageIndex: images.indexOf(image),
-                message: 'Updating QC status to failed in database',
-                metadata: { imageMappingId: mappingKey2 }
-              });
-              
-              await this.backendAdapter.updateQCStatusByMappingId(mappingKey2, "qc_failed", "Quality check failed");
-              
-              // Also update the local image object
-              image.qcStatus = "qc_failed";
-              image.qcReason = "Quality check failed";
-            } catch (dbError) {
-              this._logStructured({
-                level: 'error',
-                stepName: 'ai_operations',
-                subStep: 'quality_check_db_error_failed',
-                imageIndex: images.indexOf(image),
-                message: `Failed to update QC status to failed in database: ${dbError.message}`,
-                errorCode: 'QC_DB_UPDATE_FAILED_ERROR',
+                message: `Quality check completed: ${result.passed ? 'PASSED' : 'FAILED'}`,
                 metadata: { 
-                  error: dbError.message,
-                  imageMappingId: mappingKey2
+                  passed: result.passed,
+                  reason: result.reason,
+                  imagePath: (image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path)
                 }
               });
               
-
+              image.qualityDetails = result;
+              
+              // Update QC status in database based on quality check result
+              const mappingKey = image.imageMappingId || image.image_mapping_id || image.mappingId || image.id;
+              if (this.backendAdapter && mappingKey) {
+                try {
+                  const qcStatus = result.passed ? "approved" : "qc_failed";
+                  const qcReason = result.reason || (result.passed ? "Quality check passed" : "Quality check failed");
+                  
+                  this._logStructured({
+                    level: 'info',
+                    stepName: 'ai_operations',
+                    subStep: 'quality_check_db_update',
+                    imageIndex: images.indexOf(image),
+                    message: `Updating QC status in database: ${qcStatus}`,
+                    metadata: { 
+                      qcStatus,
+                      qcReason,
+                      imageMappingId: mappingKey
+                    }
+                  });
+                  
+                  await this.backendAdapter.updateQCStatusByMappingId(mappingKey, qcStatus, qcReason);
+                  
+                  // Also update the local image object
+                  image.qcStatus = qcStatus;
+                  image.qcReason = qcReason;
+                } catch (_dbError) {
+                  this._logStructured({
+                    level: 'error',
+                    stepName: 'ai_operations',
+                    subStep: 'quality_check_db_error',
+                    imageIndex: images.indexOf(image),
+                    message: `Failed to update QC status in database: ${_dbError.message}`,
+                    errorCode: 'QC_DB_UPDATE_ERROR',
+                    metadata: { 
+                      error: _dbError.message,
+                      imageMappingId: mappingKey
+                    }
+                  });
+                }
+              } else {
+                this._logStructured({
+                  level: 'warn',
+                  stepName: 'quality_check',
+                  subStep: 'skip_db',
+                  imageIndex: images.indexOf(image),
+                  message: 'Skipping database update - missing backendAdapter or imageMappingId',
+                  metadata: { 
+                    hasBackendAdapter: !!this.backendAdapter,
+                    imageMappingId: (image.imageMappingId || image.image_mapping_id || image.mappingId || image.id)
+                  }
+                });
+              }
+            } else {
+              this._logStructured({
+                level: 'warn',
+                stepName: 'ai_operations',
+                subStep: 'quality_check_no_result',
+                imageIndex: images.indexOf(image),
+                message: 'Quality check returned no result',
+                metadata: { imagePath: (image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path) }
+              });
+              
+              image.qualityDetails = { error: "Quality check failed" };
+              
+              // Update QC status to failed in database
+              const mappingKey2 = image.imageMappingId || image.image_mapping_id || image.mappingId || image.id;
+              if (this.backendAdapter && mappingKey2) {
+                try {
+                  this._logStructured({
+                    level: 'info',
+                    stepName: 'ai_operations',
+                    subStep: 'quality_check_db_update_failed',
+                    imageIndex: images.indexOf(image),
+                    message: 'Updating QC status to failed in database',
+                    metadata: { imageMappingId: mappingKey2 }
+                  });
+                  
+                  await this.backendAdapter.updateQCStatusByMappingId(mappingKey2, "qc_failed", "Quality check failed");
+                  
+                  // Also update the local image object
+                  image.qcStatus = "qc_failed";
+                  image.qcReason = "Quality check failed";
+                } catch (_dbError) {
+                  this._logStructured({
+                    level: 'error',
+                    stepName: 'ai_operations',
+                    subStep: 'quality_check_db_error_failed',
+                    imageIndex: images.indexOf(image),
+                    message: `Failed to update QC status to failed in database: ${_dbError.message}`,
+                    errorCode: 'QC_DB_UPDATE_FAILED_ERROR',
+                    metadata: { 
+                      error: _dbError.message,
+                      imageMappingId: mappingKey2
+                    }
+                  });
+                }
+              }
             }
           }
+          
+          const duration = Date.now() - startTime;
+          this._logStructured({
+            level: 'info',
+            stepName: 'ai_operations',
+            subStep: 'quality_check_complete',
+            message: `Quality checks completed for all ${images.length} images`,
+            durationMs: duration,
+            updateProgress: true, // Update progress for step completion
+            metadata: { 
+              totalImages: images.length,
+              successfulChecks: images.filter(img => img.qcStatus === 'approved').length,
+              failedChecks: images.filter(img => img.qcStatus === 'qc_failed').length
+            }
+          });
+        } catch (_e) {
+          const duration = Date.now() - startTime;
+          this._logStructured({
+            level: 'error',
+            stepName: 'ai_operations',
+            subStep: 'quality_check_error',
+            message: `Quality checks failed: ${_e.message}`,
+            durationMs: duration,
+            errorCode: 'QC_SYSTEM_ERROR',
+            metadata: { 
+              error: _e.message,
+              stack: _e.stack,
+              imageCount: images.length
+            }
+          });
+          
+          throw new Error(`Quality checks failed: ${_e.message}`);
         }
       }
-      
-      const duration = Date.now() - startTime;
-      this._logStructured({
-        level: 'info',
-        stepName: 'ai_operations',
-        subStep: 'quality_check_complete',
-        message: `Quality checks completed for all ${images.length} images`,
-        durationMs: duration,
-        updateProgress: true, // Update progress for step completion
-        metadata: { 
-          totalImages: images.length,
-          successfulChecks: images.filter(img => img.qcStatus === 'approved').length,
-          failedChecks: images.filter(img => img.qcStatus === 'qc_failed').length
-        }
-      });
-      
-      
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      this._logStructured({
-        level: 'error',
-        stepName: 'ai_operations',
-        subStep: 'quality_check_error',
-        message: `Quality checks failed: ${error.message}`,
-        durationMs: duration,
-        errorCode: 'QC_SYSTEM_ERROR',
-        metadata: { 
-          error: error.message,
-          stack: error.stack,
-          imageCount: images.length
-        }
-      });
-      
-      throw new Error(`Quality checks failed: ${error.message}`);
-    }
-  }
 
   /**
    * Wait until QC transitions finish for an execution (no images in transient QC states)
@@ -2809,7 +2801,7 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Job configuration
    * @returns {Promise<void>}
    */
-  async generateMetadata(images, config) {
+  async generateMetadata(images, _config) {
     const startTime = Date.now();
     try {
       this._logStructured({
@@ -2820,14 +2812,14 @@ class JobRunner extends EventEmitter {
         updateProgress: true, // Update progress state for major step transition
         metadata: { 
           imageCount: images.length,
-          openaiModel: config.parameters?.openaiModel || 'gpt-4o',
-          hasMetadataPrompt: !!config.ai?.metadataPrompt
+          openaiModel: _config.parameters?.openaiModel || 'gpt-4o',
+          hasMetadataPrompt: !!_config.ai?.metadataPrompt
         }
       });
       
       // Apply a timeout per-image to avoid hangs on network loss
-      const pollingTimeoutMinutes = Number(config?.parameters?.pollingTimeout);
-      const metadataTimeoutMs = (config?.parameters?.enablePollingTimeout === true)
+      const pollingTimeoutMinutes = Number(_config?.parameters?.pollingTimeout);
+      const metadataTimeoutMs = (_config?.parameters?.enablePollingTimeout === true)
         ? (Number.isFinite(pollingTimeoutMinutes) ? pollingTimeoutMinutes * 60 * 1000 : 30_000)
         : 30_000;
       let hadFailures = false;
@@ -2843,13 +2835,13 @@ class JobRunner extends EventEmitter {
             aiVision.generateMetadata(
               localPath,
           image.metadata?.prompt || 'default image',
-              config.ai?.metadataPrompt || null,
-          config.parameters?.openaiModel || 'gpt-4o'
+              _config.ai?.metadataPrompt || null,
+          _config.parameters?.openaiModel || 'gpt-4o'
             ),
             metadataTimeoutMs,
             'Metadata generation timed out'
           );
-        } catch (metaErr) {
+        } catch (_metaErr) {
           hadFailures = true;
           // Classify per-image failure and persist qc_failed (even if QC is OFF)
           const mappingId = image.imageMappingId || image.mappingId;
@@ -2861,7 +2853,7 @@ class JobRunner extends EventEmitter {
                 failure: {
                   stage: 'metadata',
                   vendor: 'openai',
-                  message: String(metaErr && metaErr.message || metaErr),
+                  message: String(_metaErr && _metaErr.message || _metaErr),
                 }
               };
               await this.backendAdapter.updateGeneratedImageByMappingId(mappingId, {
@@ -3005,23 +2997,23 @@ class JobRunner extends EventEmitter {
       }
       
       
-    } catch (error) {
+    } catch (_error) {
       const duration = Date.now() - startTime;
       this._logStructured({
         level: 'error',
         stepName: 'image_generation',
         subStep: 'metadata_error',
-        message: `Metadata generation failed: ${error.message}`,
+        message: `Metadata generation failed: ${_error.message}`,
         durationMs: duration,
         errorCode: 'METADATA_GEN_ERROR',
         metadata: { 
-          error: error.message,
-          stack: error.stack,
+          error: _error.message,
+          stack: _error.stack,
           imageCount: images.length
         }
       });
       
-      throw new Error(`Metadata generation failed: ${error.message}`);
+      throw new Error(`Metadata generation failed: ${_error.message}`);
     }
   }
 
@@ -3083,7 +3075,6 @@ class JobRunner extends EventEmitter {
       PROGRESS_STEPS = this._getEnabledProgressSteps(this.jobConfiguration);
     }
     
-    const currentStepConfig = PROGRESS_STEPS.find(s => s.name === this.jobState.currentStep);
     const currentStepIndex = PROGRESS_STEPS.findIndex(s => s.name === this.jobState.currentStep);
     
     // Debug logging to help troubleshoot progress step issues
@@ -3124,8 +3115,8 @@ class JobRunner extends EventEmitter {
    * @returns {Object} Job progress object
    */
   getJobProgress() {
-    const currentStepConfig = PROGRESS_STEPS.find(s => s.name === this.jobState.currentStep);
     const currentStepIndex = PROGRESS_STEPS.findIndex(s => s.name === this.jobState.currentStep);
+    const currentStepConfig = PROGRESS_STEPS[currentStepIndex];
     
     return {
       progress: this.jobState.progress / 100,
@@ -3211,7 +3202,7 @@ class JobRunner extends EventEmitter {
    * @param {Object} config - Job configuration
    * @returns {Promise<string|null>} Path to processed image or null if failed
    */
-  async processSingleImage(tempImagePath, config) {
+  async processSingleImage(tempImagePath, _config) {
     try {
       console.log(` Processing image: ${tempImagePath}`);
       
@@ -3219,8 +3210,8 @@ class JobRunner extends EventEmitter {
       // TODO: Implement actual image processing based on config
       console.log(`️ Image processing not yet implemented, returning original path: ${tempImagePath}`);
       return tempImagePath;
-    } catch (error) {
-      console.error(` Error processing image ${tempImagePath}:`, error);
+    } catch (_error) {
+      console.error(` Error processing image ${tempImagePath}:`, _error);
       return null;
     }
   }
@@ -3258,7 +3249,7 @@ class JobRunner extends EventEmitter {
             const desktopPath = app.getPath('desktop');
             lockedDir = path.join(desktopPath, 'gen-image-factory', 'pictures', 'toupload');
             console.log(` JobRunner: DEBUG - Using fallback Desktop path: ${lockedDir}`);
-          } catch (error) {
+          } catch (_error) {
             const os = require('os');
             const homeDir = os.homedir();
             lockedDir = path.join(homeDir, 'Documents', 'gen-image-factory', 'pictures', 'toupload');
@@ -3300,8 +3291,8 @@ class JobRunner extends EventEmitter {
       try {
         await fs.rename(processedImagePath, finalImagePath);
         moved = true;
-      } catch (err) {
-        console.warn(`️ rename failed (${err?.code || 'unknown'}). Falling back to copy+unlink`);
+      } catch (_err) {
+        console.warn(`️ rename failed (${_err?.code || 'unknown'}). Falling back to copy+unlink`);
         try {
           await fs.copyFile(processedImagePath, finalImagePath);
           await fs.unlink(processedImagePath);
@@ -3340,15 +3331,15 @@ class JobRunner extends EventEmitter {
         });
       } catch {}
       return finalImagePath;
-    } catch (error) {
-      console.error(` Error moving image to final location:`, error);
+    } catch (_error) {
+      console.error(` Error moving image to final location:`, _error);
       try {
         this._logStructured({
           level: 'error',
           stepName: 'image_generation',
           subStep: 'move_failed',
           message: 'Failed to move image to final location',
-          metadata: { error: String(error && error.message || error) }
+          metadata: { error: String(_error && _error.message || _error) }
         });
       } catch {}
       return null;
@@ -3373,8 +3364,8 @@ class JobRunner extends EventEmitter {
         console.warn('️ No backendAdapter available for updating image paths');
         return false;
       }
-    } catch (error) {
-      console.error(` Error updating image paths for ${imageMappingId}:`, error);
+    } catch (_error) {
+      console.error(` Error updating image paths for ${imageMappingId}:`, _error);
       return false;
     }
   }

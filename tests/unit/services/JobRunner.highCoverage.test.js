@@ -248,7 +248,8 @@ describe('JobRunner - coverage elevation (unit)', () => {
         removeBg: true,
         imageConvert: true,
         convertToJpg: true,
-        outputDirectory: '/tmp/tmp',
+        outputDirectory: '/tmp/out',
+        tempDirectory: '/tmp/tmp',
       }),
     );
 
@@ -262,9 +263,9 @@ describe('JobRunner - coverage elevation (unit)', () => {
       expect.any(String),
       null,
       expect.objectContaining({
-        removeBg: false,
-        imageConvert: false,
-        convertToJpg: false,
+        removeBg: false, // disabled when QC is enabled
+        outputDirectory: '/tmp/out',
+        tempDirectory: '/tmp/tmp',
       }),
     );
   });

@@ -88,7 +88,9 @@ describe('GeneratedImage model (unit, db stubbed)', () => {
       { id: 2, final_image_path: null, temp_image_path: '/tmp/b.png' },
     ];
 
-    model.deleteImageFile = vi.fn().mockResolvedValue(true);
+    const fs = require('fs');
+    const unlinkSpy = vi.spyOn(fs.promises, 'unlink').mockResolvedValue(undefined);
+
     model.db = {
       all: vi.fn((_sql, _params, cb) => cb(null, rows)),
       run: vi.fn((_sql, _params, cb) => cb.call({ changes: 2 }, null)),
@@ -96,7 +98,7 @@ describe('GeneratedImage model (unit, db stubbed)', () => {
 
     const res = await model.cleanupOldImages(30);
 
-    expect(model.deleteImageFile).toHaveBeenCalledTimes(2);
+    expect(unlinkSpy).toHaveBeenCalledTimes(2);
     expect(res).toEqual(
       expect.objectContaining({
         success: true,
@@ -104,5 +106,6 @@ describe('GeneratedImage model (unit, db stubbed)', () => {
         totalImages: 2,
       }),
     );
+    unlinkSpy.mockRestore();
   });
 });

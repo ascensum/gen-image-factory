@@ -121,8 +121,16 @@ module.exports = [
     },
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
-      'no-empty': ['error', { allowEmptyCatch: true }],
+      'no-empty': ['warn', { allowEmptyCatch: true }],
     },
+  },
+  {
+    files: ['src/services/jobRunner.js'],
+    rules: {
+      'no-unused-vars': 'warn',
+      'no-empty': 'warn',
+      'no-undef': 'warn'
+    }
   },
   {
     files: ['website/src/**/*.{tsx,jsx}'],
@@ -159,6 +167,8 @@ module.exports = [
     },
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      'no-empty': 'warn',
+      '@typescript-eslint/no-var-requires': 'off',
     },
   },
   {

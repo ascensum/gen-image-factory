@@ -307,6 +307,8 @@ function readCsvFile(filePath) {
     await fs.mkdir(uploadDir, { recursive: true });
 
     const processedImages = [];
+    let successfulItems = 0;
+    let totalAttemptedItems = 0;
 
     for (let i = 0; i < argv.count; i++) {
       logDebug(`Starting item ${i + 1} of ${argv.count}`);
