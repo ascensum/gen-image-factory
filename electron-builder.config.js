@@ -8,9 +8,8 @@ if (!process.env.CI) {
   try { require('dotenv').config(); } catch (_e) {}
 }
 
-// Check if all Microsoft Store requirements are met AND signing certificate exists
+// Check if all Microsoft Store requirements are met
 const isStoreBuild = 
-  process.env.CSC_LINK && // Code-signing certificate must exist
   process.env.MS_STORE_IDENTITY_NAME && 
   process.env.MS_STORE_PUBLISHER_ID && 
   process.env.MS_STORE_PUBLISHER_ID.startsWith('CN=');
@@ -47,21 +46,17 @@ const config = {
     oneClick: false,
     allowToChangeInstallationDirectory: true
   },
+  appx: {
+    applicationId: 'GenImageFactory', // Must be alpha-numeric only (no periods)
+    identityName: process.env.MS_STORE_IDENTITY_NAME || 'ShiftlineTools.GenImageFactory',
+    publisher: process.env.MS_STORE_PUBLISHER_ID || 'CN=00000000-0000-0000-0000-000000000000',
+    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || 'Shiftline Tools'
+  },
   publish: {
     provider: 'github',
     owner: 'ascensum',
     repo: 'gen-image-factory'
   }
 };
-
-// Only include appx config if Store build is enabled
-if (isStoreBuild) {
-  config.appx = {
-    applicationId: 'GenImageFactory', // Must be alpha-numeric only (no periods)
-    identityName: process.env.MS_STORE_IDENTITY_NAME,
-    publisher: process.env.MS_STORE_PUBLISHER_ID,
-    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || 'Shiftline Tools'
-  };
-}
 
 module.exports = config;
