@@ -451,7 +451,12 @@ jobs:
             # Build APPX and NSIS separately to avoid certificate extraction issues
             # Step 1: Build APPX with signing (requires certificate)
             Write-Host "`n=== Building APPX (with signing) ===" -ForegroundColor Cyan
-            $appxOutput = & $builderPath --config electron-builder.config.js --win appx --x64 --publish never 2>&1
+            Write-Host "Command: $builderPath --win appx --x64 --config electron-builder.config.js --publish never" -ForegroundColor Yellow
+            Write-Host "Environment check before APPX build:" -ForegroundColor Cyan
+            Write-Host "  CSC_LINK: $($env:CSC_LINK -ne $null ? 'SET' : 'NOT SET')"
+            Write-Host "  MS_STORE_IDENTITY_NAME: $($env:MS_STORE_IDENTITY_NAME -ne $null ? 'SET' : 'NOT SET')"
+            Write-Host "  MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET' : 'NOT SET')"
+            $appxOutput = & $builderPath --win appx --x64 --config electron-builder.config.js --publish never 2>&1
             $appxExitCode = $LASTEXITCODE
             
             Write-Host "APPX Build exit code: $appxExitCode" -ForegroundColor $(if ($appxExitCode -eq 0) { "Green" } else { "Red" })
@@ -470,8 +475,12 @@ jobs:
             $originalCscKeyPassword = $env:CSC_KEY_PASSWORD
             Remove-Item Env:\CSC_LINK -ErrorAction SilentlyContinue
             Remove-Item Env:\CSC_KEY_PASSWORD -ErrorAction SilentlyContinue
-            
-            $nsisOutput = & $builderPath --config electron-builder.config.js --win nsis --x64 --publish never 2>&1
+            Write-Host "Command: $builderPath --win nsis --x64 --config electron-builder.config.js --publish never" -ForegroundColor Yellow
+            Write-Host "Environment check before NSIS build:" -ForegroundColor Cyan
+            Write-Host "  CSC_LINK: $($env:CSC_LINK -ne $null ? 'SET' : 'NOT SET') (should be NOT SET)"
+            Write-Host "  MS_STORE_IDENTITY_NAME: $($env:MS_STORE_IDENTITY_NAME -ne $null ? 'SET' : 'NOT SET')"
+            Write-Host "  MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET' : 'NOT SET')"
+            $nsisOutput = & $builderPath --win nsis --x64 --config electron-builder.config.js --publish never 2>&1
             $nsisExitCode = $LASTEXITCODE
             
             # Restore original values
