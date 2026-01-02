@@ -48,9 +48,9 @@ const config = {
   },
   appx: {
     applicationId: 'GenImageFactory', // Must be alpha-numeric only (no periods)
-    identityName: process.env.MS_STORE_IDENTITY_NAME || 'ShiftlineTools.GenImageFactory',
-    publisher: process.env.MS_STORE_PUBLISHER_ID || 'CN=00000000-0000-0000-0000-000000000000',
-    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || 'Shiftline Tools'
+    identityName: process.env.MS_STORE_IDENTITY_NAME,
+    publisher: process.env.MS_STORE_PUBLISHER_ID,
+    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME
   },
   publish: {
     provider: 'github',
