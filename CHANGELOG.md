@@ -32,6 +32,19 @@ To ensure proper categorization in release notes, use Conventional Commits forma
 
 Dependabot PRs are automatically labeled with `dependencies` and `automated`, and will appear under "🛡️ Security & Dependencies" in release notes.
 
+## [1.1.0] - 2026-01-02
+
+### Added
+- Multi-platform release support (Windows, macOS, Linux)
+- Automatic SHA-256 checksum generation for release assets
+- SBOM (Software Bill of Materials) generation for improved transparency
+
+### Fixed
+- Fixed Windows MSIX build failure caused by invalid applicationId formatting
+- Resolved Windows installer icon issues by adding missing platform-specific assets
+- Improved GitHub Release reliability by handling asset overwriting correctly during re-runs
+- Fixed application identity validation for Microsoft Store submissions
+
 ## [Unreleased]
 
 ### Added
