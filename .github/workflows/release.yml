@@ -429,6 +429,7 @@ jobs:
             Write-Host "  CSC_LINK: $($env:CSC_LINK -ne $null ? 'SET (path: ' + $env:CSC_LINK + ')' : 'NOT SET')"
             Write-Host "  MS_STORE_IDENTITY_NAME: $($env:MS_STORE_IDENTITY_NAME -ne $null ? 'SET (length: ' + $env:MS_STORE_IDENTITY_NAME.Length + ')' : 'NOT SET')"
             Write-Host "  MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET (starts with CN=: ' + $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=') + ')' : 'NOT SET')"
+
             Write-Host "  isStoreBuild should be: $($env:MS_STORE_IDENTITY_NAME -and $env:MS_STORE_PUBLISHER_ID -and $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=')) (Note: CSC_LINK is not required for isStoreBuild anymore)"
             
             # Run electron-builder using direct path to avoid npx ambiguity
@@ -626,33 +627,21 @@ jobs:
           ls -lh artifacts-filtered/
         shell: bash
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
-          generate_release_notes: true
-          overwrite: true
-          body: |
-            ## What's Changed in this Version
-            
-            <!-- GitHub will automatically insert categorized changes here based on .github/release.yml -->
-            
-            ### 📦 Artifacts
-            - **Windows**: MSIX (Microsoft Store), NSIS installer, Portable
-            - **macOS**: DMG, ZIP
-            - **Linux**: AppImage, DEB
-            
-            ### 🔒 Integrity
-            - SHA-256 checksums included for all artifacts
-            - SBOM (Software Bill of Materials) included for auditability
-            
-            ### 📥 Installation
-            See [Release Documentation](docs/release-guide.md) for platform-specific installation instructions.
-          files: |
-            artifacts-filtered/*
-          draft: false
-          prerelease: false
+      - name: Create or Update Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if release exists
+          if gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
+            echo "Updating existing release ${{ github.ref_name }}"
+            gh release upload ${{ github.ref_name }} artifacts-filtered/* --clobber
+          else
+            echo "Creating new release ${{ github.ref_name }}"
+            gh release create ${{ github.ref_name }} \
+              --title "Release ${{ github.ref_name }}" \
+              --notes "## What's Changed in this Version\n\nCategorized changes will be listed here.\n\n### 📦 Artifacts\n- **Windows**: MSIX (Microsoft Store), NSIS installer, Portable\n- **macOS**: DMG, ZIP\n- **Linux**: AppImage, DEB\n\n### 🔒 Integrity\n- SHA-256 checksums included for all artifacts\n- SBOM (Software Bill of Materials) included for auditability\n\n### 📥 Installation\nSee [Release Documentation](docs/release-guide.md) for platform-specific installation instructions." \
+              --generate-notes \
+              artifacts-filtered/*
+          fi
+        shell: bash
 
