@@ -454,7 +454,7 @@ app.whenReady().then(async () => {
       // Configure auto-updater
       autoUpdater.setFeedURL({
         provider: 'github',
-        owner: 'ascensum',
+        owner: 'ShiftlineTools',
         repo: 'gen-image-factory'
       });
       

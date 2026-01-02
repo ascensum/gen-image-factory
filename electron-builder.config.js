@@ -58,7 +58,7 @@ const config = {
   },
   publish: {
     provider: 'github',
-    owner: 'ascensum',
+    owner: 'ShiftlineTools',
     repo: 'gen-image-factory'
   }
 };
