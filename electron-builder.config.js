@@ -28,18 +28,18 @@ const config = {
     'package.json'
   ],
   mac: {
-    icon: 'build/icons/mac/icon.icns',
+    icon: 'icons/mac/icon.icns',
     category: 'public.app-category.graphics-design',
     target: ['dmg', 'zip']
   },
   win: {
-    icon: 'build/icons/win/icon.ico',
+    icon: 'icons/win/icon.ico',
     // Target will be set dynamically via command line --win flag
     // APPX and NSIS are built separately to avoid certificate issues
     target: isStoreBuild ? ['appx'] : ['nsis']
   },
   linux: {
-    icon: 'build/icons/png',
+    icon: 'icons/png',
     category: 'Graphics',
     target: ['AppImage', 'deb']
   },
@@ -57,6 +57,7 @@ const config = {
 // Only include appx config if Store build is enabled
 if (isStoreBuild) {
   config.appx = {
+    applicationId: 'GenImageFactory', // Must be alpha-numeric only (no periods)
     identityName: process.env.MS_STORE_IDENTITY_NAME,
     publisher: process.env.MS_STORE_PUBLISHER_ID,
     publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME || 'Shiftline Tools'
