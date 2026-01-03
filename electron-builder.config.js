@@ -37,9 +37,9 @@ const config = {
     // Target will be set dynamically via command line --win flag
     // APPX and NSIS are built separately to avoid certificate issues
     target: isStoreBuild ? ['appx'] : ['nsis'],
-    certificateFile: process.env.CSC_LINK,
-    certificatePassword: process.env.CSC_KEY_PASSWORD,
-    publisherName: process.env.MS_STORE_PUBLISHER_ID
+    signtoolOptions: {
+      publisherName: process.env.MS_STORE_PUBLISHER_ID
+    }
   },
   linux: {
     icon: 'icons/png',

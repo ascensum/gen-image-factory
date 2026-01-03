@@ -451,11 +451,11 @@ jobs:
             
             # Run electron-builder for all Windows targets at once
             # Configuration is loaded from electron-builder.config.js
-            # We explicitly pass publisherName to avoid automatic extraction 
-            # from PFX if it lacks code-signing attributes.
+            # We explicitly pass publisherName via signtoolOptions
+            # to avoid automatic extraction from PFX if it lacks code-signing attributes.
             Write-Host "`n=== Running Electron-Builder for all Windows targets ===" -ForegroundColor Cyan
             
-            $publisherArg = if ($env:MS_STORE_PUBLISHER_ID) { "-c.win.publisherName=`"$env:MS_STORE_PUBLISHER_ID`"" } else { "" }
+            $publisherArg = if ($env:MS_STORE_PUBLISHER_ID) { "-c.win.signtoolOptions.publisherName=`"$env:MS_STORE_PUBLISHER_ID`"" } else { "" }
             
             Write-Host "Command: $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg" -ForegroundColor Yellow
             $buildOutput = & $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg 2>&1
