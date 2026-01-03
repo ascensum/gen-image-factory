@@ -449,69 +449,18 @@ jobs:
             # Set debug environment variable for electron-builder verbose output
             $env:DEBUG = "electron-builder*"
             
-            # Build APPX and NSIS separately to avoid certificate extraction issues
-            # We use a 3-step process to ensure the EXE is signed but AppX build doesn't fail on certificate info extraction
-            
-            # Step 1: Pack and Sign the EXE only (dir target)
-            Write-Host "`n=== Step 1: Packing and Signing EXE (dir target) ===" -ForegroundColor Cyan
-            Write-Host "Command: $builderPath --win dir --x64 --config electron-builder.config.js --publish never" -ForegroundColor Yellow
-            $packOutput = & $builderPath --win dir --x64 --config electron-builder.config.js --publish never 2>&1
-            $packExitCode = $LASTEXITCODE
-            Write-Host "Pack exit code: $packExitCode" -ForegroundColor $(if ($packExitCode -eq 0) { "Green" } else { "Red" })
-            if ($packOutput) { $packOutput | ForEach-Object { Write-Host $_ } }
-            if ($packExitCode -ne 0) { exit 1 }
-
-            # Step 2: Build APPX with signing
-            # We use --prepackaged to reuse the signed EXE from Step 1.
+            # Run electron-builder for all Windows targets at once
             # We explicitly pass publisherName to avoid extraction from PFX if it lacks code-signing attributes.
-            Write-Host "`n=== Step 2: Building APPX (signed) ===" -ForegroundColor Cyan
+            Write-Host "`n=== Running Electron-Builder for all Windows targets ===" -ForegroundColor Cyan
             $publisherArg = if ($env:MS_STORE_PUBLISHER_ID) { "-c.win.signtoolOptions.publisherName=`"$env:MS_STORE_PUBLISHER_ID`"" } else { "" }
-            Write-Host "Command: $builderPath --win appx --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked $publisherArg" -ForegroundColor Yellow
-            $appxOutput = & $builderPath --win appx --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked $publisherArg 2>&1
-            $appxExitCode = $LASTEXITCODE
-            
-            Write-Host "APPX Build exit code: $appxExitCode" -ForegroundColor $(if ($appxExitCode -eq 0) { "Green" } else { "Red" })
-            if ($appxOutput) {
-              $appxOutput | ForEach-Object { Write-Host $_ }
-            }
-            
-            if ($appxExitCode -ne 0) {
-              Write-Host "ERROR: APPX build failed with exit code $appxExitCode" -ForegroundColor Red
-              exit 1
-            }
-            
-            # Step 3: Build NSIS without signing (unset CSC_LINK to avoid certificate issues)
-            Write-Host "`n=== Step 3: Building NSIS (without signing) ===" -ForegroundColor Cyan
-            $originalCscLink = $env:CSC_LINK
-            $originalCscKeyPassword = $env:CSC_KEY_PASSWORD
-            Remove-Item Env:\CSC_LINK -ErrorAction SilentlyContinue
-            Remove-Item Env:\CSC_KEY_PASSWORD -ErrorAction SilentlyContinue
-            Write-Host "Command: $builderPath --win nsis --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked" -ForegroundColor Yellow
-            $nsisOutput = & $builderPath --win nsis --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked 2>&1
-            $nsisExitCode = $LASTEXITCODE
-            
-            # Restore original values
-            if ($originalCscLink) { $env:CSC_LINK = $originalCscLink }
-            if ($originalCscKeyPassword) { $env:CSC_KEY_PASSWORD = $originalCscKeyPassword }
-            
-            Write-Host "NSIS Build exit code: $nsisExitCode" -ForegroundColor $(if ($nsisExitCode -eq 0) { "Green" } else { "Red" })
-            if ($nsisOutput) {
-              $nsisOutput | ForEach-Object { Write-Host $_ }
-            }
-            
-            if ($nsisExitCode -ne 0) {
-              Write-Host "ERROR: NSIS build failed with exit code $nsisExitCode" -ForegroundColor Red
-              exit 1
-            }
-            
-            # Combined output for display
-            $output = @($packOutput) + @($appxOutput) + @($nsisOutput)
-            $buildExitCode = if ($packExitCode -eq 0 -and $appxExitCode -eq 0 -and $nsisExitCode -eq 0) { 0 } else { 1 }
+            Write-Host "Command: $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg" -ForegroundColor Yellow
+            $buildOutput = & $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg 2>&1
+            $buildExitCode = $LASTEXITCODE
             
             # Display all output
             Write-Host "`n=== Electron-Builder Output ===" -ForegroundColor Cyan
-            if ($output) {
-              $output | ForEach-Object { Write-Host $_ }
+            if ($buildOutput) {
+              $buildOutput | ForEach-Object { Write-Host $_ }
             } else {
               Write-Host "WARNING: No output from electron-builder!" -ForegroundColor Yellow
             }
