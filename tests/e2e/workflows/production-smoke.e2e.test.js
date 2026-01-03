@@ -21,6 +21,7 @@ const getExecutablePath = () => {
     // macOS paths
     const paths = [
       path.join(distDir, 'mac', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory'),
+      path.join(distDir, 'mac-x64', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory'),
       path.join(distDir, 'mac-arm64', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory'),
       path.join(distDir, 'mac-universal', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory')
     ]
@@ -50,13 +51,26 @@ test.describe('Production Smoke Test', () => {
     const executablePath = getExecutablePath()
     
     if (!executablePath) {
-      console.warn('Packaged executable not found. Skipping production smoke test.')
-      console.warn('Please run "npm run dist" first to build the production package.')
+      console.error('ERROR: Packaged executable not found in any of the expected locations!')
+      console.error(`Current directory: ${process.cwd()}`)
+      const distDir = path.join(projectRoot, 'dist')
+      if (fs.existsSync(distDir)) {
+        console.log(`Contents of ${distDir}:`)
+        try {
+          const files = fs.readdirSync(distDir, { recursive: true })
+          console.log(files.join('\n'))
+        } catch (e) {
+          console.log('Failed to list dist directory recursively')
+        }
+      } else {
+        console.error(`Dist directory does not exist: ${distDir}`)
+      }
       test.skip()
       return
     }
     
     console.log(`Testing production executable at: ${executablePath}`)
+    console.log(`Executable exists: ${fs.existsSync(executablePath)}`)
     
     let electronApp
     const mainProcessErrors = []
