@@ -451,13 +451,21 @@ jobs:
             
             # Run electron-builder for all Windows targets at once
             # We use CSC_LINK and CSC_KEY_PASSWORD which are standard for electron-builder.
-            # We explicitly pass publisherName to avoid extraction from PFX if it lacks code-signing attributes.
+            # We explicitly pass publisherName, certificateFile and certificatePassword via signtoolOptions
+            # to avoid automatic extraction from PFX if it lacks code-signing attributes.
             Write-Host "`n=== Running Electron-Builder for all Windows targets ===" -ForegroundColor Cyan
             
-            $publisherArg = if ($env:MS_STORE_PUBLISHER_ID) { "-c.win.signtoolOptions.publisherName=`"$env:MS_STORE_PUBLISHER_ID`"" } else { "" }
+            $signingArgs = @()
+            if ($env:MS_STORE_PUBLISHER_ID) {
+              $signingArgs += "-c.win.signtoolOptions.publisherName=`"$env:MS_STORE_PUBLISHER_ID`""
+            }
+            if ($env:CSC_LINK) {
+              $signingArgs += "-c.win.signtoolOptions.certificateFile=`"$env:CSC_LINK`""
+              $signingArgs += "-c.win.signtoolOptions.certificatePassword=`"$env:CSC_KEY_PASSWORD`""
+            }
             
-            Write-Host "Command: $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg" -ForegroundColor Yellow
-            $buildOutput = & $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg 2>&1
+            Write-Host "Command: $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $signingArgs" -ForegroundColor Yellow
+            $buildOutput = & $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $signingArgs 2>&1
             $buildExitCode = $LASTEXITCODE
             
             # Display all output
