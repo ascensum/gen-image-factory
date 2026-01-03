@@ -5,30 +5,42 @@ console.log(' MAIN PROCESS: Electron version:', process.versions.electron);
 const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+console.log(' MAIN PROCESS: Basic modules loaded. Path:', path.resolve(__dirname));
+
 // Lazy-load electron-updater to avoid initialization issues in test environments
-// It will be required only when needed inside app.whenReady()
 const isDev = process.env.NODE_ENV === 'development';
+console.log(' MAIN PROCESS: isDev:', isDev, 'NODE_ENV:', process.env.NODE_ENV);
 
 // Register custom protocol as privileged (MUST be done before app.ready)
-protocol.registerSchemesAsPrivileged([
-  {
-    scheme: 'local-file',
-    privileges: {
-      standard: true,
-      secure: true,
-      supportFetchAPI: true,
-      corsEnabled: false,
-      bypassCSP: false
+try {
+  console.log(' MAIN PROCESS: Registering privileged schemes...');
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: 'local-file',
+      privileges: {
+        standard: true,
+        secure: true,
+        supportFetchAPI: true,
+        corsEnabled: false,
+        bypassCSP: false
+      }
     }
-  }
-]);
+  ]);
+} catch (e) {
+  console.error(' MAIN PROCESS: Failed to register schemes:', e);
+}
 
 // Initialize Backend Adapter
+console.log(' MAIN PROCESS: Requiring BackendAdapter...');
 const { BackendAdapter } = require(path.join(__dirname, '../src/adapter/backendAdapter'));
+console.log(' MAIN PROCESS: BackendAdapter required successfully');
 
 // JobConfiguration for dynamic, cross-platform default and saved paths
+console.log(' MAIN PROCESS: Requiring JobConfiguration/GeneratedImage...');
 const { JobConfiguration } = require(path.join(__dirname, '../src/database/models/JobConfiguration'));
 const { GeneratedImage } = require(path.join(__dirname, '../src/database/models/GeneratedImage'));
+console.log(' MAIN PROCESS: Database models required successfully');
 
 let mainWindow;
 
