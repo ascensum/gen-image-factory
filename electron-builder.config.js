@@ -37,11 +37,11 @@ const config = {
     // Target will be set dynamically via command line --win flag
     // APPX and NSIS are built separately to avoid certificate issues
     target: isStoreBuild ? ['appx'] : ['nsis'],
-    publisherName: process.env.MS_STORE_PUBLISHER_ID,
     verifyUpdateCodeSignature: false,
-    signingHashAlgorithms: ['sha256'],
     signtoolOptions: {
-      publisherName: process.env.MS_STORE_PUBLISHER_ID
+      publisherName: process.env.MS_STORE_PUBLISHER_ID,
+      timestamp: 'http://timestamp.digicert.com',
+      signingHashAlgorithms: ['sha256']
     }
   },
   linux: {

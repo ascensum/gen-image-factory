@@ -204,7 +204,7 @@ jobs:
       matrix:
         include:
           - platform: win
-            os: windows-latest
+            os: windows-2022
             target: win
           - platform: mac
             os: macos-latest
