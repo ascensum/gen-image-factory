@@ -254,42 +254,24 @@ jobs:
         run: |
           Write-Host "=== Validating Renderer Build Output ===" -ForegroundColor Cyan
           
-          # Check renderer file location (could be in dist/renderer or electron/renderer)
-          $rendererPath = $null
-          if (Test-Path "dist/renderer") {
-            $rendererPath = "dist/renderer"
-            Write-Host "Found renderer files in: dist/renderer" -ForegroundColor Green
-          } elseif (Test-Path "electron/renderer") {
-            $rendererPath = "electron/renderer"
-            Write-Host "Found renderer files in: electron/renderer" -ForegroundColor Green
-          } else {
-            Write-Error "ERROR: Renderer files not found in either dist/renderer or electron/renderer!"
-            Write-Host "`nChecking dist/ directory:"
-            if (Test-Path "dist") {
-              Get-ChildItem -Path "dist" -Recurse | Select-Object FullName | Format-Table -AutoSize
+          # Check renderer file location (configured as electron/renderer in vite.config.ts)
+          $rendererPath = "electron/renderer"
+          if (-Not (Test-Path $rendererPath)) {
+            Write-Host "WARNING: electron/renderer not found, checking dist/renderer..." -ForegroundColor Yellow
+            if (Test-Path "dist/renderer") {
+              $rendererPath = "dist/renderer"
             } else {
-              Write-Host "dist/ directory does not exist"
+              Write-Error "ERROR: Renderer files not found in either electron/renderer or dist/renderer!"
+              Write-Host "`nProject structure for debugging:"
+              Get-ChildItem -Depth 1 | Select-Object Name, Mode | Format-Table -AutoSize
+              exit 1
             }
-            Write-Host "`nChecking electron/ directory:"
-            if (Test-Path "electron") {
-              Get-ChildItem -Path "electron" -Recurse | Select-Object FullName | Format-Table -AutoSize
-            } else {
-              Write-Host "electron/ directory does not exist"
-            }
-            exit 1
           }
           
-          Write-Host "`nRenderer files in ${rendererPath}:" -ForegroundColor Cyan
-          Get-ChildItem -Path $rendererPath -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize
+          Write-Host "Found renderer files in: $rendererPath" -ForegroundColor Green
           
-          # Check for critical files based on detected location
-          $requiredFiles = @()
-          if ($rendererPath -eq "electron/renderer") {
-            $requiredFiles = @("electron/renderer/index.html", "electron/main.js", "electron/preload.js")
-          } else {
-            $requiredFiles = @("dist/renderer/index.html", "electron/main.js", "electron/preload.js")
-          }
-          
+          # Check for critical files
+          $requiredFiles = @("$rendererPath/index.html", "electron/main.js", "electron/preload.js")
           $missingFiles = @()
           foreach ($file in $requiredFiles) {
             if (-Not (Test-Path $file)) {
@@ -305,8 +287,6 @@ jobs:
           }
           
           Write-Host "`nAll required files present!" -ForegroundColor Green
-          Write-Host "Renderer location: ${rendererPath}" -ForegroundColor Cyan
-          Write-Host "electron-builder.config.js files array includes: electron/**/* (which covers ${rendererPath})" -ForegroundColor Cyan
 
       - name: Debug Windows MSIX Build (Windows only)
         if: matrix.platform == 'win'
@@ -319,55 +299,29 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "=== DEBUG: Environment Variables Check ===" -ForegroundColor Cyan
-          Write-Host "MS_STORE_IDENTITY_NAME: $($env:MS_STORE_IDENTITY_NAME -ne $null ? 'SET (length: ' + $env:MS_STORE_IDENTITY_NAME.Length + ')' : 'NOT SET')"
-          Write-Host "MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET (starts with CN=: ' + $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=') + ')' : 'NOT SET')"
-          Write-Host "MS_STORE_PUBLISHER_DISPLAY_NAME: $($env:MS_STORE_PUBLISHER_DISPLAY_NAME -ne $null ? 'SET' : 'NOT SET')"
-          Write-Host "WINDOWS_PFX_BASE64: $($env:WINDOWS_PFX_BASE64 -ne $null ? 'SET (length: ' + $env:WINDOWS_PFX_BASE64.Length + ')' : 'NOT SET')"
-          Write-Host "WINDOWS_PFX_PASSWORD: $($env:WINDOWS_PFX_PASSWORD -ne $null ? 'SET' : 'NOT SET')"
+          Write-Host "MS_STORE_IDENTITY_NAME length: $($env:MS_STORE_IDENTITY_NAME ? $env:MS_STORE_IDENTITY_NAME.Length : 0)"
+          Write-Host "MS_STORE_PUBLISHER_ID starts with CN=: $($env:MS_STORE_PUBLISHER_ID ? $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=') : 'N/A')"
           
-          Write-Host "`n=== DEBUG: Certificate Validation ===" -ForegroundColor Cyan
           if ($env:WINDOWS_PFX_BASE64) {
             try {
               $pfxBytes = [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64)
               $pfxPath = Join-Path $env:RUNNER_TEMP "cert.pfx"
               [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
-              Write-Host "PFX file written to: $pfxPath"
-              Write-Host "PFX file size: $((Get-Item $pfxPath).Length) bytes"
               
-              # Try to read the certificate
+              # Try to read the certificate and extract the EXACT subject
               try {
                 $cert = Get-PfxCertificate -FilePath $pfxPath -Password (ConvertTo-SecureString -String $env:WINDOWS_PFX_PASSWORD -AsPlainText -Force)
-                Write-Host "Certificate validated successfully"
-                Write-Host "Certificate subject: $($cert.Subject)"
-                Write-Host "Certificate issuer: $($cert.Issuer)"
-                Write-Host "Certificate thumbprint: $($cert.Thumbprint)"
+                Write-Host "Certificate validated. Subject: $($cert.Subject)"
+                
+                # Always use the exact subject from the certificate for publisherName
+                Write-Host "Setting MS_STORE_PUBLISHER_ID from certificate subject to ensure exact match"
+                echo "MS_STORE_PUBLISHER_ID=$($cert.Subject)" | Out-File -FilePath $env:GITHUB_ENV -Append
               } catch {
                 Write-Host "ERROR: Failed to read PFX certificate: $_" -ForegroundColor Red
               }
             } catch {
               Write-Host "ERROR: Failed to decode or write PFX: $_" -ForegroundColor Red
             }
-          } else {
-            Write-Host "WARNING: WINDOWS_PFX_BASE64 is not set" -ForegroundColor Yellow
-          }
-          
-          Write-Host "`n=== DEBUG: Directory Structure Before Build ===" -ForegroundColor Cyan
-          Write-Host "Current directory: $(Get-Location)"
-          Write-Host "`nTop-level files and directories:"
-          Get-ChildItem -Depth 0 | Select-Object Name, Mode, Length | Format-Table -AutoSize
-          Write-Host "`nChecking for dist directory:"
-          if (Test-Path "dist") {
-            Write-Host "dist/ exists with contents:"
-            Get-ChildItem -Path "dist" -Recurse | Select-Object FullName | Format-Table -AutoSize
-          } else {
-            Write-Host "dist/ does not exist yet"
-          }
-          
-          Write-Host "`n=== DEBUG: electron-builder.config.js Configuration ===" -ForegroundColor Cyan
-          if (Test-Path "electron-builder.config.js") {
-            Get-Content "electron-builder.config.js" | Write-Host
-          } else {
-            Write-Host "ERROR: electron-builder.config.js not found!" -ForegroundColor Red
           }
 
       - name: Build artifacts
@@ -382,131 +336,24 @@ jobs:
         run: |
           Write-Host "Building for platform: ${{ matrix.platform }}"
           
-          # For Windows, decode the base64 PFX and set up code-signing
           if ("${{ matrix.platform }}" -eq "win") {
             if ($env:WINDOWS_PFX_BASE64) {
-              # Decode base64 PFX and write to temp file
-              $pfxBytes = [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64)
               $pfxPath = Join-Path $env:RUNNER_TEMP "cert.pfx"
-              [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
-              
-              # Set electron-builder code-signing variables
+              # Ensure PFX exists (might have been created in debug step)
+              if (-Not (Test-Path $pfxPath)) {
+                $pfxBytes = [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64)
+                [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
+              }
               $env:WIN_CSC_LINK = $pfxPath
               $env:WIN_CSC_KEY_PASSWORD = $env:WINDOWS_PFX_PASSWORD
-              
-              Write-Host "Code-signing certificate configured: $pfxPath"
-              Write-Host "WIN_CSC_LINK: $env:WIN_CSC_LINK"
-              Write-Host "WIN_CSC_KEY_PASSWORD: $($env:WIN_CSC_KEY_PASSWORD -ne $null ? 'SET' : 'NOT SET')"
             }
             
-            # Pre-Build Verification: Check for renderer files
-            Write-Host "`n=== Pre-Build Verification: Renderer Files ===" -ForegroundColor Cyan
-            if (-Not (Test-Path "electron/renderer/index.html")) {
-              Write-Error "ERROR: Renderer Missing - electron/renderer/index.html not found!"
-              Write-Host "This is a critical file required for the Electron app. Build cannot proceed."
-              Write-Host "`nChecking electron/ directory structure:"
-              if (Test-Path "electron") {
-                Get-ChildItem -Path "electron" -Recurse | Select-Object FullName | Format-Table -AutoSize
-              } else {
-                Write-Host "electron/ directory does not exist!"
-              }
-              exit 1
-            }
-            Write-Host "Renderer verified: electron/renderer/index.html exists" -ForegroundColor Green
-            
-            # Enhanced Debugging: Environment and Tools
-            Write-Host "`n=== Debugging: Environment and Tools ===" -ForegroundColor Cyan
-            Write-Host "npx version:"
-            npx --version
-            Write-Host "`nelectron-builder version (direct path):"
-            if (Test-Path "./node_modules/.bin/electron-builder.cmd") {
-              & ./node_modules/.bin/electron-builder.cmd --version 2>&1 | ForEach-Object { Write-Host $_ }
-            } else {
-              Write-Host "WARNING: ./node_modules/.bin/electron-builder.cmd not found!" -ForegroundColor Yellow
-            }
-            
-            Write-Host "`nEnvironment Variables (masked):"
-            Write-Host "  WIN_CSC_LINK: $($env:WIN_CSC_LINK -ne $null ? 'SET (path: ' + $env:WIN_CSC_LINK + ')' : 'NOT SET')"
-            Write-Host "  MS_STORE_IDENTITY_NAME: $($env:MS_STORE_IDENTITY_NAME -ne $null ? 'SET (length: ' + $env:MS_STORE_IDENTITY_NAME.Length + ')' : 'NOT SET')"
-            Write-Host "  MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET (starts with CN=: ' + $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=') + ')' : 'NOT SET')"
-
-            Write-Host "  isStoreBuild should be: $($env:MS_STORE_IDENTITY_NAME -and $env:MS_STORE_PUBLISHER_ID -and $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=')) (Note: WIN_CSC_LINK is not required for isStoreBuild anymore)"
-            
-            # Run electron-builder using direct path to avoid npx ambiguity
-            Write-Host "`n=== Running Electron-Builder (Direct Path) ===" -ForegroundColor Cyan
-            $builderPath = "./node_modules/.bin/electron-builder.cmd"
-            if (-Not (Test-Path $builderPath)) {
-              Write-Error "ERROR: electron-builder.cmd not found at $builderPath"
-              Write-Host "Checking node_modules/.bin directory:"
-              if (Test-Path "./node_modules/.bin") {
-                Get-ChildItem -Path "./node_modules/.bin" -Filter "*electron*" | Select-Object Name
-              }
-              exit 1
-            }
-            
-            Write-Host "Using direct path: $builderPath"
-            
-            # Set debug environment variable for electron-builder verbose output
-            $env:DEBUG = "electron-builder*"
-            
-            # Run electron-builder for all Windows targets at once
-            # Configuration is loaded from electron-builder.config.js
-            # We explicitly pass publisherName to avoid automatic extraction 
-            # from PFX if it lacks code-signing attributes.
-            Write-Host "`n=== Running Electron-Builder for all Windows targets ===" -ForegroundColor Cyan
-            
+            $builder = "./node_modules/.bin/electron-builder.cmd"
             $publisherArg = if ($env:MS_STORE_PUBLISHER_ID) { "-c.win.publisherName=`"$env:MS_STORE_PUBLISHER_ID`"" } else { "" }
             
-            Write-Host "Command: $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg" -ForegroundColor Yellow
-            $buildOutput = & $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg 2>&1
-            $buildExitCode = $LASTEXITCODE
+            Write-Host "Command: $builder --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg"
+            & $builder --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg
             
-            # Display all output
-            Write-Host "`n=== Electron-Builder Output ===" -ForegroundColor Cyan
-            if ($buildOutput) {
-              $buildOutput | ForEach-Object { Write-Host $_ }
-            } else {
-              Write-Host "WARNING: No output from electron-builder!" -ForegroundColor Yellow
-            }
-            
-            Write-Host "`nBuild exit code: $buildExitCode" -ForegroundColor $(if ($buildExitCode -eq 0) { "Green" } else { "Red" })
-            
-            Write-Host "`n=== DEBUG: Directory Structure After Build ===" -ForegroundColor Cyan
-            Write-Host "Current directory: $(Get-Location)"
-            
-            # Comprehensive check for dist directory
-            if (Test-Path "dist") {
-              Write-Host "dist/ exists with contents:" -ForegroundColor Green
-              Get-ChildItem -Path "dist" -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
-            } else {
-              Write-Host "WARNING: dist/ was not created!" -ForegroundColor Yellow
-              Write-Host "`nListing all directories in current location:"
-              Get-ChildItem -Directory | Select-Object Name | Format-Table -AutoSize
-              Write-Host "`nChecking if electron-builder created files elsewhere:"
-              Get-ChildItem -Recurse -Filter "*.msix" -ErrorAction SilentlyContinue | Select-Object FullName
-              Get-ChildItem -Recurse -Filter "*.appx" -ErrorAction SilentlyContinue | Select-Object FullName
-              Get-ChildItem -Recurse -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object FullName
-              
-              # Check for electron-builder cache or temp directories
-              Write-Host "`nChecking for electron-builder cache/temp directories:"
-              Get-ChildItem -Directory -Filter "*electron*" -ErrorAction SilentlyContinue | Select-Object FullName
-              Get-ChildItem -Directory -Filter "*builder*" -ErrorAction SilentlyContinue | Select-Object FullName
-            }
-            
-            # Fail if build failed or dist doesn't exist
-            if ($buildExitCode -ne 0) {
-              Write-Host "ERROR: Build failed with exit code $buildExitCode" -ForegroundColor Red
-              exit 1
-            }
-            
-            if (-Not (Test-Path "dist")) {
-              Write-Host "ERROR: Build succeeded but dist/ directory was not created!" -ForegroundColor Red
-              Write-Host "This usually means electron-builder couldn't find the required files or encountered a configuration error."
-              Write-Host "Please check the electron-builder output above for warnings or errors."
-              Write-Host "`nFull project structure for debugging:"
-              Get-ChildItem -Recurse | Select-Object FullName | Format-Table -AutoSize
-              exit 1
-            }
           } elseif ("${{ matrix.platform }}" -eq "mac") {
             npx electron-builder --config electron-builder.config.js --mac --publish never
           } else {

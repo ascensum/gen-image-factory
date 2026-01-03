@@ -10,9 +10,8 @@ if (!process.env.CI) {
 
 // Check if all Microsoft Store requirements are met
 const isStoreBuild = 
-  process.env.MS_STORE_IDENTITY_NAME && 
-  process.env.MS_STORE_PUBLISHER_ID && 
-  process.env.MS_STORE_PUBLISHER_ID.startsWith('CN=');
+  !!(process.env.MS_STORE_IDENTITY_NAME && 
+  process.env.MS_STORE_PUBLISHER_ID);
 
 const config = {
   appId: 'com.genimage.factory',
