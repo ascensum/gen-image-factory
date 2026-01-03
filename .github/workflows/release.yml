@@ -537,10 +537,11 @@ jobs:
             exit 1
           }
           Set-Location dist
+          $checksumFile = "SHA256SUMS-${{ matrix.platform }}.txt"
           Get-ChildItem -Recurse -File | ForEach-Object {
-            if ($_.Name -ne "SHA256SUMS.txt") {
+            if ($_.Name -notlike "SHA256SUMS-*.txt") {
               $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
-              "$hash  $($_.Name)" | Out-File -FilePath "SHA256SUMS.txt" -Append -Encoding utf8
+              "$hash  $($_.Name)" | Out-File -FilePath $checksumFile -Append -Encoding utf8
             }
           }
 
@@ -579,8 +580,14 @@ jobs:
           # Create a filtered directory with only installer files
           mkdir -p artifacts-filtered
           
-          # Windows installers (exclude helper executables like elevate.exe)
-          find artifacts -type f \( -name "*Setup*.exe" -o -name "GenImageFactory*.exe" -o -name "*.msix" -o -name "*.appx" \) ! -name "elevate.exe" -exec cp {} artifacts-filtered/ \;
+          # Windows installers (exclude unpacked binaries and helper executables)
+          # We look for files that are likely installers and NOT inside 'unpacked' directories
+          find artifacts -type f \( -name "*Setup*.exe" -o -name "GenImageFactory*.exe" -o -name "*.msix" -o -name "*.appx" \) \
+            -not -path "*/win-unpacked/*" \
+            -not -path "*/linux-unpacked/*" \
+            -not -path "*/mac/*" \
+            -not -name "elevate.exe" \
+            -exec cp {} artifacts-filtered/ \;
           
           # macOS installers
           find artifacts -type f \( -name "*.dmg" -o -name "*-mac.zip" \) -exec cp {} artifacts-filtered/ \;
@@ -588,8 +595,8 @@ jobs:
           # Linux installers
           find artifacts -type f \( -name "*.AppImage" -o -name "*.deb" \) -exec cp {} artifacts-filtered/ \;
           
-          # Checksums and SBOM
-          find artifacts -type f \( -name "*SHA256SUMS.txt" -o -name "*SBOM.json" \) -exec cp {} artifacts-filtered/ \;
+          # Checksums (platform-specific) and SBOM
+          find artifacts -type f \( -name "SHA256SUMS-*.txt" -o -name "*SBOM.json" \) -exec cp {} artifacts-filtered/ \;
           
           # List what will be uploaded
           echo "Files to upload:"
@@ -600,6 +607,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Check if there are any files to upload
+          if [ -z "$(ls -A artifacts-filtered/)" ]; then
+            echo "ERROR: No artifacts found in artifacts-filtered/ directory!"
+            exit 1
+          fi
+          
           # Check if release exists
           if gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
             echo "Updating existing release ${{ github.ref_name }}"
