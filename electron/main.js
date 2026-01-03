@@ -395,9 +395,11 @@ app.whenReady().then(async () => {
   
   // Ensure database tables exist before reconciliation
   try {
-    if (backendAdapter && typeof backendAdapter.ensureInitialized === 'function') {
+    if (process.env.SMOKE_TEST !== 'true' && backendAdapter && typeof backendAdapter.ensureInitialized === 'function') {
       console.log(' Ensuring BackendAdapter is initialized...');
       await backendAdapter.ensureInitialized();
+    } else if (process.env.SMOKE_TEST === 'true') {
+      console.log(' Skipping BackendAdapter initialization (SMOKE_TEST active)');
     }
   } catch (initErr) {
     console.warn(' BackendAdapter initialization check failed:', initErr.message);
@@ -405,12 +407,10 @@ app.whenReady().then(async () => {
   
   // Reconcile orphaned "running" job executions from previous sessions
   try {
-    if (backendAdapter && backendAdapter.jobExecution && typeof backendAdapter.jobExecution.reconcileOrphanedRunningJobs === 'function') {
+    if (process.env.SMOKE_TEST !== 'true' && backendAdapter && backendAdapter.jobExecution && typeof backendAdapter.jobExecution.reconcileOrphanedRunningJobs === 'function') {
       console.log(' Reconciling orphaned running jobs on startup...');
       const reconResult = await backendAdapter.jobExecution.reconcileOrphanedRunningJobs();
       console.log(' Reconciliation result:', reconResult);
-    } else {
-      console.warn(' JobExecution reconciliation method not available');
     }
   } catch (reconErr) {
     console.error(' Failed to reconcile orphaned running jobs:', reconErr);
