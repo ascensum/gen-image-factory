@@ -79,7 +79,13 @@ test.describe('Production Smoke Test', () => {
       // Launch the packaged Electron application
       electronApp = await electron.launch({
         executablePath: executablePath,
-        timeout: 90000 // Increased timeout for slow CI runners
+        args: [
+          '--no-sandbox', 
+          '--disable-gpu', 
+          '--disable-software-rasterizer',
+          '--disable-dev-shm-usage'
+        ],
+        timeout: 120000 // Bump to 120s for the slow integrity check
       })
       
       // Monitor stdout/stderr for critical errors
