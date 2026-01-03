@@ -378,7 +378,6 @@ jobs:
           MS_STORE_PUBLISHER_DISPLAY_NAME: ${{ secrets.MS_STORE_PUBLISHER_DISPLAY_NAME }}
           WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
           WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
-          ELECTRON_BUILDER_ALLOW_UNRECOGNIZED_CONFIG: true
         shell: pwsh
         run: |
           Write-Host "Building for platform: ${{ matrix.platform }}"
