@@ -450,12 +450,34 @@ jobs:
             $env:DEBUG = "electron-builder*"
             
             # Run electron-builder for all Windows targets at once
-            # We explicitly pass publisherName to avoid extraction from PFX if it lacks code-signing attributes.
-            Write-Host "`n=== Running Electron-Builder for all Windows targets ===" -ForegroundColor Cyan
-            $publisherArg = if ($env:MS_STORE_PUBLISHER_ID) { "-c.win.signtoolOptions.publisherName=`"$env:MS_STORE_PUBLISHER_ID`"" } else { "" }
-            Write-Host "Command: $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg" -ForegroundColor Yellow
-            $buildOutput = & $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg 2>&1
+            # We bypass automatic CSC_LINK extraction by unsetting it and passing flags manually.
+            # This avoids "no certificates with ExtKeyUsageCodeSigning" error for self-signed certs.
+            Write-Host "`n=== Running Electron-Builder for all Windows targets (Manual Signing) ===" -ForegroundColor Cyan
+            
+            $originalCscLink = $env:CSC_LINK
+            $originalCscKeyPassword = $env:CSC_KEY_PASSWORD
+            
+            # Unset to prevent automatic extraction
+            Remove-Item Env:\CSC_LINK -ErrorAction SilentlyContinue
+            Remove-Item Env:\CSC_KEY_PASSWORD -ErrorAction SilentlyContinue
+            
+            # Prepare manual signing arguments
+            $signingArgs = @()
+            if ($originalCscLink) {
+              $signingArgs += "-c.win.certificateFile=`"$originalCscLink`""
+              $signingArgs += "-c.win.certificatePassword=`"$originalCscKeyPassword`""
+            }
+            if ($env:MS_STORE_PUBLISHER_ID) {
+              $signingArgs += "-c.win.signtoolOptions.publisherName=`"$env:MS_STORE_PUBLISHER_ID`""
+            }
+            
+            Write-Host "Command: $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $signingArgs" -ForegroundColor Yellow
+            $buildOutput = & $builderPath --win appx nsis --x64 --config electron-builder.config.js --publish never $signingArgs 2>&1
             $buildExitCode = $LASTEXITCODE
+            
+            # Restore original values
+            if ($originalCscLink) { $env:CSC_LINK = $originalCscLink }
+            if ($originalCscKeyPassword) { $env:CSC_KEY_PASSWORD = $originalCscKeyPassword }
             
             # Display all output
             Write-Host "`n=== Electron-Builder Output ===" -ForegroundColor Cyan
