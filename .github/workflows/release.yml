@@ -461,14 +461,9 @@ jobs:
             if ($packOutput) { $packOutput | ForEach-Object { Write-Host $_ } }
             if ($packExitCode -ne 0) { exit 1 }
 
-            # Step 2: Build APPX without signing (Microsoft Store signs it, avoiding certificate extraction issues)
+            # Step 2: Build APPX with signing
             # We use --prepackaged to reuse the signed EXE from Step 1.
-            Write-Host "`n=== Step 2: Building APPX (without signing) ===" -ForegroundColor Cyan
-            $originalCscLink = $env:CSC_LINK
-            $originalCscKeyPassword = $env:CSC_KEY_PASSWORD
-            Remove-Item Env:\CSC_LINK -ErrorAction SilentlyContinue
-            Remove-Item Env:\CSC_KEY_PASSWORD -ErrorAction SilentlyContinue
-            
+            Write-Host "`n=== Step 2: Building APPX (signed) ===" -ForegroundColor Cyan
             Write-Host "Command: $builderPath --win appx --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked" -ForegroundColor Yellow
             $appxOutput = & $builderPath --win appx --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked 2>&1
             $appxExitCode = $LASTEXITCODE
@@ -485,6 +480,10 @@ jobs:
             
             # Step 3: Build NSIS without signing (unset CSC_LINK to avoid certificate issues)
             Write-Host "`n=== Step 3: Building NSIS (without signing) ===" -ForegroundColor Cyan
+            $originalCscLink = $env:CSC_LINK
+            $originalCscKeyPassword = $env:CSC_KEY_PASSWORD
+            Remove-Item Env:\CSC_LINK -ErrorAction SilentlyContinue
+            Remove-Item Env:\CSC_KEY_PASSWORD -ErrorAction SilentlyContinue
             Write-Host "Command: $builderPath --win nsis --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked" -ForegroundColor Yellow
             $nsisOutput = & $builderPath --win nsis --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked 2>&1
             $nsisExitCode = $LASTEXITCODE
