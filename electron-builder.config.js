@@ -38,6 +38,8 @@ const config = {
     // APPX and NSIS are built separately to avoid certificate issues
     target: isStoreBuild ? ['appx'] : ['nsis'],
     publisherName: process.env.MS_STORE_PUBLISHER_ID,
+    verifyUpdateCodeSignature: false,
+    signingHashAlgorithms: ['sha256'],
     signtoolOptions: {
       publisherName: process.env.MS_STORE_PUBLISHER_ID
     }

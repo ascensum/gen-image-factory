@@ -391,12 +391,12 @@ jobs:
               [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
               
               # Set electron-builder code-signing variables
-              $env:CSC_LINK = $pfxPath
-              $env:CSC_KEY_PASSWORD = $env:WINDOWS_PFX_PASSWORD
+              $env:WIN_CSC_LINK = $pfxPath
+              $env:WIN_CSC_KEY_PASSWORD = $env:WINDOWS_PFX_PASSWORD
               
               Write-Host "Code-signing certificate configured: $pfxPath"
-              Write-Host "CSC_LINK: $env:CSC_LINK"
-              Write-Host "CSC_KEY_PASSWORD: $($env:CSC_KEY_PASSWORD -ne $null ? 'SET' : 'NOT SET')"
+              Write-Host "WIN_CSC_LINK: $env:WIN_CSC_LINK"
+              Write-Host "WIN_CSC_KEY_PASSWORD: $($env:WIN_CSC_KEY_PASSWORD -ne $null ? 'SET' : 'NOT SET')"
             }
             
             # Pre-Build Verification: Check for renderer files
@@ -426,11 +426,11 @@ jobs:
             }
             
             Write-Host "`nEnvironment Variables (masked):"
-            Write-Host "  CSC_LINK: $($env:CSC_LINK -ne $null ? 'SET (path: ' + $env:CSC_LINK + ')' : 'NOT SET')"
+            Write-Host "  WIN_CSC_LINK: $($env:WIN_CSC_LINK -ne $null ? 'SET (path: ' + $env:WIN_CSC_LINK + ')' : 'NOT SET')"
             Write-Host "  MS_STORE_IDENTITY_NAME: $($env:MS_STORE_IDENTITY_NAME -ne $null ? 'SET (length: ' + $env:MS_STORE_IDENTITY_NAME.Length + ')' : 'NOT SET')"
             Write-Host "  MS_STORE_PUBLISHER_ID: $($env:MS_STORE_PUBLISHER_ID -ne $null ? 'SET (starts with CN=: ' + $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=') + ')' : 'NOT SET')"
 
-            Write-Host "  isStoreBuild should be: $($env:MS_STORE_IDENTITY_NAME -and $env:MS_STORE_PUBLISHER_ID -and $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=')) (Note: CSC_LINK is not required for isStoreBuild anymore)"
+            Write-Host "  isStoreBuild should be: $($env:MS_STORE_IDENTITY_NAME -and $env:MS_STORE_PUBLISHER_ID -and $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=')) (Note: WIN_CSC_LINK is not required for isStoreBuild anymore)"
             
             # Run electron-builder using direct path to avoid npx ambiguity
             Write-Host "`n=== Running Electron-Builder (Direct Path) ===" -ForegroundColor Cyan
