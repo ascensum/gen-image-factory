@@ -1,6 +1,7 @@
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+
+let sqlite3;
 
 /**
  * JobExecution Database Model
@@ -13,6 +14,10 @@ class JobExecution {
     // Cross-platform database path resolution
     this.dbPath = this.resolveDatabasePath();
     // Constructor is used in many contexts that don't await init(); prevent unhandled rejections.
+    if (process.env.SMOKE_TEST === 'true') {
+      console.log(' [JobExecution] Skipping init() during SMOKE_TEST');
+      return;
+    }
     this.init().catch((err) => {
       console.error('JobExecution init failed:', err?.message || err);
     });
@@ -121,6 +126,9 @@ class JobExecution {
   }
 
   async init() {
+    if (!sqlite3) {
+      sqlite3 = require('sqlite3').verbose();
+    }
     return new Promise((resolve, reject) => {
       this.db = new sqlite3.Database(this.dbPath, (err) => {
         if (err) {

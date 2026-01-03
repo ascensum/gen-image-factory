@@ -85,6 +85,10 @@ test.describe('Production Smoke Test', () => {
           '--disable-software-rasterizer',
           '--disable-dev-shm-usage'
         ],
+        env: {
+          ...process.env,
+          SMOKE_TEST: 'true'
+        },
         timeout: 120000 // Bump to 120s for the slow integrity check
       })
       

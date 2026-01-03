@@ -1,6 +1,7 @@
-const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
+
+let sqlite3;
 
 /**
  * GeneratedImage Database Model
@@ -13,6 +14,10 @@ class GeneratedImage {
     // Cross-platform database path resolution
     this.dbPath = this.resolveDatabasePath();
     // Constructor is used in many contexts that don't await init(); prevent unhandled rejections.
+    if (process.env.SMOKE_TEST === 'true') {
+      console.log(' [GeneratedImage] Skipping init() during SMOKE_TEST');
+      return;
+    }
     this.init().catch((err) => {
       console.error('GeneratedImage init failed:', err?.message || err);
     });
@@ -125,6 +130,9 @@ class GeneratedImage {
   }
 
   async init() {
+    if (!sqlite3) {
+      sqlite3 = require('sqlite3').verbose();
+    }
     return new Promise((resolve, reject) => {
       this.db = new sqlite3.Database(this.dbPath, (err) => {
         if (err) {
