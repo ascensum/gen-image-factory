@@ -40,7 +40,7 @@ const config = {
     verifyUpdateCodeSignature: false,
     signtoolOptions: {
       publisherName: process.env.MS_STORE_PUBLISHER_ID,
-      timestamp: 'http://timestamp.digicert.com',
+      timeStampServer: 'http://timestamp.digicert.com',
       signingHashAlgorithms: ['sha256']
     }
   },
