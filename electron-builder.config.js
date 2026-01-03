@@ -25,9 +25,6 @@ const config = {
   files: [
     'electron/**/*',
     'src/**/*',
-    '!src/database/transactionManager.js',
-    '!src/database/backupManager.js',
-    '!src/database/migrations/**/*',
     'package.json'
   ],
   mac: {
@@ -39,7 +36,10 @@ const config = {
     icon: 'icons/win/icon.ico',
     // Target will be set dynamically via command line --win flag
     // APPX and NSIS are built separately to avoid certificate issues
-    target: isStoreBuild ? ['appx'] : ['nsis']
+    target: isStoreBuild ? ['appx'] : ['nsis'],
+    certificateFile: process.env.CSC_LINK,
+    certificatePassword: process.env.CSC_KEY_PASSWORD,
+    publisherName: process.env.MS_STORE_PUBLISHER_ID
   },
   linux: {
     icon: 'icons/png',
