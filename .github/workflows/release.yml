@@ -346,9 +346,9 @@ jobs:
           CI: true
         run: |
           if [ "${{ matrix.platform }}" = "linux" ]; then
-            xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" npx playwright test tests/e2e/workflows/production-smoke.e2e.test.js
+            xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" npx playwright test tests/e2e/workflows/production-smoke.e2e.test.js --project=chromium
           else
-            npx playwright test tests/e2e/workflows/production-smoke.e2e.test.js
+            npx playwright test tests/e2e/workflows/production-smoke.e2e.test.js --project=chromium
           fi
         shell: bash
 
