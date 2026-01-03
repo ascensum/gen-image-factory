@@ -21,6 +21,11 @@ const config = {
     buildResources: 'build'
   },
   asar: true,
+  asarUnpack: [
+    "**/node_modules/keytar/**/*",
+    "**/node_modules/sqlite3/**/*",
+    "**/node_modules/sharp/**/*"
+  ],
   files: [
     'electron/**/*',
     'src/**/*',

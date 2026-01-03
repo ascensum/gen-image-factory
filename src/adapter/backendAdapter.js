@@ -1,5 +1,16 @@
-const keytar = require('keytar');
+console.log(' [BackendAdapter] Starting requirement phase...');
+let keytar;
+try {
+  console.log(' [BackendAdapter] Requiring keytar...');
+  keytar = require('keytar');
+  console.log(' [BackendAdapter] keytar required successfully');
+} catch (e) {
+  console.error(' [BackendAdapter] Failed to load keytar. Secure storage will be unavailable.', e.message);
+  keytar = null;
+}
 const { ipcMain } = require('electron');
+// ... (rest of imports)
+console.log(' [BackendAdapter] Requirement phase complete');
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs').promises;

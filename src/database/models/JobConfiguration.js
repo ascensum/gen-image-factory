@@ -1,4 +1,13 @@
-const sqlite3 = require('sqlite3').verbose();
+console.log(' [JobConfiguration] Requiring sqlite3...');
+let sqlite3;
+try {
+  sqlite3 = require('sqlite3').verbose();
+  console.log(' [JobConfiguration] sqlite3 required successfully');
+} catch (e) {
+  console.error(' [JobConfiguration] CRITICAL: Failed to load sqlite3!', e.message);
+  // We can't really function without sqlite3, but we want to avoid a hang
+  throw e;
+}
 const path = require('path');
 const fs = require('fs');
 
