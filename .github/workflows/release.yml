@@ -463,9 +463,11 @@ jobs:
 
             # Step 2: Build APPX with signing
             # We use --prepackaged to reuse the signed EXE from Step 1.
+            # We explicitly pass publisherName to avoid extraction from PFX if it lacks code-signing attributes.
             Write-Host "`n=== Step 2: Building APPX (signed) ===" -ForegroundColor Cyan
-            Write-Host "Command: $builderPath --win appx --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked" -ForegroundColor Yellow
-            $appxOutput = & $builderPath --win appx --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked 2>&1
+            $publisherArg = if ($env:MS_STORE_PUBLISHER_ID) { "-c.win.publisherName=`"$env:MS_STORE_PUBLISHER_ID`"" } else { "" }
+            Write-Host "Command: $builderPath --win appx --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked $publisherArg" -ForegroundColor Yellow
+            $appxOutput = & $builderPath --win appx --x64 --config electron-builder.config.js --publish never --prepackaged dist/win-unpacked $publisherArg 2>&1
             $appxExitCode = $LASTEXITCODE
             
             Write-Host "APPX Build exit code: $appxExitCode" -ForegroundColor $(if ($appxExitCode -eq 0) { "Green" } else { "Red" })
