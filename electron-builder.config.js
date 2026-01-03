@@ -25,6 +25,7 @@ const config = {
   files: [
     'electron/**/*',
     'src/**/*',
+    'build/**/*',
     'package.json'
   ],
   mac: {
@@ -40,8 +41,10 @@ const config = {
     publisherName: process.env.MS_STORE_PUBLISHER_ID,
     verifyUpdateCodeSignature: false,
     signingHashAlgorithms: ['sha256'],
+    certificateSha1: 'ED57062418E4909281F2AAD37DF7389DD7D67C49',
     signtoolOptions: {
-      publisherName: process.env.MS_STORE_PUBLISHER_ID
+      publisherName: process.env.MS_STORE_PUBLISHER_ID,
+      certificateSha1: 'ED57062418E4909281F2AAD37DF7389DD7D67C49'
     }
   },
   linux: {
