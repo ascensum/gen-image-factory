@@ -249,78 +249,62 @@ jobs:
       - name: Build application
         run: npm run build
 
-      - name: Validate renderer build output
+      - name: Validate renderer build output (Windows)
+        if: matrix.platform == 'win'
         shell: pwsh
         run: |
-          Write-Host "=== Validating Renderer Build Output ===" -ForegroundColor Cyan
-          
-          # Check renderer file location (configured as electron/renderer in vite.config.ts)
           $rendererPath = "electron/renderer"
-          if (-Not (Test-Path $rendererPath)) {
-            Write-Host "WARNING: electron/renderer not found, checking dist/renderer..." -ForegroundColor Yellow
-            if (Test-Path "dist/renderer") {
-              $rendererPath = "dist/renderer"
-            } else {
-              Write-Error "ERROR: Renderer files not found in either electron/renderer or dist/renderer!"
-              Write-Host "`nProject structure for debugging:"
-              Get-ChildItem -Depth 1 | Select-Object Name, Mode | Format-Table -AutoSize
-              exit 1
-            }
-          }
-          
-          Write-Host "Found renderer files in: $rendererPath" -ForegroundColor Green
-          
-          # Check for critical files
-          $requiredFiles = @("$rendererPath/index.html", "electron/main.js", "electron/preload.js")
-          $missingFiles = @()
-          foreach ($file in $requiredFiles) {
-            if (-Not (Test-Path $file)) {
-              $missingFiles += $file
-            } else {
-              Write-Host "Found: $file" -ForegroundColor Green
-            }
-          }
-          
-          if ($missingFiles.Count -gt 0) {
-            Write-Error "ERROR: Required files missing: $($missingFiles -join ', ')"
+          if (-Not (Test-Path "$rendererPath/index.html")) {
+            Write-Error "ERROR: Renderer Missing - $rendererPath/index.html not found!"
+            Get-ChildItem -Depth 1 | Select-Object Name, Mode | Format-Table -AutoSize
             exit 1
           }
-          
-          Write-Host "`nAll required files present!" -ForegroundColor Green
+          Write-Host "Renderer verified!" -ForegroundColor Green
+
+      - name: Validate renderer build output (Unix)
+        if: matrix.platform != 'win'
+        shell: bash
+        run: |
+          RENDERER_PATH="electron/renderer"
+          if [ ! -f "$RENDERER_PATH/index.html" ]; then
+            echo "ERROR: Renderer Missing - $RENDERER_PATH/index.html not found!"
+            ls -R electron/
+            exit 1
+          fi
+          echo "Renderer verified!"
 
       - name: Debug Windows MSIX Build (Windows only)
         if: matrix.platform == 'win'
         env:
           MS_STORE_IDENTITY_NAME: ${{ secrets.MS_STORE_IDENTITY_NAME }}
           MS_STORE_PUBLISHER_ID: ${{ secrets.MS_STORE_PUBLISHER_ID }}
-          MS_STORE_PUBLISHER_DISPLAY_NAME: ${{ secrets.MS_STORE_PUBLISHER_DISPLAY_NAME }}
           WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
           WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
         shell: pwsh
         run: |
-          Write-Host "=== DEBUG: Environment Variables Check ===" -ForegroundColor Cyan
-          Write-Host "MS_STORE_IDENTITY_NAME length: $($env:MS_STORE_IDENTITY_NAME ? $env:MS_STORE_IDENTITY_NAME.Length : 0)"
-          Write-Host "MS_STORE_PUBLISHER_ID starts with CN=: $($env:MS_STORE_PUBLISHER_ID ? $env:MS_STORE_PUBLISHER_ID.StartsWith('CN=') : 'N/A')"
-          
           if ($env:WINDOWS_PFX_BASE64) {
             try {
               $pfxBytes = [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64)
               $pfxPath = Join-Path $env:RUNNER_TEMP "cert.pfx"
               [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
               
-              # Try to read the certificate and extract the EXACT subject
-              try {
-                $cert = Get-PfxCertificate -FilePath $pfxPath -Password (ConvertTo-SecureString -String $env:WINDOWS_PFX_PASSWORD -AsPlainText -Force)
-                Write-Host "Certificate validated. Subject: $($cert.Subject)"
-                
-                # Always use the exact subject from the certificate for publisherName
-                Write-Host "Setting MS_STORE_PUBLISHER_ID from certificate subject to ensure exact match"
-                echo "MS_STORE_PUBLISHER_ID=$($cert.Subject)" | Out-File -FilePath $env:GITHUB_ENV -Append
-              } catch {
-                Write-Host "ERROR: Failed to read PFX certificate: $_" -ForegroundColor Red
+              # Check EKU for Code Signing (1.3.6.1.5.5.7.3.3)
+              $cert = Get-PfxCertificate -FilePath $pfxPath -Password (ConvertTo-SecureString -String $env:WINDOWS_PFX_PASSWORD -AsPlainText -Force)
+              Write-Host "Certificate validated. Subject: $($cert.Subject)"
+              
+              $eku = $cert.Extensions | Where-Object { $_.Oid.FriendlyName -eq "Enhanced Key Usage" -or $_.Oid.Value -eq "2.5.29.37" }
+              if ($eku -and $eku.Format($false) -notlike "*Code Signing*") {
+                 Write-Error "CRITICAL: The provided PFX certificate does NOT have the 'Code Signing' EKU. AppX building will fail."
+                 Write-Host "Required OID: 1.3.6.1.5.5.7.3.3 (Code Signing)"
+                 Write-Host "Found usages: $($eku.Format($false))"
+                 exit 1
               }
+              
+              # Sync Publisher ID
+              echo "MS_STORE_PUBLISHER_ID=$($cert.Subject)" | Out-File -FilePath $env:GITHUB_ENV -Append
             } catch {
-              Write-Host "ERROR: Failed to decode or write PFX: $_" -ForegroundColor Red
+              Write-Host "ERROR during certificate validation: $_" -ForegroundColor Red
+              exit 1
             }
           }
 
@@ -329,31 +313,24 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MS_STORE_IDENTITY_NAME: ${{ secrets.MS_STORE_IDENTITY_NAME }}
           MS_STORE_PUBLISHER_ID: ${{ secrets.MS_STORE_PUBLISHER_ID }}
-          MS_STORE_PUBLISHER_DISPLAY_NAME: ${{ secrets.MS_STORE_PUBLISHER_DISPLAY_NAME }}
           WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
           WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
         shell: pwsh
         run: |
-          Write-Host "Building for platform: ${{ matrix.platform }}"
-          
           if ("${{ matrix.platform }}" -eq "win") {
-            if ($env:WINDOWS_PFX_BASE64) {
-              $pfxPath = Join-Path $env:RUNNER_TEMP "cert.pfx"
-              # Ensure PFX exists (might have been created in debug step)
-              if (-Not (Test-Path $pfxPath)) {
-                $pfxBytes = [Convert]::FromBase64String($env:WINDOWS_PFX_BASE64)
-                [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
-              }
+            $pfxPath = Join-Path $env:RUNNER_TEMP "cert.pfx"
+            if (Test-Path $pfxPath) {
               $env:WIN_CSC_LINK = $pfxPath
               $env:WIN_CSC_KEY_PASSWORD = $env:WINDOWS_PFX_PASSWORD
             }
             
             $builder = "./node_modules/.bin/electron-builder.cmd"
-            $publisherArg = if ($env:MS_STORE_PUBLISHER_ID) { "-c.win.publisherName=`"$env:MS_STORE_PUBLISHER_ID`"" } else { "" }
+            # Use the publisher ID extracted from the cert or from secrets
+            $publisherName = if ($env:MS_STORE_PUBLISHER_ID) { $env:MS_STORE_PUBLISHER_ID } else { "${{ secrets.MS_STORE_PUBLISHER_ID }}" }
+            $publisherArg = if ($publisherName) { "-c.win.publisherName=`"$publisherName`"" } else { "" }
             
             Write-Host "Command: $builder --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg"
             & $builder --win appx nsis --x64 --config electron-builder.config.js --publish never $publisherArg
-            
           } elseif ("${{ matrix.platform }}" -eq "mac") {
             npx electron-builder --config electron-builder.config.js --mac --publish never
           } else {
