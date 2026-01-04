@@ -1,3 +1,4 @@
+/* global URL, URLSearchParams */
 import React, { useEffect, useMemo, useState } from 'react'
 import { ensureElectronStub } from './ensureElectronStub'
 
@@ -11,7 +12,7 @@ const PLATFORM_CONFIGS = {
       save: '⌘ + S',
       preferences: '⌘ + ,',
     },
-    localFileUrl: 'local-file://users/e2e/Documents/demo-report.xlsx',
+    localFileUrl: 'factory://users/e2e/Documents/demo-report.xlsx',
   },
   win32: {
     label: 'Windows',
@@ -22,7 +23,7 @@ const PLATFORM_CONFIGS = {
       save: 'Ctrl + S',
       preferences: 'Ctrl + ,',
     },
-    localFileUrl: 'local-file://localhost/C:/Users/e2e/Documents/demo-report.xlsx',
+    localFileUrl: 'factory://localhost/C:/Users/e2e/Documents/demo-report.xlsx',
   },
   linux: {
     label: 'Linux',
@@ -33,7 +34,7 @@ const PLATFORM_CONFIGS = {
       save: 'Ctrl + S',
       preferences: 'Ctrl + ,',
     },
-    localFileUrl: 'local-file://home/e2e/Documents/demo-report.xlsx',
+    localFileUrl: 'factory://home/e2e/Documents/demo-report.xlsx',
   },
 }
 
@@ -108,9 +109,7 @@ const PlatformHarness = () => {
           <button
             key={key}
             type="button"
-            className={`px-4 py-2 rounded ${
-              key === platform ? 'bg-white text-slate-900' : 'bg-slate-700 hover:bg-slate-600'
-            }`}
+            className={`px-4 py-2 rounded ${key === platform ? 'bg-white text-slate-900' : 'bg-slate-700 hover:bg-slate-600'}`}
             data-testid={`platform-toggle-${key}`}
             onClick={() => setPlatform(key)}
           >
@@ -147,7 +146,7 @@ const PlatformHarness = () => {
           </div>
 
           <div className="bg-slate-900/60 rounded-lg p-4">
-            <p className="text-sm text-slate-400 mb-2">Normalized local-file URL</p>
+            <p className="text-sm text-slate-400 mb-2">Normalized factory URL</p>
             <p className="font-mono text-sm" data-testid="platform-protocol-path">
               {protocolPath}
             </p>
@@ -198,4 +197,3 @@ const PlatformHarness = () => {
 }
 
 export default PlatformHarness
-

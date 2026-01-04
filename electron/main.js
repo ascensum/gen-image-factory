@@ -1,10 +1,12 @@
+/* global Response */
 console.log(' MAIN PROCESS: main.js file is being executed!');
 console.log(' MAIN PROCESS: Node.js version:', process.version);
 console.log(' MAIN PROCESS: Electron version:', process.versions.electron);
 
-const { app, BrowserWindow, ipcMain, protocol, dialog, Menu, Tray, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, dialog, Menu, Tray, nativeImage, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const url = require('url');
 
 console.log(' MAIN PROCESS: Basic modules loaded. Path:', path.resolve(__dirname));
 
@@ -17,13 +19,14 @@ try {
   console.log(' MAIN PROCESS: Registering privileged schemes...');
   protocol.registerSchemesAsPrivileged([
     {
-      scheme: 'local-file',
+      scheme: 'factory',
       privileges: {
         standard: true,
         secure: true,
         supportFetchAPI: true,
         corsEnabled: false,
-        bypassCSP: false
+        bypassCSP: false,
+        stream: true
       }
     }
   ]);
@@ -299,77 +302,53 @@ app.whenReady().then(async () => {
   // Initialize allowed roots before registering protocol
   await refreshAllowedRoots();
 
-  // Register custom protocol for local file access
-  // This is required in dev mode where browser security prevents file:// access
-  protocol.registerFileProtocol('local-file', (request, callback) => {
-    console.log('Protocol handler called:', request.url);
+  // Register factory protocol for local file access with robust cross-platform mapping
+  // Maps factory://C:/path/to/img.png to local filesystem (Windows)
+  // Maps factory:///home/user/img.png to local filesystem (POSIX)
+  protocol.handle('factory', async (request) => {
+    console.log('Factory protocol request:', request.url);
     try {
-      // Use URL API to parse properly - this handles cross-platform paths correctly
-      const url = new URL(request.url);
-      const host = url.hostname;
+      const parsedUrl = new URL(request.url);
+      let filePath;
       
-      // Get the pathname and decode it
-      let filePath = decodeURIComponent(url.pathname);
-      // Windows: strip leading slash from "/C:/..." and normalize
-      if (process.platform === 'win32' && /^\/[a-zA-Z]:\//.test(filePath)) {
-        filePath = filePath.slice(1);
-      }
-      // macOS/Linux: if a host segment exists (e.g., local-file://users/...), prepend it to pathname
-      if (process.platform !== 'win32' && host) {
-        filePath = `/${host}${filePath}`;
-      }
-      filePath = path.normalize(filePath);
-      // macOS: correct lowercased home root when coming from malformed URLs ("/users/..." -> "/Users/...")
-      if (process.platform === 'darwin' && filePath.startsWith('/users/')) {
-        filePath = '/Users/' + filePath.slice('/users/'.length);
-      }
-      
-      // On Windows, URL pathname will be like "/C:/Users/..." - keep as is
-      // On Unix (macOS/Linux), it will be like "/Users/..." or "/home/..." - keep as is
-      
-      console.log('   → Parsed pathname:', filePath);
-      console.log('   → File exists:', fs.existsSync(filePath));
-      console.log('   → Under allowed roots:', isUnderAllowedRoots(filePath));
-      if (host) {
-        console.log('   → URL host segment:', host);
-      }
-      
-      // Serve only if path is under an allowed root and is readable
-      const serveFile = async () => {
-        try {
-          fs.accessSync(filePath, fs.constants.R_OK);
-        } catch (e) {
-          // Try to grant access (especially on macOS after privacy reset)
-          const granted = await ensureAccessToPath(filePath);
-          if (!granted) {
-            console.warn('Access denied for file:', filePath, e.code || e.message);
-            callback({ error: -10 }); // ACCESS_DENIED
-            return;
-          }
-        }
-        console.log('Serving file');
-        callback({ path: filePath });
-      };
-
-      if (fs.existsSync(filePath)) {
-        if (isUnderAllowedRoots(filePath)) {
-          serveFile();
-        } else {
-          // Try to add the parent directory and serve
-          const parent = toAbsoluteDir(filePath);
-          allowedRoots.add(parent);
-          console.log(' Added parent to allowed roots:', parent);
-          serveFile();
-        }
+      if (process.platform === 'win32') {
+        // On Windows, factory://C:/path -> hostname is 'c:', pathname is '/path'
+        // factory:///C:/path -> hostname is empty, pathname is '/C:/path'
+        filePath = parsedUrl.hostname 
+          ? path.join(parsedUrl.hostname, parsedUrl.pathname)
+          : (parsedUrl.pathname.startsWith('/') ? parsedUrl.pathname.slice(1) : parsedUrl.pathname);
       } else {
-        console.warn('File not found:', filePath);
-        console.warn('   Original URL:', request.url);
-        console.warn('   Platform:', process.platform);
-        callback({ error: -6 }); // FILE_NOT_FOUND
+        // POSIX: factory:///path -> hostname is empty, pathname is '/path'
+        filePath = parsedUrl.pathname;
       }
+      
+      filePath = decodeURIComponent(filePath);
+      filePath = path.normalize(filePath);
+      console.log('   → Factory resolved path:', filePath);
+
+      // Verify directory access permissions (security boundary)
+      if (!isUnderAllowedRoots(filePath)) {
+        const parent = toAbsoluteDir(filePath);
+        allowedRoots.add(parent);
+        console.log('   → Added parent to allowed roots:', parent);
+      }
+
+      // Ensure access (especially for macOS TCC)
+      const hasAccess = await ensureAccessToPath(filePath);
+      if (!hasAccess) {
+        console.warn('   → Access denied for path:', filePath);
+        return new Response('Access Denied', { status: 403 });
+      }
+
+      // Convert to proper file URL for net.fetch to handle spaces and special chars
+      // This is the robust way to hand off to Chromium's net layer
+      const fileUrl = url.pathToFileURL(filePath).toString();
+      console.log('   → Fetching via net.fetch:', fileUrl);
+      
+      return net.fetch(fileUrl);
     } catch (error) {
-      console.error('Protocol handler error:', error);
-      callback({ error: -2 }); // FAILED
+      console.error('   → Factory protocol error:', error);
+      return new Response('Internal Server Error', { status: 500 });
     }
   });
   
