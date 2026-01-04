@@ -452,6 +452,11 @@ app.whenReady().then(async () => {
     backendAdapter.setMainWindow(mainWindow);
   }
 
+  // Signal that the main process has completed initialization for smoke tests
+  if (process.env.SMOKE_TEST === 'true') {
+    console.log(' MAIN PROCESS: Smoke test ready signal');
+  }
+
   // Auto-update initialization
   // Runtime environment detection is done at module level (isWindowsStore constant)
   
