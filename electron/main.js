@@ -2,7 +2,7 @@ console.log(' MAIN PROCESS: main.js file is being executed!');
 console.log(' MAIN PROCESS: Node.js version:', process.version);
 console.log(' MAIN PROCESS: Electron version:', process.versions.electron);
 
-const { app, BrowserWindow, ipcMain, protocol, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol, dialog, Menu, Tray, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -452,6 +452,76 @@ app.whenReady().then(async () => {
   });
   
   createWindow();
+
+  // Implement Tray Icon
+  try {
+    const isWin = process.platform === 'win32';
+    const isMac = process.platform === 'darwin';
+    const appPath = app.getAppPath();
+    let iconFolder, iconExt;
+    
+    if (isWin) {
+      iconFolder = 'win';
+      iconExt = 'ico';
+    } else if (isMac) {
+      iconFolder = 'mac';
+      iconExt = 'icns';
+    } else {
+      // Standard Linux/Unix path
+      iconFolder = 'png';
+      iconExt = 'png';
+    }
+
+    // In production (ASAR), app.getAppPath() returns the asar path.
+    // We need to ensure we point to the build folder which is included in the files list.
+    const trayIconPath = path.join(appPath, 'build', 'icons', iconFolder, `icon.${iconExt}`);
+    console.log(' MAIN PROCESS: Creating tray with icon:', trayIconPath);
+    
+    if (fs.existsSync(trayIconPath)) {
+      const trayIcon = nativeImage.createFromPath(trayIconPath);
+      // Set global variable to prevent garbage collection
+      global.tray = new Tray(trayIcon);
+      
+      const contextMenu = Menu.buildFromTemplate([
+        { 
+          label: 'Show App', 
+          click: () => {
+            if (mainWindow) {
+              mainWindow.show();
+              mainWindow.focus();
+            } else {
+              createWindow();
+            }
+          } 
+        },
+        { type: 'separator' },
+        { 
+          label: 'Quit', 
+          click: () => {
+            app.isQuitting = true;
+            app.quit();
+          } 
+        }
+      ]);
+
+      global.tray.setToolTip('Gen Image Factory');
+      global.tray.setContextMenu(contextMenu);
+      
+      global.tray.on('double-click', () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        } else {
+          createWindow();
+        }
+      });
+      console.log(' MAIN PROCESS: Tray icon created successfully');
+    } else {
+      console.warn(' MAIN PROCESS: Tray icon path does not exist:', trayIconPath);
+    }
+  } catch (trayErr) {
+    console.error(' MAIN PROCESS: Failed to create tray icon:', trayErr);
+  }
   
   // Update BackendAdapter with mainWindow reference for event sending
   if (backendAdapter && mainWindow) {
@@ -537,9 +607,9 @@ app.whenReady().then(async () => {
 
 // Quit when all windows are closed
 app.on('window-all-closed', () => {
-  // On macOS it is common for applications and their menu bar
-  // to stay active until the user quits explicitly with Cmd + Q
-  if (process.platform !== 'darwin') {
+  // We keep the app running even if all windows are closed to allow tray interaction
+  // unless the user explicitly quits via the tray menu or Cmd+Q
+  if (process.platform !== 'darwin' && app.isQuitting) {
     app.quit();
   }
 });
