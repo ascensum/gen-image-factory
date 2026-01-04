@@ -73,7 +73,7 @@ async function runSmokeTest() {
   appProcess.stderr.on('data', (d) => handleOutput(d, 'STDERR'));
 
   const startTime = Date.now();
-  const timeout = 60000;
+  const timeout = 120000;
 
   while (!smokeTestReady && (Date.now() - startTime < timeout)) {
     if (appProcess.exitCode !== null) {

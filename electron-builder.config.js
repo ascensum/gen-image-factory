@@ -31,7 +31,11 @@ const config = {
     'electron/**/*',
     'src/**/*',
     'build/**/*',
-    'package.json'
+    'package.json',
+    'node_modules/**/*',
+    '!**/node_modules/*/{test,tests,testing,doc,docs,example,examples}/**/*',
+    '!**/node_modules/*.d.ts',
+    '!**/node_modules/.bin'
   ],
   mac: {
     icon: 'icons/mac/icon.icns',
