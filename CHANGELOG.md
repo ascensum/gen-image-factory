@@ -32,6 +32,15 @@ To ensure proper categorization in release notes, use Conventional Commits forma
 
 Dependabot PRs are automatically labeled with `dependencies` and `automated`, and will appear under "🛡️ Security & Dependencies" in release notes.
 
+## [1.1.1] - 2026-01-04
+
+### Fixed
+- Implemented `factory://` protocol for secure local resource access, resolving "Not allowed to load local resource" errors in signed Windows builds
+- Refined cross-platform tray icon logic with absolute pathing to ensure icons appear correctly on Windows, macOS, and Linux
+- Fixed bundling gaps by adding missing `color` dependencies and ensuring `node_modules` are correctly included in the ASAR
+- Updated test mocks to support `protocol.handle` and latest Electron features
+- Increased smoke test timeout to improve CI reliability on slower environments
+
 ## [1.1.0] - 2026-01-02
 
 ### Added

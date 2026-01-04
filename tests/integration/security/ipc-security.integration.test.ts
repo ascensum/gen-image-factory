@@ -61,18 +61,18 @@ describe('IPC & Electron Security Integration', () => {
   })
 
   describe('Protocol hardening', () => {
-    it('registers the local-file scheme as secure with CSP enforcement', () => {
+    it('registers the factory scheme as secure with CSP enforcement', () => {
       const privileged = mainHarness.privilegedSchemes[0] as Array<{
         scheme: string
         privileges: Record<string, boolean>
       }>
-      expect(privileged?.[0]?.scheme).toBe('local-file')
+      expect(privileged?.[0]?.scheme).toBe('factory')
       expect(privileged?.[0]?.privileges?.secure).toBe(true)
       expect(privileged?.[0]?.privileges?.bypassCSP).toBe(false)
     })
 
     it('installs the guarded file protocol handler', () => {
-      expect(mainHarness.protocolHandlers.has('local-file')).toBe(true)
+      expect(mainHarness.protocolHandlers.has('factory')).toBe(true)
     })
   })
 

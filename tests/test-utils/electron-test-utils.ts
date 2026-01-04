@@ -195,6 +195,9 @@ export const runMainProcessWithMocks = async (
     registerFileProtocol: vi.fn((scheme: string, handler: (...args: any[]) => any) => {
       protocolHandlers.set(scheme, vi.fn(handler))
     }),
+    handle: vi.fn((scheme: string, handler: (...args: any[]) => any) => {
+      protocolHandlers.set(scheme, vi.fn(handler))
+    }),
   }
 
   const dialog = {
@@ -260,10 +263,22 @@ export const runMainProcessWithMocks = async (
         ipcMain,
         protocol,
         dialog,
+        Menu: {
+          buildFromTemplate: vi.fn(() => ({})),
+          setApplicationMenu: vi.fn(),
+        },
+        Tray: vi.fn().mockImplementation(() => ({
+          setToolTip: vi.fn(),
+          setContextMenu: vi.fn(),
+          on: vi.fn(),
+        })),
         nativeImage: {
           createFromPath: vi.fn(() => ({
             isEmpty: () => false,
           })),
+        },
+        net: {
+          fetch: vi.fn(),
         },
       }
     }
@@ -300,6 +315,7 @@ export const runMainProcessWithMocks = async (
         return Promise.resolve()
       },
     })),
+    getAppPath: vi.fn(() => projectRoot),
     getPath: vi.fn(() => '/tmp'),
     quit: vi.fn(),
     on: vi.fn((event: string, handler: (...args: any[]) => void) => {
