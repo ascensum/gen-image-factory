@@ -337,21 +337,13 @@ jobs:
             npx electron-builder --config electron-builder.config.js --linux --publish never
           }
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
       - name: Run Production Smoke Test
         env:
           ELECTRON_DISABLE_SANDBOX: 1
           CI: true
           NODE_ENV: production
           SKIP_WEB_SERVER: 1
-        run: |
-          if [ "${{ matrix.platform }}" = "linux" ]; then
-            xvfb-run --auto-servernum --server-args="-screen 0 1280x1024x24" npx playwright test tests/e2e/workflows/production-smoke.e2e.test.js --project=chromium
-          else
-            npx playwright test tests/e2e/workflows/production-smoke.e2e.test.js --project=chromium
-          fi
+        run: npx playwright test tests/e2e/workflows/production-smoke.e2e.test.js --project=chromium
         shell: bash
 
       - name: Generate SHA-256 checksums

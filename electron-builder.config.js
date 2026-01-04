@@ -16,6 +16,7 @@ const isStoreBuild =
 const config = {
   appId: 'com.genimage.factory',
   productName: 'GenImageFactory',
+  executableName: 'GenImageFactory',
   directories: {
     output: 'dist',
     buildResources: 'build'

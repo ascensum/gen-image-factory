@@ -429,6 +429,12 @@ app.whenReady().then(async () => {
     console.error(' Error stack:', error.stack);
   }
 
+  // Signal that the main process has completed critical initialization for smoke tests
+  // We emit this before creating windows or starting updates to ensure reliability in CI
+  if (process.env.SMOKE_TEST === 'true') {
+    console.log(' MAIN PROCESS: Smoke test ready signal');
+  }
+
   // Hot-refresh protocol roots on demand (no restart required)
   ipcMain.handle('protocol:refresh-roots', async (event, extraPaths = []) => {
     await refreshAllowedRoots(extraPaths);
@@ -450,11 +456,6 @@ app.whenReady().then(async () => {
   // Update BackendAdapter with mainWindow reference for event sending
   if (backendAdapter && mainWindow) {
     backendAdapter.setMainWindow(mainWindow);
-  }
-
-  // Signal that the main process has completed initialization for smoke tests
-  if (process.env.SMOKE_TEST === 'true') {
-    console.log(' MAIN PROCESS: Smoke test ready signal');
   }
 
   // Auto-update initialization

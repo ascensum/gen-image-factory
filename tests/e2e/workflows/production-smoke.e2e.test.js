@@ -33,8 +33,9 @@ const getExecutablePath = () => {
     if (fs.existsSync(winPath)) return winPath
   } else if (process.platform === 'linux') {
     const paths = [
-      path.join(distDir, 'linux-unpacked', 'GenImageFactory'),
-      path.join(distDir, 'linux-x64-unpacked', 'GenImageFactory')
+      path.join(distDir, 'linux-unpacked', 'gen-image-factory'),
+      path.join(distDir, 'linux-x64-unpacked', 'gen-image-factory'),
+      path.join(distDir, 'linux-unpacked', 'GenImageFactory')
     ]
     for (const p of paths) {
       if (fs.existsSync(p)) return p
@@ -48,9 +49,18 @@ test.describe('Production Smoke Test (Main Process Only)', () => {
     const executablePath = getExecutablePath()
     
     if (!executablePath) {
-      console.error('ERROR: Packaged executable not found!')
-      test.skip()
-      return
+      const distDir = path.join(projectRoot, 'dist')
+      console.error(`ERROR: Packaged executable not found in ${distDir}!`)
+      if (fs.existsSync(distDir)) {
+        console.log('Contents of dist directory:')
+        try {
+          const files = fs.readdirSync(distDir, { recursive: true })
+          console.log(files.join('\n'))
+        } catch (_e) {
+          console.log('Failed to list dist directory')
+        }
+      }
+      throw new Error('Packaged executable not found! Smoke test cannot proceed.')
     }
     
     console.log(`Testing production executable at: ${executablePath}`)
