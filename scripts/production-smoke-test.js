@@ -9,10 +9,12 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { spawn } = require('node:child_process');
 
-const projectRoot = path.resolve(__dirname, '../../..');
+const projectRoot = path.resolve(__dirname, '..');
 
 const getExecutablePath = () => {
   const distDir = path.join(projectRoot, 'dist');
+  console.log(`Checking for dist directory at: ${distDir}`);
+  
   if (process.platform === 'darwin') {
     const paths = [
       path.join(distDir, 'mac', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory'),
@@ -28,9 +30,13 @@ const getExecutablePath = () => {
     const paths = [
       path.join(distDir, 'linux-unpacked', 'GenImageFactory'),
       path.join(distDir, 'linux-x64-unpacked', 'GenImageFactory'),
-      path.join(distDir, 'linux-unpacked', 'gen-image-factory')
+      path.join(distDir, 'linux-unpacked', 'gen-image-factory'),
+      path.join(distDir, 'linux-x64-unpacked', 'gen-image-factory')
     ];
-    for (const p of paths) if (fs.existsSync(p)) return p;
+    for (const p of paths) {
+      console.log(`Checking Linux path: ${p}`);
+      if (fs.existsSync(p)) return p;
+    }
   }
   return null;
 };
