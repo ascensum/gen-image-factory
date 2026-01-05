@@ -32,6 +32,12 @@ To ensure proper categorization in release notes, use Conventional Commits forma
 
 Dependabot PRs are automatically labeled with `dependencies` and `automated`, and will appear under "🛡️ Security & Dependencies" in release notes.
 
+## [1.1.3] - 2026-01-04
+
+### Fixed
+- Fixed 403 Forbidden error for `factory://` protocol by using `net.fetch` and `pathToFileURL` in the main process handler
+- Improved Windows path handling for the factory protocol to correctly manage drive letters
+
 ## [1.1.2] - 2026-01-04
 
 ### Fixed

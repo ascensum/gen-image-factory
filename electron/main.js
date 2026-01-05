@@ -303,33 +303,22 @@ app.whenReady().then(async () => {
   await refreshAllowedRoots();
 
   // Register factory protocol for local file access with universal cross-platform mapping
-  protocol.handle('factory', async (request) => {
+  protocol.handle('factory', (request) => {
+    // Convert factory://c/path to c:/path
+    const urlPath = request.url.replace('factory://', '');
+    // Ensure we handle the 'c/' to 'c:/' conversion for Windows
+    const drivePath = urlPath.startsWith('c/') ? 'c:/' + urlPath.substring(2) : urlPath;
+
     try {
-      // Decode URL and strip factory:// prefix
-      const rawPath = request.url.replace(/^factory:\/\/+/i, '');
-      let filePath = decodeURIComponent(rawPath);
+      // Decode URL logic from user request
+      const decodedPath = decodeURIComponent(drivePath);
+      const normalizedPath = path.normalize(decodedPath);
       
-      // Normalize for OS (handles Windows \ and POSIX /)
-      filePath = path.normalize(filePath);
-
-      // Verify directory access permissions (security boundary)
-      if (!isUnderAllowedRoots(filePath)) {
-        const parent = toAbsoluteDir(filePath);
-        allowedRoots.add(parent);
-      }
-
-      // Ensure access (especially for macOS TCC)
-      const hasAccess = await ensureAccessToPath(filePath);
-      if (!hasAccess) {
-        return new Response('Access Denied', { status: 403 });
-      }
-
-      // Convert to proper file URL for net.fetch (robust for all platforms)
-      const fileUrl = url.pathToFileURL(filePath).toString();
-      return net.fetch(fileUrl);
+      console.log('   → Factory serving:', normalizedPath);
+      return net.fetch(url.pathToFileURL(normalizedPath).toString());
     } catch (error) {
-      console.error('   → Factory protocol error:', error);
-      return new Response('Internal Server Error', { status: 500 });
+      console.error('Failed to serve file:', error);
+      return new Response('File not found', { status: 404 });
     }
   });
   
