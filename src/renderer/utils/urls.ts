@@ -1,24 +1,35 @@
+/**
+ * Utility for building cross-platform local file URLs using the factory:// protocol.
+ */
+
 export function buildLocalFileUrl(input?: string | null): string {
   if (!input) return '';
   
-  // If already a factory or local-file URL, normalize it
-  if (typeof input === 'string' && (input.startsWith('factory://') || input.startsWith('local-file://'))) {
-    const rawPath = input.replace(/^(factory|local-file):\/\/+/,
- '');
+  const strInput = String(input);
+
+  // If already a factory URL, normalize it
+  if (strInput.startsWith('factory://')) {
+    const rawPath = strInput.replace(/^factory:\/\/+/, '');
     const decodedPath = decodeURIComponent(rawPath);
     return constructFactoryUrl(decodedPath);
   }
 
   // If a file:// URL was passed, convert to absolute path first
-  if (typeof input === 'string' && input.startsWith('file://')) {
-    const rawPath = input.replace(/^file:\/\/+/,
- '');
+  if (strInput.startsWith('file://')) {
+    const rawPath = strInput.replace(/^file:\/\/+/, '');
+    const decodedPath = decodeURIComponent(rawPath);
+    return constructFactoryUrl(decodedPath);
+  }
+
+  // Legacy local-file support (migrate to factory internally)
+  if (strInput.startsWith('local-file://')) {
+    const rawPath = strInput.replace(/^local-file:\/\/+/, '');
     const decodedPath = decodeURIComponent(rawPath);
     return constructFactoryUrl(decodedPath);
   }
 
   // Otherwise treat as a filesystem path
-  return constructFactoryUrl(String(input));
+  return constructFactoryUrl(strInput);
 }
 
 /**
@@ -28,21 +39,20 @@ export function buildLocalFileUrl(input?: string | null): string {
  * - POSIX: /home/user -> factory:///home/user
  */
 function constructFactoryUrl(p: string): string {
-  // Normalize slashes to forward slashes for the URI
+  // 1. Normalize all slashes to forward slashes for the URI
   let normalized = p.replace(/\\/g, '/');
   
-  // macOS/Linux absolute path: /home/... -> factory:///home/... (3 slashes)
-  // Windows absolute path: C:/... -> factory://C:/... (2 slashes)
-  
+  // 2. Identify Windows drive letter (e.g., C:/...)
   const isWindowsDrive = /^[a-zA-Z]:/.test(normalized);
   
-  // Remove all leading slashes to start clean
+  // 3. Remove all leading slashes to start from a clean state
   normalized = normalized.replace(/^\/+/, '');
   
   if (isWindowsDrive) {
+    // Windows: Resulting URI factory://C:/path/to/file
     return `factory://${normalized}`;
   } else {
-    // POSIX absolute path needs leading slash after factory://
+    // POSIX: Resulting URI factory:///home/user/file
     return `factory:///${normalized}`;
   }
 }

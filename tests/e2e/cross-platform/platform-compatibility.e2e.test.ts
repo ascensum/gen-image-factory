@@ -212,7 +212,7 @@ test.describe('Cross-Platform Compatibility - Story 1.1', () => {
 
   test.describe('File System Operations', () => {
     for (const scenario of PLATFORM_CASES) {
-      test(`should normalize local-file URLs on ${scenario.label}`, async ({ page }) => {
+      test(`should normalize factory URLs on ${scenario.label}`, async ({ page }) => {
         await page.goto(platformHarnessUrl(scenario.id))
         await page.waitForSelector('[data-testid="platform-harness"]')
         const protocolPath = page.getByTestId('platform-protocol-path')

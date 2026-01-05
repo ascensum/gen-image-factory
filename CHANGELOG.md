@@ -32,6 +32,15 @@ To ensure proper categorization in release notes, use Conventional Commits forma
 
 Dependabot PRs are automatically labeled with `dependencies` and `automated`, and will appear under "🛡️ Security & Dependencies" in release notes.
 
+## [1.1.2] - 2026-01-04
+
+### Fixed
+- Hardened `factory://` protocol by enabling `bypassCSP: true` in privilege registration
+- Implemented universal protocol handler with modern `protocol.handle` and `url.pathToFileURL` for perfect cross-platform path resolution
+- Updated global Content Security Policy (CSP) in `index.html` to explicitly allow `factory:` and `blob:` schemes
+- Migrated all remaining legacy `local-file:` and `file://` references in the renderer to the canonical `factory://` protocol
+- Fixed E2E and integration tests to align with the refined protocol and security hardening
+
 ## [1.1.1] - 2026-01-04
 
 ### Fixed

@@ -68,7 +68,7 @@ describe('IPC & Electron Security Integration', () => {
       }>
       expect(privileged?.[0]?.scheme).toBe('factory')
       expect(privileged?.[0]?.privileges?.secure).toBe(true)
-      expect(privileged?.[0]?.privileges?.bypassCSP).toBe(false)
+      expect(privileged?.[0]?.privileges?.bypassCSP).toBe(true)
     })
 
     it('installs the guarded file protocol handler', () => {

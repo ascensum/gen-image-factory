@@ -25,7 +25,7 @@ try {
         secure: true,
         supportFetchAPI: true,
         corsEnabled: false,
-        bypassCSP: false,
+        bypassCSP: true, // Allow bypassing CSP for local resources
         stream: true
       }
     }
@@ -302,49 +302,30 @@ app.whenReady().then(async () => {
   // Initialize allowed roots before registering protocol
   await refreshAllowedRoots();
 
-  // Register factory protocol for local file access with robust cross-platform mapping
-  // Maps factory://C:/path/to/img.png to local filesystem (Windows)
-  // Maps factory:///home/user/img.png to local filesystem (POSIX)
+  // Register factory protocol for local file access with universal cross-platform mapping
   protocol.handle('factory', async (request) => {
-    console.log('Factory protocol request:', request.url);
     try {
-      const parsedUrl = new URL(request.url);
-      let filePath;
+      // Decode URL and strip factory:// prefix
+      const rawPath = request.url.replace(/^factory:\/\/+/i, '');
+      let filePath = decodeURIComponent(rawPath);
       
-      if (process.platform === 'win32') {
-        // On Windows, factory://C:/path -> hostname is 'c:', pathname is '/path'
-        // factory:///C:/path -> hostname is empty, pathname is '/C:/path'
-        filePath = parsedUrl.hostname 
-          ? path.join(parsedUrl.hostname, parsedUrl.pathname)
-          : (parsedUrl.pathname.startsWith('/') ? parsedUrl.pathname.slice(1) : parsedUrl.pathname);
-      } else {
-        // POSIX: factory:///path -> hostname is empty, pathname is '/path'
-        filePath = parsedUrl.pathname;
-      }
-      
-      filePath = decodeURIComponent(filePath);
+      // Normalize for OS (handles Windows \ and POSIX /)
       filePath = path.normalize(filePath);
-      console.log('   → Factory resolved path:', filePath);
 
       // Verify directory access permissions (security boundary)
       if (!isUnderAllowedRoots(filePath)) {
         const parent = toAbsoluteDir(filePath);
         allowedRoots.add(parent);
-        console.log('   → Added parent to allowed roots:', parent);
       }
 
       // Ensure access (especially for macOS TCC)
       const hasAccess = await ensureAccessToPath(filePath);
       if (!hasAccess) {
-        console.warn('   → Access denied for path:', filePath);
         return new Response('Access Denied', { status: 403 });
       }
 
-      // Convert to proper file URL for net.fetch to handle spaces and special chars
-      // This is the robust way to hand off to Chromium's net layer
+      // Convert to proper file URL for net.fetch (robust for all platforms)
       const fileUrl = url.pathToFileURL(filePath).toString();
-      console.log('   → Fetching via net.fetch:', fileUrl);
-      
       return net.fetch(fileUrl);
     } catch (error) {
       console.error('   → Factory protocol error:', error);

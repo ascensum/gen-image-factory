@@ -21,8 +21,8 @@
     worker-src 'self' blob:;
     child-src 'self' blob:;
     style-src 'self' 'unsafe-inline' http://localhost:*;
-    connect-src 'self' http://localhost:* ws://localhost:*;
-    img-src 'self' data: blob: local-file:;
+    connect-src 'self' http://localhost:* ws://localhost:* factory:;
+    img-src 'self' data: blob: factory:;
     font-src 'self' data:;
   ">
 </head>
