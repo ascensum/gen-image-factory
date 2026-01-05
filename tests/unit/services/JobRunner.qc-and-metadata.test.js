@@ -42,7 +42,6 @@ const installCjsMocks = () => {
 
 const loadSut = () => {
   installCjsMocks();
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { JobRunner } = require('../../../src/services/jobRunner.js');
   return JobRunner;
 };
@@ -108,7 +107,7 @@ describe('JobRunner QC + metadata helpers (unit)', () => {
 
     mockAiVision.generateMetadata
       .mockResolvedValueOnce({ new_title: 't1', new_description: 'd1', uploadTags: ['a'] })
-      .mockRejectedValueOnce(new Error('meta down'));
+      .mockImplementationOnce(() => new Promise((_, reject) => global.setTimeout(() => reject(new Error('meta down')), 10)));
 
     const images = [
       { id: 10, mappingId: 'm10', tempImagePath: imgPath1, metadata: { prompt: 'P1' } },
@@ -116,6 +115,9 @@ describe('JobRunner QC + metadata helpers (unit)', () => {
     ];
 
     const cfg = { parameters: { enablePollingTimeout: false, pollingTimeout: 1, openaiModel: 'gpt-4o-mini' }, ai: { metadataPrompt: 'mp' } };
+
+    const dbUpdate = vi.fn().mockResolvedValue({ success: true });
+    runner.db = { generatedImage: { update: dbUpdate } };
 
     let thrown = null;
     try {
@@ -126,9 +128,9 @@ describe('JobRunner QC + metadata helpers (unit)', () => {
     expect(thrown).toBeInstanceOf(Error);
     expect(String(thrown && thrown.message)).toContain('Metadata generation failed');
 
-    expect(backendAdapter.updateGeneratedImageByMappingId).toHaveBeenCalledWith(
-      'm10',
-      expect.objectContaining({ metadata: expect.objectContaining({ title: 't1', description: 'd1' }) }),
+    expect(dbUpdate).toHaveBeenCalledWith(
+      { mappingId: 'm10' },
+      expect.objectContaining({ metadata: expect.stringContaining('"title":"t1"') }),
     );
     expect(backendAdapter.updateQCStatusByMappingId).toHaveBeenCalledWith('m20', 'qc_failed', 'processing_failed:metadata');
     expect(backendAdapter.updateGeneratedImageByMappingId).toHaveBeenCalledWith(

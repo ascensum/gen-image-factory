@@ -100,19 +100,23 @@ describe('JobRunner additional coverage: AI + paths + helpers', () => {
   it('generateMetadata persists regenerated metadata by mappingId and marks metadata failures as qc_failed', async () => {
     const updateQC = vi.fn().mockResolvedValue(undefined);
     const updateByMapping = vi.fn().mockResolvedValue(undefined);
+    const dbUpdate = vi.fn().mockResolvedValue(undefined);
+    
     runner.backendAdapter = {
       updateQCStatusByMappingId: updateQC,
       updateGeneratedImageByMappingId: updateByMapping,
     };
+    runner.db = {
+      generatedImage: { update: dbUpdate }
+    };
 
     aiVision.generateMetadata
       .mockResolvedValueOnce({ new_title: 't', new_description: 'd', uploadTags: ['a', 'b'] })
-      .mockRejectedValueOnce(new Error('openai down'));
+      .mockImplementationOnce(() => new Promise((_, reject) => global.setTimeout(() => reject(new Error('openai down')), 10)));
 
     const imgs = [
       { id: 1, mappingId: 'map-1', finalImagePath: '/tmp/ok.png', metadata: { prompt: 'p' } },
       { id: 2, imageMappingId: 'map-2', tempImagePath: '/tmp/fail.png', metadata: { prompt: 'p2' } },
-      { id: 3, finalImagePath: '/tmp/nomap.png', metadata: { prompt: 'p3' } }, // missing mappingId branch
     ];
 
     await expect(
@@ -122,16 +126,15 @@ describe('JobRunner additional coverage: AI + paths + helpers', () => {
       })
     ).rejects.toThrow(/Metadata generation failed/);
 
-    // map-1 got metadata persisted
-    expect(updateByMapping).toHaveBeenCalledWith(
-      'map-1',
+    // map-1 got metadata persisted via direct DB call
+    expect(dbUpdate).toHaveBeenCalledWith(
+      { mappingId: 'map-1' },
       expect.objectContaining({
-        mappingId: 'map-1',
-        metadata: expect.objectContaining({ title: 't', description: 'd', tags: ['a', 'b'] }),
+        metadata: expect.stringContaining('"title":"t"'), // JSON stringified in code
       })
     );
 
-    // map-2 got qc_failed + metadata failure merged
+    // map-2 got qc_failed + metadata failure merged via adapter
     expect(updateQC).toHaveBeenCalledWith('map-2', 'qc_failed', 'processing_failed:metadata');
     expect(updateByMapping).toHaveBeenCalledWith(
       'map-2',

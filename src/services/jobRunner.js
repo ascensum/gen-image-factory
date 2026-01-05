@@ -2925,40 +2925,43 @@ class JobRunner extends EventEmitter {
           });
           
           // Update the image in the database with new metadata using mappingId
-          if (this.backendAdapter && image.mappingId) {
-            try {
-              // Find the database record by mappingId and update it
-              const updateResult = await this.backendAdapter.updateGeneratedImageByMappingId(image.mappingId, image);
-              this._logStructured({
-                level: 'debug',
-                stepName: 'image_generation',
-                subStep: 'metadata_db_update',
-                message: `Updated metadata in database for image with mappingId ${image.mappingId}`,
-                metadata: { 
-                  mappingId: image.mappingId, 
-                  title: result.new_title, 
-                  description: result.new_description,
-                  tags: result.uploadTags,
-                  fullMetadata: image.metadata,
-                  updateResult 
-                }
-              });
-            } catch (dbError) {
-              this._logStructured({
-                level: 'warn',
-                stepName: 'image_generation',
-                subStep: 'metadata_db_update_warning',
-                message: `Warning: Could not update metadata in database for image with mappingId ${image.mappingId}`,
-                metadata: { mappingId: image.mappingId, error: dbError.message }
-              });
-            }
-          } else {
+          // Invariant Check: mappingId must be present
+          if (!image.mappingId) {
+            throw new Error(`Invariant failed: Cannot update metadata - missing mappingId for image ${image.id}`);
+          }
+
+          try {
+            // Update database with new metadata
+            const updateResult = await this.db.generatedImage.update(
+              { mappingId: image.mappingId },
+              { 
+                metadata: JSON.stringify(image.metadata),
+                generationPrompt: result.new_prompt // Update prompt if rewritten
+              }
+            );
+            
+            this._logStructured({
+              level: 'debug',
+              stepName: 'image_generation',
+              subStep: 'metadata_db_updated',
+              message: `Image metadata object updated for image ${image.id}`,
+              metadata: { 
+                imageId: image.id, 
+                mappingId: image.mappingId,
+                title: result.new_title,
+                description: result.new_description,
+                tags: result.uploadTags,
+                fullMetadata: image.metadata,
+                updateResult 
+              }
+            });
+          } catch (dbError) {
             this._logStructured({
               level: 'warn',
               stepName: 'image_generation',
-              subStep: 'metadata_missing_mapping_id',
-              message: `Cannot update metadata - missing mappingId for image`,
-              metadata: { image: { mappingId: image.mappingId, id: image.id } }
+              subStep: 'metadata_db_update_warning',
+              message: `Warning: Could not update metadata in database for image with mappingId ${image.mappingId}`,
+              metadata: { mappingId: image.mappingId, error: dbError.message }
             });
           }
         } else {

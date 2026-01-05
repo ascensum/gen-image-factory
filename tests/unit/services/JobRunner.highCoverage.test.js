@@ -64,7 +64,6 @@ const installCjsMocks = () => {
 
 const loadJobRunner = () => {
   installCjsMocks();
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { JobRunner } = require('../../../src/services/jobRunner.js');
   return JobRunner;
 };
@@ -317,12 +316,12 @@ describe('JobRunner - coverage elevation (unit)', () => {
     fs.writeFileSync(path.join(tmpDir, 'img.png'), 'x', 'utf8');
 
     // Saved image feed used by getSavedImagesForExecution()
-    backendAdapter.getAllGeneratedImages.mockResolvedValueOnce([
+    const mockImagesMap2 = [
       { id: 1, executionId: 123, imageMappingId: 'map-2', mappingId: 'map-2', tempImagePath: path.join(tmpDir, 'img.png'), qcStatus: 'pending', metadata: { prompt: 'P' } },
-    ]);
-    backendAdapter.getAllGeneratedImages.mockResolvedValueOnce([
-      { id: 1, executionId: 123, imageMappingId: 'map-2', mappingId: 'map-2', tempImagePath: path.join(tmpDir, 'img.png'), qcStatus: 'pending', metadata: { prompt: 'P' } },
-    ]);
+    ];
+    backendAdapter.getAllGeneratedImages.mockResolvedValueOnce(mockImagesMap2);
+    backendAdapter.getAllGeneratedImages.mockResolvedValueOnce(mockImagesMap2);
+    backendAdapter.getGeneratedImagesByExecution.mockResolvedValue({ success: true, images: mockImagesMap2 });
 
     mockAiVision.generateMetadata.mockResolvedValueOnce({ new_title: 'nt', new_description: 'nd', uploadTags: ['x', 'y'] });
     mockAiVision.runQualityCheck.mockResolvedValueOnce({ passed: false, reason: 'bad' });
@@ -336,11 +335,13 @@ describe('JobRunner - coverage elevation (unit)', () => {
     };
 
     runner.jobConfiguration = config;
+    runner.db = { generatedImage: { update: vi.fn().mockResolvedValue({ success: true }) } };
+    
     await runner.executeJob(config, 'job-x');
 
-    expect(backendAdapter.updateGeneratedImageByMappingId).toHaveBeenCalledWith(
-      'map-2',
-      expect.objectContaining({ metadata: expect.any(Object) }),
+    expect(runner.db.generatedImage.update).toHaveBeenCalledWith(
+      { mappingId: 'map-2' },
+      expect.objectContaining({ metadata: expect.any(String) }),
     );
     expect(backendAdapter.updateQCStatusByMappingId).toHaveBeenCalledWith('map-2', 'qc_failed', 'bad');
 

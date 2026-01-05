@@ -52,7 +52,6 @@ const installCjsMocks = () => {
 
 const loadSut = () => {
   installCjsMocks();
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { JobRunner } = require('../../../src/services/jobRunner.js');
   return JobRunner;
 };
@@ -140,36 +139,34 @@ describe('JobRunner.executeJob (QC + metadata enabled, integration-like)', () =>
     ]);
 
     // Saved images fetched during post-processing
+    const mockImages = [
+      {
+        id: 1,
+        executionId: 202,
+        imageMappingId: 'map-1',
+        mappingId: 'map-1',
+        tempImagePath,
+        finalImagePath: null,
+        qcStatus: 'pending',
+        metadata: { prompt: 'P' },
+      },
+    ];
+
     backendAdapter.getAllGeneratedImages.mockResolvedValueOnce({
       success: true,
-      images: [
-        {
-          id: 1,
-          executionId: 202,
-          imageMappingId: 'map-1',
-          mappingId: 'map-1',
-          tempImagePath,
-          finalImagePath: null,
-          qcStatus: 'pending',
-          metadata: { prompt: 'P' },
-        },
-      ],
+      images: mockImages,
     });
+    
+    // Ensure getGeneratedImagesByExecution also returns the images
+    backendAdapter.getGeneratedImagesByExecution.mockResolvedValue({
+      success: true,
+      images: mockImages,
+    });
+    
     // Some flows re-fetch; keep deterministic
     backendAdapter.getAllGeneratedImages.mockResolvedValueOnce({
       success: true,
-      images: [
-        {
-          id: 1,
-          executionId: 202,
-          imageMappingId: 'map-1',
-          mappingId: 'map-1',
-          tempImagePath,
-          finalImagePath: null,
-          qcStatus: 'pending',
-          metadata: { prompt: 'P' },
-        },
-      ],
+      images: mockImages,
     });
 
     mockAiVision.runQualityCheck.mockResolvedValueOnce({ passed: true, reason: 'ok' });
@@ -183,6 +180,10 @@ describe('JobRunner.executeJob (QC + metadata enabled, integration-like)', () =>
       ai: { runQualityCheck: true, runMetadataGen: true, qualityCheckPrompt: 'qc', metadataPrompt: 'mp' },
     };
 
+    runner.db = {
+      generatedImage: { update: vi.fn().mockResolvedValue({ success: true }) }
+    };
+
     const startRes = await runner.startJob(config);
     expect(startRes.success).toBe(true);
     await runner.currentJob;
@@ -192,10 +193,11 @@ describe('JobRunner.executeJob (QC + metadata enabled, integration-like)', () =>
     expect(backendAdapter.updateQCStatusByMappingId).toHaveBeenCalledWith('map-1', 'approved', 'ok');
 
     expect(mockAiVision.generateMetadata).toHaveBeenCalled();
-    expect(backendAdapter.updateGeneratedImageByMappingId).toHaveBeenCalledWith(
-      'map-1',
+    // Success path uses direct DB update with JSON stringified metadata
+    expect(runner.db.generatedImage.update).toHaveBeenCalledWith(
+      { mappingId: 'map-1' },
       expect.objectContaining({
-        metadata: expect.objectContaining({ title: 't', description: 'd' }),
+        metadata: expect.stringContaining('"title":"t"'),
       }),
     );
   });

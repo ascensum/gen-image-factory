@@ -32,6 +32,11 @@ To ensure proper categorization in release notes, use Conventional Commits forma
 
 Dependabot PRs are automatically labeled with `dependencies` and `automated`, and will appear under "🛡️ Security & Dependencies" in release notes.
 
+## [1.1.4] - 2026-01-04
+
+### Fixed
+- Restored metadata persistence by enforcing `mappingId` presence with a runtime invariant check, ensuring image metadata is reliably updated in the database
+
 ## [1.1.3] - 2026-01-04
 
 ### Fixed
