@@ -2925,15 +2925,19 @@ class JobRunner extends EventEmitter {
           });
           
           // Update the image in the database with new metadata using mappingId
+          // ARCHITECT NOTE (v1.1.5): Universal ID Bridge. mappingId (Runtime) || imageMappingId (Persisted).
+          // This allows metadata generation to work across Initial Runs, Retries, and Reruns with Custom Settings.
+          const mId = image.mappingId || image.imageMappingId;
+
           // Invariant Check: mappingId must be present
-          if (!image.mappingId) {
+          if (!mId) {
             throw new Error(`Invariant failed: Cannot update metadata - missing mappingId for image ${image.id}`);
           }
 
           try {
             // Update database with new metadata
             const updateResult = await this.db.generatedImage.update(
-              { mappingId: image.mappingId },
+              { mappingId: mId },
               { 
                 metadata: JSON.stringify(image.metadata),
                 generationPrompt: result.new_prompt // Update prompt if rewritten
@@ -2947,7 +2951,7 @@ class JobRunner extends EventEmitter {
               message: `Image metadata object updated for image ${image.id}`,
               metadata: { 
                 imageId: image.id, 
-                mappingId: image.mappingId,
+                mappingId: mId,
                 title: result.new_title,
                 description: result.new_description,
                 tags: result.uploadTags,
@@ -2960,8 +2964,8 @@ class JobRunner extends EventEmitter {
               level: 'warn',
               stepName: 'image_generation',
               subStep: 'metadata_db_update_warning',
-              message: `Warning: Could not update metadata in database for image with mappingId ${image.mappingId}`,
-              metadata: { mappingId: image.mappingId, error: dbError.message }
+              message: `Warning: Could not update metadata in database for image with mappingId ${mId}`,
+              metadata: { mappingId: mId, error: dbError.message }
             });
           }
         } else {

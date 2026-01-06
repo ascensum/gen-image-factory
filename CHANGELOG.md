@@ -32,6 +32,12 @@ To ensure proper categorization in release notes, use Conventional Commits forma
 
 Dependabot PRs are automatically labeled with `dependencies` and `automated`, and will appear under "🛡️ Security & Dependencies" in release notes.
 
+## [1.1.5] - 2026-01-05
+
+### Fixed
+- Implemented Universal ID Bridge for metadata generation, enabling reliable property resolution (`mappingId` vs `imageMappingId`) across Initial Runs, Retries, and Reruns (including Custom Settings)
+- Added architectural invariant protection to ensure metadata updates correctly target existing database records using persisted mapping IDs
+
 ## [1.1.4] - 2026-01-04
 
 ### Fixed
