@@ -82,18 +82,11 @@ describe('JobRunner v1.1.5 Lifecycle (Universal Metadata Bridge)', () => {
       metadata: { prompt: 'Original Prompt' }
     };
 
-    // 2. Setup DB Mock
-    const dbUpdateSpy = vi.fn().mockResolvedValue({ success: true });
-    runner.db = {
-      generatedImage: {
-        update: dbUpdateSpy
-      }
-    };
-    
-    // Mock backendAdapter for failure handling (though we expect success here)
+    // 2. Setup Backend Adapter Mock
+    const adapterUpdateSpy = vi.fn().mockResolvedValue({ success: true });
     runner.backendAdapter = {
       updateQCStatusByMappingId: vi.fn(),
-      updateGeneratedImageByMappingId: vi.fn()
+      updateGeneratedImageByMappingId: adapterUpdateSpy
     };
 
     // 3. Configure Custom Settings (Metadata Enabled)
@@ -111,11 +104,11 @@ describe('JobRunner v1.1.5 Lifecycle (Universal Metadata Bridge)', () => {
     await runner.generateMetadata([mockImage], customSettings);
 
     // 5. Verification
-    // Ensure the bridge worked: used imageMappingId ('legacy_map_101') for the update
-    expect(dbUpdateSpy).toHaveBeenCalledWith(
-      { mappingId: 'legacy_map_101' }, 
+    // Ensure the bridge worked: used imageMappingId ('legacy_map_101') for the update via backendAdapter
+    expect(adapterUpdateSpy).toHaveBeenCalledWith(
+      'legacy_map_101', 
       expect.objectContaining({
-        metadata: expect.stringContaining('"title":"New Title"')
+        metadata: expect.objectContaining({ title: 'New Title' })
       })
     );
     

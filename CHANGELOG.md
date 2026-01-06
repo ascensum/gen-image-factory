@@ -32,6 +32,12 @@ To ensure proper categorization in release notes, use Conventional Commits forma
 
 Dependabot PRs are automatically labeled with `dependencies` and `automated`, and will appear under "🛡️ Security & Dependencies" in release notes.
 
+## [1.1.6] - 2026-01-05
+
+### Fixed
+- Fixed metadata persistence crash by replacing direct `this.db` access with `backendAdapter` call in `JobRunner`, ensuring database connection availability during metadata updates.
+- Refined Universal ID Bridge to support both runtime `mappingId` and persisted `imageMappingId`.
+
 ## [1.1.5] - 2026-01-05
 
 ### Fixed

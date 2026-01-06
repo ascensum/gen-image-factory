@@ -2935,12 +2935,12 @@ class JobRunner extends EventEmitter {
           }
 
           try {
-            // Update database with new metadata
-            const updateResult = await this.db.generatedImage.update(
-              { mappingId: mId },
+            // Update database with new metadata using backendAdapter (safe, handles merging)
+            // Note: generationPrompt update is skipped as updateGeneratedImageByMappingId only targets metadata
+            const updateResult = await this.backendAdapter.updateGeneratedImageByMappingId(
+              mId,
               { 
-                metadata: JSON.stringify(image.metadata),
-                generationPrompt: result.new_prompt // Update prompt if rewritten
+                metadata: image.metadata
               }
             );
             

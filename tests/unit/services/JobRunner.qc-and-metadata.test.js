@@ -116,9 +116,6 @@ describe('JobRunner QC + metadata helpers (unit)', () => {
 
     const cfg = { parameters: { enablePollingTimeout: false, pollingTimeout: 1, openaiModel: 'gpt-4o-mini' }, ai: { metadataPrompt: 'mp' } };
 
-    const dbUpdate = vi.fn().mockResolvedValue({ success: true });
-    runner.db = { generatedImage: { update: dbUpdate } };
-
     let thrown = null;
     try {
       await runner.generateMetadata(images, cfg);
@@ -128,9 +125,9 @@ describe('JobRunner QC + metadata helpers (unit)', () => {
     expect(thrown).toBeInstanceOf(Error);
     expect(String(thrown && thrown.message)).toContain('Metadata generation failed');
 
-    expect(dbUpdate).toHaveBeenCalledWith(
-      { mappingId: 'm10' },
-      expect.objectContaining({ metadata: expect.stringContaining('"title":"t1"') }),
+    expect(backendAdapter.updateGeneratedImageByMappingId).toHaveBeenCalledWith(
+      'm10',
+      expect.objectContaining({ metadata: expect.objectContaining({ title: 't1', description: 'd1' }) }),
     );
     expect(backendAdapter.updateQCStatusByMappingId).toHaveBeenCalledWith('m20', 'qc_failed', 'processing_failed:metadata');
     expect(backendAdapter.updateGeneratedImageByMappingId).toHaveBeenCalledWith(

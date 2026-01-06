@@ -335,13 +335,11 @@ describe('JobRunner - coverage elevation (unit)', () => {
     };
 
     runner.jobConfiguration = config;
-    runner.db = { generatedImage: { update: vi.fn().mockResolvedValue({ success: true }) } };
-    
     await runner.executeJob(config, 'job-x');
 
-    expect(runner.db.generatedImage.update).toHaveBeenCalledWith(
-      { mappingId: 'map-2' },
-      expect.objectContaining({ metadata: expect.any(String) }),
+    expect(backendAdapter.updateGeneratedImageByMappingId).toHaveBeenCalledWith(
+      'map-2',
+      expect.objectContaining({ metadata: expect.any(Object) }),
     );
     expect(backendAdapter.updateQCStatusByMappingId).toHaveBeenCalledWith('map-2', 'qc_failed', 'bad');
 

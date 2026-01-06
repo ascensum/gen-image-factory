@@ -180,10 +180,6 @@ describe('JobRunner.executeJob (QC + metadata enabled, integration-like)', () =>
       ai: { runQualityCheck: true, runMetadataGen: true, qualityCheckPrompt: 'qc', metadataPrompt: 'mp' },
     };
 
-    runner.db = {
-      generatedImage: { update: vi.fn().mockResolvedValue({ success: true }) }
-    };
-
     const startRes = await runner.startJob(config);
     expect(startRes.success).toBe(true);
     await runner.currentJob;
@@ -193,11 +189,11 @@ describe('JobRunner.executeJob (QC + metadata enabled, integration-like)', () =>
     expect(backendAdapter.updateQCStatusByMappingId).toHaveBeenCalledWith('map-1', 'approved', 'ok');
 
     expect(mockAiVision.generateMetadata).toHaveBeenCalled();
-    // Success path uses direct DB update with JSON stringified metadata
-    expect(runner.db.generatedImage.update).toHaveBeenCalledWith(
-      { mappingId: 'map-1' },
+    // Success path uses backendAdapter with object metadata
+    expect(backendAdapter.updateGeneratedImageByMappingId).toHaveBeenCalledWith(
+      'map-1',
       expect.objectContaining({
-        metadata: expect.stringContaining('"title":"t"'),
+        metadata: expect.objectContaining({ title: 't', description: 'd' }),
       }),
     );
   });

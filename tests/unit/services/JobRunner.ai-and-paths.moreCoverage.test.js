@@ -100,14 +100,10 @@ describe('JobRunner additional coverage: AI + paths + helpers', () => {
   it('generateMetadata persists regenerated metadata by mappingId and marks metadata failures as qc_failed', async () => {
     const updateQC = vi.fn().mockResolvedValue(undefined);
     const updateByMapping = vi.fn().mockResolvedValue(undefined);
-    const dbUpdate = vi.fn().mockResolvedValue(undefined);
     
     runner.backendAdapter = {
       updateQCStatusByMappingId: updateQC,
       updateGeneratedImageByMappingId: updateByMapping,
-    };
-    runner.db = {
-      generatedImage: { update: dbUpdate }
     };
 
     aiVision.generateMetadata
@@ -126,13 +122,18 @@ describe('JobRunner additional coverage: AI + paths + helpers', () => {
       })
     ).rejects.toThrow(/Metadata generation failed/);
 
-    // map-1 got metadata persisted via direct DB call
-    expect(dbUpdate).toHaveBeenCalledWith(
-      { mappingId: 'map-1' },
+    // map-1 got metadata persisted via backendAdapter
+    expect(updateByMapping).toHaveBeenCalledWith(
+      'map-1',
       expect.objectContaining({
-        metadata: expect.stringContaining('"title":"t"'), // JSON stringified in code
+        metadata: expect.objectContaining({ title: 't', description: 'd' }), // Object not stringified here, assuming adapter handles it?
       })
     );
+    // WAIT! In JobRunner code, I pass { metadata: image.metadata } which IS an object (JobRunner.js L2960).
+    // The previous code STRINGIFIED it.
+    // My new code passes OBJECT.
+    // BackendAdapter expects object (it merges it).
+    // So expectation should check object.
 
     // map-2 got qc_failed + metadata failure merged via adapter
     expect(updateQC).toHaveBeenCalledWith('map-2', 'qc_failed', 'processing_failed:metadata');
