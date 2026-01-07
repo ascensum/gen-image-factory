@@ -305,7 +305,15 @@ app.whenReady().then(async () => {
   // Register factory protocol for local file access with universal cross-platform mapping
   protocol.handle('factory', (request) => {
     // Convert factory://c/path to c:/path
-    const urlPath = request.url.replace('factory://', '');
+    let urlPath = request.url.replace('factory://', '');
+    
+    // On POSIX systems, ensure the path is absolute (starts with /)
+    // This handles cases where factory:///path becomes /path (correct) 
+    // vs factory://path becomes path (incorrect relative)
+    if (process.platform !== 'win32' && !urlPath.startsWith('/')) {
+      urlPath = '/' + urlPath;
+    }
+
     // Ensure we handle the 'c/' to 'c:/' conversion for Windows
     const drivePath = urlPath.startsWith('c/') ? 'c:/' + urlPath.substring(2) : urlPath;
 

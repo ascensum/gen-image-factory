@@ -32,6 +32,11 @@ To ensure proper categorization in release notes, use Conventional Commits forma
 
 Dependabot PRs are automatically labeled with `dependencies` and `automated`, and will appear under "🛡️ Security & Dependencies" in release notes.
 
+## [1.1.7] - 2026-01-05
+
+### Fixed
+- Fixed `factory://` protocol on POSIX systems (macOS/Linux) by ensuring paths are correctly resolved as absolute, fixing broken image previews in development mode.
+
 ## [1.1.6] - 2026-01-05
 
 ### Fixed
