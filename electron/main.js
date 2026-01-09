@@ -421,8 +421,10 @@ app.whenReady().then(async () => {
       iconFolder = 'win';
       iconExt = 'ico';
     } else if (isMac) {
-      iconFolder = 'mac';
-      iconExt = 'icns';
+      // Use PNG for macOS Tray to ensure correct sizing/padding
+      // The ICNS file can cause the icon to appear too large
+      iconFolder = 'png';
+      iconExt = 'png'; 
     } else {
       // Standard Linux/Unix path
       iconFolder = 'png';
@@ -431,7 +433,15 @@ app.whenReady().then(async () => {
 
     // In production (ASAR), app.getAppPath() returns the asar path.
     // We need to ensure we point to the build folder which is included in the files list.
-    const trayIconPath = path.join(appPath, 'build', 'icons', iconFolder, `icon.${iconExt}`);
+    let trayIconPath;
+    if (isMac) {
+       // Use the Retina-ready Template icon for macOS
+       // iconTemplate@2x.png (44x44) ensures clarity and automatic dark/light theme support
+       trayIconPath = path.join(appPath, 'build', 'icons', 'mac', 'iconTemplate@2x.png');
+    } else {
+       trayIconPath = path.join(appPath, 'build', 'icons', iconFolder, `icon.${iconExt}`);
+    }
+    
     console.log(' MAIN PROCESS: Creating tray with icon:', trayIconPath);
     
     if (fs.existsSync(trayIconPath)) {

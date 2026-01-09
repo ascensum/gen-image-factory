@@ -1,6 +1,6 @@
 {
   "name": "gen-image-factory",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "AI-powered image generation application with Electron, React, and TypeScript",
   "main": "electron/main.js",
   "scripts": {
@@ -88,6 +88,7 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^3.7.2",
+    "@ffflorian/electron-icon-generator": "^1.12.1",
     "@playwright/test": "^1.54.2",
     "@tailwindcss/postcss": "^4.1.11",
     "@testing-library/jest-dom": "^6.6.4",
@@ -102,6 +103,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "@vitest/coverage-v8": "^3.2.4",
     "autoprefixer": "^10.4.21",
+    "baseline-browser-mapping": "^2.9.14",
     "electron": "^37.2.5",
     "electron-builder": "^25.1.8",
     "eslint": "^9.32.0",

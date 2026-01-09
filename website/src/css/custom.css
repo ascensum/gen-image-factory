@@ -213,7 +213,7 @@ nav.navbar.navbar--fixed-top {
   top: 0 !important;
   z-index: 1000 !important;
   min-height: 70px !important;
-  padding: 0.75rem 0 !important;
+  padding: 0 !important;
   background-color: rgba(5, 5, 5, 0.7) !important;
   /* backdrop-filter disabled on mobile - will be enabled on desktop only */
   backdrop-filter: none !important;
@@ -259,24 +259,25 @@ nav.navbar.navbar--fixed-top {
 }
 
 .navbar__logo {
-  height: 2.5rem !important;
+  height: 3.2rem !important;
   margin-right: 0.75rem !important;
 }
 
 .navbar__title {
-  font-size: 1.25rem !important;
-  font-family: var(--ifm-font-family-base);
-  color: #ffffff !important;
+  display: none !important;
 }
 
 /* Hide navbar title on mobile to make room for search */
 @media (max-width: 995px) {
-  .navbar__title {
-    display: none !important;
+  /* Use the smaller G icon (favicon.svg) on mobile to save space */
+  .navbar__brand img {
+    content: url('/img/favicon.svg') !important;
+    height: 2.2rem !important;
   }
-  
+
   /* Reduce logo margin on mobile since title is hidden */
   .navbar__logo {
+    height: 2.2rem !important;
     margin-right: 0.5rem !important;
   }
 }
@@ -286,7 +287,7 @@ nav.navbar.navbar--fixed-top {
 }
 
 .navbar__brand img {
-  height: 2.5rem !important;
+  height: 3.2rem !important;
   width: auto !important;
 }
 
@@ -600,7 +601,8 @@ nav.navbar.navbar--fixed-top {
   nav.navbar.navbar--fixed-top,
   .navbar {
     overflow: visible !important;
-    position: relative !important;
+    position: sticky !important;
+    top: 0 !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }

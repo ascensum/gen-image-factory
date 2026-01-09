@@ -130,15 +130,20 @@ function App() {
       ) : (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-lg px-6 py-5 text-center home-launch">
-            <div className="mb-3 mx-auto">
+            <div className="mb-2 mx-auto">
               <AppLogo variant="square" className="h-28 md:h-32 lg:h-36 mx-auto" />
             </div>
-            <div className="text-base text-gray-700 mb-3">Version {appVersion}</div>
+            <div className="text-sm uppercase text-slate-500 tracking-wide font-medium mb-1">
+              GEN IMAGE FACTORY
+            </div>
+            <div className="text-xs uppercase text-slate-500 tracking-widest mb-4">
+              VERSION {appVersion}
+            </div>
             <div className="grid gap-2">
               <button
                 type="button"
                 onClick={() => setCurrentView('settings')}
-                className={`${homeBtnClass} bg-blue-600 text-white hover:bg-blue-700 transition-colors`}
+                className={`${homeBtnClass} bg-blue-600 text-white hover:bg-blue-700 transition-colors text-sm font-medium`}
                 style={homeBtnStyle}
               >
                 Open Settings
@@ -146,7 +151,7 @@ function App() {
               <button
                 type="button"
                 onClick={() => setCurrentView('dashboard')}
-                className={`${homeBtnClass} bg-green-600 text-white hover:bg-green-700 transition-colors`}
+                className={`${homeBtnClass} bg-green-600 text-white hover:bg-green-700 transition-colors text-sm font-medium`}
                 style={homeBtnStyle}
               >
                 Open Dashboard

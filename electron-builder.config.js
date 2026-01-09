@@ -67,7 +67,9 @@ const config = {
     applicationId: 'GenImageFactory', // Must be alpha-numeric only (no periods)
     identityName: process.env.MS_STORE_IDENTITY_NAME,
     publisher: process.env.MS_STORE_PUBLISHER_ID,
-    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME
+    publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME,
+    assets: 'build/icons/appx',
+    backgroundColor: '#FFFFFF'
   },
   publish: {
     provider: 'github',

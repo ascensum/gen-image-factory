@@ -36,7 +36,7 @@ const appVersion = getLatestVersionFromGitHubSync();
 const config = {
   title: 'Gen Image Factory',
   tagline: 'AI-powered image generation and processing by Shiftline Tools',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.svg',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
