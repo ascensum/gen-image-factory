@@ -29,7 +29,7 @@ describe('App.jsx - Main React Component', () => {
       render(<App />)
       
       await waitFor(() => {
-        expect(screen.getByText(`Version ${mockVersion}`)).toBeInTheDocument()
+        expect(screen.getByText(`VERSION ${mockVersion}`)).toBeInTheDocument()
       })
     })
 

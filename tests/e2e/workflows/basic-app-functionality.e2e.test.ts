@@ -136,7 +136,7 @@ test.describe('Basic App Functionality - Story 1.1', () => {
     })
 
     test('should display app version', async ({ page }) => {
-      const versionText = page.locator('text=/Version/')
+      const versionText = page.locator('text=/Version/i')
       await expect(versionText).toBeVisible()
       
       // Should not show "Loading..." for long
@@ -290,9 +290,9 @@ test.describe('Basic App Functionality - Story 1.1', () => {
   test.describe('IPC Communication E2E', () => {
     test('should communicate with main process for version', async ({ page }) => {
       // Wait for version to load from IPC
-      await page.waitForSelector('text=/Version/', { timeout: 5000 })
+      await page.waitForSelector('text=/Version/i', { timeout: 5000 })
       
-      const versionElement = page.locator('text=/Version/')
+      const versionElement = page.locator('text=/Version/i')
       await expect(versionElement).toBeVisible()
     })
 

@@ -134,9 +134,9 @@ test.describe('Cross-Platform Compatibility - Story 1.1', () => {
       await page.goto('/')
       
       // Wait for IPC to establish
-      await page.waitForSelector('text=/Version/', { timeout: 5000 })
+      await page.waitForSelector('text=/Version/i', { timeout: 5000 })
       
-      const versionElement = page.locator('text=/Version/')
+      const versionElement = page.locator('text=/Version/i')
       await expect(versionElement).toBeVisible()
     })
 
