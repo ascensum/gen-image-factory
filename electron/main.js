@@ -226,6 +226,12 @@ function createWindow() {
     },
     title: process.env.MS_STORE_APP_DISPLAY_NAME || 'Gen Image Factory',
     show: false, // Don't show until ready
+    // Fix for "Black Platter" bug on Windows: Force title bar color to match app header
+    titleBarOverlay: {
+      color: '#FFFFFF',
+      symbolColor: '#000000',
+      height: 30 // Optional: standard height
+    },
     // Additional security settings
     webSecurity: true,
     allowRunningInsecureContent: false
