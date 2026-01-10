@@ -44,7 +44,8 @@ console.log('');
 const winDir = path.join(outputDir, 'win');
 const macDir = path.join(outputDir, 'mac');
 const pngDir = path.join(outputDir, 'png');
-const appxDir = path.join(outputDir, 'appx');
+// Output directly to build/appx where electron-builder v25+ expects them by default
+const appxDir = path.join(__dirname, '../build/appx');
 
 [winDir, macDir, pngDir, appxDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
