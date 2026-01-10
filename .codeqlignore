@@ -19,6 +19,10 @@ coverage/
 playwright-report/
 test-results/
 
+# Test source code (prevent false positives in scans)
+tests/
+src/test/
+
 # Media and binary files
 *.png
 *.jpg
