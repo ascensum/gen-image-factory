@@ -205,40 +205,33 @@ async function generateAppxAssets() {
 }
 
 async function generateICOAndICNS() {
-  console.log('Generating ICO and ICNS files...');
-  
-  let icongen;
-  try {
-    icongen = require('icon-gen');
-  } catch {
-    console.log('  Installing icon-gen...');
-    const { execSync } = require('child_process');
-    try {
-      execSync('npm install --save-dev icon-gen', { 
-        stdio: 'inherit', 
-        cwd: path.join(__dirname, '..') 
-      });
-      icongen = require('icon-gen');
-    } catch (err) {
-      console.error('  [ERROR] Failed to install icon-gen.');
-      return;
-    }
-  }
+  console.log('Generating ICO (32-bit RGBA) using png2icons...');
+  const png2icons = require('png2icons');
   
   try {
-    // 1. Generate the standard macOS Retina Tray Icon (Template)
-    // 44x44 is the standard size for @2x menu bar icons on macOS
-    // BUT the visual shape should be smaller (~36x36) to avoid looking "huge"
-    const macTraySize = 44; // Canvas size
-    const visualSize = 36;  // Actual icon shape size (18pt)
-    const padding = (macTraySize - visualSize) / 2; // Centering offset
+    // 1. Generate ICO (strictly 32-bit RGBA for Windows)
+    // We start with a high-res buffer (256x256)
+    const icoBufferSource = await sharp(sourceIcon)
+      .resize(256, 256, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .toBuffer();
+      
+    // createICO(buffer, scalingAlgorithm, alphaThreshold, useWin)
+    // alphaThreshold=0 ensures all transparency is preserved
+    // useWin=true creates Windows-compliant ICO
+    const ico = png2icons.createICO(icoBufferSource, png2icons.BICUBIC, 0, true);
+    fs.writeFileSync(path.join(winDir, 'icon.ico'), ico);
+    console.log('  [OK] Generated build/icons/win/icon.ico (32-bit RGBA)');
+
+    // 2. Generate ICNS (for macOS)
+    // First generate the specific template icon manually as before
+    const macTraySize = 44;
+    const visualSize = 36;
+    const padding = (macTraySize - visualSize) / 2;
     const macTrayPath = path.join(macDir, 'iconTemplate@2x.png');
     
     const cornerRadius = Math.round(visualSize * 0.2);
-    // Logo should be relative to the visual container size
     const logoSize = Math.round(visualSize * 0.65); 
 
-    // Create the background shape (smaller rect centered in 44x44 canvas)
     const roundedRectSvg = Buffer.from(`
       <svg width="${macTraySize}" height="${macTraySize}" viewBox="0 0 ${macTraySize} ${macTraySize}" xmlns="http://www.w3.org/2000/svg">
         <rect x="${padding}" y="${padding}" width="${visualSize}" height="${visualSize}" rx="${cornerRadius}" ry="${cornerRadius}" fill="black"/>
@@ -249,40 +242,20 @@ async function generateICOAndICNS() {
       .resize(logoSize, logoSize, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .toBuffer();
 
-    // Composite: 
-    // 1. Start with the rounded rect SVG (which includes the transparent margins)
-    // 2. Composite the logo in the center using dest-out (punch hole)
     await sharp(roundedRectSvg)
       .composite([{ input: logoBuffer, blend: 'dest-out', gravity: 'center' }])
       .png()
       .toFile(macTrayPath);
-    
-    console.log('  [OK] Generated macOS Retina Tray Icon (iconTemplate@2x.png) with Cutout & Padding');
+    console.log('  [OK] Generated macOS Retina Tray Icon (iconTemplate@2x.png)');
 
-    // 2. Generate standard ICO/ICNS
-    await icongen(pngDir, outputDir, {
-      report: true,
-      ico: { name: 'icon', sizes: [16, 24, 32, 48, 64, 128, 256] },
-      icns: { name: 'icon', sizes: [16, 32, 64, 128, 256, 512, 1024] }
-    });
+    // Generate standard ICNS from the same source
+    const icns = png2icons.createICNS(icoBufferSource, png2icons.BICUBIC, 0);
+    fs.writeFileSync(path.join(macDir, 'icon.icns'), icns);
+    console.log('  [OK] Generated build/icons/mac/icon.icns');
     
-    // Move generated files to platform-specific directories if they were created in the root
-    const generatedIco = path.join(outputDir, 'icon.ico');
-    const generatedIcns = path.join(outputDir, 'icon.icns');
-    
-    if (fs.existsSync(generatedIco)) {
-      fs.renameSync(generatedIco, path.join(winDir, 'icon.ico'));
-      console.log('  [OK] Moved icon.ico to win/');
-    }
-    
-    if (fs.existsSync(generatedIcns)) {
-      fs.renameSync(generatedIcns, path.join(macDir, 'icon.icns'));
-      console.log('  [OK] Moved icon.icns to mac/');
-    }
-    
-    console.log('ICO/ICNS generation complete!\n');
   } catch (err) {
     console.error('  [ERROR] Failed to generate ICO/ICNS:', err.message);
+    throw err;
   }
 }
 
