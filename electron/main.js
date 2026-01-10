@@ -224,7 +224,7 @@ function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false
     },
-    title: process.env.MS_STORE_APP_DISPLAY_NAME || 'Gen Image Factory',
+    title: 'Gen Image Factory',
     show: false, // Don't show until ready
     // Fix for "Black Platter" bug on Windows: Force title bar color to match app header
     titleBarOverlay: {
@@ -492,7 +492,7 @@ app.whenReady().then(async () => {
         }
       ]);
 
-      global.tray.setToolTip(process.env.MS_STORE_APP_DISPLAY_NAME || 'Gen Image Factory');
+      global.tray.setToolTip('Gen Image Factory');
       global.tray.setContextMenu(contextMenu);
       
       global.tray.on('double-click', () => {
