@@ -1,6 +1,6 @@
 {
   "name": "gen-image-factory",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "AI-powered image generation application with Electron, React, and TypeScript",
   "main": "electron/main.js",
   "scripts": {
