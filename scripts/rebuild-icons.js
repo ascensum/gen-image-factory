@@ -148,18 +148,56 @@ async function generateAppxAssets() {
 
   const tasks = appxAssets.map(asset => {
     const outputPath = path.join(appxDir, asset.name);
-    return sharp(sourceIcon)
-      .resize(asset.width, asset.height, { 
-        fit: 'contain', 
-        background: asset.bg 
-      })
-      .png()
-      .toFile(outputPath)
-      .then(() => console.log(`  [OK] appx/${asset.name}`))
-      .catch(err => {
-        console.error(`  [ERROR] Failed to generate appx/${asset.name}:`, err.message);
-        throw err;
-      });
+    
+    // Check if this is an "unplated" asset or the base Square44x44Logo
+    // These require strict transparency at the edges (no color bleeding)
+    const isUnplated = asset.name.includes('unplated') || asset.name === 'Square44x44Logo.png' || asset.name === 'Square44x44Logo.scale-100.png';
+    
+    if (isUnplated) {
+      // "Safe Zone" Strategy: Resize logo to 80% and center it on transparent canvas
+      // This guarantees empty pixels at the corners
+      const safeWidth = Math.round(asset.width * 0.8);
+      const safeHeight = Math.round(asset.height * 0.8);
+      
+      return sharp(sourceIcon)
+        .resize(safeWidth, safeHeight, { 
+          fit: 'contain', 
+          background: { r: 0, g: 0, b: 0, alpha: 0 } 
+        })
+        .toBuffer()
+        .then(buffer => {
+          return sharp({
+            create: {
+              width: asset.width,
+              height: asset.height,
+              channels: 4,
+              background: { r: 0, g: 0, b: 0, alpha: 0 }
+            }
+          })
+          .composite([{ input: buffer, gravity: 'center' }])
+          .png()
+          .toFile(outputPath);
+        })
+        .then(() => console.log(`  [OK] appx/${asset.name} (Buffered/Transparent)`))
+        .catch(err => {
+          console.error(`  [ERROR] Failed to generate appx/${asset.name}:`, err.message);
+          throw err;
+        });
+    } else {
+      // Standard full-bleed generation for plated assets
+      return sharp(sourceIcon)
+        .resize(asset.width, asset.height, { 
+          fit: 'contain', 
+          background: asset.bg 
+        })
+        .png()
+        .toFile(outputPath)
+        .then(() => console.log(`  [OK] appx/${asset.name}`))
+        .catch(err => {
+          console.error(`  [ERROR] Failed to generate appx/${asset.name}:`, err.message);
+          throw err;
+        });
+    }
   });
 
   await Promise.all(tasks);
