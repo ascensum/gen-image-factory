@@ -35,7 +35,8 @@ const config = {
     'node_modules/**/*',
     '!**/node_modules/*/{test,tests,testing,doc,docs,example,examples}/**/*',
     '!**/node_modules/*.d.ts',
-    '!**/node_modules/.bin'
+    '!**/node_modules/.bin',
+    '!**/*.tar.gz'
   ],
   mac: {
     icon: 'icons/mac/icon.icns',

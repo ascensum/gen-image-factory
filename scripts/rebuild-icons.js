@@ -125,6 +125,15 @@ async function generateAppxAssets() {
     { name: 'StoreLogo.scale-200.png', width: 100, height: 100, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
     { name: 'Wide310x150Logo.scale-200.png', width: 620, height: 300, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
     { name: 'SplashScreen.scale-200.png', width: 1240, height: 600, bg: { r: 255, g: 255, b: 255, alpha: 1 } },
+    
+    // Base Fallbacks (Scale 100 / Unplated) - REQUIRED for WACK compliance
+    { name: 'Square44x44Logo.png', width: 44, height: 44, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
+    { name: 'Square44x44Logo.scale-100.png', width: 44, height: 44, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
+    { name: 'StoreLogo.png', width: 50, height: 50, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
+    { name: 'Square150x150Logo.png', width: 150, height: 150, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
+    { name: 'Wide310x150Logo.png', width: 310, height: 150, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
+    { name: 'SplashScreen.png', width: 620, height: 300, bg: { r: 255, g: 255, b: 255, alpha: 1 } },
+
     // Standard targetsize icons
     { name: 'Square44x44Logo.targetsize-24.png', width: 24, height: 24, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
     { name: 'Square44x44Logo.targetsize-48.png', width: 48, height: 48, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
