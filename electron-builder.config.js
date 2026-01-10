@@ -69,7 +69,8 @@ const config = {
     identityName: process.env.MS_STORE_IDENTITY_NAME,
     publisher: process.env.MS_STORE_PUBLISHER_ID,
     publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME,
-    backgroundColor: '#FFFFFF'
+    backgroundColor: '#FFFFFF',
+    displayName: process.env.MS_STORE_APP_DISPLAY_NAME || 'Gen Image Factory'
   },
   publish: {
     provider: 'github',
