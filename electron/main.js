@@ -224,7 +224,7 @@ function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false
     },
-    title: 'Gen Image Factory',
+    title: process.env.MS_STORE_APP_DISPLAY_NAME || 'Gen Image Factory',
     show: false, // Don't show until ready
     // Additional security settings
     webSecurity: true,
@@ -486,7 +486,7 @@ app.whenReady().then(async () => {
         }
       ]);
 
-      global.tray.setToolTip('Gen Image Factory');
+      global.tray.setToolTip(process.env.MS_STORE_APP_DISPLAY_NAME || 'Gen Image Factory');
       global.tray.setContextMenu(contextMenu);
       
       global.tray.on('double-click', () => {
