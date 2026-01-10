@@ -138,8 +138,10 @@ async function generateAppxAssets() {
     { name: 'Square44x44Logo.targetsize-24.png', width: 24, height: 24, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
     { name: 'Square44x44Logo.targetsize-48.png', width: 48, height: 48, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
     { name: 'Square44x44Logo.targetsize-256.png', width: 256, height: 256, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
-    // Unplated targetsize icons (specifically for the taskbar)
+    // Unplated targetsize icons (specifically for the taskbar and window header)
+    { name: 'Square44x44Logo.targetsize-16_altform-unplated.png', width: 16, height: 16, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
     { name: 'Square44x44Logo.targetsize-24_altform-unplated.png', width: 24, height: 24, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
+    { name: 'Square44x44Logo.targetsize-32_altform-unplated.png', width: 32, height: 32, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
     { name: 'Square44x44Logo.targetsize-48_altform-unplated.png', width: 48, height: 48, bg: { r: 0, g: 0, b: 0, alpha: 0 } },
     { name: 'Square44x44Logo.targetsize-256_altform-unplated.png', width: 256, height: 256, bg: { r: 0, g: 0, b: 0, alpha: 0 } }
   ];
