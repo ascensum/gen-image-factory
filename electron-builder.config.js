@@ -68,7 +68,6 @@ const config = {
     identityName: process.env.MS_STORE_IDENTITY_NAME,
     publisher: process.env.MS_STORE_PUBLISHER_ID,
     publisherDisplayName: process.env.MS_STORE_PUBLISHER_DISPLAY_NAME,
-    assets: 'build/icons/appx',
     backgroundColor: '#FFFFFF'
   },
   publish: {
