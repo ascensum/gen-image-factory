@@ -340,10 +340,13 @@ app.whenReady().then(async () => {
     console.log(' MAIN PROCESS: Calling BackendAdapter constructor...');
     backendAdapter = new BackendAdapter({ ipc: ipcMain, mainWindow: null, skipIpcSetup: true });
     console.log(' BackendAdapter created successfully');
-    console.log(' backendAdapter object:', backendAdapter);
   } catch (error) {
-    console.error(' Failed to create BackendAdapter:', error);
-    console.error(' Error stack:', error.stack);
+    if (isDev) {
+      console.error(' Failed to create BackendAdapter:', error);
+      console.error(' Error stack:', error.stack);
+    } else {
+      console.error(' Failed to create BackendAdapter:', error.message);
+    }
     throw error;
   }
   
@@ -359,7 +362,11 @@ app.whenReady().then(async () => {
       console.log(' Skipping BackendAdapter initialization (SMOKE_TEST active)');
     }
   } catch (initErr) {
-    console.warn(' BackendAdapter initialization check failed:', initErr.message);
+    if (isDev) {
+      console.warn(' BackendAdapter initialization check failed:', initErr);
+    } else {
+      console.warn(' BackendAdapter initialization check failed:', initErr.message);
+    }
   }
   
   // Reconcile orphaned "running" job executions from previous sessions
@@ -370,7 +377,11 @@ app.whenReady().then(async () => {
       console.log(' Reconciliation result:', reconResult);
     }
   } catch (reconErr) {
-    console.error(' Failed to reconcile orphaned running jobs:', reconErr);
+    if (isDev) {
+      console.error(' Failed to reconcile orphaned running jobs:', reconErr);
+    } else {
+      console.error(' Failed to reconcile orphaned running jobs:', reconErr.message);
+    }
   }
 
   // Register all IPC handlers from the backend adapter
@@ -382,8 +393,12 @@ app.whenReady().then(async () => {
     backendAdapter.setupIpcHandlers();
     console.log(' IPC handlers registered successfully');
   } catch (error) {
-    console.error(' Failed to setup IPC handlers:', error);
-    console.error(' Error stack:', error.stack);
+    if (isDev) {
+      console.error(' Failed to setup IPC handlers:', error);
+      console.error(' Error stack:', error.stack);
+    } else {
+      console.error(' Failed to setup IPC handlers:', error.message);
+    }
   }
 
   // Signal that the main process has completed critical initialization for smoke tests
