@@ -59,7 +59,7 @@
     "release-notes:latest": "node scripts/extract-release-notes.js latest"
   },
   "author": {
-    "name": "Shiftline Tools™",
+    "name": "Shiftline Tools",
     "email": "vjatseslav.jertsalov@gmail.com"
   },
   "license": "MIT",
