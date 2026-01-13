@@ -25,16 +25,17 @@ AI-powered image generation application built with Electron, React, and TypeScri
 
 Gen Image Factory is a desktop application that streamlines the image generation workflow by combining AI-powered image creation, automated quality checks, and comprehensive metadata generation. The application provides an intuitive graphical interface for managing image generation jobs, reviewing results, and exporting data.
 
+[![Watch the Trailer](https://img.youtube.com/vi/GjooSAGE5NA/maxresdefault.jpg)](https://youtu.be/GjooSAGE5NA)
+
 ## Installation
 
-### Microsoft Store (Windows - Coming Soon)
+### Microsoft Store (Windows)
 
-Microsoft Store distribution will be available after the identity migration is complete (see Story 2.7). Once available, the Microsoft Store version will provide:
-- Automatic updates via Windows OS
-- Code-signed packages (no SmartScreen warnings)
-- Trusted distribution channel
+The recommended way to install on Windows is via the Microsoft Store:
+- Automatic updates
+- Trusted installation
 
-**Status**: Coming soon - Microsoft Store listing pending identity migration.
+[**Get it from Microsoft Store**](https://apps.microsoft.com/detail/9P761655KPBW)
 
 ### GitHub Releases
 
@@ -44,7 +45,7 @@ For Windows (advanced users), macOS, and Linux, download installers from [GitHub
 - **macOS**: DMG or ZIP archive
 - **Linux**: AppImage or DEB package
 
-**Note**: GitHub Releases installers are unsigned and may trigger security warnings. Microsoft Store distribution will be available in a future release.
+**Note**: GitHub Releases installers are unsigned and may trigger security warnings.
 
 ## Quick Start
 

@@ -126,13 +126,13 @@ export default function Home(): React.JSX.Element {
 
             {/* Call-to-Action Buttons */}
             <div className={`${styles.ctaButtons} ${styles.fadeInUp} ${styles.delay3}`}>
-              <a href="#download" className={`${styles.btn} ${styles.btnPrimary}`} aria-label="Download Gen Image Factory">
+              <a href="https://github.com/ShiftlineTools/gen-image-factory/releases" target="_blank" rel="noopener noreferrer" className={`${styles.btn} ${styles.btnPrimary}`} aria-label="Download Gen Image Factory">
                 <Download className={styles.ctaIcon} /> Download
               </a>
               <Link to="/docs/getting-started/installation" className={`${styles.btn} ${styles.btnSecondary}`} aria-label="View Documentation">
                 <BookOpen className={styles.ctaIcon} /> Documentation
               </Link>
-              <a href="#microsoft-store" className={`${styles.btn} ${styles.btnSecondary}`} aria-label="Get from Microsoft Store">
+              <a href="https://apps.microsoft.com/detail/9P761655KPBW" target="_blank" rel="noopener noreferrer" className={`${styles.btn} ${styles.btnSecondary}`} aria-label="Get from Microsoft Store">
                 <Store className={styles.ctaIcon} /> Microsoft Store
               </a>
             </div>
@@ -239,13 +239,9 @@ export default function Home(): React.JSX.Element {
               See It In Action
             </h2>
 
-            <div className={`${styles.screenshotPlaceholder} ${styles.fadeInUp} ${styles.delay1}`}>
-              <div>
-                <p style={{ marginBottom: '1rem', fontWeight: 600 }}>Product Screenshot Placeholder</p>
-                <p style={{ fontSize: '0.875rem', opacity: 0.7 }}>
-                  Gen Image Factory Interface Preview<br />
-                  (Replace with actual app screenshots)
-                </p>
+            <div className={`${styles.screenshotPlaceholder} ${styles.fadeInUp} ${styles.delay1}`} style={{ padding: 0, overflow: 'hidden', background: 'transparent', boxShadow: 'none' }}>
+              <div style={{ width: '100%', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+                <iframe width="100%" style={{aspectRatio: '16/9'}} src="https://www.youtube.com/embed/GjooSAGE5NA" title="Gen Image Factory Trailer" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen></iframe>
               </div>
             </div>
           </div>

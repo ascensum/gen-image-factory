@@ -208,6 +208,10 @@ const config = {
                 label: 'GitHub',
                 href: 'https://github.com/ShiftlineTools/gen-image-factory',
               },
+              {
+                label: 'Microsoft Store',
+                href: 'https://apps.microsoft.com/detail/9P761655KPBW',
+              },
             ],
           },
           {

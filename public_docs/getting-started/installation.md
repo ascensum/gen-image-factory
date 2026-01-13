@@ -6,20 +6,27 @@ This guide will help you install Gen Image Factory on your system.
 
 ## Windows
 
-### Microsoft Store (Coming Soon)
+### Microsoft Store
 
-Gen Image Factory will be available on the Microsoft Store soon. This will provide the easiest installation method with automatic updates.
+Gen Image Factory is available on the Microsoft Store. This provides the easiest installation method with automatic updates.
 
-**Coming Soon**: We're working on making Gen Image Factory available through the Microsoft Store. Check back soon for updates!
+[**Get it from Microsoft Store**](https://apps.microsoft.com/detail/9P761655KPBW) (Requires MS Account)
 
-### GitHub Releases (Current Method)
+### Direct Download (GitHub Releases)
 
-If you prefer to install from GitHub Releases:
+If you prefer to install manually or use the portable version:
 
 1. Download the NSIS installer (`.exe`) from [GitHub Releases](https://github.com/ShiftlineTools/gen-image-factory/releases)
 2. Run the installer
-3. Accept the "Unknown Publisher" warning (artifacts are unsigned)
-4. Follow the installation wizard
+3. Follow the installation wizard
+
+### Power Users (winget)
+
+You can also install via command line:
+
+```bash
+winget install "Gen Image Factory"
+```
 
 **Note**: Unsigned installers will trigger Windows SmartScreen warnings. This is expected for GitHub Releases artifacts.
 
