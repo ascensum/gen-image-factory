@@ -240,8 +240,32 @@ export default function Home(): React.JSX.Element {
             </h2>
 
             <div className={`${styles.screenshotPlaceholder} ${styles.fadeInUp} ${styles.delay1}`} style={{ padding: 0, overflow: 'hidden', background: 'transparent', boxShadow: 'none' }}>
-              <div style={{ width: '100%', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
-                <iframe width="100%" style={{aspectRatio: '16/9'}} src="https://www.youtube.com/embed/GjooSAGE5NA" title="Gen Image Factory Trailer" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen></iframe>
+              <div className="video-container" style={{
+                position: 'relative',
+                width: '100%',
+                aspectRatio: '16/9',
+                zIndex: 10,           // This lifts it above hero overlays
+                marginBottom: '2rem',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                cursor: 'pointer'      // Shows the user it is clickable
+              }}>
+                <iframe
+                  src="https://www.youtube-nocookie.com/embed/GjooSAGE5NA?rel=0&modestbranding=1"
+                  title="Gen Image Factory Trailer"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    pointerEvents: 'auto' // Ensures clicks reach the video
+                  }}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                ></iframe>
               </div>
             </div>
           </div>
