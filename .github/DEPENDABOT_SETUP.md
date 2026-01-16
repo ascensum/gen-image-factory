@@ -4,9 +4,8 @@ Dependabot is configured to automatically create PRs for dependency updates. Aut
 
 ## Automatic Auto-Approval (Already Configured)
 
-The `.github/workflows/dependabot-auto-approve.yml` workflow automatically:
-- ✅ Approves Dependabot PRs for minor/patch updates
-- ✅ Enables auto-merge with squash strategy
+The `.github/workflows/dependabot-auto-merge.yml` workflow automatically:
+- ✅ Enables auto-merge with squash strategy for minor/patch updates
 - ✅ Skips major version updates (requires manual review)
 
 **Requirements**:

@@ -1,4 +1,4 @@
-name: Dependabot Auto-Approve
+name: Dependabot Auto-Merge
 
 on:
   pull_request_target:
@@ -19,22 +19,14 @@ jobs:
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-      # Approve and enable auto-merge for Minor/Patch updates
-      - name: Auto-approve and Enable Auto-merge
+      # Enable auto-merge for Minor/Patch updates (no auto-approval)
+      - name: Enable Auto-merge
         if: steps.metadata.outputs.update-type != 'version-update:semver-major'
         uses: actions/github-script@v7
         with:
           script: |
             const prNumber = context.issue.number;
-            
-            // Approve the PR
-            await github.rest.pulls.createReview({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: prNumber,
-              event: 'APPROVE'
-            });
-            
+
             // Enable auto-merge with squash strategy using GraphQL
             const mutation = `
               mutation enableAutoMerge($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!) {
@@ -77,5 +69,5 @@ jobs:
               mergeMethod: 'SQUASH'
             });
             
-            console.log(`Approved and enabled auto-merge for PR #${prNumber}`);
+            console.log(`Enabled auto-merge for PR #${prNumber}`);
 
