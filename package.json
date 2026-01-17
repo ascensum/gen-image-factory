@@ -118,5 +118,8 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.9",
     "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "tar": "7.5.3"
   }
 }
