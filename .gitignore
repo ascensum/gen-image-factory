@@ -118,3 +118,10 @@ qc_failed_image_review_logs.txt
 
 # Design iteration files
 .superdesign/
+
+# Documentation symlink (points to local Obsidian vault)
+# Prevents committing local vault path - vault location is user-specific
+docs
+
+# MCP configuration (user-specific local Qdrant setup)
+.cursor/mcp_config.json

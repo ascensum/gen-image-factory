@@ -1,0 +1,263 @@
+---
+description: Governance guardrails for brownfield refactoring - prevents adding logic to monoliths and enforces file size limits
+globs: ["**/*.js", "**/*.ts", "**/*.jsx", "**/*.tsx", "**/*.css"]
+alwaysApply: true
+---
+
+# Refactor Limits - Monolith Governance
+
+**CRITICAL:** This rule enforces the Governance Layer established by ADR-001, ADR-002, ADR-003, and ADR-007 to "strangle" the monoliths during brownfield refactoring.
+
+## File Size Guardrail (ADR-001)
+
+**Rule:** All source files must be **< 400 lines**.
+
+**When triggered:**
+- Any file exceeds 400 lines
+- Agent attempts to add logic to a file that would exceed 400 lines
+
+**Required action:**
+1. **STOP** adding logic to the file
+2. **PROPOSE** a new Service/Repository extraction instead
+3. **EXPLAIN** which service boundary the new logic belongs to (SecurityService, JobRepository, ExportService, IPCController, JobEngine)
+4. **SUGGEST** the extraction pattern following ADR-001 mitigation strategy
+
+## Frozen Monoliths (Master Frozen List)
+
+**CRITICAL:** The following files are **FROZEN** - no new logic may be added:
+
+### Backend/Services
+- `src/services/jobRunner.js` (3,381 lines) - *Extraction: ADR-002, ADR-003*
+- `src/adapter/backendAdapter.js` (3,407 lines) - *Extraction: ADR-002, ADR-003*
+- `src/producePictureModule.js` (799 lines) - *Extraction: ADR-008 (Image Production Layer)*
+- `src/services/retryExecutor.js` (1,160 lines) - *Extraction: ADR-012 (Retry Executor Decomposition)*
+- `src/database/models/JobExecution.js` (1,100 lines) - *Extraction: ADR-009 (Repository Layer)*
+- `src/database/models/GeneratedImage.js` (1,000 lines) - *Extraction: ADR-009 (Repository Layer)*
+
+### Frontend Components
+- `src/renderer/components/Dashboard/DashboardPanel.tsx` (1,600 lines) - *Extraction: ADR-010 (Frontend Decomposition)*
+- `src/renderer/components/Settings/SettingsPanel.tsx` (1,400 lines) - *Extraction: ADR-010 (Frontend Decomposition)*
+- `src/renderer/components/Dashboard/FailedImagesReviewPanel.tsx` (1,200 lines) - *Extraction: ADR-010 (Frontend Decomposition)*
+- `src/renderer/components/Jobs/JobManagementPanel.tsx` (1,100 lines) - *Extraction: ADR-010 (Frontend Decomposition)*
+
+### Infrastructure/Tests
+- `tests/integration/backend/BackendAdapter.integration.test.ts` (1,000 lines) - *Extraction: ADR-011 (Modular Testing)*
+
+### Component Styling
+- `src/renderer/components/Jobs/SingleJobView.css` (1,300 lines) - *Must refactor to Tailwind (see CSS Standards)*
+
+**Note:** Database models (`JobExecution.js`, `GeneratedImage.js`) should be reduced to < 200 lines containing only Sequelize/SQLite schema definitions. All query logic, hooks, and instance methods must move to the Repository Layer.
+
+**When triggered:**
+- Agent attempts to add new logic to any file on the Master Frozen List
+- Agent attempts to modify these files beyond extraction/refactoring
+- Agent attempts to add styles to frozen CSS files
+
+**Required action:**
+1. **STOP** and **REJECT** the change
+2. **EXPLAIN** that the file is frozen per ADR-001 (or ADR-007 for CSS files)
+3. **PROPOSE** extraction to a new Service/Repository:
+   - If adding IPC logic → Extract to `src/controllers/[Feature]Controller.js` (ADR-002)
+   - If adding persistence logic → Extract to `src/repositories/JobRepository.js` (ADR-009)
+   - If adding security logic → Extract to `src/services/SecurityService.js`
+   - If adding export logic → Extract to `src/services/ExportService.js`
+   - If adding business logic → Extract to `src/services/JobEngine.js` or new service
+   - If adding styles to frozen CSS → Refactor to Tailwind utilities or CSS Module (ADR-007)
+   - If modifying database models → Extract business logic to Repository Layer (ADR-009)
+   - If modifying React panels → Decompose into View/Component/Hook structure (ADR-010)
+   - If modifying integration tests → Split into feature-based test suites (ADR-011)
+4. **SUGGEST** using Dependency Injection (ADR-003) to wire the new service
+5. **FOR CSS FILES:** Propose moving styles to Tailwind classes or Atomic CSS modules
+
+## IPC Handler Rules (ADR-002)
+
+**Rule:** IPC handlers must be < 5 lines and delegate to Services.
+
+**When triggered:**
+- Agent creates IPC handlers > 5 lines
+- Agent adds business logic to IPC handlers
+
+**Required action:**
+1. **REJECT** the handler implementation
+2. **REQUIRE** handler to be a thin adapter:
+   ```javascript
+   // Good: < 5 lines, delegates to service
+   ipc.handle('job:start', (event, args) => 
+     jobService.start(args)
+   )
+   ```
+3. **ENFORCE** that validation, transformation, and business logic belong in Services, not controllers
+
+## Dependency Injection Rules (ADR-003)
+
+**Rule:** All services must use Dependency Injection - no global state.
+
+**When triggered:**
+- Agent uses `global.backendAdapter` or similar global state
+- Agent uses process module exports for dependency resolution
+- Agent creates services without constructor injection
+
+**Required action:**
+1. **REJECT** the global state pattern
+2. **REQUIRE** constructor injection:
+   ```javascript
+   // Bad: Global state
+   class JobRunner {
+     saveImage(data) {
+       global.backendAdapter.saveGeneratedImage(data);
+     }
+   }
+   
+   // Good: Dependency injection
+   class JobRunner {
+     constructor(jobRepository) {
+       this.jobRepository = jobRepository;
+     }
+     
+     saveImage(data) {
+       this.jobRepository.saveGeneratedImage(data);
+     }
+   }
+   ```
+3. **SUGGEST** updating ServiceContainer in `electron/main.js` to wire dependencies
+
+## Extraction Proposals
+
+When proposing extractions, follow these service boundaries:
+
+### SecurityService (Infrastructure)
+- **Extract from:** BackendAdapter (lines ~50-150)
+- **Responsibility:** API Key management, encryption/decryption, keytar interaction
+- **Interface:** `getSecret(key)`, `setSecret(key, val)`, `getPublicSettings()`
+
+### JobRepository (Persistence)
+- **Extract from:** BackendAdapter (lines ~1000-2000)
+- **Responsibility:** CRUD operations for JobConfiguration, JobExecution, GeneratedImage
+- **Goal:** Isolate database logic. Services call `JobRepository.save(job)`, not build raw DB objects.
+
+### ExportService (Feature)
+- **Extract from:** BackendAdapter (lines ~2200-2600)
+- **Responsibility:** Generating Excel reports and ZIP archives
+- **Logic:** Pure functional transformation of Data → File
+
+### IPCController (Presentation)
+- **Extract from:** BackendAdapter (lines ~300-900)
+- **Responsibility:** Mapping Electron IPC events to Service calls
+- **Structure:** `src/controllers/[Feature]Controller.js` per feature domain
+- **Rule:** Handlers must be < 5 lines
+
+### JobEngine (Core Domain)
+- **Extract from:** JobRunner
+- **Responsibility:** Pure orchestration of generation pipeline (Init → ParamGen → ImageGen → QC → Metadata)
+- **Refactoring:** Strip out all direct DB calls. Return "Result Objects" that JobService persists via JobRepository.
+
+### Image Production Services (ADR-008)
+- **Extract from:** producePictureModule.js (799 lines)
+- **ImageGeneratorService:** Runware API integration (lines ~223-519)
+- **ImageRemoverService:** remove.bg API + alpha trimming (lines ~21-87, ~584-692)
+- **ImageProcessorService:** Sharp-based manipulation (lines ~694-798)
+- **Interface:** All services accept Buffer/string, return Buffer (pipeline-ready)
+
+## Enforcement Examples
+
+### Example 1: Adding Logic to jobRunner.js
+**User Request:** "Add retry logic to jobRunner.js"
+
+**Agent Response:**
+❌ **REJECTED:** `jobRunner.js` is frozen per ADR-001. No new logic may be added.
+
+✅ **PROPOSED:** Extract retry logic to `src/services/RetryService.js`:
+- Accept `JobEngine` and `JobRepository` in constructor (DI pattern)
+- Implement retry logic with exponential backoff
+- Emit events for retry attempts
+- Wire in `electron/main.js` ServiceContainer
+
+### Example 2: File Exceeds 400 Lines
+**User Request:** "Add feature to SecurityService.js" (file is currently 395 lines)
+
+**Agent Response:**
+⚠️ **WARNING:** Adding this feature would exceed the 400-line limit (ADR-001).
+
+✅ **PROPOSED:** Split SecurityService:
+- `SecurityService.js` (core encryption/decryption) - keep < 400 lines
+- `ApiKeyService.js` (API key management) - new service
+- `CredentialStorageService.js` (keytar interaction) - new service
+
+### Example 3: IPC Handler with Business Logic
+**User Request:** "Add IPC handler for job:validate that checks API keys and validates parameters"
+
+**Agent Response:**
+❌ **REJECTED:** IPC handlers must be < 5 lines and delegate to Services (ADR-002).
+
+✅ **PROPOSED:**
+```javascript
+// src/controllers/JobController.js
+ipc.handle('job:validate', (event, args) => 
+  jobService.validate(args)
+)
+
+// src/services/JobService.js
+class JobService {
+  constructor(securityService, jobRepository) {
+    this.securityService = securityService;
+    this.jobRepository = jobRepository;
+  }
+  
+  async validate(args) {
+    // Business logic here (API key check, parameter validation)
+  }
+}
+```
+
+## CSS Standards (ADR-007)
+
+**Rule:** Tailwind-First development with CSS file size limits.
+
+**When triggered:**
+- Agent attempts to add styles to frozen CSS files
+- Agent creates CSS files > 100 lines
+- Agent uses custom CSS instead of Tailwind utilities
+
+**Required action:**
+1. **STOP** adding styles to frozen CSS files
+2. **REQUIRE** Tailwind-First approach:
+   - Move 90% of styling to inline Tailwind classes in `.tsx` files
+   - Use CSS Modules (`.module.css`) only for complex animations or pseudo-selectors
+   - CSS Modules must be < 100 lines and co-located with component
+3. **PROPOSE** refactoring strategy:
+   - Audit existing CSS for Tailwind-equivalent utilities
+   - Convert styles to inline Tailwind classes
+   - Extract complex cases to CSS Module if needed
+   - Delete original CSS file once migration is complete
+
+**Frozen CSS Files:**
+- `src/renderer/components/Jobs/SingleJobView.css` (1,300 lines) - **FROZEN**
+
+**Example:**
+```tsx
+// Bad: Adding to SingleJobView.css
+// ❌ REJECTED: File is frozen per ADR-007
+
+// Good: Use Tailwind utilities
+<div className="flex flex-col p-4 bg-gray-100 rounded-lg">
+  {/* Component content */}
+</div>
+
+// Good: CSS Module for complex cases (< 100 lines)
+import styles from './SingleJobView.module.css';
+<div className={`flex flex-col ${styles.complexAnimation}`}>
+```
+
+## References
+
+- [ADR-001: File Size Guardrail](../../docs/architecture/adr/ADR-001-File-Size-Guardrail.md)
+- [ADR-002: Vertical Slice Architecture for IPC](../../docs/architecture/adr/ADR-002-Vertical-Slice-IPC.md)
+- [ADR-003: Dependency Injection over Global State](../../docs/architecture/adr/ADR-003-DI-Pattern.md)
+- [ADR-006: Solo-Developer Testing & Rollout Strategy](../../docs/architecture/adr/ADR-006-Solo-Developer-Testing-Rollout.md)
+- [ADR-007: CSS Standards - Tailwind-First Development](../../docs/architecture/adr/ADR-007-CSS-Standards.md)
+- [ADR-008: Image Production Layer Extraction](../../docs/architecture/adr/ADR-008-Image-Production-Layer-Extraction.md)
+- [ADR-009: Persistence Repository Layer](../../docs/architecture/adr/ADR-009-Persistence-Repository-Layer.md)
+- [ADR-010: Frontend Decomposition Standard](../../docs/architecture/adr/ADR-010-Frontend-Decomposition-Standard.md)
+- [ADR-011: Modular Testing Standard](../../docs/architecture/adr/ADR-011-Modular-Testing-Standard.md)
+- [ADR-012: Retry Executor Decomposition](../../docs/architecture/adr/ADR-012-Retry-Executor-Decomposition.md)
+- [Code Standards](../../docs/standards/CODE_STANDARDS.md)

@@ -110,6 +110,55 @@ For security concerns, vulnerability reporting, and our security policy, please 
 - Feature requests via [GitHub Issues](https://github.com/ShiftlineTools/gen-image-factory/issues)
 - Documentation improvements and feedback
 
+## For Developers
+
+### Agentic Memory Integration
+
+This project uses an **Obsidian + Qdrant + MCP** architecture to provide AI agents with persistent, semantic memory across development sessions.
+
+**What this means:**
+- AI assistants can search project knowledge (ADRs, stories, standards) semantically
+- **70-80% reduction** in context window usage (no need to load 40+ documents)
+- **<200ms query latency** for instant access to architectural constraints
+- **Persistent memory** survives across chat sessions
+
+**Components:**
+
+1. **Obsidian Vault** (Source of Truth)
+   - Location: `~/Documents/Obsidian/BMad-Projects/gen-image-factory/`
+   - Contains all project documentation with knowledge graph features
+
+2. **Symlink** (`./docs`)
+   - Points to Obsidian vault for IDE visibility
+   - Added to `.gitignore` (user-specific path)
+
+3. **Qdrant Vector Database** (Local Docker)
+   - Semantic search over project knowledge
+   - 2 collections: knowledge + best-practices
+
+4. **MCP Integration** (Cursor IDE)
+   - AI agents query memory via Model Context Protocol
+   - Configured in `.cursor/mcp_config.json`
+
+**Quick Setup:**
+
+```bash
+# 1. Create Obsidian vault and symlink
+mkdir -p ~/Documents/Obsidian/BMad-Projects/gen-image-factory
+ln -s ~/Documents/Obsidian/BMad-Projects/gen-image-factory ./docs
+
+# 2. Start Qdrant (requires Docker/Colima)
+docker run -d --name bmad-qdrant -p 6333:6333 qdrant/qdrant:latest
+
+# 3. See full setup guides:
+# - docs/architecture/obsidian-setup.md
+# - docs/architecture/mcp-setup.md
+```
+
+**Setup Time:** ~30 minutes for first-time setup
+
+**Troubleshooting:** See `docs/architecture/mcp-troubleshooting.md`
+
 ## Made by Shiftline Tools
 
 Gen Image Factory is developed and maintained by an individual developer under the **Shiftline Tools** brand, a software development studio focused on creating tools that enhance productivity.
