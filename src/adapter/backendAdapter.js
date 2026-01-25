@@ -22,6 +22,7 @@ const { GeneratedImage } = require(path.join(__dirname, '../database/models/Gene
 const { JobRunner } = require(path.join(__dirname, '../services/jobRunner'));
 const RetryExecutor = require(path.join(__dirname, '../services/retryExecutor'));
 const { ErrorTranslationService } = require(path.join(__dirname, '../services/errorTranslation'));
+const { SecurityService } = require(path.join(__dirname, '../services/SecurityService'));
 const { safeLogger } = require(path.join(__dirname, '../utils/logMasking'));
 
 // Service names for keytar
@@ -76,6 +77,10 @@ class BackendAdapter {
 
     // Ensure we have a consistent encryption key
     this.encryptionKey = this._deriveEncryptionKey();
+    
+    // Initialize SecurityService (Shadow Bridge - ADR-002, ADR-003, ADR-006)
+    // Always available but only active if FEATURE_MODULAR_SECURITY = 'true'
+    this.securityService = new SecurityService(keytar, this.jobConfig);
   }
 
   _deriveEncryptionKey() {
@@ -963,7 +968,29 @@ class BackendAdapter {
     });
   }
 
+  /**
+   * Get API Key - Shadow Bridge Pattern (ADR-006)
+   * Routes to SecurityService if FEATURE_MODULAR_SECURITY enabled, else uses legacy code
+   */
   async getApiKey(serviceName) {
+    // Shadow Bridge: Check feature flag
+    if (process.env.FEATURE_MODULAR_SECURITY === 'true') {
+      try {
+        return await this.securityService.getSecret(serviceName);
+      } catch (error) {
+        safeLogger.warn('SecurityService failed, falling back to legacy:', error);
+        return await this._legacyGetApiKey(serviceName);
+      }
+    }
+    // Legacy path (default)
+    return await this._legacyGetApiKey(serviceName);
+  }
+
+  /**
+   * LEGACY: Get API Key - Original implementation preserved
+   * DO NOT MODIFY - This is the behavioral baseline
+   */
+  async _legacyGetApiKey(serviceName) {
     try {
       const accountName = ACCOUNT_NAMES[serviceName.toUpperCase()];
       if (!accountName) {
@@ -1045,7 +1072,29 @@ class BackendAdapter {
     }
   }
 
+  /**
+   * Set API Key - Shadow Bridge Pattern (ADR-006)
+   * Routes to SecurityService if FEATURE_MODULAR_SECURITY enabled, else uses legacy code
+   */
   async setApiKey(serviceName, apiKey) {
+    // Shadow Bridge: Check feature flag
+    if (process.env.FEATURE_MODULAR_SECURITY === 'true') {
+      try {
+        return await this.securityService.setSecret(serviceName, apiKey);
+      } catch (error) {
+        safeLogger.warn('SecurityService failed, falling back to legacy:', error);
+        return await this._legacySetApiKey(serviceName, apiKey);
+      }
+    }
+    // Legacy path (default)
+    return await this._legacySetApiKey(serviceName, apiKey);
+  }
+
+  /**
+   * LEGACY: Set API Key - Original implementation preserved
+   * DO NOT MODIFY - This is the behavioral baseline
+   */
+  async _legacySetApiKey(serviceName, apiKey) {
     try {
       const accountName = ACCOUNT_NAMES[serviceName.toUpperCase()];
       if (!accountName) {
