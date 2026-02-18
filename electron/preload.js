@@ -97,7 +97,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     updateGeneratedImage: (id, image) => ipcRenderer.invoke('generated-image:update', { id, image }),
     deleteGeneratedImage: (imageId) => ipcRenderer.invoke('generated-image:delete', { imageId }),
     bulkDeleteGeneratedImages: (imageIds) => ipcRenderer.invoke('generated-image:bulk-delete', { imageIds }),
-    getImagesByQCStatus: (qcStatus) => ipcRenderer.invoke('generated-image:get-by-qc-status', { qcStatus }),
+    getImagesByQCStatus: (qcStatus, options) => ipcRenderer.invoke('generated-image:get-by-qc-status', { qcStatus, limit: options?.limit, offset: options?.offset }),
     updateQCStatus: (imageId, status) => ipcRenderer.invoke('generated-image:update-qc-status', { imageId, status }),
     updateQCStatusByMappingId: (mappingId, status, reason) => ipcRenderer.invoke('generated-image:update-qc-status-by-mapping', { mappingId, status, reason }),
     updateGeneratedImageByMappingId: (mappingId, image) => ipcRenderer.invoke('generated-image:update-by-mapping', { mappingId, image }),

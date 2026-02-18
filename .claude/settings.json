@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "command": ".claude/hooks/scripts/session_start.py",
+        "name": "ai-memory-session-start",
+        "timeout": 5000
+      }
+    ],
+    "postTool": [
+      {
+        "matcher": "Write|Edit|StrReplace",
+        "type": "command",
+        "command": ".claude/hooks/scripts/post_tool_capture.py",
+        "name": "ai-memory-post-tool"
+      }
+    ],
+    "preCompact": [
+      {
+        "type": "command",
+        "command": ".claude/hooks/scripts/pre_compact_save.py",
+        "name": "ai-memory-pre-compact"
+      }
+    ]
+  },
+  "env": {
+    "AI_MEMORY_PROJECT_ID": "gen-image-factory",
+    "AI_MEMORY_INSTALL_DIR": "/Users/vjatseslavjertsalov/.ai-memory",
+    "QDRANT_HOST": "localhost",
+    "QDRANT_PORT": "26350",
+    "EMBEDDING_HOST": "localhost",
+    "EMBEDDING_PORT": "28080"
+  }
+}

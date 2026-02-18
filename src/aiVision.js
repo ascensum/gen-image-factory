@@ -11,8 +11,8 @@ const defaultQualityCheckPrompt = require(path.join(__dirname, './constant/defau
  * @param {string} openaiModel - The OpenAI model to use.
  * @returns {Promise<object>} - A promise that resolves to an object like { image_quality: 'pass'/'fail', reason: '...' }.
  */
-async function runQualityCheck(imagePath, openaiModel = 'gpt-4o', customQualityCheckPrompt = null) {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+async function runQualityCheck(imagePath, openaiModel = 'gpt-4o', customQualityCheckPrompt = null, apiKey = null) {
+  const openai = new OpenAI({ apiKey: apiKey || process.env.OPENAI_API_KEY });
   logDebug('--- Starting Image Quality Check ---');
   
   try {
@@ -35,7 +35,14 @@ async function runQualityCheck(imagePath, openaiModel = 'gpt-4o', customQualityC
       ],
     });
 
-    let analysis = response.choices[0].message.content;
+    let analysis = response.choices?.[0]?.message?.content;
+    
+    // Guard against null/undefined content (OpenAI may return null on rate-limit, content filter, or model overload)
+    if (!analysis) {
+      logDebug('Quality Check: OpenAI returned null/empty content. Marking as failed.');
+      return { passed: false, reason: 'OpenAI returned empty response for quality check (possible rate-limit or content filter)' };
+    }
+    
     analysis = analysis.replace(/```json/g, '').replace(/```/g, '').trim();
 
     let parsedAnalysis;
@@ -76,8 +83,8 @@ async function runQualityCheck(imagePath, openaiModel = 'gpt-4o', customQualityC
  * @param {string} openaiModel - The OpenAI model to use.
  * @returns {Promise<object>} - A promise that resolves to an object with new_title and uploadTags.
  */
-async function generateMetadata(imagePath, promptContext, customMetadataPrompt = null, openaiModel = 'gpt-4o') {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+async function generateMetadata(imagePath, promptContext, customMetadataPrompt = null, openaiModel = 'gpt-4o', apiKey = null) {
+  const openai = new OpenAI({ apiKey: apiKey || process.env.OPENAI_API_KEY });
   logDebug('--- Starting Metadata Generation ---');
 
   try {
@@ -99,7 +106,13 @@ async function generateMetadata(imagePath, promptContext, customMetadataPrompt =
       ],
     });
 
-    let analysis = response.choices[0].message.content;
+    let analysis = response.choices?.[0]?.message?.content;
+    
+    // Guard against null/undefined content (OpenAI may return null on rate-limit, content filter, or model overload)
+    if (!analysis) {
+      throw new Error('OpenAI returned empty response for metadata generation (possible rate-limit or content filter)');
+    }
+    
     analysis = analysis.replace(/```json/g, '').replace(/```/g, '').trim();
 
     const parsedAnalysis = JSON.parse(analysis);

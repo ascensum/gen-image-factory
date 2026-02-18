@@ -10,9 +10,24 @@ export function formatQcLabel(status?: string | null, reason?: string | null): s
   if (r.startsWith('processing_failed:convert')) return 'Conversion failed';
   if (r.startsWith('processing_failed:save_final')) return 'Save failed';
   if (r.startsWith('processing_failed:metadata')) return 'Metadata failed';
-  if (r.startsWith('processing_failed:qc')) return 'QC Failed';
+  /** QC step failed to run/respond — not "image failed QC"; we have no content reason. */
+  if (r.startsWith('processing_failed:qc')) return 'QC analysis failed';
   return 'QC Failed';
 }
+
+/** Options for Failed Images Review label filter. Failed (All) resets filter; others match pill labels from formatQcLabel. */
+export const FAILED_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: 'all', label: 'Failed (All)' },
+  { value: 'QC Failed', label: 'QC Failed' },
+  { value: 'QC analysis failed', label: 'QC analysis failed' },
+  { value: 'Download failed', label: 'Download failed' },
+  { value: 'Background removal failed', label: 'Background removal failed' },
+  { value: 'Trim failed', label: 'Trim failed' },
+  { value: 'Enhancement failed', label: 'Enhancement failed' },
+  { value: 'Conversion failed', label: 'Conversion failed' },
+  { value: 'Save failed', label: 'Save failed' },
+  { value: 'Metadata failed', label: 'Metadata failed' },
+];
 
 export function formatQcFailureReason(status?: string | null, reason?: string | null): string | undefined {
   const s = String(status || '').toLowerCase();
@@ -29,5 +44,20 @@ export function formatQcFailureReason(status?: string | null, reason?: string | 
   // For genuine QC failures with a model-provided explanation, return undefined
   // so callers can display the original qcReason from the model.
   return undefined;
+}
+
+/**
+ * Maps a raw retry error (e.g. from job-error / retry-error IPC) to a user-visible message.
+ * Used for the retry toast and any other place we show "Retry error: ..." to the user.
+ */
+export function formatRetryErrorForUser(rawError: string | undefined): string {
+  const r = String(rawError || '').trim();
+  if (!r) return 'Retry failed. Please try again.';
+  const lower = r.toLowerCase();
+  // Known processing_failed:* codes (formatQcFailureReason uses startsWith, so suffixes are ignored)
+  const friendly = formatQcFailureReason('retry_failed', lower);
+  if (friendly) return `Retry error: ${friendly}`;
+  // Unknown or technical message — show generic so we never expose internal codes
+  return 'Retry failed. Please try again or check the image.';
 }
 

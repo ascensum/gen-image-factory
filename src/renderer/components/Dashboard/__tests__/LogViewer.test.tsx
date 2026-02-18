@@ -37,6 +37,7 @@ describe('LogViewer', () => {
 
   const defaultProps = {
     logs: mockLogs,
+    jobStatus: 'idle' as const,
     isLoading: false,
     onRefresh: vi.fn()
   };

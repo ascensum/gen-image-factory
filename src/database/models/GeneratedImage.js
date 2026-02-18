@@ -13,6 +13,11 @@ class GeneratedImage {
   constructor() {
     // Cross-platform database path resolution
     this.dbPath = this.resolveDatabasePath();
+    
+    // Initialize ImageRepository (Shadow Bridge - ADR-006, ADR-009)
+    // Always available but only active if FEATURE_MODULAR_IMAGE_REPOSITORY = 'true'
+    this.imageRepository = null;  // Lazy-initialized in init()
+    
     // Constructor is used in many contexts that don't await init(); prevent unhandled rejections.
     if (process.env.SMOKE_TEST === 'true') {
       console.log(' [GeneratedImage] Skipping init() during SMOKE_TEST');
@@ -142,7 +147,19 @@ class GeneratedImage {
           // Reduce SQLITE_BUSY flakes under parallel usage (tests/Electron multi-model startup)
           // NOTE: use configure() (sync) to avoid async PRAGMA on closing handles.
           try { this.db.configure('busyTimeout', 5000); } catch (_) {}
-          this.createTables().then(resolve).catch(reject);
+          this.createTables().then(() => {
+            // Initialize ImageRepository (Shadow Bridge - ADR-006, ADR-009)
+            if (process.env.FEATURE_MODULAR_IMAGE_REPOSITORY === 'true') {
+              try {
+                const { ImageRepository } = require('../../repositories/ImageRepository');
+                this.imageRepository = new ImageRepository(this);
+                console.log(' ImageRepository initialized (modular mode)');
+              } catch (err) {
+                console.warn('Failed to initialize ImageRepository:', err.message);
+              }
+            }
+            resolve();
+          }).catch(reject);
         }
       });
     });
@@ -591,11 +608,17 @@ class GeneratedImage {
     });
   }
 
-  async getImagesByQCStatus(qcStatus) {
+  async getImagesByQCStatus(qcStatus, options = {}) {
+    const limit = options.limit != null ? Math.max(0, parseInt(options.limit, 10)) : null;
+    const offset = options.offset != null ? Math.max(0, parseInt(options.offset, 10)) : 0;
     return new Promise((resolve, reject) => {
-      const sql = 'SELECT * FROM generated_images WHERE qc_status = ? ORDER BY created_at DESC';
-      
-      this.db.all(sql, [qcStatus], (err, rows) => {
+      let sql = 'SELECT * FROM generated_images WHERE qc_status = ? ORDER BY created_at DESC';
+      const params = [qcStatus];
+      if (limit != null && limit > 0) {
+        sql += ' LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+      }
+      this.db.all(sql, params, (err, rows) => {
         if (err) {
           console.error('Error getting images by QC status:', err);
           reject(err);
@@ -717,7 +740,21 @@ class GeneratedImage {
     });
   }
 
+  // Shadow Bridge: updateMetadataById (ADR-006, ADR-009)
   async updateMetadataById(id, newMetadata) {
+    if (process.env.FEATURE_MODULAR_IMAGE_REPOSITORY === 'true' && this.imageRepository) {
+      try {
+        return await this.imageRepository.updateMetadataById(id, newMetadata);
+      } catch (error) {
+        console.warn('ImageRepository.updateMetadataById failed, falling back to legacy:', error);
+        return await this._legacyUpdateMetadataById(id, newMetadata);
+      }
+    }
+    return await this._legacyUpdateMetadataById(id, newMetadata);
+  }
+
+  // Legacy implementation (ADR-006: Zero-Deletion Policy)
+  async _legacyUpdateMetadataById(id, newMetadata) {
     return new Promise((resolve, reject) => {
       const selectSql = 'SELECT metadata FROM generated_images WHERE id = ?';
       this.db.get(selectSql, [id], (err, row) => {
@@ -744,7 +781,21 @@ class GeneratedImage {
     });
   }
 
+  // Shadow Bridge: getImageMetadata (ADR-006, ADR-009)
   async getImageMetadata(executionId) {
+    if (process.env.FEATURE_MODULAR_IMAGE_REPOSITORY === 'true' && this.imageRepository) {
+      try {
+        return await this.imageRepository.getImageMetadata(executionId);
+      } catch (error) {
+        console.warn('ImageRepository.getImageMetadata failed, falling back to legacy:', error);
+        return await this._legacyGetImageMetadata(executionId);
+      }
+    }
+    return await this._legacyGetImageMetadata(executionId);
+  }
+
+  // Legacy implementation (ADR-006: Zero-Deletion Policy)
+  async _legacyGetImageMetadata(executionId) {
     return new Promise((resolve, reject) => {
       const sql = `
         SELECT gi.*, je.configuration_id, je.status as job_status
@@ -778,7 +829,21 @@ class GeneratedImage {
     });
   }
 
+  // Shadow Bridge: getImageStatistics (ADR-006, ADR-009)
   async getImageStatistics() {
+    if (process.env.FEATURE_MODULAR_IMAGE_REPOSITORY === 'true' && this.imageRepository) {
+      try {
+        return await this.imageRepository.getImageStatistics();
+      } catch (error) {
+        console.warn('ImageRepository.getImageStatistics failed, falling back to legacy:', error);
+        return await this._legacyGetImageStatistics();
+      }
+    }
+    return await this._legacyGetImageStatistics();
+  }
+
+  // Legacy implementation (ADR-006: Zero-Deletion Policy)
+  async _legacyGetImageStatistics() {
     return new Promise((resolve, reject) => {
       const sql = `
         SELECT 
@@ -804,69 +869,83 @@ class GeneratedImage {
     });
   }
 
-    async bulkDeleteGeneratedImages(imageIds) {
-      if (!Array.isArray(imageIds) || imageIds.length === 0) {
-        return { success: false, error: 'No image IDs provided' };
+  // Shadow Bridge: bulkDeleteGeneratedImages (ADR-006, ADR-009)
+  async bulkDeleteGeneratedImages(imageIds) {
+    if (process.env.FEATURE_MODULAR_IMAGE_REPOSITORY === 'true' && this.imageRepository) {
+      try {
+        return await this.imageRepository.bulkDeleteGeneratedImages(imageIds);
+      } catch (error) {
+        console.warn('ImageRepository.bulkDeleteGeneratedImages failed, falling back to legacy:', error);
+        return await this._legacyBulkDeleteGeneratedImages(imageIds);
       }
-  
-      return new Promise((resolve, reject) => {
-        // First, get all image data to find file paths
-        const getPromises = imageIds.map(id => this.getGeneratedImage(id));
-        
-        Promise.all(getPromises).then(results => {
-          const imagesToDelete = results
-            .filter(res => res.success && res.image)
-            .map(res => res.image);
-  
-          // Delete the database records
-          const placeholders = imageIds.map(() => '?').join(',');
-          const sql = `DELETE FROM generated_images WHERE id IN (${placeholders})`;
-          
-          this.db.run(sql, imageIds, (err) => {
-            if (err) {
-              console.error('Error bulk deleting generated images from database:', err);
-              reject(err);
-            } else {
-              const changes = this.changes;
-              console.log(`Bulk deleted ${changes} generated images from database`);
-              
-              // Now delete all the actual files
-              const fsP = require('fs').promises;
-              let filesDeleted = 0;
-              const unlinkPromises = imagesToDelete.map(image => {
-                const filePath = image.finalImagePath || image.tempImagePath;
-                if (filePath) {
-                  return fsP.unlink(filePath).then(() => {
-                    filesDeleted++;
-                  }).catch(_e => {
-                    console.warn(`️ Failed to delete file ${filePath}:`, _e.message);
-                  });
-                }
-                return Promise.resolve();
-              });
-              
-              Promise.all(unlinkPromises).then(() => {
-                resolve({
-                  success: true,
-                  deletedRows: changes,
-                  filesDeleted,
-                  totalImages: imagesToDelete.length
-                });
-              }).catch(_err => {
-                // Even if unlinks fail, we resolve success because DB records are gone
-                resolve({
-                  success: true,
-                  deletedRows: changes,
-                  filesDeleted,
-                  totalImages: imagesToDelete.length,
-                  warning: 'Some files could not be deleted'
-                });
-              });
-            }
-          });
-        }).catch(reject);
-      });
     }
+    return await this._legacyBulkDeleteGeneratedImages(imageIds);
+  }
+
+  // Legacy implementation (ADR-006: Zero-Deletion Policy)
+  async _legacyBulkDeleteGeneratedImages(imageIds) {
+    if (!Array.isArray(imageIds) || imageIds.length === 0) {
+      return { success: false, error: 'No image IDs provided' };
+    }
+
+    return new Promise((resolve, reject) => {
+      // First, get all image data to find file paths
+      const getPromises = imageIds.map(id => this.getGeneratedImage(id));
+      
+      Promise.all(getPromises).then(results => {
+        const imagesToDelete = results
+          .filter(res => res.success && res.image)
+          .map(res => res.image);
+
+        // Delete the database records
+        const placeholders = imageIds.map(() => '?').join(',');
+        const sql = `DELETE FROM generated_images WHERE id IN (${placeholders})`;
+        
+        this.db.run(sql, imageIds, (err) => {
+          if (err) {
+            console.error('Error bulk deleting generated images from database:', err);
+            reject(err);
+          } else {
+            const changes = this.changes;
+            console.log(`Bulk deleted ${changes} generated images from database`);
+            
+            // Now delete all the actual files
+            const fsP = require('fs').promises;
+            let filesDeleted = 0;
+            const unlinkPromises = imagesToDelete.map(image => {
+              const filePath = image.finalImagePath || image.tempImagePath;
+              if (filePath) {
+                return fsP.unlink(filePath).then(() => {
+                  filesDeleted++;
+                }).catch(_e => {
+                  console.warn(`️ Failed to delete file ${filePath}:`, _e.message);
+                });
+              }
+              return Promise.resolve();
+            });
+            
+            Promise.all(unlinkPromises).then(() => {
+              resolve({
+                success: true,
+                deletedRows: changes,
+                filesDeleted,
+                totalImages: imagesToDelete.length
+              });
+            }).catch(_err => {
+              // Even if unlinks fail, we resolve success because DB records are gone
+              resolve({
+                success: true,
+                deletedRows: changes,
+                filesDeleted,
+                totalImages: imagesToDelete.length,
+                warning: 'Some files could not be deleted'
+              });
+            });
+          }
+        });
+      }).catch(reject);
+    });
+  }
   async cleanupOldImages(daysToKeep = 30) {
     return new Promise((resolve, reject) => {
       // First, get all old images to find file paths

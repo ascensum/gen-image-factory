@@ -5,6 +5,8 @@ const ExcelJS = require('exceljs'); // Use secure exceljs
 // const { pause } = require("./utils");
 const { paramsGeneratorModule } = require("./paramsGeneratorModule");
 const { producePictureModule } = require("./producePictureModule");
+const { SecurityService } = require("./services/SecurityService");
+const { JobConfiguration } = require("./database/models/JobConfiguration");
 const yargs = require('yargs');
 const { hideBin } = require('yargs/helpers');
 const csv = require('csv-parser'); // Import csv-parser
@@ -222,9 +224,22 @@ function readCsvFile(filePath) {
     .help()
     .alias('help', 'h').argv;
 
-  // const customKeywordsFile = argv.keywordsFile;
-  // const customSystemPromptFile = argv.mjSystemPrompt; // Changed variable name
-  // const qualityCheckPromptFile = argv.qualityCheckPromptFile; // New variable for quality check
+  // Initialize SecurityService directly to get secure API keys without Electron overhead
+  const keytar = require('keytar');
+  const jobConfig = new JobConfiguration();
+  const securityService = new SecurityService(keytar, jobConfig);
+
+  const openaiKeyRes = await securityService.getSecret('openai');
+  const runwareKeyRes = await securityService.getSecret('runware');
+  const removeBgKeyRes = await securityService.getSecret('removebg');
+
+  const openaiApiKey = openaiKeyRes.success ? openaiKeyRes.apiKey : null;
+  const runwareApiKey = runwareKeyRes.success ? runwareKeyRes.apiKey : null;
+  const removeBgApiKey = removeBgKeyRes.success ? removeBgKeyRes.apiKey : null;
+
+  if (!openaiApiKey) {
+    console.warn('Warning: OpenAI API key not found in secure storage.');
+  }
 
   // Centralized configuration object
   const config = {
@@ -251,6 +266,9 @@ function readCsvFile(filePath) {
     pngQuality: argv.pngQuality || parseInt(process.env.PNG_QUALITY, 10) || 100,
     runQualityCheck: argv.runQualityCheck !== null ? argv.runQualityCheck : (process.env.RUN_QUALITY_CHECK !== 'false'), // Default true
     runMetadataGen: argv.runMetadataGen !== null ? argv.runMetadataGen : (process.env.RUN_METADATA_GEN !== 'false'), // Default true
+    openaiApiKey,
+    runwareApiKey,
+    removeBgApiKey
   };
 
   // Set debug mode in process.env so it's available globally for the logDebug utility
@@ -345,31 +363,23 @@ function readCsvFile(filePath) {
           config
         );
 
-          if (!producePictureResults || producePictureResults.length === 0) {
+        const imagesToProcess = Array.isArray(producePictureResults) 
+          ? producePictureResults 
+          : (producePictureResults?.processedImages || []);
+
+          if (imagesToProcess.length === 0) {
             // This is not an error, just no images passed QC.
             logDebug('No images were processed in this run (likely failed QC).');
             continue; // Go to the next item in the loop
           }
 
-          for (const result of producePictureResults) {
+          for (const result of imagesToProcess) {
             const { outputPath, settings: updatedSettings } = result;
-
-            // This check is now redundant if producePictureModule handles its errors
-            // but we keep it as a final safeguard.
-            if (
-              config.runMetadataGen &&
-              (!updatedSettings.title?.title?.en || !updatedSettings.uploadTags?.en)
-            ) {
-              console.error('Incomplete settings after metadata generation. Skipping item.');
-              continue;
-            }
 
             processedImages.push({
               outputPath,
-              settings: updatedSettings, // Use the returned, updated settings
+              settings: updatedSettings,
             });
-
-            successfulItems++;
           }
 
           totalAttemptedItems++;

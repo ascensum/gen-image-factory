@@ -33,6 +33,7 @@ describe('ParametersSection', () => {
     // onOpenaiModelChange is still actively used
     onOpenaiModelChange: vi.fn(),
     onPollingTimeoutChange: vi.fn(),
+    onPollingIntervalChange: vi.fn(),
     onKeywordRandomChange: vi.fn(),
     onRemoveBgChange: vi.fn(),
     onImageConvertChange: vi.fn(),

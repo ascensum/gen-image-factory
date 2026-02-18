@@ -8,7 +8,12 @@ const sharp = require("sharp");
 const { Blob } = require('node:buffer'); // Import Blob
 const { logDebug } = require(path.join(__dirname, './utils/logDebug')); // Corrected path
 const aiVision = require(path.join(__dirname, './aiVision'));
+const { safeLogger } = require(path.join(__dirname, './utils/logMasking'));
+const shadowBridgeLogger = require(path.join(__dirname, './utils/shadowBridgeLogger'));
 const { randomUUID } = require('node:crypto');
+const ImageGeneratorService = require('./services/ImageGeneratorService');
+const ImageRemoverService = require('./services/ImageRemoverService');
+const ImageProcessorService = require('./services/ImageProcessorService');
 //const ngrok = require('ngrok'); // Removed ngrok dependency
 //require("dotenv").config(); // dotenv is already required in index.js
 
@@ -18,7 +23,7 @@ async function pause(isLong = false, seconds) {
   return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
-async function removeBg(inputPath, removeBgSize, signal, timeoutMs) {
+async function removeBg(axiosInstance, inputPath, removeBgSize, signal, timeoutMs, config = {}) {
   try {
     const FormData = require('form-data');
     const form = new FormData();
@@ -28,10 +33,10 @@ async function removeBg(inputPath, removeBgSize, signal, timeoutMs) {
 
     const headers = {
       ...form.getHeaders(),
-      'X-Api-Key': process.env.REMOVE_BG_API_KEY || ''
+      'X-Api-Key': config.removeBgApiKey || process.env.REMOVE_BG_API_KEY || ''
     };
 
-    const response = await axios.post('https://api.remove.bg/v1.0/removebg', form, {
+    const response = await axiosInstance.post('https://api.remove.bg/v1.0/removebg', form, {
       headers,
       responseType: 'arraybuffer',
       timeout: Number.isFinite(Number(timeoutMs)) ? Number(timeoutMs) : 60000,
@@ -67,10 +72,10 @@ async function removeBg(inputPath, removeBgSize, signal, timeoutMs) {
 }
 
 // Retry mechanism for removeBg
-async function retryRemoveBg(inputPath, retries = 3, delay = 2000, removeBgSize, signal, timeoutMs) {
+async function retryRemoveBg(axiosInstance, inputPath, retries = 3, delay = 2000, removeBgSize, signal, timeoutMs, config = {}) {
   for (let i = 0; i < retries; i++) {
     try {
-      return await removeBg(inputPath, removeBgSize, signal, timeoutMs);
+      return await removeBg(axiosInstance, inputPath, removeBgSize, signal, timeoutMs, config);
     } catch (error) {
       const status = error?.response?.status;
       const isRetryable = !error.response || (status >= 500) || error.code === 'ECONNABORTED' || status === 429;
@@ -214,11 +219,7 @@ function sanitizePromptForRunware(prompt) {
 
 /**
  * Produces pictures based on the provided settings and image name base.
- * Implements polling mechanism for image generation status.
- * 
- * @param {Object} settings - Configuration settings for image generation.
- * @param {string} imgNameBase - Base name for the generated images.
- * @returns {Array} - List of processed images with their paths and settings.
+ * Acts as a bridge between legacy and modular implementations.
  */
 async function producePictureModule(
   settings,
@@ -226,6 +227,71 @@ async function producePictureModule(
   customMetadataPrompt = null,
   config = {}
 ) {
+  const axiosInstance = config.axios || axios;
+  const fsInstance = config.fs || fs;
+  const ImageGeneratorServiceClass = config.ImageGeneratorService || ImageGeneratorService;
+
+  // Shadow Bridge: Check feature flag for Generator
+  if (config.FEATURE_MODULAR_GENERATOR === 'true' || process.env.FEATURE_MODULAR_GENERATOR === 'true') {
+    try {
+      shadowBridgeLogger.logModularPath('ImageGeneratorService', 'generateImages');
+      // Use constructor injection for dependencies
+      const generatorService = new ImageGeneratorServiceClass(config.runwareApiKey || process.env.RUNWARE_API_KEY, { 
+        logDebug,
+        axios: axiosInstance,
+        fs: fsInstance
+      });
+      const { successfulDownloads, failedItems } = await generatorService.generateImages(settings, imgNameBase, config);
+
+      const processedImages = [];
+      for (const item of successfulDownloads) {
+        // Reset per-image soft failure bucket
+        try { config._softFailures = []; } catch {}
+        
+        const outputPath = await processImage(item.inputImagePath, imgNameBase + item.imageSuffix, {
+           ...config,
+           axios: axiosInstance,
+           fs: fsInstance
+        });
+        
+        processedImages.push({
+          outputPath,
+          settings: { ...settings },
+          mappingId: item.mappingId,
+          ...(Array.isArray(config._softFailures) && config._softFailures.length > 0 ? { softFailures: [...config._softFailures] } : {})
+        });
+      }
+
+      return { processedImages, failedItems };
+    } catch (error) {
+      console.warn('ImageGeneratorService failed, falling back to legacy:', error.message);
+      return await _legacyProducePictureModule(settings, imgNameBase, customMetadataPrompt, {
+         ...config,
+         axios: axiosInstance,
+         fs: fsInstance
+      });
+    }
+  }
+
+  return await _legacyProducePictureModule(settings, imgNameBase, customMetadataPrompt, {
+     ...config,
+     axios: axiosInstance,
+     fs: fsInstance
+  });
+}
+
+/**
+ * Legacy implementation of producePictureModule.
+ */
+async function _legacyProducePictureModule(
+  settings,
+  imgNameBase,
+  customMetadataPrompt = null,
+  config = {}
+) {
+  const axiosInstance = config.axios || axios;
+  const fsInstance = config.fs || fs;
+
   // Destructure config parameters
   const {
     removeBg,
@@ -329,7 +395,7 @@ async function producePictureModule(
     : 30000;
   const rwHeaders = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${process.env.RUNWARE_API_KEY || ''}`
+    'Authorization': `Bearer ${config.runwareApiKey || process.env.RUNWARE_API_KEY || ''}`
   };
   if (!rwHeaders.Authorization || rwHeaders.Authorization.endsWith(' ')) {
     throw new Error('Runware API key is missing. Please set it in Settings → API Keys.');
@@ -340,7 +406,7 @@ async function producePictureModule(
   let rwResponse;
   try {
     logDebug('Runware payload (sanitized):', { ...body, positivePrompt: '[redacted]' });
-    rwResponse = await axios.post(
+    rwResponse = await axiosInstance.post(
       'https://api.runware.ai/v1/images/generate',
       payload,
       { headers: rwHeaders, timeout: httpTimeoutMs, signal: abortSignal }
@@ -374,7 +440,7 @@ async function producePictureModule(
       try {
         const extraBody = { ...body, taskUUID: randomUUID(), numberResults: Math.min(remaining, 20) };
         try { logDebug(`Top-up attempt ${attempts + 1}: requesting ${Math.min(remaining, 20)} more`); } catch {}
-        const extraResp = await axios.post(
+        const extraResp = await axiosInstance.post(
           'https://api.runware.ai/v1/images/generate',
           [extraBody],
           { headers: rwHeaders, timeout: httpTimeoutMs, signal: abortSignal }
@@ -421,7 +487,7 @@ async function producePictureModule(
         // Reuse HTTP timeout to ensure network loss doesn't hang job in 'running'
         let response;
         try {
-          response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: httpTimeoutMs, signal: abortSignal });
+          response = await axiosInstance.get(imageUrl, { responseType: 'arraybuffer', timeout: httpTimeoutMs, signal: abortSignal });
         } catch (err) {
           failedItems.push({
             mappingId,
@@ -451,8 +517,8 @@ async function producePictureModule(
           inferredExt = '.png';
         }
         inputImagePath = path.resolve(path.join(tempDir, `${imgNameBase}${imageSuffix}${inferredExt}`));
-        await fs.mkdir(path.dirname(inputImagePath), { recursive: true });
-        await fs.writeFile(inputImagePath, response.data);
+        await fsInstance.mkdir(path.dirname(inputImagePath), { recursive: true });
+        await fsInstance.writeFile(inputImagePath, response.data);
         logDebug(`Image downloaded and saved to ${inputImagePath}`); // Use global logDebug
 
         // Quality checks are now handled by JobRunner after images are saved to database
@@ -519,6 +585,9 @@ async function producePictureModule(
 }
 
 async function processImage(inputImagePath, imgName, config = {}) {
+  const axiosInstance = config.axios || axios;
+  const fsInstance = config.fs || fs;
+
   logDebug(`processImage: Starting with inputImagePath: ${inputImagePath}, imgName: ${imgName}`);
   try {
     logDebug('processImage: Received config keys:', Object.keys(config));
@@ -575,7 +644,7 @@ async function processImage(inputImagePath, imgName, config = {}) {
 
   let imageBuffer;
   try {
-    imageBuffer = await fs.readFile(inputImagePath);
+    imageBuffer = await fsInstance.readFile(inputImagePath);
   } catch (error) {
     console.error(`Error reading initial image file ${inputImagePath}:`, error);
     throw error;
@@ -583,85 +652,151 @@ async function processImage(inputImagePath, imgName, config = {}) {
 
   // 1. Remove Background (optional)
   if (removeBg) {
-    logDebug('Removing background with remove.bg...');
-    try {
-      // In processImage we rely solely on module config; infer enable by presence of a numeric pollingTimeout
-      const timeoutMinutesRawRb = Number.isFinite(Number(config?.pollingTimeout)) ? Number(config.pollingTimeout) : undefined;
-      const enableTimeoutFlagRb = Number.isFinite(timeoutMinutesRawRb);
-      const removeBgTimeoutMs = enableTimeoutFlagRb
-        ? Math.max(1000, Number(timeoutMinutesRawRb) * 60 * 1000)
-        : 30000;
-      imageBuffer = await retryRemoveBg(inputImagePath, 3, 2000, removeBgSize, config.abortSignal, removeBgTimeoutMs);
-      logDebug('Background removal successful');
+    if (config.FEATURE_MODULAR_REMOVER === 'true' || process.env.FEATURE_MODULAR_REMOVER === 'true') {
+      shadowBridgeLogger.logModularPath('ImageRemoverService', 'removeBackground');
+      logDebug('Removing background with modular ImageRemoverService...');
+      const ImageRemoverServiceClass = config.ImageRemoverService || ImageRemoverService;
+      const removerService = new ImageRemoverServiceClass(config.removeBgApiKey || process.env.REMOVE_BG_API_KEY, { 
+        logDebug,
+        axios: axiosInstance,
+        fs: fsInstance
+      });
+      
       try {
-        // Signal to caller that remove.bg actually applied
-        config._removeBgApplied = true;
-      } catch {}
-    } catch (error) {
-      console.error('Background removal failed:', error);
-      const enabled = !!failRetryEnabled;
-      const steps = Array.isArray(failOnSteps) ? failOnSteps.map(s => String(s).toLowerCase()) : [];
-      // Normalize failure mode from settings:
-      // - UI/Job config uses 'approve' | 'mark_failed'
-      // - Retry flow may still pass 'soft' | 'fail'
-      const rawMode = String(config?.removeBgFailureMode || 'approve').toLowerCase();
-      const failureMode = (rawMode === 'mark_failed') ? 'fail' : (rawMode === 'approve' ? 'soft' : rawMode);
-      // Treat missing/invalid key or explicit auth errors as hard-fail safeguards
-      let unauthorized = false;
-      try {
-        const status = error?.response?.status;
-        const body = error?.response?.data;
-        const msg = String(error && error.message || '');
-        unauthorized = (!process.env.REMOVE_BG_API_KEY) || status === 401 || status === 403 ||
-          /unauthorized|forbidden|x-api-key|invalid api key/i.test(msg) ||
-          (typeof body === 'string' && /unauthorized|forbidden|x-api-key|invalid api key/i.test(body));
-      } catch {}
-      // Respect user mode: only hard-fail when explicitly requested or fail-retry selects the step
-      const hardFail = (enabled && steps.includes('remove_bg')) || failureMode === 'fail';
-      try {
-        logDebug('processImage: remove.bg failure decision', {
-          rawMode,
-          failureMode,
-          failRetryEnabled: enabled,
-          stepsIncludeRemoveBg: steps.includes('remove_bg'),
-          unauthorized,
-          hardFail
+        const timeoutMinutesRawRb = Number.isFinite(Number(config?.pollingTimeout)) ? Number(config.pollingTimeout) : undefined;
+        const enableTimeoutFlagRb = Number.isFinite(timeoutMinutesRawRb);
+        const removeBgTimeoutMs = enableTimeoutFlagRb
+          ? Math.max(1000, Number(timeoutMinutesRawRb) * 60 * 1000)
+          : 30000;
+
+        imageBuffer = await removerService.retryRemoveBackground(inputImagePath, {
+          removeBgSize,
+          signal: config.abortSignal,
+          timeoutMs: removeBgTimeoutMs
         });
-      } catch {}
-      if (hardFail) {
-        try { logDebug('processImage: remove.bg failure treated as HARD-FAIL', { failureMode, unauthorized }); } catch {}
-        // Signal to caller that remove.bg did not apply in hard-fail path
-        try { config._removeBgApplied = false; } catch {}
-        // Record as soft failure as well so callers can detect via consolidated path
+        logDebug('Background removal successful (modular)');
+        config._removeBgApplied = true;
+      } catch (error) {
+        // Fallback logic for modular service
+        const failureMode = String(config?.removeBgFailureMode || 'approve').toLowerCase();
+        const enabled = !!config.failRetryEnabled;
+        const steps = Array.isArray(config.failOnSteps) ? config.failOnSteps.map(s => String(s).toLowerCase()) : [];
+        const hardFail = (enabled && steps.includes('remove_bg')) || failureMode === 'mark_failed';
+
+        if (hardFail) {
+          config._removeBgApplied = false;
+          const err = new Error('processing_failed:remove_bg');
+          // @ts-ignore
+          err.stage = 'remove_bg';
+          throw err;
+        } else {
+          logDebug('Modular remover failed, using original image as fallback.');
+          imageBuffer = await fsInstance.readFile(inputImagePath);
+        }
+      }
+    } else {
+      logDebug('Removing background with legacy remove.bg logic...');
+      try {
+        // In processImage we rely solely on module config; infer enable by presence of a numeric pollingTimeout
+        const timeoutMinutesRawRb = Number.isFinite(Number(config?.pollingTimeout)) ? Number(config.pollingTimeout) : undefined;
+        const enableTimeoutFlagRb = Number.isFinite(timeoutMinutesRawRb);
+        const removeBgTimeoutMs = enableTimeoutFlagRb
+          ? Math.max(1000, Number(timeoutMinutesRawRb) * 60 * 1000)
+          : 30000;
+        imageBuffer = await retryRemoveBg(axiosInstance, inputImagePath, 3, 2000, removeBgSize, config.abortSignal, removeBgTimeoutMs, config);
+        logDebug('Background removal successful');
         try {
-          if (Array.isArray((config)._softFailures)) {
-            (config)._softFailures.push({
-              stage: 'remove_bg',
-              vendor: 'remove.bg',
-              message: 'Hard-fail triggered'
-            });
-          }
+          // Signal to caller that remove.bg actually applied
+          config._removeBgApplied = true;
         } catch {}
-        const err = new Error('processing_failed:remove_bg');
-        // @ts-ignore
-        err.stage = 'remove_bg';
-        throw err;
-      } else {
-        logDebug('Using original image as fallback for subsequent steps.');
+      } catch (error) {
+        console.error('Background removal failed:', error);
+        const enabled = !!failRetryEnabled;
+        const steps = Array.isArray(failOnSteps) ? failOnSteps.map(s => String(s).toLowerCase()) : [];
+        // Normalize failure mode from settings:
+        // - UI/Job config uses 'approve' | 'mark_failed'
+        // - Retry flow may still pass 'soft' | 'fail'
+        const rawMode = String(config?.removeBgFailureMode || 'approve').toLowerCase();
+        const failureMode = (rawMode === 'mark_failed') ? 'fail' : (rawMode === 'approve' ? 'soft' : rawMode);
+        // Treat missing/invalid key or explicit auth errors as hard-fail safeguards
+        let unauthorized = false;
         try {
-          if (Array.isArray((config)._softFailures)) {
-            (config)._softFailures.push({
-              stage: 'remove_bg',
-              vendor: 'remove.bg',
-              message: String(error && error.message || error)
-            });
-          }
+          const status = error?.response?.status;
+          const body = error?.response?.data;
+          const msg = String(error && error.message || '');
+          unauthorized = (!process.env.REMOVE_BG_API_KEY) || status === 401 || status === 403 ||
+            /unauthorized|forbidden|x-api-key|invalid api key/i.test(msg) ||
+            (typeof body === 'string' && /unauthorized|forbidden|x-api-key|invalid api key/i.test(body));
         } catch {}
-        imageBuffer = await fs.readFile(inputImagePath);
+        // Respect user mode: only hard-fail when explicitly requested or fail-retry selects the step
+        const hardFail = (enabled && steps.includes('remove_bg')) || failureMode === 'fail';
+        try {
+          logDebug('processImage: remove.bg failure decision', {
+            rawMode,
+            failureMode,
+            failRetryEnabled: enabled,
+            stepsIncludeRemoveBg: steps.includes('remove_bg'),
+            unauthorized,
+            hardFail
+          });
+        } catch {}
+        if (hardFail) {
+          try { logDebug('processImage: remove.bg failure treated as HARD-FAIL', { failureMode, unauthorized }); } catch {}
+          // Signal to caller that remove.bg did not apply in hard-fail path
+          try { config._removeBgApplied = false; } catch {}
+          // Record as soft failure as well so callers can detect via consolidated path
+          try {
+            if (Array.isArray((config)._softFailures)) {
+              (config)._softFailures.push({
+                stage: 'remove_bg',
+                vendor: 'remove.bg',
+                message: 'Hard-fail triggered'
+              });
+            }
+          } catch {}
+          const err = new Error('processing_failed:remove_bg');
+          // @ts-ignore
+          err.stage = 'remove_bg';
+          throw err;
+        } else {
+          logDebug('Using original image as fallback for subsequent steps.');
+          try {
+            if (Array.isArray((config)._softFailures)) {
+              (config)._softFailures.push({
+                stage: 'remove_bg',
+                vendor: 'remove.bg',
+                message: String(error && error.message || error)
+              });
+            }
+          } catch {}
+          imageBuffer = await fsInstance.readFile(inputImagePath);
+        }
       }
     }
   } else {
-    imageBuffer = await fs.readFile(inputImagePath);
+    imageBuffer = await fsInstance.readFile(inputImagePath);
+  }
+
+  if (config.FEATURE_MODULAR_PROCESSOR === 'true' || process.env.FEATURE_MODULAR_PROCESSOR === 'true') {
+    shadowBridgeLogger.logModularPath('ImageProcessorService', 'process');
+    logDebug('Processing image with modular ImageProcessorService...');
+    const ImageProcessorServiceClass = config.ImageProcessorService || ImageProcessorService;
+    const processorService = new ImageProcessorServiceClass({ 
+      logDebug,
+      fs: fsInstance
+    });
+
+    try {
+      const outputPath = await processorService.process(imageBuffer, imgName, {
+        ...config,
+        inputImagePath // pass for extension detection
+      });
+      logDebug(`processImage: Completed successfully (modular). Output: ${outputPath}`);
+      return outputPath;
+    } catch (error) {
+      console.warn('ImageProcessorService failed, falling back to legacy:', error.message);
+      // Fallback to legacy Sharp logic below
+    }
   }
 
   let sharpInstance = sharp(imageBuffer);

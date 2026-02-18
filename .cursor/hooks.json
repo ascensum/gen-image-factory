@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [{
+      "command": ".cursor/hooks/cursor-afterFileEdit-adapter.sh"
+    }]
+  }
+}

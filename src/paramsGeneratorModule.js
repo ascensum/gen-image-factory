@@ -9,10 +9,10 @@ async function paramsGeneratorModule(
   keywordFilePath,
   config = {}
 ) {
-  const { keywordRandom, openaiModel, mjVersion, appendMjVersion = true, signal } = config;
+  const { keywordRandom, openaiModel, mjVersion, appendMjVersion = true, signal, openaiApiKey } = config;
 
   const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: openaiApiKey || process.env.OPENAI_API_KEY,
   });
 
   try {

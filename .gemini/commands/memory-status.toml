@@ -1,0 +1,6 @@
+description = "Check AI memory system health and statistics"
+
+prompt = """
+Execute the memory status script.
+Command: !{ python3 /Users/vjatseslavjertsalov/.ai-memory/scripts/memory/memory_status.py }
+"""

@@ -13,6 +13,7 @@ function App() {
   const [currentView, setCurrentView] = useState('main'); // 'main', 'settings', 'dashboard', 'failed-review', 'job-management', 'single-job'
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
+  const [dashboardGalleryRefreshTrigger, setDashboardGalleryRefreshTrigger] = useState(0);
   const [singleJobRefreshKey, setSingleJobRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -65,6 +66,7 @@ function App() {
       ) : currentView === 'dashboard' ? (
         <DashboardPanel
           key={dashboardRefreshKey}
+          dashboardGalleryRefreshTrigger={dashboardGalleryRefreshTrigger}
           onBack={() => setCurrentView('main')}
           onOpenFailedImagesReview={() => setCurrentView('failed-review')}
           onOpenSettings={() => setCurrentView('settings')}
@@ -79,11 +81,13 @@ function App() {
           onBack={() => {
             setCurrentView('dashboard');
             setDashboardRefreshKey(prev => prev + 1);
+            setDashboardGalleryRefreshTrigger(prev => prev + 1);
           }}
           onBackToSingleJob={() => {
             setCurrentView('single-job');
             setSingleJobRefreshKey(prev => prev + 1);
           }}
+          onApprovedImages={() => setDashboardGalleryRefreshTrigger(prev => prev + 1)}
         />
       ) : currentView === 'job-management' ? (
         <JobManagementPanel
@@ -105,9 +109,18 @@ function App() {
             console.log(`Export job ${jobId}`);
             // TODO: Implement export functionality
           }}
-          onRerun={(jobId) => {
-            console.log(` APP: Rerun job ${jobId} - calling backend rerun function`);
-            window.electronAPI.jobManagement.rerunJobExecution(jobId);
+          onRerun={async (jobId) => {
+            try {
+              const result = await window.electronAPI.jobManagement.rerunJobExecution(jobId);
+              if (result?.success) {
+                setSingleJobRefreshKey((k) => k + 1);
+              } else {
+                window.alert(result?.error || 'Failed to start rerun');
+              }
+            } catch (err) {
+              console.error('Rerun job failed:', err);
+              window.alert(err?.message || 'Failed to start rerun');
+            }
           }}
           onDelete={async (jobId) => {
             try {

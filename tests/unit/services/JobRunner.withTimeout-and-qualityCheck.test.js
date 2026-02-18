@@ -68,12 +68,15 @@ describe('JobRunner - withTimeout and quality checks', () => {
     expect(images[1].qcStatus).toBe('qc_failed');
   });
 
-  it('runQualityChecks throws when qcInputPath is missing', async () => {
+  it('runQualityChecks marks image as qc_failed when qcInputPath is missing (does not abort batch)', async () => {
     aiVision.runQualityCheck = vi.fn().mockResolvedValueOnce({ passed: true, reason: 'ok' });
     const images = [{ id: 1, mappingId: 'm1' }];
-    await expect(
-      runner.runQualityChecks(images, { parameters: { enablePollingTimeout: false }, ai: {} }),
-    ).rejects.toThrow(/QC input path is missing/i);
+    // Should NOT throw; instead marks image as qc_failed and continues
+    await runner.runQualityChecks(images, { parameters: { enablePollingTimeout: false }, ai: {} });
+    expect(images[0].qcStatus).toBe('qc_failed');
+    expect(images[0].qcReason).toBe('QC input path is missing');
+    // runQualityCheck should NOT have been called (skipped due to missing path)
+    expect(aiVision.runQualityCheck).not.toHaveBeenCalled();
   });
 });
 

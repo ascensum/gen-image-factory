@@ -1,0 +1,6 @@
+description = "Search memory system semantically across all collections"
+
+prompt = """
+Execute the memory search script with the provided arguments.
+Command: !{ python3 /Users/vjatseslavjertsalov/.ai-memory/scripts/memory/search_cli.py "{{args}}" }
+"""

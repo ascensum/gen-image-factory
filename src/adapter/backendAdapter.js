@@ -24,6 +24,7 @@ const RetryExecutor = require(path.join(__dirname, '../services/retryExecutor'))
 const { ErrorTranslationService } = require(path.join(__dirname, '../services/errorTranslation'));
 const { SecurityService } = require(path.join(__dirname, '../services/SecurityService'));
 const { safeLogger } = require(path.join(__dirname, '../utils/logMasking'));
+const shadowBridgeLogger = require(path.join(__dirname, '../utils/shadowBridgeLogger'));
 
 // Service names for keytar
 const SERVICE_NAME = 'GenImageFactory';
@@ -46,9 +47,17 @@ const FALLBACK_SECRET = 'GenImageFactory-Secure-Fallback-Key-2025';
 
 class BackendAdapter {
   constructor(options = {}) {
+    // Initialize database models (always needed for schema and legacy paths)
     this.jobConfig = new JobConfiguration();
     this.jobExecution = new JobExecution();
     this.generatedImage = new GeneratedImage();
+    
+    // Initialize repositories (Shadow Bridge - ADR-006, ADR-009, Story 3.2 Phase 5)
+    // Repositories are accessed from models (initialized in model.init())
+    // Feature flags: FEATURE_MODULAR_JOB_REPOSITORY, FEATURE_MODULAR_IMAGE_REPOSITORY, FEATURE_MODULAR_CONFIG_REPOSITORY
+    this.jobRepository = null;
+    this.imageRepository = null;
+    this.configRepository = null;
     
     // Check if there's already a global backendAdapter and reuse its JobRunner
     if (global.backendAdapter && global.backendAdapter.jobRunner) {
@@ -81,6 +90,29 @@ class BackendAdapter {
     // Initialize SecurityService (Shadow Bridge - ADR-002, ADR-003, ADR-006)
     // Always available but only active if FEATURE_MODULAR_SECURITY = 'true'
     this.securityService = new SecurityService(keytar, this.jobConfig);
+    
+    // Initialize ExportService (Shadow Bridge - ADR-002, ADR-003, ADR-006)
+    // Always available but only active if FEATURE_MODULAR_EXPORT = 'true'
+    const ExportService = require('../services/ExportService');
+    this.exportService = new ExportService(this.jobExecution, this.generatedImage, this.jobConfig);
+
+    // SingleRerunService / BulkRerunService (Shadow Bridge - ADR-006, Story 3.1 scope gap)
+    // Always available but only active if FEATURE_MODULAR_RERUN = 'true'
+    const { SingleRerunService } = require('../services/SingleRerunService');
+    this.singleRerunService = new SingleRerunService({
+      jobExecution: this.jobExecution,
+      jobConfig: this.jobConfig,
+      jobRunner: this.jobRunner,
+      saveJobExecution: (exec) => this.saveJobExecution(exec),
+      getSettings: () => this.getSettings()
+    });
+    const { BulkRerunService } = require('../services/BulkRerunService');
+    this.bulkRerunService = new BulkRerunService({
+      jobExecution: this.jobExecution,
+      jobConfig: this.jobConfig,
+      jobRunner: this.jobRunner,
+      getSettings: () => this.getSettings()
+    });
   }
 
   _deriveEncryptionKey() {
@@ -318,6 +350,21 @@ class BackendAdapter {
     }
     if (this.generatedImage && !this.generatedImage.db) {
       await this.generatedImage.init();
+    }
+
+    // Initialize repositories (Shadow Bridge - ADR-006, ADR-009, Story 3.2 Phase 5)
+    // Repositories are attached to models after init()
+    if (process.env.FEATURE_MODULAR_JOB_REPOSITORY === 'true' && this.jobExecution.jobRepository) {
+      this.jobRepository = this.jobExecution.jobRepository;
+      console.log(' BackendAdapter: JobRepository initialized from model');
+    }
+    if (process.env.FEATURE_MODULAR_IMAGE_REPOSITORY === 'true' && this.generatedImage.imageRepository) {
+      this.imageRepository = this.generatedImage.imageRepository;
+      console.log(' BackendAdapter: ImageRepository initialized from model');
+    }
+    if (process.env.FEATURE_MODULAR_CONFIG_REPOSITORY === 'true' && this.jobConfig.configRepository) {
+      this.configRepository = this.jobConfig.configRepository;
+      console.log(' BackendAdapter: ConfigRepository initialized from model');
     }
 
     // Ensure required tables exist to avoid race conditions on first access
@@ -735,208 +782,21 @@ class BackendAdapter {
       });
 
       _ipc.handle('job-execution:rerun', async (event, id) => {
-        // Global counter to track rerun calls
-        if (!global.rerunCallCount) global.rerunCallCount = 0;
-        global.rerunCallCount++;
-        
-        console.log(' DEBUG RERUN: IPC handler called with id:', id);
-        console.log(' DEBUG RERUN: Event source:', event.sender?.id);
-        console.log(' DEBUG RERUN: Current timestamp:', new Date().toISOString());
-        console.log(' DEBUG RERUN: Stack trace:', new Error().stack);
-        console.log(' DEBUG RERUN: Global call count:', global.rerunCallCount);
-        console.log(' DEBUG RERUN: Process ID:', process.pid);
-        console.log(' DEBUG RERUN: Memory usage:', process.memoryUsage());
-        
-        try {
-          await this.ensureInitialized();
-          
-          // Get the job execution with its CURRENT configuration (not the old one)
-          const jobData = await this.jobExecution.getJobExecution(id);
-          
-          if (!jobData.success) {
-            return { success: false, error: 'Job execution not found' };
-          }
-          
-          // Check if the job has a configuration BEFORE trying to rerun
-          if (!jobData.execution.configurationId) {
-            return { 
-              success: false, 
-              error: 'Job has no configuration. Cannot rerun jobs started from Dashboard without saved settings.' 
-            };
-          }
-          
-          // Get the CURRENT configuration from the database
-          const configResult = await this.jobConfig.getConfigurationById(jobData.execution.configurationId);
-          
-          if (!configResult.success || !configResult.configuration || !configResult.configuration.settings) {
-            return { 
-              success: false, 
-              error: 'Job configuration not found or invalid. Cannot rerun without valid settings.' 
-            };
-          }
-          
-          // Check if another job is currently running
-          const currentStatus = await this.jobRunner.getJobStatus();
-          if (currentStatus.status === 'running') {
-            return { 
-              success: false, 
-              error: 'Another job is currently running. Please wait for it to complete.' 
-            };
-          }
-          
-          // Create a new job execution record FIRST (before starting the job)
-          // Prefer the CURRENT configuration's label (edited in Single Job View) over the old execution label
-          let baseLabel = '';
-          try {
-            const cfgLabel = String(
-              (configResult?.configuration?.settings?.parameters && configResult.configuration.settings.parameters.label) || ''
-            ).trim();
-            if (cfgLabel) baseLabel = cfgLabel;
-          } catch {
-            // Ignore errors when extracting label from config
-          }
-
-          // Fallback to configuration name if provided
-          if (!baseLabel) {
-            try {
-              const cfgName = String(configResult?.configuration?.name || '').trim();
-              if (cfgName) baseLabel = cfgName;
-            } catch {
-            // Ignore errors when extracting label from config
-          }
-          }
-
-          if (!baseLabel) {
-            const prior = String(jobData?.execution?.label || '').trim();
-            if (prior) baseLabel = prior.replace(/\s*\(Rerun\)$/,'');
-          }
-
-          const rerunLabel = baseLabel ? `${baseLabel} (Rerun)` : 'Rerun Job';
-
-          const newExecutionData = {
-            configurationId: jobData.execution.configurationId,
-            label: rerunLabel,
-            status: 'running'
-          };
-          
-          const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
-          
-          if (!newExecution.success) {
-            return { 
-              success: false, 
-              error: 'Failed to create job execution record' 
-            };
-          }
-
-          // Persist snapshot for rerun execution using CURRENT configuration settings (without API keys)
-          try {
-            const cfg = configResult?.configuration?.settings || null;
-            if (cfg) {
-              // eslint-disable-next-line no-unused-vars
-              const { apiKeys, ...sanitized } = cfg;
-              if (sanitized && sanitized.parameters) {
-                const adv = sanitized.parameters.runwareAdvanced || {};
-                const advEnabled = Boolean(
-                  adv && (
-                    adv.CFGScale != null ||
-                    adv.steps != null ||
-                    (adv.scheduler && String(adv.scheduler).trim() !== '') ||
-                    adv.checkNSFW === true ||
-                    (Array.isArray(adv.lora) && adv.lora.length > 0)
-                  )
-                );
-                sanitized.parameters.runwareAdvancedEnabled = advEnabled;
-              }
-              // Ensure processing.removeBgFailureMode is present in rerun snapshot
-              try {
-                if (!sanitized.processing) sanitized.processing = {};
-                const modeFromCfg = (cfg.processing && cfg.processing.removeBgFailureMode) ? String(cfg.processing.removeBgFailureMode) : undefined;
-                const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
-                const mode = modeFromCfg || existing;
-                sanitized.processing.removeBgFailureMode = (mode === 'mark_failed' || mode === 'approve') ? mode : (mode ? mode : 'approve');
-              } catch {
-                // Ignore errors when setting removeBgFailureMode
-              }
-              await this.jobExecution.updateJobExecution(newExecution.id, {
-                configurationId: jobData.execution.configurationId,
-                status: 'running',
-                configurationSnapshot: sanitized || null
-              });
-            }
-          } catch (e) {
-            console.warn(' Rerun snapshot persistence failed (non-fatal):', e.message);
-          }
-
-          // Ensure JobRunner carries forward the label for DB updates on completion/error
-          this.jobRunner.persistedLabel = newExecutionData.label;
-          
-          // Merge runtime API keys into configuration because keys are not persisted in DB settings
-          try {
-            const currentSettings = await this.getSettings();
-            const apiKeys = currentSettings?.settings?.apiKeys || {};
-            configResult.configuration.settings.apiKeys = { ...(configResult.configuration.settings.apiKeys || {}), ...apiKeys };
-          } catch (e) {
-            console.warn('Rerun: failed to merge runtime API keys into configuration:', e.message);
-          }
-
-          // Start the job with the CURRENT configuration (respects user changes)
-          // Use the main JobRunner for reruns to ensure proper UI integration and progress tracking
-          this.jobRunner.configurationId = jobData.execution.configurationId;
-          this.jobRunner.databaseExecutionId = newExecution.id; // Set the execution ID for database operations
-          this.jobRunner.isRerun = true; // Set rerun flag to prevent duplicate database saves
-          // Sanitize advanced params at execution time based on explicit toggle
-          let settingsForRun = configResult.configuration.settings || {};
-          try {
-            const params = settingsForRun.parameters || {};
-            if (params.runwareAdvancedEnabled !== true) {
-              // Preserve LoRA from advanced by lifting to top-level parameters
-              const adv = params.runwareAdvanced || {};
-              if (!Array.isArray(params.lora) && Array.isArray(adv.lora) && adv.lora.length > 0) {
-                params.lora = adv.lora;
-              }
-              params.runwareAdvancedEnabled = false;
-              if (params.runwareAdvanced) params.runwareAdvanced = {};
-              settingsForRun.parameters = params;
-            }
-          } catch {
-            // Ignore errors when normalizing parameters
-          }
-          try {
-            console.log('Rerun (single) starting with parameters gate:', {
-              enabledFlag: settingsForRun?.parameters?.runwareAdvancedEnabled,
-              advancedKeys: settingsForRun?.parameters?.runwareAdvanced ? Object.keys(settingsForRun.parameters.runwareAdvanced) : []
-            });
-          } catch {
-            // Ignore errors when logging
-          }
-          const jobResult = await this.jobRunner.startJob(settingsForRun);
-          
-          if (jobResult.success) {
-            return { 
-              success: true, 
-              message: 'Job rerun started successfully',
-              jobId: jobResult.jobId,
-              originalJobId: id,
-              newExecutionId: newExecution.id
-            };
-          } else {
-            // If the job failed to start, update the execution record to failed
-            await this.jobExecution.updateJobExecution(newExecution.id, { status: 'failed' });
-            return { 
-              success: false, 
-              error: `Failed to start job rerun: ${jobResult.error}` 
-            };
-          }
-          
-        } catch (error) {
-          console.error('Error rerunning job execution:', error);
-          return { success: false, error: error.message };
-        }
+        return await this.rerunJobExecution(id);
       });
 
       _ipc.handle('job-execution:export', async (event, id) => {
         try {
           await this.ensureInitialized();
+          if (this.jobRepository) {
+            try {
+              shadowBridgeLogger.logModularPath('JobRepository', 'exportJobExecution');
+              return await this.jobRepository.exportJobExecution(id);
+            } catch (err) {
+              shadowBridgeLogger.logLegacyFallback('JobRepository', 'exportJobExecution', err);
+              return await this.jobExecution.exportJobExecution(id);
+            }
+          }
           const result = await this.jobExecution.exportJobExecution(id);
           return result;
         } catch (error) {
@@ -976,13 +836,16 @@ class BackendAdapter {
     // Shadow Bridge: Check feature flag
     if (process.env.FEATURE_MODULAR_SECURITY === 'true') {
       try {
+        shadowBridgeLogger.logModularPath('SecurityService', 'getSecret');
         return await this.securityService.getSecret(serviceName);
       } catch (error) {
+        shadowBridgeLogger.logLegacyFallback('SecurityService', 'getSecret', error);
         safeLogger.warn('SecurityService failed, falling back to legacy:', error);
         return await this._legacyGetApiKey(serviceName);
       }
     }
     // Legacy path (default)
+    shadowBridgeLogger.logLegacyPath('SecurityService', 'getSecret', 'flag disabled');
     return await this._legacyGetApiKey(serviceName);
   }
 
@@ -1080,13 +943,16 @@ class BackendAdapter {
     // Shadow Bridge: Check feature flag
     if (process.env.FEATURE_MODULAR_SECURITY === 'true') {
       try {
+        shadowBridgeLogger.logModularPath('SecurityService', 'setSecret');
         return await this.securityService.setSecret(serviceName, apiKey);
       } catch (error) {
+        shadowBridgeLogger.logLegacyFallback('SecurityService', 'setSecret', error);
         safeLogger.warn('SecurityService failed, falling back to legacy:', error);
         return await this._legacySetApiKey(serviceName, apiKey);
       }
     }
     // Legacy path (default)
+    shadowBridgeLogger.logLegacyPath('SecurityService', 'setSecret', 'flag disabled');
     return await this._legacySetApiKey(serviceName, apiKey);
   }
 
@@ -1138,7 +1004,20 @@ class BackendAdapter {
   async getSettings() {
     try {
       await this.ensureInitialized();
-      const result = await this.jobConfig.getSettings();
+      
+      // Shadow Bridge: Use JobConfigurationRepository if available (Story 3.2 Phase 5)
+      let result;
+      if (this.jobConfigurationRepository) {
+        try {
+          result = await this.jobConfigurationRepository.getSettings();
+        } catch (error) {
+          console.warn('JobConfigurationRepository.getSettings failed, falling back to legacy:', error.message);
+          result = await this.jobConfig.getSettings();
+        }
+      } else {
+        // Legacy path
+        result = await this.jobConfig.getSettings();
+      }
       
       if (result.success && result.settings) {
         // Ensure we have a complete settings structure
@@ -1194,6 +1073,17 @@ class BackendAdapter {
   async getJobConfigurationById(id) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use JobConfigurationRepository if available (Story 3.2 Phase 5)
+      if (this.jobConfigurationRepository) {
+        try {
+          return await this.jobConfigurationRepository.getConfigurationById(id);
+        } catch (error) {
+          console.warn('JobConfigurationRepository.getConfigurationById failed, falling back to legacy:', error.message);
+        }
+      }
+      
+      // Legacy path
       const result = await this.jobConfig.getConfigurationById(id);
       return result;
     } catch (error) {
@@ -1221,6 +1111,17 @@ class BackendAdapter {
       } catch {
         // Ignore errors when normalizing parameters
       }
+      
+      // Shadow Bridge: Use JobConfigurationRepository if available (Story 3.2 Phase 5)
+      if (this.jobConfigurationRepository) {
+        try {
+          return await this.jobConfigurationRepository.updateConfiguration(id, settingsObject);
+        } catch (error) {
+          console.warn('JobConfigurationRepository.updateConfiguration failed, falling back to legacy:', error.message);
+        }
+      }
+      
+      // Legacy path
       const result = await this.jobConfig.updateConfiguration(id, settingsObject);
       return result;
     } catch (error) {
@@ -1232,6 +1133,17 @@ class BackendAdapter {
   async updateJobConfigurationName(id, newName) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use JobConfigurationRepository if available (Story 3.2 Phase 5)
+      if (this.jobConfigurationRepository) {
+        try {
+          return await this.jobConfigurationRepository.updateConfigurationName(id, newName);
+        } catch (error) {
+          console.warn('JobConfigurationRepository.updateConfigurationName failed, falling back to legacy:', error.message);
+        }
+      }
+      
+      // Legacy path
       const result = await this.jobConfig.updateConfigurationName(id, newName);
       return result;
     } catch (error) {
@@ -1274,8 +1186,19 @@ class BackendAdapter {
         }
       }
 
-      // Save other settings to database
-      const result = await this.jobConfig.saveSettings(settingsObject);
+      // Shadow Bridge: Use JobConfigurationRepository if available (Story 3.2 Phase 5)
+      let result;
+      if (this.jobConfigurationRepository) {
+        try {
+          result = await this.jobConfigurationRepository.saveSettings(settingsObject);
+        } catch (error) {
+          console.warn('JobConfigurationRepository.saveSettings failed, falling back to legacy:', error.message);
+          result = await this.jobConfig.saveSettings(settingsObject);
+        }
+      } else {
+        // Legacy path: Save other settings to database
+        result = await this.jobConfig.saveSettings(settingsObject);
+      }
       
       if (result.success) {
         console.log('Settings saved successfully');
@@ -1664,6 +1587,20 @@ class BackendAdapter {
   async saveJobExecution(execution) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      if (this.jobRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('JobRepository', 'saveJobExecution');
+          return await this.jobRepository.saveJobExecution(execution);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('JobRepository', 'saveJobExecution', error);
+          console.warn('JobRepository.saveJobExecution failed, falling back to legacy:', error.message);
+        }
+      }
+      
+      // Legacy path
+      shadowBridgeLogger.logLegacyPath('JobRepository', 'saveJobExecution', 'repository not available');
       const result = await this.jobExecution.saveJobExecution(execution);
       return result;
     } catch (error) {
@@ -1675,6 +1612,20 @@ class BackendAdapter {
   async getJobExecution(id) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      if (this.jobRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecution');
+          return await this.jobRepository.getJobExecution(id);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecution', error);
+          console.warn('JobRepository.getJobExecution failed, falling back to legacy:', error.message);
+        }
+      }
+      
+      // Legacy path
+      shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecution', 'repository not available');
       const result = await this.jobExecution.getJobExecution(id);
       return result;
     } catch (error) {
@@ -1713,6 +1664,20 @@ class BackendAdapter {
   async updateJobExecution(id, execution) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      if (this.jobRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('JobRepository', 'updateJobExecution');
+          return await this.jobRepository.updateJobExecution(id, execution);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('JobRepository', 'updateJobExecution', error);
+          console.warn('JobRepository.updateJobExecution failed, falling back to legacy:', error.message);
+        }
+      }
+      
+      // Legacy path
+      shadowBridgeLogger.logLegacyPath('JobRepository', 'updateJobExecution', 'repository not available');
       const result = await this.jobExecution.updateJobExecution(id, execution);
       return result;
     } catch (error) {
@@ -1724,6 +1689,20 @@ class BackendAdapter {
   async deleteJobExecution(id) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      if (this.jobRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('JobRepository', 'deleteJobExecution');
+          return await this.jobRepository.deleteJobExecution(id);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('JobRepository', 'deleteJobExecution', error);
+          console.warn('JobRepository.deleteJobExecution failed, falling back to legacy:', error.message);
+        }
+      }
+      
+      // Legacy path
+      shadowBridgeLogger.logLegacyPath('JobRepository', 'deleteJobExecution', 'repository not available');
       const result = await this.jobExecution.deleteJobExecution(id);
       return result;
     } catch (error) {
@@ -1735,6 +1714,22 @@ class BackendAdapter {
   async getJobHistory(limit = 50) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      if (this.jobRepository) {
+        shadowBridgeLogger.logModularPath('JobRepository', 'getJobHistory');
+        const result = await this.jobRepository.getJobHistory(limit);
+        if (result && result.success && result.executions) {
+          return result.executions; // Repository returns { success, executions }
+        }
+        // Fallback to legacy on error
+        shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobHistory', new Error('Repository returned unexpected format'));
+        console.warn('JobRepository.getJobHistory failed, falling back to legacy');
+      } else {
+        shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobHistory', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.jobExecution.getJobHistory(limit);
       if (result && result.success && result.history) {
         return result.history;
@@ -1751,6 +1746,33 @@ class BackendAdapter {
   async getJobStatistics() {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      if (this.jobRepository) {
+        shadowBridgeLogger.logModularPath('JobRepository', 'getJobStatistics');
+        const result = await this.jobRepository.getJobStatistics();
+        if (result && result.success && result.statistics) {
+          // Frontend expects flat shape: totalJobs, completedJobs, failedJobs, averageExecutionTime, totalImagesGenerated, successRate
+          const s = result.statistics;
+          const totalImages = Number(s.totalImages) || 0;
+          const successfulImages = Number(s.successfulImages) || 0;
+          return {
+            totalJobs: Number(s.totalJobs) || 0,
+            completedJobs: Number(s.completedJobs) || 0,
+            failedJobs: Number(s.failedJobs) || 0,
+            averageExecutionTime: Math.round(Number(s.avgDurationSeconds) || 0),
+            totalImagesGenerated: successfulImages,
+            successRate: totalImages > 0 ? Math.round((successfulImages / totalImages) * 100) : 0
+          };
+        }
+        // Fallback to legacy on error
+        shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobStatistics', new Error('Repository returned unexpected format'));
+        console.warn('JobRepository.getJobStatistics failed, falling back to legacy');
+      } else {
+        shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobStatistics', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.jobExecution.getJobStatistics();
       if (result && result.success && result.statistics) {
         return result.statistics;
@@ -1781,6 +1803,21 @@ class BackendAdapter {
   async calculateJobExecutionStatistics(executionId) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      if (this.jobRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('JobRepository', 'calculateJobExecutionStatistics');
+          return await this.jobRepository.calculateJobExecutionStatistics(executionId);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('JobRepository', 'calculateJobExecutionStatistics', error);
+          console.warn('JobRepository.calculateJobExecutionStatistics failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('JobRepository', 'calculateJobExecutionStatistics', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.jobExecution.calculateJobExecutionStatistics(executionId);
       return result;
     } catch (error) {
@@ -1792,6 +1829,21 @@ class BackendAdapter {
   async updateJobExecutionStatistics(executionId) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      if (this.jobRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('JobRepository', 'updateJobExecutionStatistics');
+          return await this.jobRepository.updateJobExecutionStatistics(executionId);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('JobRepository', 'updateJobExecutionStatistics', error);
+          console.warn('JobRepository.updateJobExecutionStatistics failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('JobRepository', 'updateJobExecutionStatistics', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.jobExecution.updateJobExecutionStatistics(executionId);
       return result;
     } catch (error) {
@@ -1800,7 +1852,32 @@ class BackendAdapter {
     }
   }
 
+  /**
+   * Export Job to Excel - Shadow Bridge Pattern (ADR-006)
+   * Routes to ExportService if FEATURE_MODULAR_EXPORT enabled, else uses legacy code
+   */
   async exportJobToExcel(jobId, options = {}) {
+    // Shadow Bridge: Check feature flag
+    if (process.env.FEATURE_MODULAR_EXPORT === 'true') {
+      try {
+        shadowBridgeLogger.logModularPath('ExportService', 'exportJobToExcel');
+        return await this.exportService.exportJobToExcel(jobId, options);
+      } catch (error) {
+        shadowBridgeLogger.logLegacyFallback('ExportService', 'exportJobToExcel', error);
+        console.warn('ExportService.exportJobToExcel failed, falling back to legacy:', error);
+        return await this._legacyExportJobToExcel(jobId, options);
+      }
+    }
+    // Legacy path (default)
+    shadowBridgeLogger.logLegacyPath('ExportService', 'exportJobToExcel', 'flag disabled');
+    return await this._legacyExportJobToExcel(jobId, options);
+  }
+
+  /**
+   * LEGACY: Export Job to Excel - Original implementation preserved
+   * DO NOT MODIFY - This is the behavioral baseline
+   */
+  async _legacyExportJobToExcel(jobId, options = {}) {
     try {
       await this.ensureInitialized();
       
@@ -2033,28 +2110,23 @@ class BackendAdapter {
 
   async getJobConfigurationForImage(imageId) {
     try {
-      // Get the image data to find the execution ID
-      const imageData = await this.generatedImage.getGeneratedImage(imageId);
-      if (!imageData.success) {
+      await this.ensureInitialized();
+      const getImage = this.imageRepository ? (() => this.imageRepository.getGeneratedImage(imageId)) : (() => this.generatedImage.getGeneratedImage(imageId));
+      const getExecution = this.jobRepository ? (id => this.jobRepository.getJobExecution(id)) : (id => this.jobExecution.getJobExecution(id));
+      const getConfig = this.configRepository ? (id => this.configRepository.getConfigurationById(id)) : (id => this.jobConfig.getConfigurationById(id));
+
+      const imageData = await getImage();
+      if (!imageData.success || !imageData.image) {
         return null;
       }
-      
-      const image = imageData.image;
-      
-      // Get the job execution to find the configuration ID
-      const jobExecutionData = await this.jobExecution.getJobExecution(image.executionId);
-      if (!jobExecutionData.success) {
+      const jobExecutionData = await getExecution(imageData.image.executionId);
+      if (!jobExecutionData.success || !jobExecutionData.execution) {
         return null;
       }
-      
-      const jobExecution = jobExecutionData.execution;
-      
-      // Get the job configuration
-      const jobConfigData = await this.jobConfig.getConfigurationById(jobExecution.configurationId);
-      if (!jobConfigData.success) {
+      const jobConfigData = await getConfig(jobExecutionData.execution.configurationId);
+      if (!jobConfigData.success || !jobConfigData.configuration) {
         return null;
       }
-      
       return jobConfigData.configuration;
     } catch (error) {
       console.error('Error getting job configuration for image:', error);
@@ -2139,6 +2211,21 @@ class BackendAdapter {
   async saveGeneratedImage(image) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'saveGeneratedImage');
+          return await this.imageRepository.saveGeneratedImage(image);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'saveGeneratedImage', error);
+          console.warn('ImageRepository.saveGeneratedImage failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'saveGeneratedImage', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.saveGeneratedImage(image);
       return result;
     } catch (error) {
@@ -2150,6 +2237,21 @@ class BackendAdapter {
   async getGeneratedImage(id) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'getGeneratedImage');
+          return await this.imageRepository.getGeneratedImage(id);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getGeneratedImage', error);
+          console.warn('ImageRepository.getGeneratedImage failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'getGeneratedImage', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.getGeneratedImage(id);
       return result;
     } catch (error) {
@@ -2161,6 +2263,21 @@ class BackendAdapter {
   async getGeneratedImagesByExecution(executionId) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'getGeneratedImagesByExecution');
+          return await this.imageRepository.getGeneratedImagesByExecution(executionId);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getGeneratedImagesByExecution', error);
+          console.warn('ImageRepository.getGeneratedImagesByExecution failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'getGeneratedImagesByExecution', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.getGeneratedImagesByExecution(executionId);
       return result;
     } catch (error) {
@@ -2172,6 +2289,24 @@ class BackendAdapter {
   async getAllGeneratedImages(limit = 100) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'getAllGeneratedImages');
+          const result = await this.imageRepository.getAllGeneratedImages(limit);
+          if (result && result.success && result.images) {
+            return result.images;
+          }
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getAllGeneratedImages', error);
+          console.warn('ImageRepository.getAllGeneratedImages failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'getAllGeneratedImages', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.getAllGeneratedImages(limit);
       if (result && result.success && result.images) {
         return result.images;
@@ -2188,6 +2323,21 @@ class BackendAdapter {
   async updateGeneratedImage(id, image) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'updateGeneratedImage');
+          return await this.imageRepository.updateGeneratedImage(id, image);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateGeneratedImage', error);
+          console.warn('ImageRepository.updateGeneratedImage failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateGeneratedImage', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.updateGeneratedImage(id, image);
       return result;
     } catch (error) {
@@ -2199,6 +2349,21 @@ class BackendAdapter {
   async deleteGeneratedImage(id) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'deleteGeneratedImage');
+          return await this.imageRepository.deleteGeneratedImage(id);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'deleteGeneratedImage', error);
+          console.warn('ImageRepository.deleteGeneratedImage failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'deleteGeneratedImage', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.deleteGeneratedImage(id);
       return result;
     } catch (error) {
@@ -2210,6 +2375,21 @@ class BackendAdapter {
   async bulkDeleteGeneratedImages(imageIds) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'bulkDeleteGeneratedImages');
+          return await this.imageRepository.bulkDeleteGeneratedImages(imageIds);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'bulkDeleteGeneratedImages', error);
+          console.warn('ImageRepository.bulkDeleteGeneratedImages failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'bulkDeleteGeneratedImages', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.bulkDeleteGeneratedImages(imageIds);
       return result;
     } catch (error) {
@@ -2218,10 +2398,32 @@ class BackendAdapter {
     }
   }
 
-  async getImagesByQCStatus(qcStatus) {
+  async getImagesByQCStatus(qcStatus, options = {}) {
     try {
       await this.ensureInitialized();
-      const result = await this.generatedImage.getImagesByQCStatus(qcStatus);
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'findByQcStatus');
+          const result = await this.imageRepository.findByQcStatus(qcStatus, options);
+          if (result && result.images && options.limit != null) {
+            result.hasMore = result.images.length === options.limit;
+          }
+          return result;
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'findByQcStatus', error);
+          console.warn('ImageRepository.findByQcStatus failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'findByQcStatus', 'repository not available');
+      }
+      
+      // Legacy path (optionally with limit/offset)
+      const result = await this.generatedImage.getImagesByQCStatus(qcStatus, options);
+      if (result && result.images && options.limit != null) {
+        result.hasMore = result.images.length === options.limit;
+      }
       return result;
     } catch (error) {
       console.error('Error getting images by QC status:', error);
@@ -2232,6 +2434,21 @@ class BackendAdapter {
   async updateQCStatus(id, qcStatus, qcReason = null) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'updateQCStatus');
+          return await this.imageRepository.updateQCStatus(id, qcStatus, qcReason);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateQCStatus', error);
+          console.warn('ImageRepository.updateQCStatus failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateQCStatus', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.updateQCStatus(id, qcStatus, qcReason);
       return result;
     } catch (error) {
@@ -2243,6 +2460,21 @@ class BackendAdapter {
   async updateQCStatusByMappingId(mappingId, qcStatus, qcReason = null) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'updateQCStatusByMappingId');
+          return await this.imageRepository.updateQCStatusByMappingId(mappingId, qcStatus, qcReason);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateQCStatusByMappingId', error);
+          console.warn('ImageRepository.updateQCStatusByMappingId failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateQCStatusByMappingId', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.updateQCStatusByMappingId(mappingId, qcStatus, qcReason);
       return result;
     } catch (error) {
@@ -2254,6 +2486,21 @@ class BackendAdapter {
   async updateGeneratedImageByMappingId(mappingId, image) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'updateGeneratedImageByMappingId');
+          return await this.imageRepository.updateGeneratedImageByMappingId(mappingId, image);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateGeneratedImageByMappingId', error);
+          console.warn('ImageRepository.updateGeneratedImageByMappingId failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateGeneratedImageByMappingId', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.updateGeneratedImageByMappingId(mappingId, image);
       return result;
     } catch (error) {
@@ -2265,6 +2512,21 @@ class BackendAdapter {
   async updateMetadataById(id, newMetadata) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'updateMetadataById');
+          return await this.imageRepository.updateMetadataById(id, newMetadata);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateMetadataById', error);
+          console.warn('ImageRepository.updateMetadataById failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateMetadataById', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.updateMetadataById(id, newMetadata);
       return result;
     } catch (error) {
@@ -2276,13 +2538,24 @@ class BackendAdapter {
   async updateImagePathsByMappingId(mappingId, tempImagePath, finalImagePath) {
     try {
       await this.ensureInitialized();
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'updateImagePathsByMappingId');
+          let result = await this.imageRepository.updateImagePathsByMappingId(mappingId, tempImagePath, finalImagePath);
+          if (result && result.success && result.changes === 0 && /^(\d+)$/.test(String(mappingId))) {
+            const id = Number(mappingId);
+            result = await this.imageRepository.updateImagePathsById(id, tempImagePath, finalImagePath);
+          }
+          return result;
+        } catch (err) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateImagePathsByMappingId', err);
+        }
+      }
       const result = await this.generatedImage.updateImagePathsByMappingId(mappingId, tempImagePath, finalImagePath);
-      // Fallback: if no rows updated, try by numeric id (when callers passed id instead of mappingId)
       if (result && result.success && result.changes === 0 && /^(\d+)$/.test(String(mappingId))) {
         try {
           const id = Number(mappingId);
-          const byId = await this.generatedImage.updateImagePathsById(id, tempImagePath, finalImagePath);
-          return byId;
+          return await this.generatedImage.updateImagePathsById(id, tempImagePath, finalImagePath);
         } catch {
           // keep original result
         }
@@ -2297,6 +2570,21 @@ class BackendAdapter {
   async getImageMetadata(executionId) {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'getImageMetadata');
+          return await this.imageRepository.getImageMetadata(executionId);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getImageMetadata', error);
+          console.warn('ImageRepository.getImageMetadata failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'getImageMetadata', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.getImageMetadata(executionId);
       return result;
     } catch (error) {
@@ -2308,6 +2596,21 @@ class BackendAdapter {
   async getImageStatistics() {
     try {
       await this.ensureInitialized();
+      
+      // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
+      if (this.imageRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('ImageRepository', 'getImageStatistics');
+          return await this.imageRepository.getImageStatistics();
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getImageStatistics', error);
+          console.warn('ImageRepository.getImageStatistics failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('ImageRepository', 'getImageStatistics', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.generatedImage.getImageStatistics();
       return result;
     } catch (error) {
@@ -2557,6 +2860,14 @@ class BackendAdapter {
   async renameJobExecution(id, label) {
     try {
       await this.ensureInitialized();
+      if (this.jobRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('JobRepository', 'renameJobExecution');
+          return await this.jobRepository.renameJobExecution(id, label);
+        } catch (err) {
+          shadowBridgeLogger.logLegacyFallback('JobRepository', 'renameJobExecution', err);
+        }
+      }
       const result = await this.jobExecution.renameJobExecution(id, label);
       return result;
     } catch (error) {
@@ -2568,6 +2879,14 @@ class BackendAdapter {
   async bulkDeleteJobExecutions(ids) {
     try {
       await this.ensureInitialized();
+      if (this.jobRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('JobRepository', 'bulkDeleteJobExecutions');
+          return await this.jobRepository.bulkDeleteJobExecutions(ids);
+        } catch (err) {
+          shadowBridgeLogger.logLegacyFallback('JobRepository', 'bulkDeleteJobExecutions', err);
+        }
+      }
       const result = await this.jobExecution.bulkDeleteJobExecutions(ids);
       return result;
     } catch (error) {
@@ -2576,7 +2895,32 @@ class BackendAdapter {
     }
   }
 
+  /**
+   * Bulk Export Jobs to ZIP - Shadow Bridge Pattern (ADR-006)
+   * Routes to ExportService if FEATURE_MODULAR_EXPORT enabled, else uses legacy code
+   */
   async bulkExportJobExecutions(ids, options = {}) {
+    // Shadow Bridge: Check feature flag
+    if (process.env.FEATURE_MODULAR_EXPORT === 'true') {
+      try {
+        shadowBridgeLogger.logModularPath('ExportService', 'bulkExportJobExecutions');
+        return await this.exportService.bulkExportJobExecutions(ids, options);
+      } catch (error) {
+        shadowBridgeLogger.logLegacyFallback('ExportService', 'bulkExportJobExecutions', error);
+        console.warn('ExportService.bulkExportJobExecutions failed, falling back to legacy:', error);
+        return await this._legacyBulkExportJobExecutions(ids, options);
+      }
+    }
+    // Legacy path (default)
+    shadowBridgeLogger.logLegacyPath('ExportService', 'bulkExportJobExecutions', 'flag disabled');
+    return await this._legacyBulkExportJobExecutions(ids, options);
+  }
+
+  /**
+   * LEGACY: Bulk Export Jobs to ZIP - Original implementation preserved
+   * DO NOT MODIFY - This is the behavioral baseline
+   */
+  async _legacyBulkExportJobExecutions(ids, options = {}) {
     try {
       await this.ensureInitialized();
       
@@ -2831,239 +3175,42 @@ class BackendAdapter {
     }
   }
 
-  async bulkRerunJobExecutions(ids) {
-    try {
-      await this.ensureInitialized();
-      const jobs = await this.jobExecution.getJobExecutionsByIds(ids);
-      
-      if (!jobs.success) {
-        return { success: false, error: 'Failed to retrieve jobs for rerun' };
-      }
-      
-      if (jobs.executions.length === 0) {
-        return { success: false, error: 'No jobs found for rerun' };
-      }
-      
-      // Check if any job is currently running
-      const runningJobs = jobs.executions.filter(job => job.status === 'running');
-      if (runningJobs.length > 0) {
-        return { 
-          success: false, 
-          error: 'Cannot rerun jobs while other jobs are running' 
-        };
-      }
-      
-      // Check if we have a job runner available
-      const currentStatus = await this.jobRunner.getJobStatus();
-      if (currentStatus.status === 'running') {
-        return { 
-          success: false, 
-          error: 'Another job is currently running. Please wait for it to complete.' 
-        };
-      }
-      
-      const queuedJobs = [];
-      const failedJobs = [];
-      
-      // Process each job for rerun
-      for (const job of jobs.executions) {
-        try {
-          // Check if the job has a configuration BEFORE trying to rerun
-          if (!job.configurationId) {
-            failedJobs.push({
-              jobId: job.id,
-              label: job.label || 'No label',
-              error: 'Job has no configuration. Cannot rerun jobs started from Dashboard without saved settings.'
-            });
-            continue;
-          }
-          
-          // Get the CURRENT configuration (don't corrupt the original job)
-          const configResult = await this.jobConfig.getConfigurationById(job.configurationId);
-          
-          if (configResult.success && configResult.configuration && configResult.configuration.settings) {
-            // Add to queue for execution
-            queuedJobs.push({
-              jobId: job.id,
-              label: job.label || 'No label',
-              configuration: configResult.configuration.settings,
-              configurationId: job.configurationId
-            });
-          } else {
-            failedJobs.push({
-              jobId: job.id,
-              label: job.label || 'No label',
-              error: 'Job configuration not found or invalid. Cannot rerun without valid settings.'
-            });
-          }
-        } catch (error) {
-          failedJobs.push({
-            jobId: job.id,
-            label: job.label || 'No label',
-            error: error.message
-          });
-        }
-      }
-      
-      if (queuedJobs.length === 0) {
-        return { 
-          success: false, 
-          error: 'No jobs could be queued for rerun',
-          failedJobs: failedJobs
-        };
-      }
-      
-      // Start the first job in the queue
-      const firstJob = queuedJobs[0];
-
-      // Create a new job execution record FIRST (before starting the job) with the CORRECT label for this job
-      const firstLabelBase = (firstJob?.configuration?.parameters?.label || firstJob?.label || '').toString().trim() || (firstJob?.configuration?.name || '').toString().trim();
-      const newExecutionData = {
-        configurationId: firstJob.configurationId,
-        label: firstLabelBase ? `${firstLabelBase} (Rerun)` : 'Rerun Job',
-        status: 'running'
-      };
-
-      const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
-      
-      if (!newExecution.success) {
-        return { 
-          success: false, 
-          error: 'Failed to create job execution record',
-          failedJobs: failedJobs
-        };
-      }
-
-      // Ensure JobRunner carries forward the label for DB updates on completion/error
-      this.jobRunner.persistedLabel = newExecutionData.label;
-      
-      // Merge runtime API keys for the first queued job before starting (keys are not stored in DB)
+  /**
+   * Single job rerun. Shadow Bridge: route to SingleRerunService if FEATURE_MODULAR_RERUN enabled, else legacy.
+   */
+  async rerunJobExecution(id) {
+    if (process.env.FEATURE_MODULAR_RERUN === 'true') {
       try {
-        const currentSettings = await this.getSettings();
-        const apiKeys = currentSettings?.settings?.apiKeys || {};
-        firstJob.configuration = { ...(firstJob.configuration || {}), apiKeys: { ...(firstJob.configuration?.apiKeys || {}), ...apiKeys } };
-      } catch (e) {
-        console.warn('Bulk rerun: failed to merge runtime API keys into configuration:', e.message);
+        shadowBridgeLogger.logModularPath('SingleRerunService', 'rerunJobExecution');
+        await this.ensureInitialized();
+        return await this.singleRerunService.rerunJobExecution(id);
+      } catch (error) {
+        shadowBridgeLogger.logLegacyFallback('SingleRerunService', 'rerunJobExecution', error);
+        console.warn('SingleRerunService.rerunJobExecution failed, falling back to legacy:', error.message);
+        return await this._legacyRerunJobExecution(id);
       }
-
-      // Persist snapshot for first rerun in bulk queue (without API keys)
-      try {
-        const cfg = firstJob?.configuration || null;
-        if (cfg) {
-          // eslint-disable-next-line no-unused-vars
-          const { apiKeys, ...sanitized } = cfg;
-          if (sanitized && sanitized.parameters) {
-            const adv = sanitized.parameters.runwareAdvanced || {};
-            const advEnabled = Boolean(
-              adv && (
-                adv.CFGScale != null ||
-                adv.steps != null ||
-                (adv.scheduler && String(adv.scheduler).trim() !== '') ||
-                adv.checkNSFW === true ||
-                (Array.isArray(adv.lora) && adv.lora.length > 0)
-              )
-            );
-            sanitized.parameters.runwareAdvancedEnabled = advEnabled;
-          }
-          // Ensure processing.removeBgFailureMode is present in bulk rerun first job snapshot
-          try {
-            if (!sanitized.processing) sanitized.processing = {};
-            const modeFromCfg = (firstJob.configuration && firstJob.configuration.processing && firstJob.configuration.processing.removeBgFailureMode)
-              ? String(firstJob.configuration.processing.removeBgFailureMode)
-              : undefined;
-            const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
-            const mode = modeFromCfg || existing;
-            sanitized.processing.removeBgFailureMode = (mode === 'mark_failed' || mode === 'approve') ? mode : (mode ? mode : 'approve');
-          } catch {
-            // Ignore errors when setting removeBgFailureMode
-          }
-          await this.jobExecution.updateJobExecution(newExecution.id, {
-            configurationId: firstJob.configurationId,
-            status: 'running',
-            configurationSnapshot: sanitized || null
-          });
-        }
-      } catch (e) {
-        console.warn(' Bulk rerun snapshot persistence failed (non-fatal):', e.message);
-      }
-      // Configure JobRunner for rerun mode (same as individual reruns)
-      this.jobRunner.configurationId = firstJob.configurationId;
-      this.jobRunner.databaseExecutionId = newExecution.id; // Set the execution ID for database operations
-      this.jobRunner.isRerun = true; // Set rerun flag to prevent duplicate database saves
-      this.jobRunner.persistedLabel = newExecutionData.label; // ensure completion keeps the right label
-      
-      // Sanitize advanced params based on explicit toggle for bulk rerun
-      try {
-        const params = (firstJob.configuration?.parameters || {});
-        if (params.runwareAdvancedEnabled !== true) {
-          const adv = params.runwareAdvanced || {};
-          if (!Array.isArray(params.lora) && Array.isArray(adv.lora) && adv.lora.length > 0) {
-            params.lora = adv.lora;
-          }
-          params.runwareAdvancedEnabled = false;
-          if (params.runwareAdvanced) params.runwareAdvanced = {};
-          firstJob.configuration.parameters = params;
-        }
-      } catch {
-        // Ignore errors when normalizing parameters
-      }
-      try {
-        console.log('Rerun (bulk first) starting with parameters gate:', {
-          enabledFlag: firstJob?.configuration?.parameters?.runwareAdvancedEnabled,
-          advancedKeys: firstJob?.configuration?.parameters?.runwareAdvanced ? Object.keys(firstJob.configuration.parameters.runwareAdvanced) : []
-        });
-      } catch {
-        // Ignore errors when logging
-      }
-      const jobResult = await this.jobRunner.startJob(firstJob.configuration);
-      
-      if (jobResult.success) {
-              // Store remaining jobs in queue for sequential execution
-      const remainingJobs = queuedJobs.slice(1);
-      
-      // Store the remaining jobs in a global queue for sequential execution
-      if (remainingJobs.length > 0) {
-        if (!global.bulkRerunQueue) {
-          global.bulkRerunQueue = [];
-        }
-        
-        // Add remaining jobs to the global queue
-        global.bulkRerunQueue.push(...remainingJobs.map(job => ({
-          ...job,
-          originalJobIds: jobs.executions.map(j => j.id), // Track which original jobs this rerun is for
-          queueTimestamp: new Date().toISOString()
-        })));
-        
-        console.log(` Bulk rerun: ${remainingJobs.length} jobs queued for sequential execution`);
-      }
-        
-        return { 
-          success: true, 
-          startedJob: {
-            jobId: firstJob.jobId,
-            label: firstJob.label,
-            newJobId: jobResult.jobId,
-            newExecutionId: newExecution.id
-          },
-          queuedJobs: remainingJobs.length,
-          totalJobs: jobs.executions.length,
-          failedJobs: failedJobs.length,
-          message: `Started rerun of ${firstJob.label || firstJob.jobId}. ${remainingJobs.length} jobs queued for sequential execution.`
-        };
-      } else {
-        // If the job failed to start, update the execution record to failed
-        await this.jobExecution.updateJobExecution(newExecution.id, { status: 'failed' });
-        return { 
-          success: false, 
-          error: `Failed to start job rerun: ${jobResult.error}`,
-          failedJobs: failedJobs
-        };
-      }
-      
-    } catch (error) {
-      console.error('Error bulk rerunning job executions:', error);
-      return { success: false, error: error.message };
     }
+    shadowBridgeLogger.logLegacyPath('SingleRerunService', 'rerunJobExecution', 'flag disabled');
+    return await this._legacyRerunJobExecution(id);
+  }
+
+  /**
+   * Bulk rerun. Shadow Bridge: route to BulkRerunService if FEATURE_MODULAR_RERUN enabled, else legacy.
+   */
+  async bulkRerunJobExecutions(ids) {
+    if (process.env.FEATURE_MODULAR_RERUN === 'true') {
+      try {
+        shadowBridgeLogger.logModularPath('BulkRerunService', 'bulkRerunJobExecutions');
+        await this.ensureInitialized();
+        return await this.bulkRerunService.bulkRerunJobExecutions(ids);
+      } catch (error) {
+        shadowBridgeLogger.logLegacyFallback('BulkRerunService', 'bulkRerunJobExecutions', error);
+        console.warn('BulkRerunService.bulkRerunJobExecutions failed, falling back to legacy:', error.message);
+        return await this._legacyBulkRerunJobExecutions(ids);
+      }
+    }
+    shadowBridgeLogger.logLegacyPath('BulkRerunService', 'bulkRerunJobExecutions', 'flag disabled');
+    return await this._legacyBulkRerunJobExecutions(ids);
   }
 
   async getJobExecutionsWithFilters(filters) {
@@ -3093,7 +3240,22 @@ class BackendAdapter {
         console.log('DEBUG: hasPendingRetries filter is OFF');
       }
 
-      const result = await this.jobExecution.getJobExecutionsWithFilters(filters);
+      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      let result;
+      if (this.jobRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsWithFilters');
+          result = await this.jobRepository.getJobExecutionsWithFilters(filters);
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsWithFilters', error);
+          console.warn('JobRepository.getJobExecutionsWithFilters failed, falling back to legacy:', error.message);
+          result = await this.jobExecution.getJobExecutionsWithFilters(filters);
+        }
+      } else {
+        // Legacy path
+        shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsWithFilters', 'repository not available');
+        result = await this.jobExecution.getJobExecutionsWithFilters(filters);
+      }
       
       if (result.success && Array.isArray(result.jobs)) {
         // Enrich jobs with pending rerun status from global queue
@@ -3137,6 +3299,21 @@ class BackendAdapter {
         filters.ids = pendingRerunIds;
       }
 
+      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      if (this.jobRepository) {
+        try {
+          shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsCount');
+          const result = await this.jobRepository.getJobExecutionsCount(filters);
+          return result;
+        } catch (error) {
+          shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsCount', error);
+          console.warn('JobRepository.getJobExecutionsCount failed, falling back to legacy:', error.message);
+        }
+      } else {
+        shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsCount', 'repository not available');
+      }
+      
+      // Legacy path
       const result = await this.jobExecution.getJobExecutionsCount(filters);
       return result;
     } catch (error) {
@@ -3146,59 +3323,137 @@ class BackendAdapter {
   }
 
   /**
-   * Process the next job in the bulk rerun queue
-   * This method is called when a job finishes to start the next queued job
+   * Process next job in bulk rerun queue. Shadow Bridge: route to BulkRerunService if FEATURE_MODULAR_RERUN enabled, else legacy.
    */
   async processNextBulkRerunJob() {
-    try {
-      if (!global.bulkRerunQueue || global.bulkRerunQueue.length === 0) {
-        console.log(' Bulk rerun: No jobs in queue');
-        return { success: false, message: 'No jobs in queue' };
+    if (process.env.FEATURE_MODULAR_RERUN === 'true') {
+      try {
+        shadowBridgeLogger.logModularPath('BulkRerunService', 'processNextBulkRerunJob');
+        return await this.bulkRerunService.processNextBulkRerunJob();
+      } catch (error) {
+        shadowBridgeLogger.logLegacyFallback('BulkRerunService', 'processNextBulkRerunJob', error);
+        console.warn('BulkRerunService.processNextBulkRerunJob failed, falling back to legacy:', error.message);
+        return await this._legacyProcessNextBulkRerunJob();
       }
+    }
+    shadowBridgeLogger.logLegacyPath('BulkRerunService', 'processNextBulkRerunJob', 'flag disabled');
+    return await this._legacyProcessNextBulkRerunJob();
+  }
 
-      // Check if we can start another job
+  /**
+   * LEGACY: Single job rerun. Original implementation preserved when FEATURE_MODULAR_RERUN is off or on fallback.
+   * DO NOT MODIFY - Behavioral baseline for SingleRerunService.
+   */
+  async _legacyRerunJobExecution(id) {
+    try {
+      await this.ensureInitialized();
+      const jobData = await this.jobExecution.getJobExecution(id);
+      if (!jobData.success) {
+        return { success: false, error: 'Job execution not found' };
+      }
+      if (!jobData.execution.configurationId) {
+        return {
+          success: false,
+          error: 'Job has no configuration. Cannot rerun jobs started from Dashboard without saved settings.'
+        };
+      }
+      const configResult = await this.jobConfig.getConfigurationById(jobData.execution.configurationId);
+      if (!configResult.success || !configResult.configuration || !configResult.configuration.settings) {
+        return {
+          success: false,
+          error: 'Job configuration not found or invalid. Cannot rerun without valid settings.'
+        };
+      }
       const currentStatus = await this.jobRunner.getJobStatus();
       if (currentStatus.status === 'running') {
-        console.log(' Bulk rerun: Another job is running, waiting...');
-        return { success: false, message: 'Another job is running' };
+        return {
+          success: false,
+          error: 'Another job is currently running. Please wait for it to complete.'
+        };
       }
-
-      // Get the next job from the queue
-      const nextJob = global.bulkRerunQueue.shift();
-      console.log(` Bulk rerun: Processing next job: ${nextJob.label || nextJob.jobId}`);
-
-      // Create a new job execution record FIRST (before starting the job)
-      const nextLabelBase = (nextJob?.configuration?.parameters?.label || nextJob?.label || '').toString().trim() || (nextJob?.configuration?.name || '').toString().trim();
+      let baseLabel = '';
+      try {
+        const cfgLabel = String(
+          (configResult?.configuration?.settings?.parameters && configResult.configuration.settings.parameters.label) || ''
+        ).trim();
+        if (cfgLabel) baseLabel = cfgLabel;
+      } catch {
+        // ignore
+      }
+      if (!baseLabel) {
+        try {
+          const cfgName = String(configResult?.configuration?.name || '').trim();
+          if (cfgName) baseLabel = cfgName;
+        } catch {
+          // ignore
+        }
+      }
+      if (!baseLabel) {
+        const prior = String(jobData?.execution?.label || '').trim();
+        if (prior) baseLabel = prior.replace(/\s*\(Rerun\)$/, '');
+      }
+      const rerunLabel = baseLabel ? `${baseLabel} (Rerun)` : 'Rerun Job';
       const newExecutionData = {
-        configurationId: nextJob.configurationId,
-        label: nextLabelBase ? `${nextLabelBase} (Rerun)` : 'Rerun Job',
+        configurationId: jobData.execution.configurationId,
+        label: rerunLabel,
         status: 'running'
       };
-
-      const newExecution = await this.jobExecution.saveJobExecution(newExecutionData);
+      const newExecution = await this.saveJobExecution(newExecutionData);
       if (!newExecution.success) {
-        console.error(' Bulk rerun: Failed to create execution record for queued job');
-        return { success: false, error: 'Failed to create execution record' };
+        return { success: false, error: 'Failed to create job execution record' };
       }
-
-      // Merge runtime API keys for the queued job before starting (keys are not stored in DB)
+      const newExecutionId = newExecution.id ?? newExecution.execution?.id;
+      try {
+        const cfg = configResult?.configuration?.settings || null;
+        if (cfg) {
+          // eslint-disable-next-line no-unused-vars
+          const { apiKeys, ...sanitized } = cfg;
+          if (sanitized && sanitized.parameters) {
+            const adv = sanitized.parameters.runwareAdvanced || {};
+            const advEnabled = Boolean(
+              adv && (
+                adv.CFGScale != null ||
+                adv.steps != null ||
+                (adv.scheduler && String(adv.scheduler).trim() !== '') ||
+                adv.checkNSFW === true ||
+                (Array.isArray(adv.lora) && adv.lora.length > 0)
+              )
+            );
+            sanitized.parameters.runwareAdvancedEnabled = advEnabled;
+          }
+          try {
+            if (!sanitized.processing) sanitized.processing = {};
+            const { normalizeRemoveBgFailureMode } = require('../utils/processing');
+            const modeFromCfg = (cfg.processing && cfg.processing.removeBgFailureMode) ? String(cfg.processing.removeBgFailureMode) : undefined;
+            const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
+            const mode = modeFromCfg || existing;
+            sanitized.processing.removeBgFailureMode = normalizeRemoveBgFailureMode(mode);
+          } catch {
+            // ignore
+          }
+          await this.jobExecution.updateJobExecution(newExecutionId, {
+            configurationId: jobData.execution.configurationId,
+            status: 'running',
+            configurationSnapshot: sanitized || null
+          });
+        }
+      } catch (e) {
+        console.warn(' Rerun snapshot persistence failed (non-fatal):', e.message);
+      }
+      this.jobRunner.persistedLabel = newExecutionData.label;
       try {
         const currentSettings = await this.getSettings();
         const apiKeys = currentSettings?.settings?.apiKeys || {};
-        nextJob.configuration = { ...(nextJob.configuration || {}), apiKeys: { ...(nextJob.configuration?.apiKeys || {}), ...apiKeys } };
+        configResult.configuration.settings.apiKeys = { ...(configResult.configuration.settings.apiKeys || {}), ...apiKeys };
       } catch (e) {
-        console.warn('Process next bulk rerun: failed to merge runtime API keys into configuration:', e.message);
+        console.warn('Rerun: failed to merge runtime API keys into configuration:', e.message);
       }
-
-      // Configure JobRunner for rerun mode
-      this.jobRunner.configurationId = nextJob.configurationId;
-      this.jobRunner.databaseExecutionId = newExecution.id;
+      this.jobRunner.configurationId = jobData.execution.configurationId;
+      this.jobRunner.databaseExecutionId = newExecutionId;
       this.jobRunner.isRerun = true;
-      this.jobRunner.persistedLabel = newExecutionData.label; // keep label through completion
-
-      // Sanitize advanced params for queued job as well
+      let settingsForRun = configResult.configuration.settings || {};
       try {
-        const params = (nextJob.configuration?.parameters || {});
+        const params = settingsForRun.parameters || {};
         if (params.runwareAdvancedEnabled !== true) {
           const adv = params.runwareAdvanced || {};
           if (!Array.isArray(params.lora) && Array.isArray(adv.lora) && adv.lora.length > 0) {
@@ -3206,37 +3461,232 @@ class BackendAdapter {
           }
           params.runwareAdvancedEnabled = false;
           if (params.runwareAdvanced) params.runwareAdvanced = {};
+          settingsForRun.parameters = params;
+        }
+      } catch {
+        // ignore
+      }
+      const jobResult = await this.jobRunner.startJob(settingsForRun);
+      if (jobResult.success) {
+        return {
+          success: true,
+          message: 'Job rerun started successfully',
+          jobId: jobResult.jobId,
+          originalJobId: id,
+          newExecutionId: newExecutionId
+        };
+      }
+      await this.jobExecution.updateJobExecution(newExecutionId, { status: 'failed' });
+      return { success: false, error: `Failed to start job rerun: ${jobResult.error}` };
+    } catch (error) {
+      console.error('Error rerunning job execution:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * LEGACY: Bulk rerun. Original implementation preserved when FEATURE_MODULAR_RERUN is off or on fallback.
+   * DO NOT MODIFY - Behavioral baseline for BulkRerunService.
+   */
+  async _legacyBulkRerunJobExecutions(ids) {
+    try {
+      await this.ensureInitialized();
+      const jobs = await this.jobExecution.getJobExecutionsByIds(ids);
+      if (!jobs.success) {
+        return { success: false, error: 'Failed to retrieve jobs for rerun' };
+      }
+      if (jobs.executions.length === 0) {
+        return { success: false, error: 'No jobs found for rerun' };
+      }
+      const runningJobs = jobs.executions.filter(job => job.status === 'running');
+      if (runningJobs.length > 0) {
+        return { success: false, error: 'Cannot rerun jobs while other jobs are running' };
+      }
+      const currentStatus = await this.jobRunner.getJobStatus();
+      if (currentStatus.status === 'running') {
+        return { success: false, error: 'Another job is currently running. Please wait for it to complete.' };
+      }
+      const queuedJobs = [];
+      const failedJobs = [];
+      for (const job of jobs.executions) {
+        try {
+          if (!job.configurationId) {
+            failedJobs.push({ jobId: job.id, label: job.label || 'No label', error: 'Job has no configuration. Cannot rerun jobs started from Dashboard without saved settings.' });
+            continue;
+          }
+          const configResult = await this.jobConfig.getConfigurationById(job.configurationId);
+          if (configResult.success && configResult.configuration && configResult.configuration.settings) {
+            queuedJobs.push({
+              jobId: job.id,
+              label: job.label || 'No label',
+              configuration: configResult.configuration.settings,
+              configurationId: job.configurationId
+            });
+          } else {
+            failedJobs.push({ jobId: job.id, label: job.label || 'No label', error: 'Job configuration not found or invalid. Cannot rerun without valid settings.' });
+          }
+        } catch (error) {
+          failedJobs.push({ jobId: job.id, label: job.label || 'No label', error: error.message });
+        }
+      }
+      if (queuedJobs.length === 0) {
+        return { success: false, error: 'No jobs could be queued for rerun', failedJobs };
+      }
+      const firstJob = queuedJobs[0];
+      const firstLabelBase = (firstJob?.configuration?.parameters?.label || firstJob?.label || '').toString().trim() || (firstJob?.configuration?.name || '').toString().trim();
+      const newExecutionData = {
+        configurationId: firstJob.configurationId,
+        label: firstLabelBase ? `${firstLabelBase} (Rerun)` : 'Rerun Job',
+        status: 'running'
+      };
+      const newExecution = await this.saveJobExecution(newExecutionData);
+      if (!newExecution.success) {
+        return { success: false, error: 'Failed to create job execution record', failedJobs };
+      }
+      const newExecutionId = newExecution.id ?? newExecution.execution?.id;
+      this.jobRunner.persistedLabel = newExecutionData.label;
+      try {
+        const currentSettings = await this.getSettings();
+        const apiKeys = currentSettings?.settings?.apiKeys || {};
+        firstJob.configuration = { ...(firstJob.configuration || {}), apiKeys: { ...(firstJob.configuration?.apiKeys || {}), ...apiKeys } };
+      } catch (e) {
+        console.warn('Bulk rerun: failed to merge runtime API keys into configuration:', e.message);
+      }
+      try {
+        const cfg = firstJob?.configuration || null;
+        if (cfg) {
+          // eslint-disable-next-line no-unused-vars
+          const { apiKeys, ...sanitized } = cfg;
+          if (sanitized && sanitized.parameters) {
+            const adv = sanitized.parameters.runwareAdvanced || {};
+            const advEnabled = Boolean(
+              adv && (adv.CFGScale != null || adv.steps != null || (adv.scheduler && String(adv.scheduler).trim() !== '') || adv.checkNSFW === true || (Array.isArray(adv.lora) && adv.lora.length > 0))
+            );
+            sanitized.parameters.runwareAdvancedEnabled = advEnabled;
+          }
+          try {
+            if (!sanitized.processing) sanitized.processing = {};
+            const { normalizeRemoveBgFailureMode } = require('../utils/processing');
+            const modeFromCfg = (firstJob.configuration && firstJob.configuration.processing && firstJob.configuration.processing.removeBgFailureMode) ? String(firstJob.configuration.processing.removeBgFailureMode) : undefined;
+            const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
+            const mode = modeFromCfg || existing;
+            sanitized.processing.removeBgFailureMode = normalizeRemoveBgFailureMode(mode);
+          } catch {
+            // ignore
+          }
+          await this.jobExecution.updateJobExecution(newExecutionId, {
+            configurationId: firstJob.configurationId,
+            status: 'running',
+            configurationSnapshot: sanitized || null
+          });
+        }
+      } catch (e) {
+        console.warn(' Bulk rerun snapshot persistence failed (non-fatal):', e.message);
+      }
+      this.jobRunner.configurationId = firstJob.configurationId;
+      this.jobRunner.databaseExecutionId = newExecutionId;
+      this.jobRunner.isRerun = true;
+      this.jobRunner.persistedLabel = newExecutionData.label;
+      try {
+        const params = (firstJob.configuration?.parameters || {});
+        if (params.runwareAdvancedEnabled !== true) {
+          const adv = params.runwareAdvanced || {};
+          if (!Array.isArray(params.lora) && Array.isArray(adv.lora) && adv.lora.length > 0) params.lora = adv.lora;
+          params.runwareAdvancedEnabled = false;
+          if (params.runwareAdvanced) params.runwareAdvanced = {};
+          firstJob.configuration.parameters = params;
+        }
+      } catch {
+        // ignore
+      }
+      const jobResult = await this.jobRunner.startJob(firstJob.configuration);
+      if (jobResult.success) {
+        const remainingJobs = queuedJobs.slice(1);
+        if (remainingJobs.length > 0) {
+          if (!global.bulkRerunQueue) global.bulkRerunQueue = [];
+          global.bulkRerunQueue.push(...remainingJobs.map(job => ({
+            ...job,
+            originalJobIds: jobs.executions.map(j => j.id),
+            queueTimestamp: new Date().toISOString()
+          })));
+        }
+        return {
+          success: true,
+          startedJob: { jobId: firstJob.jobId, label: firstJob.label, newJobId: jobResult.jobId, newExecutionId: newExecutionId },
+          queuedJobs: remainingJobs.length,
+          totalJobs: jobs.executions.length,
+          failedJobs: failedJobs.length,
+          message: `Started rerun of ${firstJob.label || firstJob.jobId}. ${remainingJobs.length} jobs queued for sequential execution.`
+        };
+      }
+      await this.jobExecution.updateJobExecution(newExecutionId, { status: 'failed' });
+      return { success: false, error: `Failed to start job rerun: ${jobResult.error}`, failedJobs };
+    } catch (error) {
+      console.error('Error bulk rerunning job executions:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * LEGACY: Process next bulk rerun job. Original implementation preserved when FEATURE_MODULAR_RERUN is off or on fallback.
+   * DO NOT MODIFY - Behavioral baseline for BulkRerunService.processNextBulkRerunJob.
+   */
+  async _legacyProcessNextBulkRerunJob() {
+    try {
+      if (!global.bulkRerunQueue || global.bulkRerunQueue.length === 0) {
+        return { success: false, message: 'No jobs in queue' };
+      }
+      const currentStatus = await this.jobRunner.getJobStatus();
+      if (currentStatus.status === 'running') {
+        return { success: false, message: 'Another job is running' };
+      }
+      const nextJob = global.bulkRerunQueue.shift();
+      const nextLabelBase = (nextJob?.configuration?.parameters?.label || nextJob?.label || '').toString().trim() || (nextJob?.configuration?.name || '').toString().trim();
+      const newExecutionData = {
+        configurationId: nextJob.configurationId,
+        label: nextLabelBase ? `${nextLabelBase} (Rerun)` : 'Rerun Job',
+        status: 'running'
+      };
+      const newExecution = await this.saveJobExecution(newExecutionData);
+      if (!newExecution.success) {
+        return { success: false, error: 'Failed to create execution record' };
+      }
+      const newExecutionId = newExecution.id ?? newExecution.execution?.id;
+      try {
+        const currentSettings = await this.getSettings();
+        const apiKeys = currentSettings?.settings?.apiKeys || {};
+        nextJob.configuration = { ...(nextJob.configuration || {}), apiKeys: { ...(nextJob.configuration?.apiKeys || {}), ...apiKeys } };
+      } catch (e) {
+        console.warn('Process next bulk rerun: failed to merge runtime API keys into configuration:', e.message);
+      }
+      this.jobRunner.configurationId = nextJob.configurationId;
+      this.jobRunner.databaseExecutionId = newExecutionId;
+      this.jobRunner.isRerun = true;
+      this.jobRunner.persistedLabel = newExecutionData.label;
+      try {
+        const params = (nextJob.configuration?.parameters || {});
+        if (params.runwareAdvancedEnabled !== true) {
+          const adv = params.runwareAdvanced || {};
+          if (!Array.isArray(params.lora) && Array.isArray(adv.lora) && adv.lora.length > 0) params.lora = adv.lora;
+          params.runwareAdvancedEnabled = false;
+          if (params.runwareAdvanced) params.runwareAdvanced = {};
           nextJob.configuration.parameters = params;
         }
       } catch {
-        // Ignore errors when normalizing parameters
+        // ignore
       }
-      try {
-        console.log('Rerun (bulk queued) starting with parameters gate:', {
-          enabledFlag: nextJob?.configuration?.parameters?.runwareAdvancedEnabled,
-          advancedKeys: nextJob?.configuration?.parameters?.runwareAdvanced ? Object.keys(nextJob.configuration.parameters.runwareAdvanced) : []
-        });
-      } catch {
-        // Ignore errors when logging
-      }
-      // Start the job
       const jobResult = await this.jobRunner.startJob(nextJob.configuration);
       if (jobResult.success) {
-        console.log(` Bulk rerun: Started queued job: ${nextJob.label || nextJob.jobId}`);
-        return { 
-          success: true, 
+        return {
+          success: true,
           message: 'Queued job started successfully',
           jobId: jobResult.jobId,
-          executionId: newExecution.id,
+          executionId: newExecutionId,
           remainingInQueue: global.bulkRerunQueue.length
         };
-      } else {
-        // Update execution record to failed
-        await this.jobExecution.updateJobExecution(newExecution.id, { status: 'failed' });
-        console.error(` Bulk rerun: Failed to start queued job: ${jobResult.error}`);
-        return { success: false, error: jobResult.error };
       }
-
+      await this.jobExecution.updateJobExecution(newExecutionId, { status: 'failed' });
+      return { success: false, error: jobResult.error };
     } catch (error) {
       console.error('Error processing next bulk rerun job:', error);
       return { success: false, error: error.message };

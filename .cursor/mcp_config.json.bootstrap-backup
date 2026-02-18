@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "qdrant-knowledge": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-qdrant"],
+      "env": {
+        "QDRANT_URL": "http://localhost:6333",
+        "COLLECTION_NAME": "gen-image-factory-knowledge"
+      }
+    },
+    "qdrant-best-practices": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-qdrant"],
+      "env": {
+        "QDRANT_URL": "http://localhost:6333",
+        "COLLECTION_NAME": "gen-image-factory-best-practices"
+      }
+    }
+  }
+}

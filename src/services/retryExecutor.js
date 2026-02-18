@@ -5,14 +5,25 @@ const os = require('os');
 const { processImage } = require(path.join(__dirname, '../producePictureModule'));
 const aiVision = require(path.join(__dirname, '../aiVision'));
 const { JobConfiguration } = require(path.join(__dirname, '../database/models/JobConfiguration'));
+const { RetryQueueService } = require(path.join(__dirname, 'RetryQueueService'));
+const { RetryProcessorService } = require(path.join(__dirname, 'RetryProcessorService'));
+const RetryConfigService = require(path.join(__dirname, 'RetryConfigService'));
+const { run: runPostProcessingService } = require(path.join(__dirname, 'RetryPostProcessingService'));
 
 /**
  * RetryExecutor - Handles post-processing retry for failed images
- * 
+ *
+ * Phase 3 (ADR-012): Thin orchestrator. Excluding legacy method bodies, the orchestrator is
+ * constructor (lines 22-68), _useModular* (71-76), bridge methods: addBatchRetryJob (84-93),
+ * processQueue (174-184), processSingleImage (406-415), getQueueStatus (1188-1196),
+ * clearCompletedJobs (1218-1226), stop (1243-1252). Total < 200 lines. All queue logic
+ * routes to RetryQueueService when FEATURE_MODULAR_RETRY_QUEUE; all single-image processing
+ * routes to RetryProcessorService when FEATURE_MODULAR_RETRY_PROCESSOR.
+ *
  * IMPORTANT: QC failed images stay in tempDirectory until successfully processed
  * - tempDirectory: Contains unprocessed images that failed QC (e.g., /Desktop/Gen_Image_Factory_Generated/)
  * - finalImagePath: Contains successfully processed images (e.g., /Desktop/Gen_Image_Factory_ToUpload/)
- * 
+ *
  * Retry mechanism works with UNPROCESSED images from tempDirectory
  * Only processes existing files, never regenerates images
  */
@@ -47,14 +58,64 @@ class RetryExecutor extends EventEmitter {
     if (!this.generatedImage) {
       console.warn(' RetryExecutor: No generatedImage model provided, database operations may fail');
     }
+
+    this.retryQueueService = new RetryQueueService({
+      processOneJob: (job) => this.processSingleImage(job),
+      emit: (ev, payload) => this.emit(ev, payload)
+    });
+
+    this.retryProcessorService = new RetryProcessorService({
+      getImage: (imageId) => this.generatedImage.getGeneratedImage(imageId),
+      updateImageStatus: (imageId, status, reason) => this.updateImageStatus(imageId, status, reason),
+      getOriginalJobConfiguration: (image) => this.getOriginalJobConfiguration(image),
+      getFallbackConfiguration: () => this.getFallbackConfiguration(),
+      getOriginalProcessingSettings: (image) => this.getOriginalProcessingSettings(image),
+      runPostProcessing: (sourcePath, settings, includeMetadata, jobConfig, useOriginalSettings, failOptions) =>
+        this.runPostProcessing(sourcePath, settings, includeMetadata, jobConfig, useOriginalSettings, failOptions),
+      emit: (ev, payload) => this.emit(ev, payload),
+      setCurrentImageId: (id) => { this.currentImageId = id; }
+    });
+  }
+
+  _useModularRetryQueue() {
+    return process.env.FEATURE_MODULAR_RETRY_QUEUE === 'true';
+  }
+
+  _useModularRetryProcessor() {
+    return process.env.FEATURE_MODULAR_RETRY_PROCESSOR === 'true';
+  }
+
+  _useModularRetryConfig() {
+    return process.env.FEATURE_MODULAR_RETRY_CONFIG === 'true';
+  }
+
+  _useModularRetryPostProcessing() {
+    return process.env.FEATURE_MODULAR_RETRY_POST_PROCESSING === 'true';
   }
 
   /**
-   * Add a batch retry job to the queue
+   * Add a batch retry job to the queue (bridge: routes to RetryQueueService when FEATURE_MODULAR_RETRY_QUEUE)
    * @param {Object} batchRetryJob - Batch retry job object
    * @returns {Promise<Object>} Queued job result
    */
   async addBatchRetryJob(batchRetryJob) {
+    if (this._useModularRetryQueue()) {
+      try {
+        return await this.retryQueueService.addBatchRetryJob(batchRetryJob);
+      } catch (error) {
+        console.warn(' RetryExecutor: RetryQueueService failed, falling back to legacy:', error?.message || error);
+        return this._legacyAddBatchRetryJob(batchRetryJob);
+      }
+    }
+    return this._legacyAddBatchRetryJob(batchRetryJob);
+  }
+
+  /**
+   * Legacy: Add a batch retry job to the queue
+   * @param {Object} batchRetryJob - Batch retry job object
+   * @returns {Promise<Object>} Queued job result
+   */
+  async _legacyAddBatchRetryJob(batchRetryJob) {
     try {
       console.log(` RetryExecutor: addBatchRetryJob called with job type: ${batchRetryJob.type}`);
       
@@ -101,11 +162,11 @@ class RetryExecutor extends EventEmitter {
 
       console.log(` RetryExecutor: Added ${retryJobs.length} jobs to queue. Queue length: ${this.queue.length}`);
 
-      // Start processing if not already running
-    if (!this.isProcessing) {
+      // Start processing if not already running (legacy path only)
+      if (!this.isProcessing) {
         console.log(` RetryExecutor: Starting processing queue`);
-      this.processQueue();
-    }
+        this._legacyProcessQueue();
+      }
 
       return {
         success: true,
@@ -125,9 +186,24 @@ class RetryExecutor extends EventEmitter {
   }
 
   /**
-   * Process the retry queue
+   * Process the retry queue (bridge: routes to RetryQueueService when FEATURE_MODULAR_RETRY_QUEUE)
    */
   async processQueue() {
+    if (this._useModularRetryQueue()) {
+      try {
+        return await this.retryQueueService.startProcessing();
+      } catch (error) {
+        console.warn(' RetryExecutor: RetryQueueService.startProcessing failed, falling back to legacy:', error?.message || error);
+        return this._legacyProcessQueue();
+      }
+    }
+    return this._legacyProcessQueue();
+  }
+
+  /**
+   * Legacy: Process the retry queue
+   */
+  async _legacyProcessQueue() {
     if (this.isProcessing) {
       console.log(` RetryExecutor: Already processing, skipping`);
       return;
@@ -340,14 +416,28 @@ class RetryExecutor extends EventEmitter {
   }
 
   /**
-   * Process a single image for retry
-   * @param {string} imageId - Image ID to process
-   * @param {boolean} useOriginalSettings - Whether to use original settings
-   * @param {Object} modifiedSettings - Modified processing settings (if not using original)
-   * @param {boolean} includeMetadata - Whether to regenerate metadata
+   * Process a single image for retry (bridge: routes to RetryProcessorService when FEATURE_MODULAR_RETRY_PROCESSOR)
+   * @param {Object} job - { imageId, useOriginalSettings, modifiedSettings, includeMetadata, failOptions }
    * @returns {Promise<Object>} Processing result
    */
   async processSingleImage(job) {
+    if (this._useModularRetryProcessor()) {
+      try {
+        return await this.retryProcessorService.processImage(job);
+      } catch (error) {
+        console.warn(' RetryExecutor: RetryProcessorService failed, falling back to legacy:', error?.message || error);
+        return this._legacyProcessSingleImage(job);
+      }
+    }
+    return this._legacyProcessSingleImage(job);
+  }
+
+  /**
+   * Legacy: Process a single image for retry
+   * @param {Object} job - { imageId, useOriginalSettings, modifiedSettings, includeMetadata, failOptions }
+   * @returns {Promise<Object>} Processing result
+   */
+  async _legacyProcessSingleImage(job) {
     let imageId;
     try {
       const { imageId: _imageId, useOriginalSettings, modifiedSettings, includeMetadata, failOptions } = job;
@@ -483,50 +573,52 @@ class RetryExecutor extends EventEmitter {
   }
 
   /**
-   * Get original job configuration including file paths
-   * @param {Object} image - Image object from database
-   * @returns {Promise<Object>} Original job configuration with corrected paths
+   * Get original job configuration (bridge: routes to RetryConfigService when FEATURE_MODULAR_RETRY_CONFIG)
    */
   async getOriginalJobConfiguration(image) {
+    if (this._useModularRetryConfig()) {
+      try {
+        return await RetryConfigService.getOriginalJobConfiguration(this, image);
+      } catch (error) {
+        console.warn(' RetryExecutor: RetryConfigService.getOriginalJobConfiguration failed, falling back to legacy:', error?.message || error);
+        return this._legacyGetOriginalJobConfiguration(image);
+      }
+    }
+    return this._legacyGetOriginalJobConfiguration(image);
+  }
+
+  /**
+   * Legacy: Get original job configuration including file paths
+   */
+  async _legacyGetOriginalJobConfiguration(image) {
     try {
       console.log(` RetryExecutor: Getting original job configuration for image ${image.id}, executionId: ${image.executionId}`);
-      
-      // Get the job execution to find the configuration ID
       const { JobExecution } = require('../database/models/JobExecution');
       const jobExecution = new JobExecution();
-      // Ensure DB initialized to avoid races
       try { await jobExecution.init(); } catch (e) { console.warn('RetryExecutor: jobExecution.init failed (continuing):', e?.message || e); }
       try { if (this.jobConfig && this.jobConfig.init) { await this.jobConfig.init(); } } catch (e) { console.warn('RetryExecutor: jobConfig.init failed (continuing):', e?.message || e); }
-      
-      // First attempt to load execution
+
       let executionResult = await jobExecution.getJobExecution(image.executionId);
       if (!executionResult.success) {
-        console.warn(` RetryExecutor: First attempt failed to get job execution ${image.executionId} for image ${image.id}. Retrying once...`);
         try { await this.delay(300); } catch {}
         executionResult = await jobExecution.getJobExecution(image.executionId);
       }
       if (!executionResult.success) {
-        console.warn(` RetryExecutor: Failed to get job execution after retry. Falling back. executionId=${image.executionId}`);
-        return this.getFallbackConfiguration();
+        return this._legacyGetFallbackConfiguration();
       }
-      
+
       const execution = executionResult.execution;
       if (!execution.configurationId) {
-        console.warn(` RetryExecutor: No configuration ID found for execution ${image.executionId}, using fallback`);
-        return this.getFallbackConfiguration();
+        return this._legacyGetFallbackConfiguration();
       }
-      
-      // Get the original job configuration
-      console.log(` RetryExecutor: Loading job configuration by ID: ${execution.configurationId}`);
+
       let configResult = await this.jobConfig.getConfigurationById(execution.configurationId);
       if (!configResult.success) {
-        console.warn(` RetryExecutor: First attempt failed to load configuration ${execution.configurationId}. Retrying once...`);
         try { await this.delay(300); } catch {}
         configResult = await this.jobConfig.getConfigurationById(execution.configurationId);
       }
       if (!configResult.success) {
-        console.warn(` RetryExecutor: Failed to load configuration after retry. Falling back. configurationId=${execution.configurationId}`);
-        return this.getFallbackConfiguration();
+        return this._legacyGetFallbackConfiguration();
       }
       
       const originalConfig = configResult.configuration;
@@ -573,11 +665,29 @@ class RetryExecutor extends EventEmitter {
       
     } catch (error) {
       console.error(` RetryExecutor: Error getting original job configuration for image ${image?.id || 'unknown'}:`, error);
-      return this.getFallbackConfiguration();
+      return this._legacyGetFallbackConfiguration();
     }
   }
 
+  /**
+   * Get fallback configuration (bridge: routes to RetryConfigService when FEATURE_MODULAR_RETRY_CONFIG)
+   */
   getFallbackConfiguration() {
+    if (this._useModularRetryConfig()) {
+      try {
+        return RetryConfigService.getFallbackConfiguration(this);
+      } catch (error) {
+        console.warn(' RetryExecutor: RetryConfigService.getFallbackConfiguration failed, falling back to legacy:', error?.message || error);
+        return this._legacyGetFallbackConfiguration();
+      }
+    }
+    return this._legacyGetFallbackConfiguration();
+  }
+
+  /**
+   * Legacy: Get fallback configuration
+   */
+  _legacyGetFallbackConfiguration() {
     console.log(` RetryExecutor: Using fallback configuration with cross-platform paths`);
     const defaultSettings = this.jobConfig.getDefaultSettings();
     return {
@@ -590,15 +700,25 @@ class RetryExecutor extends EventEmitter {
   }
 
   /**
-   * Get original processing settings for an image
-   * @param {Object} image - Image object from database
-   * @returns {Object} Original processing settings
+   * Get original processing settings (bridge: routes to RetryConfigService when FEATURE_MODULAR_RETRY_CONFIG)
    */
   async getOriginalProcessingSettings(image) {
+    if (this._useModularRetryConfig()) {
+      try {
+        return await RetryConfigService.getOriginalProcessingSettings(this, image);
+      } catch (error) {
+        console.warn(' RetryExecutor: RetryConfigService.getOriginalProcessingSettings failed, falling back to legacy:', error?.message || error);
+        return this._legacyGetOriginalProcessingSettings(image);
+      }
+    }
+    return this._legacyGetOriginalProcessingSettings(image);
+  }
+
+  /**
+   * Legacy: Get original processing settings for an image
+   */
+  async _legacyGetOriginalProcessingSettings(image) {
     try {
-      // Get the actual image data from the database
-      // const image = await this.generatedImage.getGeneratedImage(imageId); // This line is now redundant
-      
       if (!image) {
         throw new Error(`Image data not provided for processing settings`);
       }
@@ -652,14 +772,26 @@ class RetryExecutor extends EventEmitter {
   }
 
   /**
-   * Update image status in database
-   * @param {string} imageId - Image ID
-   * @param {string} status - New status
-   * @param {string} reason - Reason for status change
+   * Update image status (bridge: routes to RetryConfigService when FEATURE_MODULAR_RETRY_CONFIG)
    */
   async updateImageStatus(imageId, status, reason = '') {
+    if (this._useModularRetryConfig()) {
+      try {
+        await RetryConfigService.updateImageStatus(this, imageId, status, reason);
+        return;
+      } catch (error) {
+        console.warn(' RetryExecutor: RetryConfigService.updateImageStatus failed, falling back to legacy:', error?.message || error);
+        return this._legacyUpdateImageStatus(imageId, status, reason);
+      }
+    }
+    return this._legacyUpdateImageStatus(imageId, status, reason);
+  }
+
+  /**
+   * Legacy: Update image status in database
+   */
+  async _legacyUpdateImageStatus(imageId, status, reason = '') {
     try {
-      // Update the database with new status
       if (this.generatedImage && typeof this.generatedImage.updateQCStatus === 'function') {
         await this.generatedImage.updateQCStatus(imageId, status, reason);
         console.log(` RetryExecutor: Updated image ${imageId} status to ${status} in database`);
@@ -669,8 +801,6 @@ class RetryExecutor extends EventEmitter {
     } catch (error) {
       console.error(` RetryExecutor: Failed to update database status for image ${imageId}:`, error);
     }
-    
-    // Emit status update event
     this.emit('image-status-updated', {
       imageId,
       status,
@@ -681,14 +811,24 @@ class RetryExecutor extends EventEmitter {
   }
 
   /**
-   * Run post-processing on an image using the real processing pipeline
-   * @param {string} sourcePath - Source image path
-   * @param {Object} settings - Processing settings
-   * @param {boolean} includeMetadata - Whether to regenerate metadata
-   * @param {Object} jobConfiguration - Original job configuration (optional)
-   * @returns {Promise<Object>} Processing result
+   * Run post-processing (bridge: routes to RetryPostProcessingService when FEATURE_MODULAR_RETRY_POST_PROCESSING)
    */
   async runPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration = null, useOriginalSettings = false, failOptions = { enabled: false, steps: [] }) {
+    if (this._useModularRetryPostProcessing()) {
+      try {
+        return await runPostProcessingService(this, sourcePath, settings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions);
+      } catch (error) {
+        console.warn(' RetryExecutor: RetryPostProcessingService.run failed, falling back to legacy:', error?.message || error);
+        return this._legacyRunPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions);
+      }
+    }
+    return this._legacyRunPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions);
+  }
+
+  /**
+   * Legacy: Run post-processing on an image using the real processing pipeline
+   */
+  async _legacyRunPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration = null, useOriginalSettings = false, failOptions = { enabled: false, steps: [] }) {
     try {
       console.log(` RetryExecutor: Starting real image processing for: ${sourcePath}`);
       console.log(` RetryExecutor: Processing settings keys:`, Object.keys(settings)); // Sanitized
@@ -1109,10 +1249,26 @@ class RetryExecutor extends EventEmitter {
   }
 
   /**
-   * Get current queue status
+   * Get current queue status (bridge: routes to RetryQueueService when FEATURE_MODULAR_RETRY_QUEUE)
    * @returns {Object} Queue status
    */
   getQueueStatus() {
+    if (this._useModularRetryQueue()) {
+      try {
+        return this.retryQueueService.getQueueStatus();
+      } catch (error) {
+        console.warn(' RetryExecutor: RetryQueueService.getQueueStatus failed, falling back to legacy:', error?.message || error);
+        return this._legacyGetQueueStatus();
+      }
+    }
+    return this._legacyGetQueueStatus();
+  }
+
+  /**
+   * Legacy: Get current queue status
+   * @returns {Object} Queue status
+   */
+  _legacyGetQueueStatus() {
     return {
       isProcessing: this.isProcessing,
       queueLength: this.queue.length,
@@ -1124,25 +1280,51 @@ class RetryExecutor extends EventEmitter {
   }
 
   /**
-   * Clear completed jobs from queue
+   * Clear completed jobs from queue (bridge: routes to RetryQueueService when FEATURE_MODULAR_RETRY_QUEUE)
    */
   clearCompletedJobs() {
+    if (this._useModularRetryQueue()) {
+      try {
+        return this.retryQueueService.clearCompletedJobs();
+      } catch (error) {
+        console.warn(' RetryExecutor: RetryQueueService.clearCompletedJobs failed, falling back to legacy:', error?.message || error);
+        return this._legacyClearCompletedJobs();
+      }
+    }
+    return this._legacyClearCompletedJobs();
+  }
+
+  /**
+   * Legacy: Clear completed jobs from queue
+   */
+  _legacyClearCompletedJobs() {
     this.queue = this.queue.filter(job => job.status !== 'completed');
-    
-    // Emit queue update event
     this.emit('queue-updated', {
       queueLength: this.queue.length
     });
   }
 
   /**
-   * Stop processing and clear queue
+   * Stop processing and clear queue (bridge: routes to RetryQueueService when FEATURE_MODULAR_RETRY_QUEUE)
    */
   stop() {
+    if (this._useModularRetryQueue()) {
+      try {
+        return this.retryQueueService.stopProcessing();
+      } catch (error) {
+        console.warn(' RetryExecutor: RetryQueueService.stopProcessing failed, falling back to legacy:', error?.message || error);
+        return this._legacyStop();
+      }
+    }
+    return this._legacyStop();
+  }
+
+  /**
+   * Legacy: Stop processing and clear queue
+   */
+  _legacyStop() {
     this.isProcessing = false;
     this.queue = [];
-    
-    // Emit stop event
     this.emit('stopped', {
       timestamp: new Date()
     });

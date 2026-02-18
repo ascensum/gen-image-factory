@@ -13,6 +13,11 @@ class JobExecution {
   constructor() {
     // Cross-platform database path resolution
     this.dbPath = this.resolveDatabasePath();
+    
+    // Initialize JobRepository (Shadow Bridge - ADR-006, ADR-009, Story 3.2 Phase 1)
+    // Always available but only active if FEATURE_MODULAR_JOB_REPOSITORY = 'true'
+    this.jobRepository = null;  // Lazy-initialized in init()
+    
     // Constructor is used in many contexts that don't await init(); prevent unhandled rejections.
     if (process.env.SMOKE_TEST === 'true') {
       console.log(' [JobExecution] Skipping init() during SMOKE_TEST');
@@ -138,7 +143,19 @@ class JobExecution {
           // Reduce SQLITE_BUSY flakes under parallel usage (tests/Electron multi-model startup)
           // NOTE: use configure() (sync) to avoid async PRAGMA on closing handles.
           try { this.db.configure('busyTimeout', 5000); } catch (_) {}
-          this.createTables().then(resolve).catch(reject);
+          this.createTables().then(() => {
+            // Initialize JobRepository (Shadow Bridge - ADR-006, ADR-009)
+            if (process.env.FEATURE_MODULAR_JOB_REPOSITORY === 'true') {
+              try {
+                const { JobRepository } = require('../../repositories/JobRepository');
+                this.jobRepository = new JobRepository(this);
+                console.log(' JobRepository initialized (modular mode)');
+              } catch (err) {
+                console.warn('Failed to initialize JobRepository:', err.message);
+              }
+            }
+            resolve();
+          }).catch(reject);
         }
       });
     });

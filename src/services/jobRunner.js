@@ -47,6 +47,49 @@ class JobRunner extends EventEmitter {
     
     // Set global reference so logDebug can find us
     global.currentJobRunner = this;
+    
+    // Initialize JobEngine (Shadow Bridge - ADR-006, Story 3.1 Phase 4)
+    // Always available but only active if FEATURE_MODULAR_JOB_ENGINE = 'true'
+    this.jobEngine = null;
+    if (process.env.FEATURE_MODULAR_JOB_ENGINE === 'true') {
+      try {
+        const { JobEngine } = require('./JobEngine');
+        this.jobEngine = new JobEngine();
+        console.log(' JobEngine initialized (modular mode)');
+      } catch (err) {
+        console.warn('Failed to initialize JobEngine:', err.message);
+      }
+    }
+    
+    // Initialize JobService (Shadow Bridge - ADR-006, Story 3.1 Phase 4)
+    // Always available but only active if FEATURE_MODULAR_JOB_SERVICE = 'true'
+    // NOTE: Full routing deferred to Story 3.2 Phase 5 (Service Integration)
+    this.jobService = null;
+    if (process.env.FEATURE_MODULAR_JOB_SERVICE === 'true') {
+      try {
+        // JobService requires JobEngine + JobRepository
+        // Repositories are attached to models: JobExecution.jobRepository
+        // Full wiring happens in Story 3.2 Phase 5
+        const { JobService } = require('./JobService');
+        const { JobEngine } = require('./JobEngine');
+        
+        // Get repository from global model (if available)
+        const jobRepository = global.jobExecution?.jobRepository;
+        
+        if (jobRepository) {
+          const jobEngine = new JobEngine();
+          this.jobService = new JobService({
+            jobEngine: jobEngine,
+            jobRepository: jobRepository
+          });
+          console.log(' JobService initialized (modular mode)');
+        } else {
+          console.warn(' JobService initialization skipped: JobRepository not available');
+        }
+      } catch (err) {
+        console.warn('Failed to initialize JobService:', err.message);
+      }
+    }
   }
 
   /**
@@ -696,13 +739,14 @@ class JobRunner extends EventEmitter {
                         );
                   sanitized.parameters.runwareAdvancedEnabled = advEnabled;
                 }
-                // Ensure processing.removeBgFailureMode is persisted in execution snapshot
+                // Ensure processing.removeBgFailureMode is persisted in execution snapshot (map Settings 'fail'|'soft' → 'mark_failed'|'approve')
                 try {
                   if (!sanitized.processing) sanitized.processing = {};
+                  const { normalizeRemoveBgFailureMode } = require('../utils/processing');
                   const modeFromConfig = (_config && _config.processing && _config.processing.removeBgFailureMode) ? String(_config.processing.removeBgFailureMode) : undefined;
                   const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
                   const mode = modeFromConfig || existing;
-                  sanitized.processing.removeBgFailureMode = (mode === 'mark_failed' || mode === 'approve') ? mode : (mode ? mode : 'approve');
+                  sanitized.processing.removeBgFailureMode = normalizeRemoveBgFailureMode(mode);
                 } catch (_e) {}
                 return sanitized || null;
               } catch (_e) {
@@ -2575,15 +2619,24 @@ class JobRunner extends EventEmitter {
             ? (Number.isFinite(pollingTimeoutMinutesQC) ? pollingTimeoutMinutesQC * 60 * 1000 : 30_000)
             : 30_000;
           
-          for (const image of images) {
+          // Throttle delay between OpenAI QC calls to avoid rate-limiting (2s between calls)
+          const QC_THROTTLE_MS = 2000;
+          
+          for (let _qcIdx = 0; _qcIdx < images.length; _qcIdx++) {
+            const image = images[_qcIdx];
             if (this.isStopping) return;
+            
+            // Throttle: wait between QC calls (skip delay before the first call)
+            if (_qcIdx > 0) {
+              await new Promise(resolve => setTimeout(resolve, QC_THROTTLE_MS));
+            }
             
             this._logStructured({
               level: 'info',
               stepName: 'ai_operations',
               subStep: 'quality_check_image',
-              imageIndex: images.indexOf(image),
-              message: `Running quality check on image ${images.indexOf(image) + 1}/${images.length}`,
+              imageIndex: _qcIdx,
+              message: `Running quality check on image ${_qcIdx + 1}/${images.length}`,
               metadata: { 
                 imagePath: (image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path),
                 imageMappingId: (image.imageMappingId || image.image_mapping_id || image.mappingId || image.id),
@@ -2594,8 +2647,16 @@ class JobRunner extends EventEmitter {
             let result;
             const qcInputPath = image.finalImagePath || image.tempImagePath || image.final_image_path || image.temp_image_path || image.path;
             if (!qcInputPath) {
-              throw new Error('QC input path is missing');
+              this._logStructured({ level: 'warn', stepName: 'ai_operations', subStep: 'quality_check_skip', imageIndex: _qcIdx, message: 'QC input path is missing, marking as failed' });
+              image.qcStatus = 'qc_failed';
+              image.qcReason = 'QC input path is missing';
+              const mk = image.imageMappingId || image.image_mapping_id || image.mappingId || image.id;
+              if (this.backendAdapter && mk) { try { await this.backendAdapter.updateQCStatusByMappingId(mk, 'qc_failed', 'QC input path is missing'); } catch (_e) { /* logged below if needed */ } }
+              continue;
             }
+            
+            // Per-image try/catch: one image failure must NOT abort the remaining QC checks
+            try {
             // Wrap QC call with timeout so network/DNS issues don't stall the entire job for too long
             result = await this.withTimeout(
               aiVision.runQualityCheck(
@@ -2606,6 +2667,24 @@ class JobRunner extends EventEmitter {
               qcTimeoutMs,
               'Quality check timed out'
             );
+            } catch (_qcError) {
+              this._logStructured({
+                level: 'error',
+                stepName: 'ai_operations',
+                subStep: 'quality_check_image_error',
+                imageIndex: _qcIdx,
+                message: `Quality check failed for image ${_qcIdx + 1}/${images.length}: ${_qcError.message}`,
+                errorCode: 'QC_IMAGE_ERROR',
+                metadata: { error: _qcError.message, imagePath: qcInputPath }
+              });
+              // Mark this image as failed and continue to the next one
+              image.qualityDetails = { error: _qcError.message };
+              image.qcStatus = 'qc_failed';
+              image.qcReason = `Quality check error: ${_qcError.message}`;
+              const mk = image.imageMappingId || image.image_mapping_id || image.mappingId || image.id;
+              if (this.backendAdapter && mk) { try { await this.backendAdapter.updateQCStatusByMappingId(mk, 'qc_failed', image.qcReason); } catch (_e) { /* best effort */ } }
+              continue;
+            }
             
             if (result) {
               this._logStructured({

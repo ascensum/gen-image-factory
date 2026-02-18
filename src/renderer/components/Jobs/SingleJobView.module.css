@@ -1,0 +1,109 @@
+/* SingleJobView – design tokens + range slider only (ADR-007, < 100 lines) */
+
+:global(:root) {
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.2 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0 0);
+  --primary: oklch(0.55 0.2 250);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.96 0 0);
+  --secondary-foreground: oklch(0.3 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.95 0.03 250);
+  --accent-foreground: oklch(0.2 0 0);
+  --status-completed: oklch(0.65 0.15 150);
+  --status-in-progress: oklch(0.55 0.2 250);
+  --status-failed: oklch(0.65 0.25 25);
+  --status-pending: oklch(0.75 0.15 80);
+  --status-completed-foreground: oklch(1 0 0);
+  --status-in-progress-foreground: oklch(1 0 0);
+  --status-failed-foreground: oklch(1 0 0);
+  --status-pending-foreground: oklch(0.1 0 0);
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: oklch(0.55 0.2 250);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius: 0.5rem;
+  --radius-sm: 0.3rem;
+  --radius-lg: 0.7rem;
+  --spacing: 0.25rem;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --header-height: 4rem;
+  --tab-height: 3rem;
+  --footer-height: 4rem;
+  --action-view: oklch(0.55 0.1 250);
+  --action-rerun: oklch(0.55 0.2 150);
+  --action-export: oklch(0.55 0.1 200);
+  --action-delete: oklch(0.65 0.25 25);
+}
+
+/* Range slider: pseudo-elements not expressible in Tailwind */
+.rangeSlider {
+  width: 100%;
+  height: 6px;
+  background-color: #e5e7eb;
+  border-radius: 3px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.rangeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #2563eb;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.rangeSlider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #2563eb;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Settings modal form: label + input/select (cannot target from Tailwind without many classes) */
+.settingsForm label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  margin-bottom: 0.5rem;
+}
+.settingsForm input[type="text"],
+.settingsForm input[type="number"],
+.settingsForm input[type="password"],
+.settingsForm select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 0.875rem;
+}
+.settingsForm input:focus,
+.settingsForm select:focus {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+.settingsForm input[type="password"] {
+  font-family: monospace;
+}

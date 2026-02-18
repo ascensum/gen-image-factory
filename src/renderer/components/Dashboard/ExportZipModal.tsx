@@ -86,7 +86,8 @@ const ExportZipModal: React.FC<ExportZipModalProps> = ({ isOpen, count, defaultF
   };
 
   const handleExport = () => {
-    const safeName = ensureZipExt(sanitize(filename.trim() || defaultFilename));
+    const base = (filename ?? defaultFilename ?? '').toString().trim() || (defaultFilename ?? 'export.zip');
+    const safeName = ensureZipExt(sanitize(base));
     const outputPath = mode === 'custom' ? (locationPath || safeName) : undefined;
     onExport({ mode, outputPath, filename: safeName, includeExcel, duplicatePolicy });
   };

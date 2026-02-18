@@ -1,0 +1,69 @@
+---
+description: CRITICAL - Use this when starting or developing ANY story.
+globs: ["docs/stories/*.story.md", "docs/stories/*.md"]
+alwaysApply: true
+---
+
+# Memory Retrieval Rule - Semantic Context Prioritization
+
+**CRITICAL**: This rule **ALWAYS APPLIES** to ensure agents use the ai-memory system instead of saturating the context window with raw documentation.
+
+## Rule: Search Memory Before Reading Files
+
+**Trigger**: Whenever the user asks for context, ADRs, PRDs, project history, or architectural "laws."
+
+**Required Actions** (Execute in order):
+
+### 1. **Initial Semantic Discovery (MANDATORY)**
+Before opening any file in the `docs/` folder, the agent MUST use the memory search command:
+
+**Cursor IDE:** Use `/search-memory` slash command  
+**Gemini CLI:** Use `search-memory` command (configured in `.gemini/settings.json`)
+
+**Collection Strategy:**
+- **code-patterns** (default) - HOW things are built (implementation, error fixes, Shadow Bridge patterns)
+- **conventions** - WHAT rules to follow (ADRs, standards, frozen files, architectural decisions)
+- **discussions** - WHY decisions were made (session history, async patterns, blockers)
+
+**Examples (Cursor IDE):**
+
+```bash
+# For architectural rules/decisions:
+/search-memory "File size limits and frozen files ADR-001" --collection conventions --limit 5
+
+# For implementation patterns:
+/search-memory "Shadow Bridge pattern implementation" --collection code-patterns --limit 5
+
+# For historical context:
+/search-memory "JobRunner async hang issues" --collection discussions --limit 5
+
+# Use intent detection for automatic routing:
+/search-memory "how to implement retry logic" --intent how
+/search-memory "what are the frozen files" --intent what
+/search-memory "why did we freeze jobRunner" --intent why
+```
+
+**Examples (Gemini CLI):**
+
+```bash
+# Same syntax, just without the leading slash:
+search-memory "File size limits and frozen files ADR-001" --collection conventions --limit 5
+search-memory "Shadow Bridge pattern implementation" --collection code-patterns --limit 5
+search-memory "how to implement retry logic" --intent how
+```
+
+**Intent Detection (Automatic Routing):**
+- `--intent how` → Searches **code-patterns** first (implementation examples)
+- `--intent what` → Searches **conventions** first (rules and standards)
+- `--intent why` → Searches **discussions** first (decisions and context)
+
+### 2. **Token Reduction Target**
+Using `/search-memory` achieves 70-80% token reduction:
+- **Instead of**: Reading 631-line story file + 5 ADRs (5000+ tokens)
+- **Use**: Focused ~500 token memory results in <200ms
+
+### 3. **When to Read Files**
+Only read full files if:
+- Memory search returns no results
+- User explicitly requests specific file
+- Need to edit/modify the file

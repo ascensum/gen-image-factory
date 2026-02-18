@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 // Use CommonJS require since the util exports via module.exports
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { normalizeProcessingSettings } = require('../../../src/utils/processing');
+const { normalizeProcessingSettings, normalizeRemoveBgFailureMode } = require('../../../src/utils/processing');
 
 describe('normalizeProcessingSettings', () => {
   it('clamps pngQuality to 1-100 and coerces string numbers', () => {
@@ -65,6 +65,37 @@ describe('normalizeProcessingSettings', () => {
     // @ts-expect-error test unknown key
     expect(out.foo).toBeUndefined();
     expect(out.pngQuality).toBe(10);
+  });
+
+  it('normalizes removeBgFailureMode: maps Settings vocabulary (fail/soft) to backend (mark_failed/approve)', () => {
+    expect(normalizeProcessingSettings({ removeBgFailureMode: 'fail' }).removeBgFailureMode).toBe('mark_failed');
+    expect(normalizeProcessingSettings({ removeBgFailureMode: 'soft' }).removeBgFailureMode).toBe('approve');
+    expect(normalizeProcessingSettings({ removeBgFailureMode: 'mark_failed' }).removeBgFailureMode).toBe('mark_failed');
+    expect(normalizeProcessingSettings({ removeBgFailureMode: 'approve' }).removeBgFailureMode).toBe('approve');
+    expect(normalizeProcessingSettings({ removeBgFailureMode: 'FAIL' }).removeBgFailureMode).toBe('mark_failed');
+    expect(normalizeProcessingSettings({ removeBgFailureMode: 'SOFT' }).removeBgFailureMode).toBe('approve');
+    expect(normalizeProcessingSettings({ removeBgFailureMode: 'unknown' }).removeBgFailureMode).toBe('approve');
+    expect(normalizeProcessingSettings({}).removeBgFailureMode).toBeUndefined();
+  });
+});
+
+describe('normalizeRemoveBgFailureMode', () => {
+  it('maps fail and mark_failed to mark_failed', () => {
+    expect(normalizeRemoveBgFailureMode('fail')).toBe('mark_failed');
+    expect(normalizeRemoveBgFailureMode('mark_failed')).toBe('mark_failed');
+    expect(normalizeRemoveBgFailureMode('FAIL')).toBe('mark_failed');
+  });
+
+  it('maps soft and approve to approve', () => {
+    expect(normalizeRemoveBgFailureMode('soft')).toBe('approve');
+    expect(normalizeRemoveBgFailureMode('approve')).toBe('approve');
+    expect(normalizeRemoveBgFailureMode('SOFT')).toBe('approve');
+  });
+
+  it('defaults unknown or empty to approve', () => {
+    expect(normalizeRemoveBgFailureMode('')).toBe('approve');
+    expect(normalizeRemoveBgFailureMode(undefined)).toBe('approve');
+    expect(normalizeRemoveBgFailureMode('other')).toBe('approve');
   });
 });
 

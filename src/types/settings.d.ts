@@ -43,6 +43,10 @@ export interface SettingsObject {
     enablePollingTimeout: boolean;
     keywordRandom: boolean;
     count: number;
+    /** Number of automatic retries per generation (0–5) */
+    generationRetryAttempts?: number;
+    /** Delay between retries in ms (0–60000) */
+    generationRetryBackoffMs?: number;
   };
   processing: {
     removeBg: boolean;

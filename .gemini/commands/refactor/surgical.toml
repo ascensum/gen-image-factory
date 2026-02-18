@@ -1,40 +1,38 @@
-# Surgical Extraction Command
-# This command executes a surgical extraction following the BMad Strangler Fig pattern
-# Usage: gemini refactor surgical <target-service> <source-file> [options]
-
-[command]
-name = "surgical"
 description = "Executes a surgical extraction following the BMad Strangler Fig pattern"
-category = "refactor"
-version = "1.0.0"
 
-[command.arguments]
-target_service = { type = "string", required = true, description = "Name of the service to extract (e.g., SecurityService)" }
-source_file = { type = "string", required = true, description = "Path to the frozen monolith file to extract from" }
-target_directory = { type = "string", required = false, default = "src/services", description = "Directory to create the new service in" }
-
-[command.options]
-adr = { type = "string", required = false, description = "ADR reference (e.g., ADR-003)" }
-feature_flag = { type = "string", required = false, description = "Feature flag name (e.g., FEATURE_MODULAR_SECURITY)" }
-dry_run = { type = "boolean", default = false, description = "Show extraction plan without executing" }
-skip_tests = { type = "boolean", default = false, description = "Skip test generation (not recommended)" }
-verbose = { type = "boolean", default = false, description = "Show detailed extraction progress" }
-
-[command.context]
-load_files = [
-  ".gemini/GEMINI.md",
-  ".gemini/styleguide.md",
-  "docs/architecture/adr/ADR-001-File-Size-Guardrail.md",
-  "docs/architecture/adr/ADR-002-Vertical-Slice-IPC.md",
-  "docs/architecture/adr/ADR-003-DI-Pattern.md",
-  "docs/architecture/adr/ADR-006-Solo-Developer-Testing-Rollout.md"
-]
-
-[command.prompt]
-system = """
+prompt = """
 You are a BMad Surgical Dev executing a surgical extraction following the Strangler Fig pattern.
 
 Your mission: Extract logic from the frozen monolith into a modular service while maintaining 100% functional equivalence.
+
+CONTEXT:
+@{ .gemini/GEMINI.md }
+@{ .gemini/styleguide.md }
+@{ docs/architecture/adr/ADR-001-File-Size-Guardrail.md }
+@{ docs/architecture/adr/ADR-002-Vertical-Slice-IPC.md }
+@{ docs/architecture/adr/ADR-003-DI-Pattern.md }
+@{ docs/architecture/adr/ADR-006-Solo-Developer-Testing-Rollout.md }
+@{ docs/architecture/adr/ADR-007-CSS-Standards.md }
+@{ docs/architecture/adr/ADR-008-Image-Production-Layer-Extraction.md }
+@{ docs/architecture/adr/ADR-009-Persistence-Repository-Layer.md }
+@{ docs/architecture/adr/ADR-010-Frontend-Decomposition-Standard.md }
+@{ docs/architecture/adr/ADR-011-Modular-Testing-Standard.md }
+@{ docs/architecture/adr/ADR-012-Retry-Executor-Decomposition.md }
+
+USER INPUT ARGUMENTS: "{{args}}"
+
+TASK:
+The user has invoked the 'surgical' extraction command.
+Please parse the arguments string above. The expected format is:
+`<target-service> <source-file> [options]`
+
+Options:
+- `--target-directory <dir>` (Default: src/services)
+- `--adr <ref>` (e.g., ADR-003)
+- `--feature-flag <flag>` (e.g., FEATURE_MODULAR_SECURITY)
+- `--dry-run` (Show plan only)
+- `--skip-tests` (Not recommended)
+- `--verbose`
 
 CRITICAL RULES - NO EXCEPTIONS:
 1. NO RESTYLING - Preserve exact code formatting, indentation, and spacing
@@ -47,7 +45,7 @@ CRITICAL RULES - NO EXCEPTIONS:
 8. WRITE TESTS - Unit tests (≥70% coverage) + Bridge integration tests (100% coverage)
 
 SURGICAL EXTRACTION WORKFLOW:
-1. Identify extraction target in frozen monolith
+1. Identify extraction target in frozen monolith (`source-file`)
 2. Create new service file with clear responsibility
 3. Copy logic surgically (NO RESTYLING, NO RENAMING)
 4. Wire dependencies via constructor (DI pattern)
@@ -84,159 +82,8 @@ TESTING REQUIREMENTS:
 - Fallback test: Test fallback when new service throws error
 - Immutable safety net: Verify legacy integration test still passes
 
-OUTPUT FORMAT:
-1. Extraction Plan (if dry_run)
-2. New Service File
-3. Shadow Bridge Modifications
-4. Unit Test File
-5. Bridge Integration Test File
-6. Extraction Report (summary of changes)
-
-REFERENCES:
-- @ADR-001: File Size Guardrail (< 400 lines)
-- @ADR-002: Vertical Slice Architecture for IPC (< 5 lines for handlers)
-- @ADR-003: Dependency Injection over Global State
-- @ADR-006: Shadow Bridge Pattern (feature toggles + fallback)
-"""
-
-user_template = """
-Execute surgical extraction with the following parameters:
-
-**Target Service:** {{args.target_service}}
-**Source File:** {{args.source_file}}
-**Target Directory:** {{args.target_directory}}
-{{#if args.adr}}**ADR Reference:** {{args.adr}}{{/if}}
-{{#if args.feature_flag}}**Feature Flag:** {{args.feature_flag}}{{/if}}
-
-Follow the Surgical Extraction Workflow defined in @GEMINI.md:
-
-STEP 1: Identify Extraction Target
-- Review {{args.source_file}} to locate logic for {{args.target_service}}
-- Define service boundary and interface
-- Document dependencies and side effects
-
-STEP 2: Create New Service (Blank Slate)
-- Create {{args.target_directory}}/{{args.target_service}}.js
-- Define constructor with explicit dependencies (DI pattern)
-- Write service interface (method signatures)
-
-STEP 3: Copy Logic (Surgical Precision)
-- Copy logic from {{args.source_file}} to new service
-- Preserve exact code structure (NO RESTYLING)
-- Preserve exact variable names (NO RENAMING)
-- Add minimal adapter code only if required
-
-STEP 4: Wire Dependencies (DI Pattern)
-- Update ServiceContainer in electron/main.js
-- Inject dependencies via constructor
-- Ensure legacy code still functions
-
-STEP 5: Implement Shadow Bridge
-- Add feature flag: {{#if args.feature_flag}}{{args.feature_flag}}{{else}}FEATURE_MODULAR_{{args.target_service}}{{/if}}
-- Add routing logic in {{args.source_file}}
-- Add fallback to legacy if new service fails
-- Default flag to 'false' (legacy active)
-
-STEP 6: Test Both Paths (Verification)
-- Write unit tests for {{args.target_service}} (≥70% coverage)
-- Write bridge integration tests (both paths)
-- Run immutable safety net (legacy integration test)
-- Verify 100% functional equivalence
-
-STEP 7: Generate Report
-- List all files created/modified
-- Show line count for new service (must be < 400)
-- Show test coverage metrics
-- List next steps for verification
-
-{{#if args.dry_run}}
-**DRY RUN MODE:** Show extraction plan without executing.
-{{/if}}
-
-{{#if args.verbose}}
-**VERBOSE MODE:** Show detailed extraction progress.
-{{/if}}
-
-Begin surgical extraction now.
-"""
-
-[command.validation]
-pre_checks = [
-  "Verify source_file exists and is on Master Frozen List",
-  "Verify target_directory is valid",
-  "Verify target_service name follows naming conventions",
-  "Verify feature_flag follows FEATURE_MODULAR_* pattern"
-]
-
-post_checks = [
-  "Verify new service file is < 400 lines (ADR-001)",
-  "Verify new service uses Dependency Injection (ADR-003)",
-  "Verify Shadow Bridge implemented in source_file (ADR-006)",
-  "Verify feature flag defaults to false",
-  "Verify unit tests exist with ≥70% coverage",
-  "Verify bridge integration tests exist with 100% coverage",
-  "Verify immutable safety net passes",
-  "Verify no restyling, renaming, or logic changes during extraction"
-]
-
-[command.output]
-success_message = "✅ Surgical extraction completed successfully!"
-failure_message = "❌ Surgical extraction failed. Review errors above."
-report_format = "markdown"
-report_file = ".gemini/reports/extraction-{{args.target_service}}-{{timestamp}}.md"
-
-[command.rollback]
-enabled = true
-backup_files = true
-backup_directory = ".gemini/backups"
-restore_command = "gemini rollback extraction {{args.target_service}}"
-
-[command.examples]
-example_1 = """
-# Extract SecurityService from BackendAdapter
-gemini refactor surgical SecurityService src/adapter/backendAdapter.js
-
-# This will:
-# 1. Create src/services/SecurityService.js
-# 2. Add Shadow Bridge to backendAdapter.js
-# 3. Create unit tests in src/services/SecurityService.test.js
-# 4. Create bridge tests in tests/integration/backend/SecurityService.bridge.test.js
-# 5. Generate extraction report
-"""
-
-example_2 = """
-# Dry run to see extraction plan
-gemini refactor surgical JobRepository src/adapter/backendAdapter.js --dry-run
-
-# This will show the extraction plan without executing
-"""
-
-example_3 = """
-# Extract with custom feature flag
-gemini refactor surgical ExportService src/adapter/backendAdapter.js --feature-flag FEATURE_EXPORT_V2
-
-# This will use FEATURE_EXPORT_V2 instead of FEATURE_MODULAR_EXPORT
-"""
-
-[command.notes]
-notes = """
-IMPORTANT REMINDERS:
-1. Surgical extraction is a ZERO RISK operation - legacy code remains active
-2. Feature flags default to 'false' - new service is not used until explicitly enabled
-3. Shadow Bridge provides automatic fallback if new service fails
-4. Always run E2E tests with both flag enabled and disabled before finalizing
-5. Remove bridge and legacy code only after 2-3 stable releases (Phase 5)
-
-BEHAVIORAL LOCK:
-- NO RESTYLING during extraction
-- NO VARIABLE RENAMING during extraction
-- NO UI CHANGES during extraction
-- NO LOGIC CHANGES during extraction
-All improvements are SEPARATE commits after extraction is verified.
-
-TESTING REQUIREMENTS:
-- Unit tests: ≥70% coverage for new service
-- Bridge tests: 100% coverage for both new and legacy paths
-- Immutable safety net: Must pass with both flag enabled and disabled
-- E2E tests: Must pass with both flag enabled and disabled
+OUTPUT:
+Please generate the code and actions required for this extraction.
+If `--dry-run` is specified, only show the plan.
+If the source file or target service is unclear from arguments, ask for clarification.
 """

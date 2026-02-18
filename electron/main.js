@@ -1,4 +1,5 @@
 /* global Response */
+require('dotenv').config();
 console.log(' MAIN PROCESS: main.js file is being executed!');
 console.log(' MAIN PROCESS: Node.js version:', process.version);
 console.log(' MAIN PROCESS: Electron version:', process.versions.electron);
@@ -38,6 +39,18 @@ try {
 console.log(' MAIN PROCESS: Requiring BackendAdapter...');
 const { BackendAdapter } = require(path.join(__dirname, '../src/adapter/backendAdapter'));
 console.log(' MAIN PROCESS: BackendAdapter required successfully');
+
+// IPC Controllers (Shadow Bridge - ADR-002, ADR-003, ADR-006)
+// Lazy load controllers only if feature flag is enabled
+let JobController, SettingsController, ExportController, SecurityController;
+if (process.env.FEATURE_MODULAR_IPC_CONTROLLERS === 'true') {
+  console.log(' MAIN PROCESS: Loading IPC Controllers (modular mode)...');
+  JobController = require(path.join(__dirname, '../src/controllers/JobController'));
+  SettingsController = require(path.join(__dirname, '../src/controllers/SettingsController'));
+  ExportController = require(path.join(__dirname, '../src/controllers/ExportController'));
+  SecurityController = require(path.join(__dirname, '../src/controllers/SecurityController'));
+  console.log(' MAIN PROCESS: IPC Controllers loaded successfully');
+}
 
 // JobConfiguration for dynamic, cross-platform default and saved paths
 console.log(' MAIN PROCESS: Requiring JobConfiguration/GeneratedImage...');
@@ -390,14 +403,27 @@ app.whenReady().then(async () => {
     }
   }
 
-  // Register all IPC handlers from the backend adapter
-  console.log(' Setting up IPC handlers from BackendAdapter...');
+  // Register all IPC handlers - Shadow Bridge (ADR-006)
+  // Feature toggle: FEATURE_MODULAR_IPC_CONTROLLERS controls routing
+  console.log(' Setting up IPC handlers...');
   console.log(' backendAdapter type:', typeof backendAdapter);
-  console.log(' backendAdapter.setupIpcHandlers type:', typeof backendAdapter.setupIpcHandlers);
+  console.log(' FEATURE_MODULAR_IPC_CONTROLLERS:', process.env.FEATURE_MODULAR_IPC_CONTROLLERS);
   
   try {
-    backendAdapter.setupIpcHandlers();
-    console.log(' IPC handlers registered successfully');
+    if (process.env.FEATURE_MODULAR_IPC_CONTROLLERS === 'true') {
+      // NEW PATH: Modular IPC Controllers (ADR-002)
+      console.log(' Registering modular IPC controllers...');
+      JobController.registerJobHandlers(ipcMain, backendAdapter);
+      SettingsController.registerSettingsHandlers(ipcMain, backendAdapter);
+      ExportController.registerExportHandlers(ipcMain, backendAdapter);
+      SecurityController.registerSecurityHandlers(ipcMain, backendAdapter);
+      console.log(' Modular IPC controllers registered successfully');
+    } else {
+      // LEGACY PATH: Monolithic setupIpcHandlers (ADR-006: Zero-Deletion Policy)
+      console.log(' Using legacy backendAdapter.setupIpcHandlers()...');
+      backendAdapter.setupIpcHandlers();
+      console.log(' Legacy IPC handlers registered successfully');
+    }
   } catch (error) {
     if (isDev) {
       console.error(' Failed to setup IPC handlers:', error);

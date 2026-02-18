@@ -12,7 +12,7 @@ export { default as FailedImageReviewModal } from './FailedImageReviewModal';
 export { default as FailedImageModalContainer } from './FailedImageModalContainer';
 export { default as ProcessingSettingsModal } from './ProcessingSettingsModal';
 
-// Export types
+// Export types (from legacy backup; Story 3.4)
 export type {
   JobStatus,
   JobExecution,
@@ -20,4 +20,4 @@ export type {
   JobStatistics,
   LogEntry,
   GeneratedImage
-} from './DashboardPanel';
+} from './DashboardPanel.legacy';
