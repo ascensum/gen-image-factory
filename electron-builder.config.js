@@ -32,8 +32,10 @@ const config = {
     //   3. Enable vendor-wasm manualChunk in Pillar 4 (vite.config.ts) to control WASM asset placement
   ],
   files: [
-    // Electron main process (compiled output only)
+    // Electron main process
     'electron/**/*',
+    // Backend source (electron/main.js requires ../src/... at runtime)
+    'src/**/*',
     // Renderer bundle (Vite output)
     'electron/renderer/**/*',
     // Manifest
@@ -48,8 +50,9 @@ const config = {
     '!**/node_modules/.bin/**/*',
     '!**/node_modules/.cache/**/*',
     '!**/*.tar.gz',
-    '!**/*.ts',
-    '!**/__tests__/**/*',
+    '!src/**/*.ts',
+    '!src/**/__tests__/**/*',
+    '!src/**/*.test.*',
     '!**/coverage/**/*'
   ],
   mac: {
