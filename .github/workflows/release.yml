@@ -438,16 +438,29 @@ jobs:
             exit 1
           fi
           
+          # Detect pre-release tags (rc, alpha, beta, preview)
+          TAG="${{ github.ref_name }}"
+          if echo "$TAG" | grep -qE '\-(rc|alpha|beta|preview)[0-9]*$'; then
+            PRERELEASE_FLAGS="--prerelease --latest=false"
+            echo "Pre-release tag detected: $TAG (will not be marked as latest)"
+          else
+            PRERELEASE_FLAGS=""
+            echo "Stable release tag: $TAG"
+          fi
+
           # Check if release exists
           if gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
             echo "Updating existing release ${{ github.ref_name }}"
             gh release upload ${{ github.ref_name }} artifacts-filtered/* --clobber
+            # Update prerelease flag on existing release
+            gh release edit ${{ github.ref_name }} $PRERELEASE_FLAGS
           else
             echo "Creating new release ${{ github.ref_name }}"
             gh release create ${{ github.ref_name }} \
               --title "Release ${{ github.ref_name }}" \
               --notes "## What's Changed in this Version\n\nCategorized changes will be listed here.\n\n### 📦 Artifacts\n- **Windows**: MSIX (Microsoft Store), NSIS installer, Portable\n- **macOS**: DMG, ZIP\n- **Linux**: AppImage, DEB\n\n### 🔒 Integrity\n- SHA-256 checksums included for all artifacts\n- SBOM (Software Bill of Materials) included for auditability\n\n### 📥 Installation\nSee [Release Documentation](docs/release-guide.md) for platform-specific installation instructions." \
               --generate-notes \
+              $PRERELEASE_FLAGS \
               artifacts-filtered/*
           fi
         shell: bash
