@@ -1,7 +1,7 @@
 {
   "categories": [
     {
-      "title": "## 🚀 Features",
+      "title": "## Features",
       "labels": [],
       "rules": [
         {
@@ -12,7 +12,7 @@
       ]
     },
     {
-      "title": "## 🐛 Bug Fixes",
+      "title": "## Bug Fixes",
       "labels": [],
       "rules": [
         {
@@ -23,7 +23,7 @@
       ]
     },
     {
-      "title": "## ⚡ Performance",
+      "title": "## Performance",
       "labels": [],
       "rules": [
         {
@@ -34,7 +34,7 @@
       ]
     },
     {
-      "title": "## ♻️ Refactoring",
+      "title": "## Refactoring",
       "labels": [],
       "rules": [
         {
@@ -45,10 +45,18 @@
       ]
     },
     {
-      "title": "## 📦 Other Changes",
-      "labels": []
+      "title": "## Other Changes",
+      "labels": [],
+      "rules": [
+        {
+          "pattern": "^(chore|docs|test|ci|build)(\\(.+\\))?:",
+          "on_property": "title",
+          "method": "match"
+        }
+      ]
     }
   ],
+  "ignore_labels": ["skip-changelog"],
   "sort": {
     "order": "ASC",
     "on_property": "mergedAt"
@@ -57,5 +65,5 @@
     "method": "semver"
   },
   "template": "#{{CHANGELOG}}",
-  "pr_template": "- #{{TITLE}} (#{{NUMBER}})"
+  "commit_template": "- #{{TITLE}}"
 }
