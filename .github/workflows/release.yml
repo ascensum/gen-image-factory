@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'v*'
 
 # Cancel superseded runs to avoid wasted minutes
 concurrency:
@@ -394,6 +394,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -428,6 +430,15 @@ jobs:
           ls -lh artifacts-filtered/
         shell: bash
 
+      - name: Generate Changelog
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        with:
+          mode: 'COMMIT'
+          configuration: '.github/release-notes-config.json'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create or Update Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -437,29 +448,24 @@ jobs:
             echo "ERROR: No artifacts found in artifacts-filtered/ directory!"
             exit 1
           fi
-          
-          # Detect pre-release tags (rc, alpha, beta, preview)
-          TAG="${{ github.ref_name }}"
-          if echo "$TAG" | grep -qE '\-(rc|alpha|beta|preview)[0-9]*$'; then
+
+          # Detect pre-release: any tag containing a hyphen (e.g. v1.3.0-rc1, v2.0.0-beta.1)
+          PRERELEASE_FLAGS=""
+          if [[ "${{ github.ref_name }}" == *-* ]]; then
+            echo "Pre-release tag detected (${{ github.ref_name }}), marking as prerelease"
             PRERELEASE_FLAGS="--prerelease --latest=false"
-            echo "Pre-release tag detected: $TAG (will not be marked as latest)"
-          else
-            PRERELEASE_FLAGS=""
-            echo "Stable release tag: $TAG"
           fi
 
           # Check if release exists
           if gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
             echo "Updating existing release ${{ github.ref_name }}"
             gh release upload ${{ github.ref_name }} artifacts-filtered/* --clobber
-            # Update prerelease flag on existing release
             gh release edit ${{ github.ref_name }} $PRERELEASE_FLAGS
           else
             echo "Creating new release ${{ github.ref_name }}"
             gh release create ${{ github.ref_name }} \
               --title "Release ${{ github.ref_name }}" \
-              --notes "## What's Changed in this Version\n\nCategorized changes will be listed here.\n\n### 📦 Artifacts\n- **Windows**: MSIX (Microsoft Store), NSIS installer, Portable\n- **macOS**: DMG, ZIP\n- **Linux**: AppImage, DEB\n\n### 🔒 Integrity\n- SHA-256 checksums included for all artifacts\n- SBOM (Software Bill of Materials) included for auditability\n\n### 📥 Installation\nSee [Release Documentation](docs/release-guide.md) for platform-specific installation instructions." \
-              --generate-notes \
+              --notes "${{ steps.build_changelog.outputs.changelog }}" \
               $PRERELEASE_FLAGS \
               artifacts-filtered/*
           fi
