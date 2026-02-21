@@ -138,7 +138,7 @@ async function main() {
     
     const release = await fetchRelease(validatedVersion);
     
-    console.log(`Found release: ${release.tag_name} (${release.name || release.tag_name})\n`);
+    console.log(`Found release: ${sanitize(release.tag_name)} (${sanitize(release.name || release.tag_name)})\n`);
     console.log('=' .repeat(80));
     console.log('RELEASE NOTES FOR MICROSOFT STORE:');
     console.log('=' .repeat(80));
