@@ -36,6 +36,7 @@ const ALLOWLIST_DIRS = [
   'build/icons/',
   'data/legacy-db-backups/',
   'web-bundles/',
+  '.github/',
 ];
 
 const JUNK_PATTERNS = [
@@ -121,6 +122,7 @@ function hasEmoji(text) {
 function scanEmoji(files) {
   const violations = [];
   for (const rel of files) {
+    if (isUnderAllowlist(rel)) continue; // allowlisted dirs (e.g. .github/, docs/)
     const ext = path.extname(rel).toLowerCase();
     if (ext === '.md') continue; // allowed
     // Only scan code-like files to avoid huge binaries

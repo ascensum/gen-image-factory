@@ -1,0 +1,61 @@
+{
+  "categories": [
+    {
+      "title": "## 🚀 Features",
+      "labels": [],
+      "rules": [
+        {
+          "pattern": "^feat(\\(.+\\))?:",
+          "on_property": "title",
+          "method": "match"
+        }
+      ]
+    },
+    {
+      "title": "## 🐛 Bug Fixes",
+      "labels": [],
+      "rules": [
+        {
+          "pattern": "^fix(\\(.+\\))?:",
+          "on_property": "title",
+          "method": "match"
+        }
+      ]
+    },
+    {
+      "title": "## ⚡ Performance",
+      "labels": [],
+      "rules": [
+        {
+          "pattern": "^perf(\\(.+\\))?:",
+          "on_property": "title",
+          "method": "match"
+        }
+      ]
+    },
+    {
+      "title": "## ♻️ Refactoring",
+      "labels": [],
+      "rules": [
+        {
+          "pattern": "^refactor(\\(.+\\))?:",
+          "on_property": "title",
+          "method": "match"
+        }
+      ]
+    },
+    {
+      "title": "## 📦 Other Changes",
+      "labels": []
+    }
+  ],
+  "sort": {
+    "order": "ASC",
+    "on_property": "mergedAt"
+  },
+  "tag_resolver": {
+    "method": "semver"
+  },
+  "template": "#{{CHANGELOG}}",
+  "pr_template": "- #{{TITLE}} (#{{NUMBER}})"
+}
