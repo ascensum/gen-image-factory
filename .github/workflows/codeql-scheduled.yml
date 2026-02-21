@@ -26,8 +26,6 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
-          # Focus CodeQL on data flow between Main and Renderer
-          queries: security-extended,security-and-quality
           config-file: ./.github/codeql/codeql-config.yml
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4
