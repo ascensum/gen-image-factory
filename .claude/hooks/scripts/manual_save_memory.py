@@ -1,0 +1,1 @@
+/Users/vjatseslavjertsalov/.ai-memory/.claude/hooks/scripts/manual_save_memory.py

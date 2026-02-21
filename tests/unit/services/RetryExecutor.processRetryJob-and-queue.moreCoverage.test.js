@@ -18,7 +18,6 @@ describe('RetryExecutor processRetryJob/processQueue/constructor (more coverage)
     const sutId = req.resolve('../../../src/services/retryExecutor.js');
     remember(sutId);
     delete req.cache[sutId];
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return req(sutId);
   };
 
@@ -62,7 +61,10 @@ describe('RetryExecutor processRetryJob/processQueue/constructor (more coverage)
     const RetryExecutor = loadSut();
     const exec = new RetryExecutor({ generatedImage: {} });
 
+    // The legacy path calls _legacyProcessQueue directly (not processQueue).
+    // Mock both to prevent actual processing from shifting jobs off the queue.
     const pq = vi.spyOn(exec, 'processQueue').mockResolvedValue(undefined);
+    vi.spyOn(exec, '_legacyProcessQueue').mockResolvedValue(undefined);
     const qEvents = [];
     exec.on('queue-updated', (e) => qEvents.push(e));
 
@@ -79,7 +81,7 @@ describe('RetryExecutor processRetryJob/processQueue/constructor (more coverage)
     expect(res.success).toBe(true);
     expect(exec.queue.length).toBe(2);
     expect(qEvents.length).toBe(1);
-    expect(pq).toHaveBeenCalled();
+    expect(pq).not.toHaveBeenCalled(); // legacy path skips processQueue
   });
 
   it('processQueue covers success + failure job events and progress emission', async () => {

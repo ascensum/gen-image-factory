@@ -407,8 +407,8 @@ class GeneratedImage {
         image.qcReason || null,
         image.finalImagePath || null,
         image.tempImagePath || null,
-        image.metadata ? JSON.stringify(image.metadata) : null,
-        image.processingSettings ? JSON.stringify(image.processingSettings) : null
+        image.metadata != null ? (typeof image.metadata === 'string' ? image.metadata : JSON.stringify(image.metadata)) : null,
+        image.processingSettings != null ? (typeof image.processingSettings === 'string' ? image.processingSettings : JSON.stringify(image.processingSettings)) : null
       ];
 
       this.db.run(sql, params, function(err) {
@@ -533,8 +533,8 @@ class GeneratedImage {
         image.qcStatus,
         image.qcReason || null,
         image.finalImagePath || null,
-        image.metadata ? JSON.stringify(image.metadata) : null,
-        image.processingSettings ? JSON.stringify(image.processingSettings) : null,
+        image.metadata != null ? (typeof image.metadata === 'string' ? image.metadata : JSON.stringify(image.metadata)) : null,
+        image.processingSettings != null ? (typeof image.processingSettings === 'string' ? image.processingSettings : JSON.stringify(image.processingSettings)) : null,
         id
       ];
 
@@ -901,7 +901,7 @@ class GeneratedImage {
         const placeholders = imageIds.map(() => '?').join(',');
         const sql = `DELETE FROM generated_images WHERE id IN (${placeholders})`;
         
-        this.db.run(sql, imageIds, (err) => {
+        this.db.run(sql, imageIds, function(err) {
           if (err) {
             console.error('Error bulk deleting generated images from database:', err);
             reject(err);

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { JobExecution } = require('../../../src/database/models/JobExecution');
 
 describe('JobExecution model (unit, db stubbed)', () => {

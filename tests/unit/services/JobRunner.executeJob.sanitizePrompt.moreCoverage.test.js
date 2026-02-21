@@ -18,7 +18,6 @@ describe('JobRunner.executeJob - sanitizePromptForRunware + DB save loop (big pa
     const sutId = req.resolve('../../../src/services/jobRunner.js');
     remember(sutId);
     delete req.cache[sutId];
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return req(sutId);
   };
 

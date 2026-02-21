@@ -34,20 +34,13 @@
     "test:job-management:watch": "vitest tests/unit/logic/jobManagement.logic.test.ts tests/integration/backend/ExportExcel.integration.test.ts",
     "test:retry": "vitest run tests/unit/services/RetryExecutor.test.ts tests/integration/backend/RetryFunctionality.integration.test.ts",
     "test:retry:watch": "vitest tests/unit/services/RetryExecutor.test.ts tests/integration/backend/RetryFunctionality.integration.test.ts",
-    "test:retry:modular": "FEATURE_MODULAR_RETRY_QUEUE=true FEATURE_MODULAR_RETRY_PROCESSOR=true FEATURE_MODULAR_RETRY_CONFIG=true FEATURE_MODULAR_RETRY_POST_PROCESSING=true vitest run tests/characterization/RetryExecutor.baseline.test.js tests/integration/adapter/RetryExecutor.bridge.integration.test.js tests/integration/adapter/RetryExecutor.processor.bridge.integration.test.js tests/unit/services/RetryExecutor.test.ts tests/unit/services/RetryQueueService.test.js tests/unit/services/RetryProcessorService.test.js tests/integration/backend/RetryFunctionality.integration.test.ts",
     "test:security": "vitest run tests/unit/services/RetryExecutor.test.ts --reporter=verbose",
     "test:regression:retry": "npm run test:retry && npm run test:job-management",
     "test:labels": "vitest run tests/unit/ui/JobHistoryLabelFormatting.test.tsx",
     "test:labels:all": "vitest run tests/unit/ui/JobHistoryLabelFormatting.test.tsx tests/unit/ui/DashboardFiltersLabelFormatting.test.tsx tests/unit/ui/FailedImagesReviewFiltersLabelFormatting.test.tsx",
     "test:exports": "vitest run tests/integration/backend/ExportZip.integration.test.ts tests/integration/backend/ExportJobExcel.integration.test.ts tests/integration/backend/BulkExportJobs.integration.test.ts",
     "test:integration:db": "vitest run tests/integration/database/JobConfiguration.integration.test.ts",
-    "test:integration:settings": "vitest run tests/integration/settings",
-    "test:integration:jobs": "vitest run tests/integration/jobs",
-    "test:integration:images": "vitest run tests/integration/images",
-    "test:integration:exports": "vitest run tests/integration/exports",
-    "test:integration:all": "vitest run tests/integration/settings tests/integration/jobs tests/integration/images tests/integration/exports tests/integration/adapter",
-    "test:e2e:modular-retry": "FEATURE_MODULAR_RETRY_QUEUE=true FEATURE_MODULAR_RETRY_PROCESSOR=true FEATURE_MODULAR_RETRY_CONFIG=true FEATURE_MODULAR_RETRY_POST_PROCESSING=true playwright test",
-    "test:integration:settings:api": "vitest run tests/integration/api/settingsAdapter.integration.test.ts",
+    "test:integration:settings": "vitest run tests/integration/api/settingsAdapter.integration.test.ts",
     "test:story:1.7": "vitest run tests/integration/backend/FailedImagesReview.integration.test.ts tests/unit/utils/processing.normalizer.test.ts",
     "test:critical": "vitest run tests/integration/api/settingsAdapter.integration.test.ts tests/unit/services/JobRunner.executeJob.qcDisabled.integration-like.test.js tests/unit/services/JobRunner.executeJob.qcEnabled.integration-like.test.js tests/unit/services/JobRunner.executeJob.stopCancel.integration-like.moreCoverage.test.js tests/unit/services/JobRunner.startJob.rerunPersistence.moreCoverage.test.js tests/unit/services/RetryExecutor.queue.test.js tests/unit/services/RetryExecutor.updateImageStatus.test.js",
     "validate:store-identity": "node scripts/validate-store-identity.js",
@@ -72,7 +65,7 @@
   "license": "MIT",
   "dependencies": {
     "archiver": "^5.3.1",
-    "axios": "^1.13.5",
+    "axios": "^1.3.1",
     "cheerio": "^1.0.0-rc.12",
     "color": "^5.0.3",
     "color-convert": "^3.1.3",
@@ -88,7 +81,6 @@
     "openai": "^4.52.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-window": "^2.2.6",
     "sharp": "^0.32.0",
     "sqlite3": "^5.1.7",
     "uuid": "^9.0.1",
@@ -106,7 +98,6 @@
     "@types/react": "^19.1.9",
     "@types/react-devtools": "^3.6.2",
     "@types/react-dom": "^19.1.7",
-    "@types/react-window": "^1.8.8",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
     "@vitejs/plugin-react": "^4.7.0",
@@ -129,8 +120,7 @@
     "vitest": "^3.2.4"
   },
   "overrides": {
-    "tar": "7.5.8",
-    "lodash": "4.17.23",
-    "minimatch": ">=10.2.2"
+    "tar": "7.5.4",
+    "lodash": "4.17.23"
   }
 }

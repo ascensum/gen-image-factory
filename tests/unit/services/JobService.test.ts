@@ -224,6 +224,9 @@ describe('JobService Unit Tests', () => {
     });
 
     it('should update execution status on JobEngine error (integration)', async () => {
+      // Attach error listener to prevent unhandled 'error' event when JobService re-emits
+      jobService.on('error', () => {});
+
       // Configure mock to emit error during execution
       mockJobEngine.executeJob.mockImplementation(async () => {
         // Simulate error during execution

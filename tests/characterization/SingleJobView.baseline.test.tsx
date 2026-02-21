@@ -130,11 +130,13 @@ describe('SingleJobView Characterization Baseline', () => {
 
     await screen.findByText('Test Job Alpha');
 
-    const exportBtn = screen.getByRole('button', { name: /export/i });
+    const exportBtn = screen.getByRole('button', { name: /export job/i });
     fireEvent.click(exportBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Export Job/i)).toBeInTheDocument();
+      // Dialog title "Export Job" appears — getAllByText since the button label also matches
+      const matches = screen.getAllByText(/Export Job/i);
+      expect(matches.length).toBeGreaterThan(0);
     });
 
     const deleteBtn = screen.getByRole('button', { name: /delete/i });

@@ -8,9 +8,7 @@ vi.mock('../../../src/producePictureModule', () => {
 });
 
 // Import after mocks
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { JobRunner } = require('../../../src/services/jobRunner');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const producePictureModule = require('../../../src/producePictureModule');
 
 describe('JobRunner - per-generation retry', () => {

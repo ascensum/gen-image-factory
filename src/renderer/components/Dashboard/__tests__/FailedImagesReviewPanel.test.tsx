@@ -98,6 +98,8 @@ vi.mock('../FailedImageReviewModal', () => ({
 vi.mock('../ProcessingSettingsModal', () => {
   const React = require('react');
   return {
+    // Mock component with state; hook is safe (always runs when isOpen is true on first render with isOpen)
+    /* eslint-disable react-hooks/rules-of-hooks */
     default: ({ isOpen, onClose, onRetry, selectedCount }: any) => {
       const [useOriginal, setUseOriginal] = React.useState(true);
       if (!isOpen) return null;

@@ -4,7 +4,6 @@ vi.mock('../../../src/producePictureModule', () => ({ producePictureModule: vi.f
 vi.mock('../../../src/paramsGeneratorModule', () => ({}));
 vi.mock('../../../src/aiVision', () => ({}));
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { JobRunner } = require('../../../src/services/jobRunner');
 
 describe('JobRunner - status/progress/logs helpers', () => {

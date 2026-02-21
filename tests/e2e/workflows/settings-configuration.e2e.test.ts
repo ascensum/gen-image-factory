@@ -460,8 +460,12 @@ test.describe('Settings Configuration E2E Tests', () => {
     await expect(pngQualityInput).toHaveValue('90');
     */
 
-    // Processing tab (Story 3.4 decomposed UI) has only 2 switches: Remove Background, Image Convert.
-    // Trim Transparent Background is on Parameters > Advanced; covered by advanced configuration workflow.
+    // Test Trim Transparent Background toggle (appears when Remove Background is enabled) - Active State Synchronization
+    const trimTransparentToggle = page.locator('button[role="switch"]').nth(3);
+    await page.waitForSelector('button[role="switch"]', { state: 'attached', timeout: 15000 });
+    await expect(trimTransparentToggle).toBeVisible();
+    await trimTransparentToggle.click();
+    await expect(trimTransparentToggle).toHaveAttribute('aria-checked', 'true');
   });
 
   test('AI features configuration workflow', async ({ page }) => {

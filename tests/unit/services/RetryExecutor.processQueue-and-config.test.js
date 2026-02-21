@@ -76,7 +76,6 @@ const installCjsMocks = (desktopPath) => {
 
 const loadSut = (desktopPath) => {
   installCjsMocks(desktopPath);
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const RetryExecutor = require('../../../src/services/retryExecutor.js');
   return RetryExecutor;
 };

@@ -8,7 +8,6 @@ describe('RetryExecutor.updateImageStatus (unit)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     RetryExecutor = require('../../../src/services/retryExecutor.js');
   });
 

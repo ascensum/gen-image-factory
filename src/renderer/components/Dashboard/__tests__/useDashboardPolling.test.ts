@@ -14,11 +14,16 @@ const mockJobManagement = {
   getConfiguration: vi.fn(),
 };
 
+const mockGeneratedImages = {
+  getImagesByQCStatus: vi.fn(),
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
   (window as any).electronAPI = {
     jobManagement: mockJobManagement,
+    generatedImages: mockGeneratedImages,
     getSettings: vi.fn().mockResolvedValue({ settings: { advanced: { debugMode: false } } }),
   };
   mockJobManagement.getJobStatus.mockResolvedValue({ state: 'idle', progress: 0, currentStep: 1, totalSteps: 2 });
@@ -28,6 +33,7 @@ beforeEach(() => {
   mockJobManagement.getAllGeneratedImages.mockResolvedValue([]);
   mockJobManagement.getJobLogs.mockResolvedValue([]);
   mockJobManagement.getConfiguration.mockResolvedValue({ success: true, settings: {} });
+  mockGeneratedImages.getImagesByQCStatus.mockResolvedValue({ images: [], hasMore: false });
 });
 
 function useDashboardWithPolling() {
@@ -44,6 +50,7 @@ function useDashboardWithPolling() {
     setExportJobId: state.setExportJobId,
     setShowSingleExportModal: state.setShowSingleExportModal,
     setJobConfiguration: state.setJobConfiguration,
+    setGalleryHasMore: state.setGalleryHasMore,
   });
   useDashboardPolling({
     jobStatus: state.jobStatus,
@@ -72,7 +79,7 @@ describe('useDashboardPolling', () => {
 
     expect(mockJobManagement.getAllJobExecutions).toHaveBeenCalled();
     expect(mockJobManagement.getJobStatistics).toHaveBeenCalled();
-    expect(mockJobManagement.getAllGeneratedImages).toHaveBeenCalled();
+    expect(mockGeneratedImages.getImagesByQCStatus).toHaveBeenCalled();
     expect(mockJobManagement.getJobLogs).toHaveBeenCalled();
     expect(mockJobManagement.getConfiguration).toHaveBeenCalled();
   });
@@ -120,6 +127,6 @@ describe('useDashboardPolling', () => {
     });
 
     expect(mockJobManagement.getJobLogs).toHaveBeenCalled();
-    expect(mockJobManagement.getAllGeneratedImages).toHaveBeenCalled();
+    expect(mockGeneratedImages.getImagesByQCStatus).toHaveBeenCalled();
   });
 });

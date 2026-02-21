@@ -25,7 +25,6 @@ vi.mock('../../src/aiVision', () => ({
   generateMetadata: vi.fn().mockResolvedValue({ new_title: 'Test', new_description: 'Desc', uploadTags: [] }),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const RetryExecutor = require('../../src/services/retryExecutor');
 
 function getQueue(executor) {

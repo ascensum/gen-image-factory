@@ -1,0 +1,1 @@
+/Users/vjatseslavjertsalov/.ai-memory/.claude/hooks/scripts/error_pattern_capture.py

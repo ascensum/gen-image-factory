@@ -23,20 +23,34 @@ const config = {
   },
   asar: true,
   asarUnpack: [
-    "**/node_modules/keytar/**/*",
-    "**/node_modules/sqlite3/**/*",
-    "**/node_modules/sharp/**/*"
+    '**/node_modules/keytar/**/*',     // SecurityService: OS credential store — permanent
+    '**/node_modules/sqlite3/**/*',    // ADR-009 DB layer — REMOVE in Epic 5 (→ PGlite, no native binding)
+    '**/node_modules/sharp/**/*'       // ImageProcessorService: pixel manipulation — permanent
+    // NOTE (Epic 5): When sqlite3 → PGlite migration lands:
+    //   1. Remove the sqlite3 asarUnpack entry above
+    //   2. PGlite (.wasm) requires NO asarUnpack — it is pure JS+WASM
+    //   3. Enable vendor-wasm manualChunk in Pillar 4 (vite.config.ts) to control WASM asset placement
   ],
   files: [
+    // Electron main process (compiled output only)
     'electron/**/*',
-    'src/**/*',
-    'build/**/*',
+    // Renderer bundle (Vite output)
+    'electron/renderer/**/*',
+    // Manifest
     'package.json',
-    'node_modules/**/*',
-    '!**/node_modules/*/{test,tests,testing,doc,docs,example,examples}/**/*',
-    '!**/node_modules/*.d.ts',
-    '!**/node_modules/.bin',
-    '!**/*.tar.gz'
+    // Exclusions applied to everything matched above
+    '!**/node_modules/*/{test,tests,testing,__tests__,spec,specs}/**/*',
+    '!**/node_modules/*/{doc,docs,documentation,examples,example,samples}/**/*',
+    '!**/node_modules/*/*.md',
+    '!**/node_modules/*/*.map',
+    '!**/node_modules/**/*.d.ts',
+    '!**/node_modules/**/*.d.ts.map',
+    '!**/node_modules/.bin/**/*',
+    '!**/node_modules/.cache/**/*',
+    '!**/*.tar.gz',
+    '!**/*.ts',
+    '!**/__tests__/**/*',
+    '!**/coverage/**/*'
   ],
   mac: {
     icon: 'icons/mac/icon.icns',

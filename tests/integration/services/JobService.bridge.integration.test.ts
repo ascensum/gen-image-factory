@@ -90,13 +90,15 @@ describe('JobService Bridge Integration Tests', () => {
 
   describe('Legacy Path (Feature Flag OFF)', () => {
     it('should NOT initialize JobService when feature flag is OFF', async () => {
-      // Arrange: All feature flags OFF
+      // Load module first - transitive requires (paramsGeneratorModule) call dotenv.config()
+      // which would re-set feature flags from .env. Deleting AFTER load avoids this.
+      const { JobRunner } = req('../../../src/services/jobRunner.js');
+
+      // Arrange: All feature flags OFF (delete AFTER module load to avoid dotenv re-loading)
       delete process.env.FEATURE_MODULAR_JOB_SERVICE;
       delete process.env.FEATURE_MODULAR_JOB_ENGINE;
       delete process.env.FEATURE_MODULAR_JOB_REPOSITORY;
       
-      // Load jobRunner
-      const { JobRunner } = req('../../../src/services/jobRunner.js');
       const jobRunner = new JobRunner();
 
       // Assert: JobService should NOT be initialized

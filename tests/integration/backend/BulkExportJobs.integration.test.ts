@@ -90,6 +90,14 @@ describe('Bulk Export Jobs - Integration', () => {
       return { success: true, configuration: { id, name: `Cfg${id}`, settings: { parameters: { label: `Cfg${id}` } } } };
     });
     (backend as any).jobConfig = cfg;
+
+    // ExportService is initialized in BackendAdapter constructor with the original model refs.
+    // Update its references to use our spied instances so the modular path works correctly.
+    if ((backend as any).exportService) {
+      (backend as any).exportService.jobExecution = jobExec;
+      (backend as any).exportService.generatedImage = gi;
+      (backend as any).exportService.jobConfig = cfg;
+    }
   });
 
   afterEach(() => {

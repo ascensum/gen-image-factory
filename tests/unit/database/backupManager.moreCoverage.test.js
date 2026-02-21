@@ -77,7 +77,6 @@ const installSqliteMockAndReload = () => {
   const sutId = req.resolve('../../../src/database/backupManager');
   rememberCache(sutId);
   delete req.cache[sutId];
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   return req('../../../src/database/backupManager');
 };
 

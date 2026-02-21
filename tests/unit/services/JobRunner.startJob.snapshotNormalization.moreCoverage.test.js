@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { JobRunner } = require('../../../src/services/jobRunner');
 
 describe('JobRunner.startJob configurationSnapshot normalization (more coverage)', () => {

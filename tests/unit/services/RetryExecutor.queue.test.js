@@ -15,7 +15,6 @@ vi.mock('../../../src/aiVision', () => ({
   generateMetadata: vi.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const RetryExecutor = require('../../../src/services/retryExecutor');
 
 describe('RetryExecutor - queue and fallback behavior', () => {

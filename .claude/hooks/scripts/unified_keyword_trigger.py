@@ -1,0 +1,1 @@
+/Users/vjatseslavjertsalov/.ai-memory/.claude/hooks/scripts/unified_keyword_trigger.py

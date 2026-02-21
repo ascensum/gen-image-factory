@@ -90,11 +90,13 @@ describe('JobRunner additional coverage: AI + paths + helpers', () => {
     expect(images[1]).toEqual(expect.objectContaining({ qcStatus: 'qc_failed', qcReason: 'blurry' }));
   });
 
-  it('runQualityChecks throws when qc input path is missing (covers error path)', async () => {
+  it('runQualityChecks marks image as qc_failed when qc input path is missing (covers error path)', async () => {
     aiVision.runQualityCheck.mockResolvedValueOnce({ passed: true, reason: 'ok' });
-    await expect(
-      runner.runQualityChecks([{ id: 1, imageMappingId: 'x' }], { parameters: {}, ai: {} })
-    ).rejects.toThrow(/QC input path is missing/);
+    const images = [{ id: 1, imageMappingId: 'x' }];
+    // Implementation marks as failed and continues - does NOT throw
+    await runner.runQualityChecks(images, { parameters: {}, ai: {} });
+    expect(images[0].qcStatus).toBe('qc_failed');
+    expect(images[0].qcReason).toBe('QC input path is missing');
   });
 
   it('generateMetadata persists regenerated metadata by mappingId and marks metadata failures as qc_failed', async () => {

@@ -9,16 +9,13 @@ interface FailedImageCardProps {
   isSelected: boolean;
   onSelect: () => void;
   onAction: (action: string, imageId: string) => void;
-  /** Job name/label for this image (e.g. from jobIdToLabel[executionId]), fallback shown if missing */
-  jobLabel?: string;
 }
 
 const FailedImageCard: React.FC<FailedImageCardProps> = ({
   image,
   isSelected,
   onSelect,
-  onAction,
-  jobLabel,
+  onAction
 }) => {
   const formatDate = (date?: Date) => {
     return date ? new Date(date).toLocaleDateString() : '';
@@ -149,17 +146,10 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
           {getTitleOrPrompt()}
         </div>
 
-        {/* Failure Reason (red block) */}
+        {/* Failure Reason */}
         {(image as any)?.qcReason && (
           <div className="text-xs text-red-600 mb-2 p-2 bg-red-50 rounded border border-red-200">
             <strong>Failure:</strong> {formatQcFailureReason((image as any)?.qcStatus, (image as any)?.qcReason) || (image as any)?.qcReason}
-          </div>
-        )}
-
-        {/* Job label/name under the failure block (same as Dashboard Image Gallery card) */}
-        {((jobLabel != null && jobLabel !== '') || image.executionId != null) && (
-          <div className="text-xs text-gray-600 mb-2">
-            {jobLabel?.trim() || `Job ${image.executionId}`}
           </div>
         )}
 

@@ -67,7 +67,6 @@ describe('JobConfiguration - init() error paths and DB path resolution', () => {
 
     existsSpy.mockReturnValue(false);
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { JobConfiguration } = require('../../../src/database/models/JobConfiguration');
 
     // Avoid relying on constructor side effects; exercise the path resolver directly.
@@ -84,7 +83,6 @@ describe('JobConfiguration - init() error paths and DB path resolution', () => {
     cwdSpy.mockReturnValue('/proj');
     existsSpy.mockReturnValue(false);
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { JobConfiguration } = require('../../../src/database/models/JobConfiguration');
 
     const instance = Object.create(JobConfiguration.prototype);
@@ -97,7 +95,6 @@ describe('JobConfiguration - init() error paths and DB path resolution', () => {
   it('init() rejects when sqlite cannot open database', async () => {
     installModuleMocks({ electronUserDataPath: '/tmp/userdata', sqliteOpenError: new Error('SQLITE_CANTOPEN') });
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { JobConfiguration } = require('../../../src/database/models/JobConfiguration');
 
     const instance = Object.create(JobConfiguration.prototype);
@@ -109,7 +106,6 @@ describe('JobConfiguration - init() error paths and DB path resolution', () => {
   it('init() rejects when createTables fails', async () => {
     installModuleMocks({ electronUserDataPath: '/tmp/userdata', createTableError: new Error('CREATE_TABLE_FAILED') });
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { JobConfiguration } = require('../../../src/database/models/JobConfiguration');
 
     const instance = Object.create(JobConfiguration.prototype);

@@ -260,4 +260,5 @@ import styles from './SingleJobView.module.css';
 - [ADR-010: Frontend Decomposition Standard](../../docs/architecture/adr/ADR-010-Frontend-Decomposition-Standard.md)
 - [ADR-011: Modular Testing Standard](../../docs/architecture/adr/ADR-011-Modular-Testing-Standard.md)
 - [ADR-012: Retry Executor Decomposition](../../docs/architecture/adr/ADR-012-Retry-Executor-Decomposition.md)
+- [ADR-014: Thin-Build & Asset Optimization Strategy](../../docs/architecture/adr/ADR-014-Thin-Build-Asset-Optimization.md)
 - [Code Standards](../../docs/standards/CODE_STANDARDS.md)

@@ -62,7 +62,6 @@ const installSqlite3Mock = () => {
 };
 
 installSqlite3Mock();
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { BackupManager } = require('../../../src/database/backupManager');
 
 const mkTempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'backup-unit-'));

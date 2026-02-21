@@ -41,7 +41,6 @@ const loadSut = () => {
   vi.resetModules();
   const sutId = require.resolve('../../src/paramsGeneratorModule.js');
   delete require.cache[sutId];
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { paramsGeneratorModule } = require('../../src/paramsGeneratorModule.js');
   return paramsGeneratorModule;
 };

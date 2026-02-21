@@ -37,7 +37,6 @@ const installCjsMocks = () => {
 
 installCjsMocks();
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const RetryExecutor = require('../../../src/services/retryExecutor');
 
 describe('RetryExecutor - failOptions and stage/qcReason mapping', () => {

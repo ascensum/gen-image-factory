@@ -20,7 +20,12 @@ const getExecutablePath = () => {
       path.join(distDir, 'mac', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory'),
       path.join(distDir, 'mac-arm64', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory'),
       path.join(distDir, 'mac-x64', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory'),
-      path.join(distDir, 'mac-universal', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory')
+      path.join(distDir, 'mac-universal', 'GenImageFactory.app', 'Contents', 'MacOS', 'GenImageFactory'),
+      // Lowercase variants (electron-builder --dir may use package.json name)
+      path.join(distDir, 'mac', 'gen-image-factory.app', 'Contents', 'MacOS', 'gen-image-factory'),
+      path.join(distDir, 'mac-arm64', 'gen-image-factory.app', 'Contents', 'MacOS', 'gen-image-factory'),
+      path.join(distDir, 'mac-x64', 'gen-image-factory.app', 'Contents', 'MacOS', 'gen-image-factory'),
+      path.join(distDir, 'mac-universal', 'gen-image-factory.app', 'Contents', 'MacOS', 'gen-image-factory')
     ];
     for (const p of paths) if (fs.existsSync(p)) return p;
   } else if (process.platform === 'win32') {
@@ -52,9 +57,12 @@ async function runSmokeTest() {
   
   let smokeTestReady = false;
   let errorDetected = false;
+  let dbRoundTripConfirmed = false;
   const errors = [];
 
-  const appProcess = spawn(executablePath, ['--no-sandbox'], {
+  // --no-sandbox is required on Linux CI but causes exit code 9 on macOS
+  const spawnArgs = process.platform === 'linux' ? ['--no-sandbox'] : [];
+  const appProcess = spawn(executablePath, spawnArgs, {
     env: { ...process.env, SMOKE_TEST: 'true', ELECTRON_ENABLE_LOGGING: '1' },
     stdio: ['ignore', 'pipe', 'pipe']
   });
@@ -63,6 +71,11 @@ async function runSmokeTest() {
     const output = data.toString();
     console.log(`[Main ${source}]: ${output}`);
     if (output.includes('MAIN PROCESS: Smoke test ready signal')) smokeTestReady = true;
+    if (output.includes('MAIN PROCESS: Database round-trip OK')) dbRoundTripConfirmed = true;
+    if (output.includes('MAIN PROCESS: Database round-trip FAILED')) {
+      errorDetected = true;
+      errors.push(output);
+    }
     if (output.includes('Uncaught ReferenceError') || output.includes('Error: Cannot find module') || output.includes('FATAL:')) {
       errorDetected = true;
       errors.push(output);
@@ -74,17 +87,29 @@ async function runSmokeTest() {
 
   const startTime = Date.now();
   const timeout = 120000;
+  let lastStatusSec = 0;
 
   while (!smokeTestReady && (Date.now() - startTime < timeout)) {
     if (appProcess.exitCode !== null) {
       console.error(`Process exited early with code ${appProcess.exitCode}`);
       process.exit(1);
     }
-    await new Promise(r => setTimeout(r, 1000));
+    await new Promise(r => setTimeout(r, 500));
+    const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+    if (elapsedSec !== lastStatusSec && elapsedSec % 5 === 0) {
+      lastStatusSec = elapsedSec;
+      console.log(`[Smoke test] Waiting for ready signal... (${elapsedSec}s)`);
+    }
   }
 
   if (!smokeTestReady) {
     console.error('FAILED: Timed out waiting for ready signal.');
+    appProcess.kill('SIGKILL');
+    process.exit(1);
+  }
+
+  if (!dbRoundTripConfirmed) {
+    console.error('FAILED: Database round-trip confirmation not received before ready signal.');
     appProcess.kill('SIGKILL');
     process.exit(1);
   }

@@ -9,29 +9,29 @@
  * Related: Story 3.2 Phase 0 Task 0.2
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createRequire } from 'node:module';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const req = createRequire(import.meta.url);
 
+const BASE_TEST_IMAGES = [
+  { imageMappingId: 'smap-1', executionId: 'sexec-1', generationPrompt: 'test 1', seed: 1, qcStatus: 'approved', finalImagePath: '/test/1.png' },
+  { imageMappingId: 'smap-2', executionId: 'sexec-1', generationPrompt: 'test 2', seed: 2, qcStatus: 'approved', finalImagePath: '/test/2.png' },
+  { imageMappingId: 'smap-3', executionId: 'sexec-2', generationPrompt: 'test 3', seed: 3, qcStatus: 'failed', finalImagePath: '/test/3.png' },
+  { imageMappingId: 'smap-4', executionId: 'sexec-2', generationPrompt: 'test 4', seed: 4, qcStatus: 'pending', finalImagePath: '/test/4.png' }
+];
+
 describe('GeneratedImage.js Characterization Tests (Baseline - Simplified)', () => {
   let GeneratedImage: any;
   let generatedImage: any;
   let testDbPath: string;
 
-  beforeAll(async () => {
-    // Create unique test database with random suffix
-    testDbPath = path.join(process.cwd(), 'data', `test-char-simple-${Date.now()}-${Math.random().toString(36).substring(7)}.db`);
-    
-    // Ensure data directory exists
-    const dataDir = path.dirname(testDbPath);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
+  beforeEach(async () => {
+    // createRequire bypasses vi.mock; all instances share data/gen-image-factory.db
+    testDbPath = path.join(process.cwd(), 'data', 'gen-image-factory.db');
 
-    // Load GeneratedImage
     delete req.cache[req.resolve('../../src/database/models/GeneratedImage.js')];
     const module = req('../../src/database/models/GeneratedImage.js');
     GeneratedImage = module.GeneratedImage;
@@ -39,36 +39,28 @@ describe('GeneratedImage.js Characterization Tests (Baseline - Simplified)', () 
     generatedImage = new GeneratedImage();
     await generatedImage.init();
 
-    // Insert test data for all tests
-    const testImages = [
-      { imageMappingId: 'map-1', executionId: 'exec-1', generationPrompt: 'test 1', seed: 1, qcStatus: 'approved', finalImagePath: '/test/1.png' },
-      { imageMappingId: 'map-2', executionId: 'exec-1', generationPrompt: 'test 2', seed: 2, qcStatus: 'approved', finalImagePath: '/test/2.png' },
-      { imageMappingId: 'map-3', executionId: 'exec-2', generationPrompt: 'test 3', seed: 3, qcStatus: 'failed', finalImagePath: '/test/3.png' },
-      { imageMappingId: 'map-4', executionId: 'exec-2', generationPrompt: 'test 4', seed: 4, qcStatus: 'pending', finalImagePath: '/test/4.png' }
-    ];
+    // Truncate for isolation (shared DB with baseline.test.ts running in parallel)
+    await new Promise<void>((resolve) => {
+      generatedImage.db.run('DELETE FROM generated_images', () => resolve());
+    });
+    await new Promise<void>((resolve) => {
+      generatedImage.db.run('DELETE FROM job_executions', () => resolve());
+    });
 
-    for (const img of testImages) {
+    // Insert fresh test data before each test
+    for (const img of BASE_TEST_IMAGES) {
       await generatedImage.saveGeneratedImage(img);
     }
   });
 
-  afterAll(async () => {
-    // Cleanup
+  afterEach(async () => {
     if (generatedImage && generatedImage.close) {
       await generatedImage.close();
-    }
-
-    try {
-      if (fs.existsSync(testDbPath)) {
-        fs.unlinkSync(testDbPath);
-      }
-    } catch (e) {
-      console.warn('Failed to cleanup test database:', e);
     }
   });
 
   it('getImageMetadata() returns images with LEFT JOIN structure', async () => {
-    const result = await generatedImage.getImageMetadata('exec-1');
+    const result = await generatedImage.getImageMetadata('sexec-1');
     
     expect(result.success).toBe(true);
     expect(Array.isArray(result.images)).toBe(true);
@@ -95,7 +87,7 @@ describe('GeneratedImage.js Characterization Tests (Baseline - Simplified)', () 
 
   it('updateMetadataById() merges JSON metadata', async () => {
     // Get first image ID
-    const allResult = await generatedImage.getImageMetadata('exec-1');
+    const allResult = await generatedImage.getImageMetadata('sexec-1');
     const imageId = allResult.images[0].id;
 
     // Update metadata

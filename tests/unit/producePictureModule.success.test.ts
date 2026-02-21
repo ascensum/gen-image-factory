@@ -30,7 +30,6 @@ beforeAll(() => {
     delete require.cache[modulePath]
   }
   
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const module = require('../../src/producePictureModule.js')
   producePictureModule = module.producePictureModule
   

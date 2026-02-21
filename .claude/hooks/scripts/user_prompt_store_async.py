@@ -1,0 +1,1 @@
+/Users/vjatseslavjertsalov/.ai-memory/.claude/hooks/scripts/user_prompt_store_async.py
