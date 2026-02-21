@@ -307,14 +307,6 @@ const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
     );
   }
 
-  if (containerWidth === 0 && containerHeight === 0) {
-    return (
-      <div className="flex items-center justify-center p-8 text-gray-500 min-h-[200px]" aria-live="polite">
-        Loading gallery…
-      </div>
-    );
-  }
-
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 p-4">
       {images.map((image) => (

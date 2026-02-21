@@ -81,7 +81,6 @@ const installSqliteMock = () => {
 
 const loadSut = () => {
   installSqliteMock();
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { TransactionManager } = require('../../../src/database/transactionManager.js');
   return TransactionManager;
 };

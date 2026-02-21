@@ -159,29 +159,6 @@ docker run -d --name bmad-qdrant -p 6333:6333 qdrant/qdrant:latest
 
 **Troubleshooting:** See `docs/architecture/mcp-troubleshooting.md`
 
-### Commit Convention
-
-All commits to `main` must use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format:
-
-```
-<type>(<scope>): <description>
-```
-
-The `<scope>` is optional. The `<description>` must be lowercase and not end with a period.
-
-**Active types and their release-note categories:**
-
-| Type | Category | Example |
-|---|---|---|
-| `feat` | 🚀 Features | `feat(jobs): add parameter regeneration support` |
-| `fix` | 🐛 Bug Fixes | `fix(database): resolve sqlite3 connection leak on stop` |
-| `perf` | ⚡ Performance | `perf(renderer): replace react-window scan with virtualized grid` |
-| `refactor` | ♻️ Refactoring | `refactor(retry): extract RetryQueueService from retryExecutor` |
-
-Other types (`chore`, `docs`, `test`, `ci`, `build`) are allowed and will appear under **📦 Other Changes** in the release body.
-
-The machine-readable source of truth for category mapping is [`.github/release-notes-config.json`](.github/release-notes-config.json).
-
 ## Made by Shiftline Tools
 
 Gen Image Factory is developed and maintained by an individual developer under the **Shiftline Tools** brand, a software development studio focused on creating tools that enhance productivity.

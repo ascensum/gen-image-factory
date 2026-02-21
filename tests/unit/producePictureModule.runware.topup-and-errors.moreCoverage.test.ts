@@ -20,12 +20,10 @@ beforeAll(() => {
   vi.resetModules();
   const modulePath = path.resolve(__dirname, '../../src/producePictureModule.js');
   if (require.cache[modulePath]) delete require.cache[modulePath];
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const mod = require('../../src/producePictureModule.js');
   producePictureModule = mod.producePictureModule;
 
   // Ensure the module-local axios instance is our mock (module uses: const axios = require('axios'))
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const axiosModule = require('axios');
   if (axiosModule && axiosModule.default) {
     axiosModule.default.post = mockAxiosPost;

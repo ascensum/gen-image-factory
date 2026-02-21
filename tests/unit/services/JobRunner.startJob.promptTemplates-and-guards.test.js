@@ -10,7 +10,6 @@ vi.mock('../../../src/aiVision', () => ({
   generateMetadata: vi.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { JobRunner } = require('../../../src/services/jobRunner');
 
 describe('JobRunner.startJob prompt template loading + guards', () => {

@@ -21,7 +21,6 @@ describe('RetryExecutor.processSingleImage (unit)', () => {
 
     prevRemoveBg = process.env.REMOVE_BG_API_KEY;
 
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     RetryExecutor = require('../../../src/services/retryExecutor.js');
 
     generatedImage = {

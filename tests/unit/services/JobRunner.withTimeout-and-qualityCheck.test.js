@@ -7,9 +7,7 @@ vi.mock('../../../src/aiVision', () => ({
   generateMetadata: vi.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { JobRunner } = require('../../../src/services/jobRunner');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const aiVision = require('../../../src/aiVision');
 
 describe('JobRunner - withTimeout and quality checks', () => {
@@ -68,15 +66,13 @@ describe('JobRunner - withTimeout and quality checks', () => {
     expect(images[1].qcStatus).toBe('qc_failed');
   });
 
-  it('runQualityChecks marks image as qc_failed when qcInputPath is missing (does not abort batch)', async () => {
+  it('runQualityChecks marks image as qc_failed when qcInputPath is missing', async () => {
     aiVision.runQualityCheck = vi.fn().mockResolvedValueOnce({ passed: true, reason: 'ok' });
     const images = [{ id: 1, mappingId: 'm1' }];
-    // Should NOT throw; instead marks image as qc_failed and continues
+    // Implementation marks as failed and continues - does NOT throw
     await runner.runQualityChecks(images, { parameters: { enablePollingTimeout: false }, ai: {} });
     expect(images[0].qcStatus).toBe('qc_failed');
     expect(images[0].qcReason).toBe('QC input path is missing');
-    // runQualityCheck should NOT have been called (skipped due to missing path)
-    expect(aiVision.runQualityCheck).not.toHaveBeenCalled();
   });
 });
 

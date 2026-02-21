@@ -1,19 +1,6 @@
 // Shared processing settings normalizer
 // Normalizes/clamps processing settings; safe to call with partial objects
 
-/**
- * Maps UI/settings vocabulary to backend canonical values for remove.bg failure mode.
- * Global Settings use 'soft'|'fail'; Single Job uses 'approve'|'mark_failed'. Backend expects 'approve'|'mark_failed'.
- * @param {string} value - 'soft'|'fail' (Settings) or 'approve'|'mark_failed' (Single Job)
- * @returns {'approve'|'mark_failed'}
- */
-function normalizeRemoveBgFailureMode(value) {
-  const v = String(value || 'approve').toLowerCase();
-  if (v === 'fail' || v === 'mark_failed') return 'mark_failed';
-  if (v === 'soft' || v === 'approve') return 'approve';
-  return 'approve';
-}
-
 function normalizeProcessingSettings(input) {
   const allowedKeys = new Set([
     'imageEnhancement',
@@ -103,6 +90,11 @@ function normalizeProcessingSettings(input) {
     out.convertToJpg = false;
   }
   return out;
+}
+
+function normalizeRemoveBgFailureMode(v) {
+  const val = String(v || '').toLowerCase();
+  return (val === 'fail' || val === 'mark_failed') ? 'mark_failed' : 'approve';
 }
 
 module.exports = { normalizeProcessingSettings, normalizeRemoveBgFailureMode };

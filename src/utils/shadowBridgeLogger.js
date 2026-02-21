@@ -26,10 +26,7 @@ class ShadowBridgeLogger {
     this.enabled = process.env.SHADOW_BRIDGE_LOGGING === 'true';
     this.logToFile = process.env.SHADOW_BRIDGE_LOG_FILE === 'true';
     
-    // Use a more stable filename format: shadow-bridge-YYYY-MM-DD-[process].log
-    const date = new Date().toISOString().split('T')[0];
-    const processType = process.type || (process.env.GEMINI_CLI ? 'cli' : 'node');
-    this.logFilePath = path.join(os.tmpdir(), `shadow-bridge-${date}-${processType}.log`);
+    this.logFilePath = path.join(os.tmpdir(), `shadow-bridge-${Date.now()}.log`);
     
     if (this.logToFile) {
       console.log(`[Shadow Bridge] Logging to: ${this.logFilePath}`);
@@ -176,6 +173,7 @@ class ShadowBridgeLogger {
       }
       
       return {
+        logFile: this.logFilePath,
         logFiles: files.length,
         totalCalls: modularCount + legacyCount,
         modularCalls: modularCount,

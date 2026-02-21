@@ -38,7 +38,6 @@ const installCjsMocks = () => {
 
 const loadSut = () => {
   installCjsMocks();
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const mod = req('../../../src/services/jobRunner.js');
   return mod.JobRunner;
 };

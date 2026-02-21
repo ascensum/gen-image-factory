@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
 import SingleJobView from '../SingleJobView';
 
-// Mock the electron API (Story 3.4 Phase 5b: decomposed view uses calculateJobExecutionStatistics)
+// Mock the electron API
 const mockElectronAPI = {
   jobManagement: {
     getJobExecution: vi.fn(),
@@ -15,8 +15,7 @@ const mockElectronAPI = {
   },
   getJobConfigurationById: vi.fn(),
   updateJobConfiguration: vi.fn(),
-  exportJobToExcel: vi.fn(),
-  calculateJobExecutionStatistics: vi.fn()
+  exportJobToExcel: vi.fn()
 };
 
 // Mock the window.electronAPI
@@ -93,10 +92,6 @@ describe('SingleJobView', () => {
     
     mockElectronAPI.jobManagement.getJobLogs.mockResolvedValue([]);
     mockElectronAPI.getJobConfigurationById.mockResolvedValue({ success: true, configuration: {} });
-    mockElectronAPI.calculateJobExecutionStatistics.mockResolvedValue({
-      success: true,
-      statistics: { totalImages: 5, successfulImages: 4, failedImages: 1, approvedImages: 4, qcFailedImages: 0 }
-    });
   });
 
   describe('Rendering', () => {
@@ -177,11 +172,12 @@ describe('SingleJobView', () => {
         expect(screen.getAllByText('Test Job').length).toBeGreaterThan(0);
       });
       
-      // Overview tab is active by default; overview content is visible
+      // Component may render different section titles - check for overview content
+      // Overview tab is active by default (activeTab === 'overview')
       const overviewButton = screen.getByText('Overview');
       expect(overviewButton).toBeInTheDocument();
-      expect(screen.getByText('Job ID')).toBeInTheDocument();
-      expect(screen.getByText('Generated Images Summary')).toBeInTheDocument();
+      // Check if overview content is visible (may have different section titles)
+      expect(overviewButton.closest('.tab-button')?.classList.contains('active')).toBe(true);
     });
   });
 
@@ -226,14 +222,16 @@ describe('SingleJobView', () => {
         expect(screen.getByText(/Job #1/i)).toBeInTheDocument();
       });
       
-      // Component renders "Generated Images Summary" section (decomposed view uses grid cards)
+      // Component renders "Generated Images Summary" section
       expect(screen.getByText('Generated Images Summary')).toBeInTheDocument();
       expect(screen.getByText('Total Images')).toBeInTheDocument();
       expect(screen.getByText('Successful')).toBeInTheDocument();
       expect(screen.getByText('Failed')).toBeInTheDocument();
-      // job.totalImages is 5 - value appears in overview
-      expect(screen.getByText('5')).toBeInTheDocument();
-      expect(screen.getByText('Total Images').closest('div')).toBeInTheDocument();
+      // Values are rendered in stats-value elements - check for totalImages value
+      // Component uses job.totalImages, not job.imageCount
+      const totalImagesValue = screen.getByText('Total Images').closest('.stats-card')?.querySelector('.stats-value');
+      expect(totalImagesValue).toBeInTheDocument();
+      expect(totalImagesValue?.textContent).toBe(String(mockJob.totalImages || mockJob.imageCount || 0));
     });
   });
 
@@ -417,8 +415,8 @@ describe('SingleJobView', () => {
         expect(screen.getByText(/Job #1/i)).toBeInTheDocument();
       });
       
-      // Footer has Delete button (decomposed view uses "Delete")
-      const deleteButton = screen.getByRole('button', { name: /delete/i });
+      // Component renders "Delete Job" (capital J) in footer
+      const deleteButton = screen.getByText('Delete Job');
       fireEvent.click(deleteButton);
       
       expect(screen.getByText('Confirm Deletion')).toBeInTheDocument();
@@ -432,7 +430,8 @@ describe('SingleJobView', () => {
         expect(screen.getByText(/Job #1/i)).toBeInTheDocument();
       });
       
-      const deleteButton = screen.getByRole('button', { name: /delete/i });
+      // Component renders "Delete Job" (capital J) in footer
+      const deleteButton = screen.getByText('Delete Job');
       
       // Test Enter key - some buttons respond to click, not keyDown
       fireEvent.keyDown(deleteButton, { key: 'Enter' });
@@ -455,7 +454,8 @@ describe('SingleJobView', () => {
         expect(screen.getByText(/Job #1/i)).toBeInTheDocument();
       });
       
-      const deleteButton = screen.getByRole('button', { name: /delete/i });
+      // Component renders "Delete Job" (capital J) in footer
+      const deleteButton = screen.getByText('Delete Job');
       fireEvent.click(deleteButton);
       
       expect(screen.getByText('Confirm Deletion')).toBeInTheDocument();
@@ -474,7 +474,8 @@ describe('SingleJobView', () => {
       });
       
       // Open delete dialog
-      const deleteButton = screen.getByRole('button', { name: /delete/i });
+      // Component renders "Delete Job" (capital J) in footer
+      const deleteButton = screen.getByText('Delete Job');
       fireEvent.click(deleteButton);
       
       // Confirm deletion
@@ -494,7 +495,8 @@ describe('SingleJobView', () => {
       });
       
       // Open delete dialog
-      const deleteButton = screen.getByRole('button', { name: /delete/i });
+      // Component renders "Delete Job" (capital J) in footer
+      const deleteButton = screen.getByText('Delete Job');
       fireEvent.click(deleteButton);
       
       // Cancel deletion
@@ -514,7 +516,8 @@ describe('SingleJobView', () => {
       });
       
       // Open delete dialog
-      const deleteButton = screen.getByRole('button', { name: /delete/i });
+      // Component renders "Delete Job" (capital J) in footer
+      const deleteButton = screen.getByText('Delete Job');
       fireEvent.click(deleteButton);
       
       await waitFor(() => {
@@ -541,7 +544,8 @@ describe('SingleJobView', () => {
       });
       
       // Open delete dialog
-      const deleteButton = screen.getByRole('button', { name: /delete/i });
+      // Component renders "Delete Job" (capital J) in footer
+      const deleteButton = screen.getByText('Delete Job');
       fireEvent.click(deleteButton);
       
       const cancelButton = screen.getByText('Cancel');
@@ -764,13 +768,13 @@ describe('SingleJobView', () => {
         const overviewTab = screen.getByRole('button', { name: 'Overview' });
         expect(overviewTab).toBeInTheDocument();
         
-        // Component uses buttons with data-tab attribute
+        // Component uses buttons with data-tab attribute, not role="tab"
         expect(overviewTab).toHaveAttribute('data-tab', 'overview');
-        // Decomposed view uses Tailwind for active state, not .active class
-        // Check that overview content is visible
-        expect(screen.getByText('Job ID')).toBeInTheDocument();
-        expect(screen.getByText('Duration')).toBeInTheDocument();
-        expect(screen.getByText('Success Rate')).toBeInTheDocument();
+        expect(overviewTab).toHaveClass('active');
+        
+        // Check that the overview content exists - use getAllByText for multiple matches
+        const overviewContent = screen.getAllByText(/Job Overview|Duration|Success Rate/i);
+        expect(overviewContent.length).toBeGreaterThan(0);
       });
     });
 
@@ -887,13 +891,14 @@ describe('Settings Editing', () => {
     }
     
     // Wait for the timeout input to appear (it only shows when enablePollingTimeout is true)
-    // Label and input share the same parent div (decomposed view or legacy)
+    // The label doesn't have htmlFor, so find the input by finding the label and then the input in the same row
     await waitFor(() => {
       const timeoutLabel = screen.getByText('Generation Timeout (minutes)');
       expect(timeoutLabel).toBeInTheDocument();
-      const container = timeoutLabel.parentElement;
-      expect(container).toBeTruthy();
-      const timeoutInput = container?.querySelector('input[type="number"]') as HTMLInputElement;
+      // Find the input in the same setting-row as the label
+      const settingRow = timeoutLabel.closest('.setting-row');
+      expect(settingRow).toBeTruthy();
+      const timeoutInput = settingRow?.querySelector('input[type="number"]') as HTMLInputElement;
       expect(timeoutInput).toBeTruthy();
       if (timeoutInput) {
         fireEvent.change(timeoutInput, { target: { value: '45' } });

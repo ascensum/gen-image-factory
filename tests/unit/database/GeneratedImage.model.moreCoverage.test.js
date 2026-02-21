@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { GeneratedImage } = require('../../../src/database/models/GeneratedImage');
 
 describe('GeneratedImage model (unit, db stubbed)', () => {

@@ -1,39 +1,157 @@
 {
-  "hooks": {
-    "SessionStart": [{
-      "type": "command",
-      "command": ".claude/hooks/scripts/session_start.py",
-      "name": "ai-memory-session-start",
-      "timeout": 5000
-    }],
-    "AfterTool": [{
-      "matcher": "Write|Edit",
-      "type": "command",
-      "command": ".claude/hooks/scripts/post_tool_capture.py",
-      "name": "ai-memory-post-tool"
-    }],
-    "PreCompress": [{
-      "type": "command",
-      "command": ".claude/hooks/scripts/pre_compact_save.py",
-      "name": "ai-memory-pre-compact"
-    }]
+  "general": {
+    "projectContextFile": "GEMINI.md",
+    "projectName": "Gen Image Factory",
+    "projectType": "electron-react",
+    "refactoringPattern": "strangler-fig"
   },
-  "commands": {
-    "search-memory": {
-      "description": "Search memory system semantically across all collections",
-      "script": "python3 /Users/vjatseslavjertsalov/.ai-memory/scripts/memory/search_cli.py"
-    },
-    "memory-status": {
-      "description": "Check AI memory system health and statistics",
-      "script": "python3 /Users/vjatseslavjertsalov/.ai-memory/scripts/memory/memory_status.py"
+  "refactoring": {
+    "maxLineCount": 400,
+    "cssMaxLineCount": 100,
+    "ipcHandlerMaxLineCount": 5,
+    "databaseModelMaxLineCount": 200,
+    "enforceSurgicalMode": true,
+    "enforceFeatureToggles": true,
+    "enforceDependencyInjection": true,
+    "enforceShadowBridge": true,
+    "behavioralLock": {
+      "noRestyling": true,
+      "noVariableRenaming": true,
+      "noUIChanges": true,
+      "noLogicChanges": true
     }
   },
-  "env": {
-    "AI_MEMORY_PROJECT_ID": "gen-image-factory",
-    "AI_MEMORY_INSTALL_DIR": "/Users/vjatseslavjertsalov/.ai-memory",
-    "QDRANT_HOST": "localhost",
-    "QDRANT_PORT": "26350",
-    "EMBEDDING_HOST": "localhost",
-    "EMBEDDING_PORT": "28080"
+  "testing": {
+    "framework": "vitest",
+    "e2eFramework": "playwright",
+    "minCoverageNewServices": 0.70,
+    "minCoverageBridgeLogic": 1.0,
+    "requireBridgeTests": true,
+    "requireImmutableSafetyNet": true,
+    "testPatterns": {
+      "unit": "**/*.test.{js,ts}",
+      "integration": "**/integration/**/*.test.{js,ts}",
+      "e2e": "**/e2e/**/*.test.{js,ts}"
+    }
+  },
+  "featureToggles": {
+    "prefix": "FEATURE_MODULAR_",
+    "defaultValue": false,
+    "requireFallback": true,
+    "availableFlags": [
+      "FEATURE_MODULAR_SECURITY",
+      "FEATURE_MODULAR_JOB_REPOSITORY",
+      "FEATURE_MODULAR_EXPORT",
+      "FEATURE_MODULAR_IPC_CONTROLLERS",
+      "FEATURE_MODULAR_IMAGE_GENERATOR",
+      "FEATURE_MODULAR_IMAGE_REMOVER",
+      "FEATURE_MODULAR_IMAGE_PROCESSOR",
+      "FEATURE_MODULAR_RETRY_QUEUE",
+      "FEATURE_MODULAR_RETRY_PROCESSOR"
+    ]
+  },
+  "frozenFiles": {
+    "backend": [
+      "src/services/jobRunner.js",
+      "src/adapter/backendAdapter.js",
+      "src/producePictureModule.js",
+      "src/services/retryExecutor.js",
+      "src/database/models/JobExecution.js",
+      "src/database/models/GeneratedImage.js"
+    ],
+    "frontend": [
+      "src/renderer/components/Dashboard/DashboardPanel.tsx",
+      "src/renderer/components/Settings/SettingsPanel.tsx",
+      "src/renderer/components/Dashboard/FailedImagesReviewPanel.tsx",
+      "src/renderer/components/Jobs/JobManagementPanel.tsx"
+    ],
+    "infrastructure": [
+      "tests/integration/backend/BackendAdapter.integration.test.ts"
+    ],
+    "styling": [
+      "src/renderer/components/Jobs/SingleJobView.css"
+    ]
+  },
+  "serviceBoundaries": {
+    "SecurityService": {
+      "extractFrom": "src/adapter/backendAdapter.js",
+      "targetLines": "~50-150",
+      "responsibilities": ["API Key management", "encryption/decryption", "keytar interaction"],
+      "interface": ["getSecret(key)", "setSecret(key, val)", "getPublicSettings()"]
+    },
+    "JobRepository": {
+      "extractFrom": "src/adapter/backendAdapter.js",
+      "targetLines": "~1000-2000",
+      "responsibilities": ["CRUD operations for JobConfiguration", "JobExecution", "GeneratedImage"],
+      "interface": ["save(job)", "findById(id)", "findAll()", "delete(id)"]
+    },
+    "ExportService": {
+      "extractFrom": "src/adapter/backendAdapter.js",
+      "targetLines": "~2200-2600",
+      "responsibilities": ["Generating Excel reports", "ZIP archives"],
+      "interface": ["generateReport(data)", "createArchive(files)"]
+    },
+    "IPCController": {
+      "extractFrom": "src/adapter/backendAdapter.js",
+      "targetLines": "~300-900",
+      "responsibilities": ["Mapping Electron IPC events to Service calls"],
+      "structure": "src/controllers/[Feature]Controller.js"
+    },
+    "JobEngine": {
+      "extractFrom": "src/services/jobRunner.js",
+      "responsibilities": ["Pure orchestration of generation pipeline"],
+      "pipeline": ["Init", "ParamGen", "ImageGen", "QC", "Metadata"]
+    },
+    "ImageGeneratorService": {
+      "extractFrom": "src/producePictureModule.js",
+      "targetLines": "~223-519",
+      "responsibilities": ["Runware API integration"],
+      "interface": ["generate(params): Buffer"]
+    },
+    "ImageRemoverService": {
+      "extractFrom": "src/producePictureModule.js",
+      "targetLines": "~21-87, ~584-692",
+      "responsibilities": ["remove.bg API", "alpha trimming"],
+      "interface": ["removeBackground(image): Buffer"]
+    },
+    "ImageProcessorService": {
+      "extractFrom": "src/producePictureModule.js",
+      "targetLines": "~694-798",
+      "responsibilities": ["Sharp-based manipulation"],
+      "interface": ["process(image, operations): Buffer"]
+    }
+  },
+  "codeStyle": {
+    "enforceESLint": true,
+    "enforcePrettier": false,
+    "tailwindFirst": true,
+    "cssModulesForExceptions": true,
+    "noInlineStyles": true
+  },
+  "ci": {
+    "runOnPush": true,
+    "requireAllTestsPassing": true,
+    "requireImmutableSafetyNet": true,
+    "requireLintPassing": true,
+    "requireSecurityScan": true
+  },
+  "rollout": {
+    "phaseCount": 5,
+    "minStableReleases": 3,
+    "enableLocalVerification": true,
+    "enableMonitoring": true,
+    "workflow": [
+      "Phase 1: Develop (Create service + tests)",
+      "Phase 2: Bridge (Wire into monolith behind flag)",
+      "Phase 3: Ship (Push to main, legacy active)",
+      "Phase 4: Verify (Enable flag locally, run E2E)",
+      "Phase 5: Finalize (Remove bridge after 2-3 releases)"
+    ]
+  },
+  "documentation": {
+    "adrLocation": "docs/architecture/adr",
+    "codeStandards": "docs/standards/CODE_STANDARDS.md",
+    "testingStrategy": "docs/architecture/testing-strategy.md",
+    "architectureDoc": "docs/architecture.md"
   }
 }

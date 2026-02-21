@@ -18,27 +18,29 @@ import * as path from 'path';
 
 const req = createRequire(import.meta.url);
 
+// Module-level mutable ref so the hoisted vi.mock factory reads the current value at call time
+let _currentTestUserDataDir = '';
+
+vi.mock('electron', () => ({
+  app: {
+    getPath: vi.fn(() => _currentTestUserDataDir)
+  }
+}));
+
 describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
   let GeneratedImage: any;
   let generatedImage: any;
   let testDbPath: string;
 
   beforeEach(async () => {
-    // Create unique test database for isolation
-    testDbPath = path.join(process.cwd(), 'data', `test-characterization-${Date.now()}.db`);
-    
-    // Ensure data directory exists
-    const dataDir = path.dirname(testDbPath);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
+    // Create a unique directory per test so each test gets its own gen-image-factory.db
+    _currentTestUserDataDir = path.join(process.cwd(), 'data', `.test-char-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    testDbPath = path.join(_currentTestUserDataDir, 'gen-image-factory.db');
 
-    // Mock Electron app.getPath to return test path
-    vi.mock('electron', () => ({
-      app: {
-        getPath: vi.fn(() => path.dirname(testDbPath))
-      }
-    }));
+    // Ensure unique directory exists
+    if (!fs.existsSync(_currentTestUserDataDir)) {
+      fs.mkdirSync(_currentTestUserDataDir, { recursive: true });
+    }
 
     // Clear module cache and load fresh
     delete req.cache[req.resolve('../../src/database/models/GeneratedImage.js')];
@@ -48,6 +50,17 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
     // Create instance and wait for initialization
     generatedImage = new GeneratedImage();
     await generatedImage.init();
+
+    // createRequire bypasses Vitest mocks so electron mock never applies and all tests
+    // share data/gen-image-factory.db. Truncate for isolation.
+    await new Promise<void>((resolve, reject) => {
+      generatedImage.db.run('DELETE FROM generated_images', (err: Error | null) => {
+        if (err) reject(err); else resolve();
+      });
+    });
+    await new Promise<void>((resolve) => {
+      generatedImage.db.run('DELETE FROM job_executions', () => resolve());
+    });
   });
 
   afterEach(async () => {
@@ -56,13 +69,14 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
       await generatedImage.close();
     }
 
-    // Delete test database file
+    // Delete the unique test directory and its contents
     try {
-      if (fs.existsSync(testDbPath)) {
-        fs.unlinkSync(testDbPath);
+      const testDir = path.dirname(testDbPath);
+      if (fs.existsSync(testDir)) {
+        fs.rmSync(testDir, { recursive: true, force: true });
       }
     } catch (e) {
-      console.warn('Failed to cleanup test database:', e);
+      console.warn('Failed to cleanup test database directory:', e);
     }
 
     vi.clearAllMocks();
@@ -190,18 +204,17 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
 
   describe('updateMetadataById() - JSON merge logic', () => {
     it('should merge new metadata with existing metadata', async () => {
-      // Arrange: Insert image with initial metadata
-      const imageId = 'img-merge';
-      await generatedImage.saveGeneratedImage({
-        id: imageId,
+      // Arrange: Insert image with initial metadata - use object (not pre-stringified)
+      const saveResult = await generatedImage.saveGeneratedImage({
         imageMappingId: 'map-merge',
         executionId: 'exec-merge',
         generationPrompt: 'test',
         seed: 123,
         qcStatus: 'pending',
         finalImagePath: '/test/merge.png',
-        metadata: JSON.stringify({ width: 512, height: 512, format: 'png' })
+        metadata: { width: 512, height: 512, format: 'png' }
       });
+      const imageId = saveResult.id; // auto-generated integer id (saveGeneratedImage returns { success, id })
 
       // Act: Update with partial metadata
       const newMetadata = { width: 1024, quality: 95 };
@@ -211,10 +224,10 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
       expect(result.success).toBe(true);
       expect(result.changes).toBe(1);
 
-      // Verify merged metadata
+      // Verify merged metadata (getGeneratedImage already parses metadata)
       const imageResult = await generatedImage.getGeneratedImage(imageId);
       expect(imageResult.success).toBe(true);
-      const metadata = JSON.parse(imageResult.image.metadata);
+      const metadata = imageResult.image.metadata;
       expect(metadata).toEqual({
         width: 1024,      // Updated
         height: 512,      // Preserved
@@ -225,9 +238,7 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
 
     it('should handle NULL existing metadata', async () => {
       // Arrange
-      const imageId = 'img-null-meta';
-      await generatedImage.saveGeneratedImage({
-        id: imageId,
+      const saveResult = await generatedImage.saveGeneratedImage({
         imageMappingId: 'map-null-meta',
         executionId: 'exec-null',
         generationPrompt: 'test',
@@ -236,6 +247,7 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
         finalImagePath: '/test/null-meta.png',
         metadata: null
       });
+      const imageId = saveResult.id; // auto-generated integer id
 
       // Act
       const newMetadata = { quality: 90 };
@@ -244,7 +256,7 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
       // Assert
       expect(result.success).toBe(true);
       const imageResult = await generatedImage.getGeneratedImage(imageId);
-      const metadata = JSON.parse(imageResult.image.metadata);
+      const metadata = imageResult.image.metadata; // already parsed by getGeneratedImage
       expect(metadata).toEqual({ quality: 90 });
     });
 
@@ -259,19 +271,18 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
 
   describe('bulkDeleteGeneratedImages() - Batch operations', () => {
     it('should delete multiple images and return correct counts', async () => {
-      // Arrange: Insert multiple images
-      const imageIds = ['bulk-1', 'bulk-2', 'bulk-3'];
-      for (let i = 0; i < imageIds.length; i++) {
-        const id = imageIds[i];
-        await generatedImage.saveGeneratedImage({
-          id,
+      // Arrange: Insert multiple images and collect auto-generated integer IDs
+      const imageIds: number[] = [];
+      for (let i = 0; i < 3; i++) {
+        const saveResult = await generatedImage.saveGeneratedImage({
           imageMappingId: `map-bulk-${i}`,
           executionId: 'exec-bulk',
           generationPrompt: 'test',
           seed: 123,
           qcStatus: 'pending',
-          finalImagePath: `/test/${id}.png`
+          finalImagePath: `/test/bulk-${i}.png`
         });
+        imageIds.push(saveResult.id); // auto-generated integer id
       }
 
       // Act
@@ -329,10 +340,8 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
     });
 
     it('getGeneratedImage() should retrieve by ID', async () => {
-      // Arrange
-      const imageId = 'crud-get';
-      await generatedImage.saveGeneratedImage({
-        id: imageId,
+      // Arrange: save and capture auto-generated integer id
+      const saveResult = await generatedImage.saveGeneratedImage({
         imageMappingId: 'map-crud-get',
         executionId: 'exec-get',
         generationPrompt: 'test',
@@ -340,6 +349,7 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
         qcStatus: 'approved',
         finalImagePath: '/test/get.png'
       });
+      const imageId = saveResult.id; // auto-generated integer id
 
       // Act
       const result = await generatedImage.getGeneratedImage(imageId);
@@ -348,14 +358,12 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
       expect(result.success).toBe(true);
       expect(result.image).toBeDefined();
       expect(result.image.id).toBe(imageId);
-      expect(result.image.qc_status).toBe('approved');
+      expect(result.image.qcStatus).toBe('approved');
     });
 
     it('updateGeneratedImage() should modify existing record', async () => {
-      // Arrange
-      const imageId = 'crud-update';
-      await generatedImage.saveGeneratedImage({
-        id: imageId,
+      // Arrange: save and capture auto-generated integer id
+      const saveResult = await generatedImage.saveGeneratedImage({
         imageMappingId: 'map-crud-update',
         executionId: 'exec-update',
         generationPrompt: 'original',
@@ -363,24 +371,30 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
         qcStatus: 'pending',
         finalImagePath: '/test/update.png'
       });
+      const imageId = saveResult.id; // auto-generated integer id
 
-      // Act
-      const updateData = { qcStatus: 'approved', qcReason: 'looks good' };
+      // Act: updateGeneratedImage requires all fields (full update, not partial)
+      const updateData = {
+        executionId: 'exec-update',
+        generationPrompt: 'original',
+        seed: 222,
+        qcStatus: 'approved',
+        qcReason: 'looks good',
+        finalImagePath: '/test/update.png'
+      };
       const result = await generatedImage.updateGeneratedImage(imageId, updateData);
 
       // Assert
       expect(result.success).toBe(true);
       
       const getResult = await generatedImage.getGeneratedImage(imageId);
-      expect(getResult.image.qc_status).toBe('approved');
-      expect(getResult.image.qc_reason).toBe('looks good');
+      expect(getResult.image.qcStatus).toBe('approved');
+      expect(getResult.image.qcReason).toBe('looks good');
     });
 
     it('deleteGeneratedImage() should remove record', async () => {
-      // Arrange
-      const imageId = 'crud-delete';
-      await generatedImage.saveGeneratedImage({
-        id: imageId,
+      // Arrange: save and capture auto-generated integer id
+      const saveResult = await generatedImage.saveGeneratedImage({
         imageMappingId: 'map-crud-delete',
         executionId: 'exec-delete',
         generationPrompt: 'test',
@@ -388,6 +402,7 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
         qcStatus: 'pending',
         finalImagePath: '/test/delete.png'
       });
+      const imageId = saveResult.id; // auto-generated integer id
 
       // Act
       const result = await generatedImage.deleteGeneratedImage(imageId);
@@ -402,9 +417,8 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
 
   describe('Edge Cases - NULL values, invalid IDs, orphaned records', () => {
     it('should handle image with all NULL optional fields', async () => {
-      // Arrange
-      const imageData = {
-        id: 'edge-null',
+      // Arrange: save and capture auto-generated integer id
+      const saveResult = await generatedImage.saveGeneratedImage({
         imageMappingId: 'map-edge-null',
         executionId: 'exec-edge',
         generationPrompt: 'test',
@@ -415,23 +429,23 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
         tempImagePath: null,
         metadata: null,
         processingSettings: null
-      };
+      });
+      const imageId = saveResult.id; // auto-generated integer id
 
       // Act
-      const saveResult = await generatedImage.saveGeneratedImage(imageData);
-      const getResult = await generatedImage.getGeneratedImage('edge-null');
+      const getResult = await generatedImage.getGeneratedImage(imageId);
 
-      // Assert
+      // Assert (getGeneratedImage returns camelCase fields)
       expect(saveResult.success).toBe(true);
       expect(getResult.success).toBe(true);
-      expect(getResult.image.qc_reason).toBeNull();
-      expect(getResult.image.final_image_path).toBeNull();
+      expect(getResult.image.qcReason).toBeNull();
+      expect(getResult.image.finalImagePath).toBeNull();
       expect(getResult.image.metadata).toBeNull();
     });
 
     it('should return success: false for non-existent image ID', async () => {
-      // Act
-      const result = await generatedImage.getGeneratedImage('does-not-exist');
+      // Act: use a very large integer that won't exist
+      const result = await generatedImage.getGeneratedImage(999999);
 
       // Assert
       expect(result.success).toBe(false);
@@ -440,8 +454,7 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
 
     it('should handle orphaned images (executionId with no job_execution)', async () => {
       // Arrange: Insert image with non-existent executionId
-      await generatedImage.saveGeneratedImage({
-        id: 'orphan-img',
+      const saveResult = await generatedImage.saveGeneratedImage({
         imageMappingId: 'map-orphan',
         executionId: 'non-existent-exec',
         generationPrompt: 'test',
@@ -449,6 +462,7 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
         qcStatus: 'pending',
         finalImagePath: '/test/orphan.png'
       });
+      const imageId = saveResult.id; // auto-generated integer id
 
       // Act: getImageMetadata should still work (LEFT JOIN)
       const result = await generatedImage.getImageMetadata('non-existent-exec');
@@ -456,7 +470,7 @@ describe('GeneratedImage.js Characterization Tests (Baseline)', () => {
       // Assert: Image is returned even though job_execution doesn't exist
       expect(result.success).toBe(true);
       expect(result.images.length).toBe(1);
-      expect(result.images[0].id).toBe('orphan-img');
+      expect(result.images[0].id).toBe(imageId); // auto-generated integer id
       // configuration_id and job_status will be NULL from LEFT JOIN
     });
   });

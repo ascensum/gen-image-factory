@@ -8,6 +8,7 @@ describe('BackendAdapter - API key handling', () => {
   let keytar;
   let prevKeytarCacheEntry;
   let prevCache = {};
+  let prevFeatureFlag;
 
   async function createAdapter() {
     // Ensure mocks apply even if BackendAdapter is imported elsewhere first
@@ -20,11 +21,8 @@ describe('BackendAdapter - API key handling', () => {
       deletePassword: vi.fn().mockResolvedValue(true),
     };
     keytarMock.default = keytarMock;
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const resolvedKeytar = require.resolve('keytar');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     prevKeytarCacheEntry = require.cache[resolvedKeytar];
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     require.cache[resolvedKeytar] = {
       id: resolvedKeytar,
       filename: resolvedKeytar,
@@ -104,6 +102,9 @@ describe('BackendAdapter - API key handling', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    // Force legacy path regardless of .env FEATURE_MODULAR_SECURITY setting
+    prevFeatureFlag = process.env.FEATURE_MODULAR_SECURITY;
+    delete process.env.FEATURE_MODULAR_SECURITY;
 
     adapter = await createAdapter();
 
@@ -118,6 +119,12 @@ describe('BackendAdapter - API key handling', () => {
   });
 
   afterEach(() => {
+    // Restore feature flag
+    if (prevFeatureFlag === undefined) {
+      delete process.env.FEATURE_MODULAR_SECURITY;
+    } else {
+      process.env.FEATURE_MODULAR_SECURITY = prevFeatureFlag;
+    }
     vi.resetModules();
     // Restore any require cache patches we made for CJS require() dependencies
     try {
@@ -131,13 +138,10 @@ describe('BackendAdapter - API key handling', () => {
 
     // Restore keytar require cache
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const resolvedKeytar = require.resolve('keytar');
       if (prevKeytarCacheEntry) {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
         require.cache[resolvedKeytar] = prevKeytarCacheEntry;
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
         delete require.cache[resolvedKeytar];
       }
     } catch {

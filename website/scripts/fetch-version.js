@@ -46,8 +46,12 @@ function fetchLatestVersion() {
           try {
             const release = JSON.parse(data);
             // Extract version from tag (e.g., "v1.0.8" -> "1.0.8")
-            const version = release.tag_name.replace(/^v/, '');
-            resolve(version);
+            const rawVersion = release.tag_name.replace(/^v/, '');
+            // Validate format before trusting network data (prevents log injection)
+            if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(rawVersion)) {
+              throw new Error(`Unexpected version format from API: ${sanitize(rawVersion)}`);
+            }
+            resolve(rawVersion);
           } catch (error) {
             reject(new Error(`Failed to parse GitHub response: ${error.message}`));
           }
@@ -73,7 +77,7 @@ async function main() {
     };
     
     fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2), 'utf8');
-    console.log(`Latest version: ${version}`);
+    console.log('Latest version:', sanitize(version));
     console.log(`Cached to: ${CACHE_FILE}`);
     
   } catch (error) {

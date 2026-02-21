@@ -1,7 +1,7 @@
 const { OpenAI } = require("openai");
 const path = require('path');
 const { logDebug } = require(path.join(__dirname, './utils/logDebug'));
-require('dotenv').config();
+try { require('dotenv').config(); } catch (_e) {}
 
 async function paramsGeneratorModule(
   keywordsData,
@@ -9,10 +9,10 @@ async function paramsGeneratorModule(
   keywordFilePath,
   config = {}
 ) {
-  const { keywordRandom, openaiModel, mjVersion, appendMjVersion = true, signal, openaiApiKey } = config;
+  const { keywordRandom, openaiModel, mjVersion, appendMjVersion = true, signal } = config;
 
   const openai = new OpenAI({
-    apiKey: openaiApiKey || process.env.OPENAI_API_KEY,
+    apiKey: process.env.OPENAI_API_KEY,
   });
 
   try {

@@ -59,7 +59,6 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 installSqlite3Mock();
 const { BackupManager } = require('../../../src/database/backupManager');
 

@@ -1,10 +1,11 @@
 name: "CodeQL Config"
 
-# Disable default queries if you only want to run specific ones (optional, keeping false to be safe)
 disable-default-queries: false
 
-# paths-ignore:
-#   - List of paths to exclude from the scan
+queries:
+  - uses: security-extended
+  - uses: security-and-quality
+
 paths-ignore:
   - tests
   - src/test

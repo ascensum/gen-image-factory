@@ -95,6 +95,14 @@ describe('Job Export to Excel - Integration', () => {
       return { success: true, configuration: { id: 42, name: 'CfgName', settings: { parameters: { label: 'CfgLabel' }, processing: { convertToJpg: true } }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } };
     });
     (backend as any).jobConfig = cfg;
+
+    // ExportService is initialized in BackendAdapter constructor with the original model refs.
+    // Update its references to use our spied instances so the modular path works correctly.
+    if ((backend as any).exportService) {
+      (backend as any).exportService.jobExecution = jobExec;
+      (backend as any).exportService.generatedImage = gi;
+      (backend as any).exportService.jobConfig = cfg;
+    }
   });
 
   afterEach(() => {

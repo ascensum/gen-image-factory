@@ -4,9 +4,7 @@ vi.mock('../../../src/producePictureModule', () => ({
   producePictureModule: vi.fn(),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const { JobRunner } = require('../../../src/services/jobRunner');
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const producePictureModule = require('../../../src/producePictureModule');
 
 describe('JobRunner - stop and retry behavior', () => {

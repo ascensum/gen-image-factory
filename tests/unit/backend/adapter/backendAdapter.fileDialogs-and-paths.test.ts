@@ -21,13 +21,10 @@ describe('BackendAdapter (unit) file dialogs + path validation', () => {
 
     // Restore Node require cache for electron (we override it in loadAdapter)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const resolved = require.resolve('electron');
       if (prevElectronCacheEntry) {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
         require.cache[resolved] = prevElectronCacheEntry;
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
         delete require.cache[resolved];
       }
     } catch {
@@ -72,11 +69,8 @@ describe('BackendAdapter (unit) file dialogs + path validation', () => {
       dialog: { ...baseElectron.dialog, ...(e.dialog || {}) },
       shell: { ...baseElectron.shell, ...(e.shell || {}) },
     };
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const resolvedElectron = require.resolve('electron');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     prevElectronCacheEntry = require.cache[resolvedElectron];
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     require.cache[resolvedElectron] = {
       id: resolvedElectron,
       filename: resolvedElectron,

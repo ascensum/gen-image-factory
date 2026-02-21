@@ -61,7 +61,6 @@ describe('aiVision (runQualityCheck + generateMetadata)', () => {
 
   const loadSut = () => {
     installCjsMocks();
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return req('../../src/aiVision.js');
   };
 
