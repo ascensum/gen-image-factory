@@ -433,6 +433,35 @@ app.whenReady().then(async () => {
     }
   }
 
+  // Database round-trip validation for smoke tests (must complete before ready signal)
+  if (process.env.SMOKE_TEST === 'true') {
+    try {
+      const sqlite3 = require('sqlite3').verbose();
+      await new Promise((resolve, reject) => {
+        const db = new sqlite3.Database(':memory:', (err) => {
+          if (err) { reject(err); return; }
+          db.run('CREATE TABLE smoke_check (id INTEGER PRIMARY KEY, val TEXT)', (err2) => {
+            if (err2) { reject(err2); return; }
+            db.run("INSERT INTO smoke_check VALUES (1, 'ok')", (err3) => {
+              if (err3) { reject(err3); return; }
+              db.get('SELECT val FROM smoke_check WHERE id = 1', (err4, row) => {
+                db.close();
+                if (err4 || !row || row.val !== 'ok') {
+                  reject(err4 || new Error('Round-trip value mismatch'));
+                } else {
+                  resolve();
+                }
+              });
+            });
+          });
+        });
+      });
+      console.log(' MAIN PROCESS: Database round-trip OK');
+    } catch (dbErr) {
+      console.log(' MAIN PROCESS: Database round-trip FAILED:', dbErr.message);
+    }
+  }
+
   // Signal that the main process has completed critical initialization for smoke tests
   // We emit this before creating windows or starting updates to ensure reliability in CI
   if (process.env.SMOKE_TEST === 'true') {
