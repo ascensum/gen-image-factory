@@ -1,5 +1,63 @@
 /* global Response */
 require('dotenv').config();
+
+// ─── userData Feature Flags Loader ─────────────────────────────────────────
+// Production override mechanism: place a feature-flags.json file in the
+// app's userData directory to override feature flags without rebuilding.
+// This file is never bundled – it lives outside the ASAR archive.
+//
+// Example location (Windows): %APPDATA%\gen-image-factory\feature-flags.json
+// Example location (macOS):   ~/Library/Application Support/gen-image-factory/feature-flags.json
+//
+// Example file content:
+//   {
+//     "FEATURE_MODULAR_IPC_CONTROLLERS": "true",
+//     "FEATURE_SHADOW_BRIDGE_LOGGING": "true"
+//   }
+//
+// Supported flags (any FEATURE_* env var can be overridden):
+//   FEATURE_MODULAR_IPC_CONTROLLERS – route IPC through modular controllers (ADR-002)
+//   FEATURE_SHADOW_BRIDGE_LOGGING   – enable verbose shadow bridge comparison logs
+//
+// Security: only keys matching /^FEATURE_[A-Z0-9_]+$/ are applied.
+// ────────────────────────────────────────────────────────────────────────────
+(function loadUserDataFeatureFlags() {
+  try {
+    // app.getPath('userData') is not available before app.ready, so we
+    // reconstruct the path manually using Electron's own logic.
+    const os = require('os');
+    const path = require('path');
+
+    let userDataDir;
+    if (process.platform === 'win32') {
+      userDataDir = path.join(process.env.APPDATA || os.homedir(), 'gen-image-factory');
+    } else if (process.platform === 'darwin') {
+      userDataDir = path.join(os.homedir(), 'Library', 'Application Support', 'gen-image-factory');
+    } else {
+      userDataDir = path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'gen-image-factory');
+    }
+
+    const flagsFile = path.join(userDataDir, 'feature-flags.json');
+    const fs = require('fs');
+
+    if (fs.existsSync(flagsFile)) {
+      const raw = fs.readFileSync(flagsFile, 'utf8');
+      const flags = JSON.parse(raw);
+      let applied = 0;
+      for (const [key, value] of Object.entries(flags)) {
+        if (/^FEATURE_[A-Z0-9_]+$/.test(key)) {
+          process.env[key] = String(value);
+          applied++;
+        }
+      }
+      console.log(` MAIN PROCESS: Loaded ${applied} feature flag(s) from ${flagsFile}`);
+    }
+  } catch (e) {
+    // Non-fatal: missing file, parse error, or permission issue are all fine
+    console.log(' MAIN PROCESS: No userData feature-flags.json loaded:', e.message);
+  }
+})();
+
 console.log(' MAIN PROCESS: main.js file is being executed!');
 console.log(' MAIN PROCESS: Node.js version:', process.version);
 console.log(' MAIN PROCESS: Electron version:', process.versions.electron);
