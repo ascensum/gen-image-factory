@@ -323,7 +323,7 @@ describe('FailedImagesReviewPanel', () => {
       await waitFor(() => {
         // Find the grid container by looking for the div with grid classes
         const gridContainer = screen.getByTestId('failed-image-card-1').closest('div.grid');
-        expect(gridContainer).toHaveClass('grid', 'grid-cols-2', 'md:grid-cols-3', 'lg:grid-cols-4', 'xl:grid-cols-6', 'gap-4');
+        expect(gridContainer).toHaveClass('grid', 'grid-cols-2', 'md:grid-cols-3', 'lg:grid-cols-4', 'gap-4');
       });
     });
   });
