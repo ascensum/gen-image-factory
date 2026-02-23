@@ -9,13 +9,15 @@ interface FailedImageCardProps {
   isSelected: boolean;
   onSelect: () => void;
   onAction: (action: string, imageId: string) => void;
+  jobLabel?: string;
 }
 
 const FailedImageCard: React.FC<FailedImageCardProps> = ({
   image,
   isSelected,
   onSelect,
-  onAction
+  onAction,
+  jobLabel
 }) => {
   const formatDate = (date?: Date) => {
     return date ? new Date(date).toLocaleDateString() : '';
@@ -150,6 +152,13 @@ const FailedImageCard: React.FC<FailedImageCardProps> = ({
         {(image as any)?.qcReason && (
           <div className="text-xs text-red-600 mb-2 p-2 bg-red-50 rounded border border-red-200">
             <strong>Failure:</strong> {formatQcFailureReason((image as any)?.qcStatus, (image as any)?.qcReason) || (image as any)?.qcReason}
+          </div>
+        )}
+
+        {/* Job Label */}
+        {jobLabel && (
+          <div className="text-xs text-gray-500 truncate mb-2" title={jobLabel}>
+            {jobLabel}
           </div>
         )}
 

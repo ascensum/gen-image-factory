@@ -12,14 +12,16 @@ require('dotenv').config();
 // Example file content:
 //   {
 //     "FEATURE_MODULAR_IPC_CONTROLLERS": "true",
-//     "FEATURE_SHADOW_BRIDGE_LOGGING": "true"
+//     "SHADOW_BRIDGE_LOGGING": "true",
+//     "SHADOW_BRIDGE_LOG_FILE": "true"
 //   }
 //
-// Supported flags (any FEATURE_* env var can be overridden):
-//   FEATURE_MODULAR_IPC_CONTROLLERS – route IPC through modular controllers (ADR-002)
-//   FEATURE_SHADOW_BRIDGE_LOGGING   – enable verbose shadow bridge comparison logs
+// Supported flags:
+//   FEATURE_*            – any feature flag (modular routing, ADR-002, etc.)
+//   SHADOW_BRIDGE_LOGGING   – enable verbose shadow bridge comparison logs (console)
+//   SHADOW_BRIDGE_LOG_FILE  – write shadow bridge logs to OS temp directory
 //
-// Security: only keys matching /^FEATURE_[A-Z0-9_]+$/ are applied.
+// Security: only keys matching FEATURE_* or SHADOW_BRIDGE_* are applied.
 // ────────────────────────────────────────────────────────────────────────────
 (function loadUserDataFeatureFlags() {
   try {
@@ -45,7 +47,7 @@ require('dotenv').config();
       const flags = JSON.parse(raw);
       let applied = 0;
       for (const [key, value] of Object.entries(flags)) {
-        if (/^FEATURE_[A-Z0-9_]+$/.test(key)) {
+        if (/^(FEATURE_|SHADOW_BRIDGE_)[A-Z0-9_]+$/.test(key)) {
           process.env[key] = String(value);
           applied++;
         }
