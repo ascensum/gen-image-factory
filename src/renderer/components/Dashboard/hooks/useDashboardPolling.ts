@@ -115,14 +115,14 @@ export const useDashboardPolling = ({
   useEffect(() => {
     if (jobStatus.state === 'completed') {
       lastCompletionRef.current = Date.now();
-      loadJobHistory();
+      loadJobHistory(true);  // silent: keep history list visible, no spinner flash
       loadStatistics();
       setTimeout(() => {
         loadGeneratedImages();
       }, 500);
     } else if (jobStatus.state === 'failed') {
       lastCompletionRef.current = Date.now();
-      loadJobHistory();
+      loadJobHistory(true);  // silent: keep history list visible, no spinner flash
       loadStatistics();
     } else if (jobStatus.state === 'running') {
       lastCompletionRef.current = null;
