@@ -73,14 +73,21 @@ export const DashboardGalleryTabContent: React.FC<DashboardGalleryTabContentProp
     >
       {(() => {
         const Gallery = props.GalleryComponent ?? ImageGalleryDefault;
+        const pad = (n: number) => n.toString().padStart(2, '0');
         const jobIdToLabel: Record<string, string> = Object.fromEntries(
           (props.jobHistory ?? []).map((j) => {
-            const label =
-              (j as { displayLabel?: string }).displayLabel ??
-              (j as { label?: string }).label ??
-              (j as JobExecution & { configurationName?: string }).configurationName ??
-              `Job ${j.id}`;
-            return [String(j.id), String(label).trim() || `Job ${j.id}`];
+            const j_any = j as any;
+            let label = (j_any.displayLabel || j_any.label || j_any.configurationName || '').toString().trim();
+            if (!label) {
+              const rawStarted = j_any.startedAt ?? j_any.started_at;
+              const started = rawStarted instanceof Date ? rawStarted : (rawStarted ? new Date(rawStarted) : null);
+              if (started && !isNaN(started.getTime())) {
+                label = `job_${started.getFullYear()}${pad(started.getMonth() + 1)}${pad(started.getDate())}_${pad(started.getHours())}${pad(started.getMinutes())}${pad(started.getSeconds())}`;
+              } else {
+                label = `Job ${j.id}`;
+              }
+            }
+            return [String(j.id), label];
           })
         );
         return (

@@ -97,15 +97,23 @@ export function useFailedImages() {
         if (Array.isArray((jobsResp as any)?.executions)) list = (jobsResp as any).executions;
         else if (Array.isArray((jobsResp as any)?.jobs)) list = (jobsResp as any).jobs;
         else if (Array.isArray((jobsResp as any)?.data)) list = (jobsResp as any).data;
+        const pad = (n: number) => n.toString().padStart(2, '0');
         const map: Record<string, string> = {};
         list.forEach((j: any) => {
           const k = String(j?.id);
           let label = (j?.label || j?.configurationName || j?.displayLabel || '').toString().trim();
+          if (!label) {
+            const rawStarted = j?.startedAt ?? j?.started_at;
+            const started = rawStarted instanceof Date ? rawStarted : (rawStarted ? new Date(rawStarted) : null);
+            if (started && !isNaN(started.getTime())) {
+              label = `job_${started.getFullYear()}${pad(started.getMonth() + 1)}${pad(started.getDate())}_${pad(started.getHours())}${pad(started.getMinutes())}${pad(started.getSeconds())}`;
+            }
+          }
           // Show "Job Label (Rerun xxxx)" in grid/list like Job History and Job Management (not just "Job Label (Rerun)")
           if (label && label.endsWith('(Rerun)')) {
             label = label.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(j?.id ?? k).slice(-6)})`;
           }
-          if (k) map[k] = label;
+          if (k && label) map[k] = label;
         });
         setJobIdToLabel(map);
       } catch {}
