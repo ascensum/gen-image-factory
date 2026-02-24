@@ -54,9 +54,11 @@ class JobListService {
         }))
       : [];
 
+    // Frontend may read result.executions first; both must be enriched so "Has pending reruns" filter shows jobs
     return {
       ...result,
-      jobs: enrichedJobs
+      jobs: enrichedJobs,
+      executions: enrichedJobs
     };
   }
 
