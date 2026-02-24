@@ -178,7 +178,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
       <div className="flex gap-2 pt-4 px-6 bg-[var(--background)] shrink-0">
         <button
           type="button"
-          className={`px-6 py-3 font-medium rounded-t border border-[var(--border)] border-b-0 transition cursor-pointer ${activeTab === 'overview' ? 'bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]' : 'bg-[var(--secondary)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'}`}
+          className={`tab-button px-6 py-3 font-medium rounded-t border border-[var(--border)] border-b-0 transition cursor-pointer ${activeTab === 'overview' ? 'active bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]' : 'bg-[var(--secondary)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'}`}
           onClick={() => handleTabChange('overview')}
           data-tab="overview"
         >
@@ -186,7 +186,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
         </button>
         <button
           type="button"
-          className={`px-6 py-3 font-medium rounded-t border border-[var(--border)] border-b-0 transition cursor-pointer ${activeTab === 'images' ? 'bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]' : 'bg-[var(--secondary)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'}`}
+          className={`tab-button px-6 py-3 font-medium rounded-t border border-[var(--border)] border-b-0 transition cursor-pointer ${activeTab === 'images' ? 'active bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]' : 'bg-[var(--secondary)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'}`}
           onClick={() => handleTabChange('images')}
           data-tab="images"
         >
@@ -195,7 +195,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
         {job?.status === 'running' && (
           <button
             type="button"
-            className={`px-6 py-3 font-medium rounded-t border border-[var(--border)] border-b-0 transition cursor-pointer ${activeTab === 'logs' ? 'bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]' : 'bg-[var(--secondary)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'}`}
+            className={`tab-button px-6 py-3 font-medium rounded-t border border-[var(--border)] border-b-0 transition cursor-pointer ${activeTab === 'logs' ? 'active bg-[var(--primary)] text-[var(--primary-foreground)] border-[var(--primary)]' : 'bg-[var(--secondary)] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]'}`}
             onClick={() => handleTabChange('logs')}
             data-tab="logs"
           >
@@ -276,7 +276,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            Export
+            Export Job
           </button>
           <button
             type="button"
@@ -286,7 +286,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
-            Delete
+            Delete Job
           </button>
         </div>
       </footer>

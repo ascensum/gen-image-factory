@@ -22,6 +22,14 @@ const ACCOUNT_NAMES = {
   REMOVE_BG: 'remove-bg-api-key'
 };
 
+// Normalize camelCase service names from the frontend form (e.g. 'removeBg') to the
+// ACCOUNT_NAMES key format (e.g. 'REMOVE_BG'). Without this, removeBg.toUpperCase()
+// produces 'REMOVEBG' which does not match 'REMOVE_BG' and silently skips keytar save.
+function normalizeServiceKey(service) {
+  if (service === 'removeBg' || service === 'removebg' || service === 'remove_bg') return 'REMOVE_BG';
+  return service.toUpperCase();
+}
+
 // Encryption settings for fallback storage - COPIED EXACTLY from backendAdapter.js
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
@@ -123,7 +131,7 @@ class SecurityService {
    */
   async getSecret(serviceName) {
     try {
-      const accountName = ACCOUNT_NAMES[serviceName.toUpperCase()];
+      const accountName = ACCOUNT_NAMES[normalizeServiceKey(serviceName)];
       if (!accountName) {
         return { success: false, error: `Unknown service: ${serviceName}` };
       }
@@ -219,7 +227,7 @@ class SecurityService {
    */
   async setSecret(serviceName, apiKey) {
     try {
-      const accountName = ACCOUNT_NAMES[serviceName.toUpperCase()];
+      const accountName = ACCOUNT_NAMES[normalizeServiceKey(serviceName)];
       if (!accountName) {
         throw new Error(`Unknown service: ${serviceName}`);
       }
