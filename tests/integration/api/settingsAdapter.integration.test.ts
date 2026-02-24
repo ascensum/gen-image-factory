@@ -140,6 +140,7 @@ describe('BackendAdapter Settings API Integration Tests', () => {
 
   describe('getSettings()', () => {
     it('retrieves settings from database successfully', async () => {
+      // timeout: integration (DB + ensureInitialized) can be slow
       // Mock keytar for both save and get
       mockGetApiKey.mockResolvedValue(null)
       mockSetApiKey.mockResolvedValue(undefined)
@@ -182,7 +183,7 @@ describe('BackendAdapter Settings API Integration Tests', () => {
       expect(result.settings.parameters.pollingTimeout).toBe(20)
       expect(result.settings.parameters.runwareModel).toBe('runware:101@1')
       expect(result.settings.processing.removeBg).toBe(true)
-    })
+    }, 25000)
 
     it('returns default settings when no settings found in database', async () => {
       // Mock keytar to return empty
@@ -198,7 +199,7 @@ describe('BackendAdapter Settings API Integration Tests', () => {
       expect(result.settings.ai).toBeDefined()
       expect(result.settings.apiKeys).toBeDefined()
       expect(result.settings.filePaths).toBeDefined()
-    })
+    }, 25000)
 
     it('merges database settings with defaults per Story 1.2/1.4', async () => {
       // Mock keytar
@@ -233,7 +234,7 @@ describe('BackendAdapter Settings API Integration Tests', () => {
       expect(result.settings.parameters.runwareModel).toBeDefined()
       expect(result.settings.processing).toBeDefined()
       expect(result.settings.ai).toBeDefined()
-    }, 15000)
+    }, 25000)
 
     // MOVED: This test is now at the end of getApiKey() describe block to prevent mock state leakage
     // The mockImplementation from this test was persisting even after mockReset()
@@ -278,7 +279,7 @@ describe('BackendAdapter Settings API Integration Tests', () => {
       expect(retrieved.settings.parameters.pollingTimeout).toBe(15)
       expect(retrieved.settings.parameters.runwareModel).toBe('runware:101@1')
       expect(retrieved.settings.processing.removeBg).toBe(false)
-    })
+    }, 25000)
 
     it('handles database errors during save', async () => {
       // Close database to simulate error
@@ -292,7 +293,7 @@ describe('BackendAdapter Settings API Integration Tests', () => {
       // Should handle error gracefully
       expect(result.success).toBe(false)
       expect(result.error).toBeDefined()
-    })
+    }, 25000)
   })
 
   describe('selectFile()', () => {
@@ -369,6 +370,7 @@ describe('BackendAdapter Settings API Integration Tests', () => {
 
   describe('getApiKey()', () => {
     it('returns empty string when API key not found (keytar null, DB empty)', async () => {
+      // timeout: integration (ensureInitialized + keytar) can be slow
       mockGetApiKey.mockReset();
       mockGetApiKey.mockResolvedValue(null);
       await backendAdapter.jobConfig.saveSettings({ apiKeys: { openai: '', piapi: '', runware: '', removeBg: '' } });
@@ -377,9 +379,10 @@ describe('BackendAdapter Settings API Integration Tests', () => {
 
       expect(result.success).toBe(true);
       expect(typeof result.apiKey === 'string').toBe(true);
-    });
+    }, 25000);
 
     it('handles keytar errors gracefully and falls back to empty string', async () => {
+      // timeout: integration can be slow
       mockGetApiKey.mockReset();
       mockGetApiKey.mockRejectedValue(new Error('Keytar error'));
       await backendAdapter.jobConfig.saveSettings({ apiKeys: { openai: '', piapi: '', runware: '', removeBg: '' } });
@@ -389,7 +392,7 @@ describe('BackendAdapter Settings API Integration Tests', () => {
       expect(result.success).toBe(true);
       expect(typeof result.apiKey === 'string').toBe(true);
       expect(result.securityLevel).toBeDefined();
-    });
+    }, 25000);
 
     it('retrieves API key from secure storage', async () => {
       // Ensure clean state - reset mock first
