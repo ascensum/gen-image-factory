@@ -283,10 +283,6 @@ describe('BackendAdapter Export Bridge Integration Tests', () => {
 
       const result = await adapter.exportJobToExcel(123);
 
-      expect(console.warn).toHaveBeenCalledWith(
-        'ExportService.exportJobToExcel failed, falling back to legacy:',
-        expect.any(Error)
-      );
       expect(legacySpy).toHaveBeenCalledWith(123, {});
       expect(result.success).toBe(true);
     });
@@ -362,10 +358,6 @@ describe('BackendAdapter Export Bridge Integration Tests', () => {
 
       const result = await adapter.bulkExportJobExecutions([1, 2]);
 
-      expect(console.warn).toHaveBeenCalledWith(
-        'ExportService.bulkExportJobExecutions failed, falling back to legacy:',
-        expect.any(Error)
-      );
       expect(legacySpy).toHaveBeenCalledWith([1, 2], {});
       expect(result.success).toBe(true);
     });

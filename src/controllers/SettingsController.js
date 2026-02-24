@@ -47,11 +47,11 @@ function registerSettingsHandlers(ipcMain, backendAdapter) {
 
   ipcMain.handle('job-execution:get-by-image-id', async (event, imageId) => {
     return await backendAdapter.ensureInitialized().then(async () => {
-      const imageRes = await backendAdapter.generatedImage.getGeneratedImage(imageId);
+      const imageRes = await backendAdapter.getGeneratedImage(imageId);
       if (!imageRes || !imageRes.success || !imageRes.image) {
         return { success: false, error: 'Image not found' };
       }
-      return await backendAdapter.jobExecution.getJobExecution(imageRes.image.executionId);
+      return await backendAdapter.getJobExecution(imageRes.image.executionId);
     }).catch(error => ({ success: false, error: error.message }));
   });
 

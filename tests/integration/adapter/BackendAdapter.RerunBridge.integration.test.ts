@@ -195,10 +195,6 @@ describe('BackendAdapter Rerun Bridge Integration Tests', () => {
 
       expect(legacySpy).toHaveBeenCalledWith(1);
       expect(result.success).toBe(true);
-      expect(console.warn).toHaveBeenCalledWith(
-        'SingleRerunService.rerunJobExecution failed, falling back to legacy:',
-        expect.any(String)
-      );
     });
   });
 
@@ -232,10 +228,6 @@ describe('BackendAdapter Rerun Bridge Integration Tests', () => {
 
       expect(legacySpy).toHaveBeenCalledWith([1]);
       expect(result.success).toBe(true);
-      expect(console.warn).toHaveBeenCalledWith(
-        'BulkRerunService.bulkRerunJobExecutions failed, falling back to legacy:',
-        expect.any(String)
-      );
     });
   });
 
@@ -269,10 +261,6 @@ describe('BackendAdapter Rerun Bridge Integration Tests', () => {
       await adapter.processNextBulkRerunJob();
 
       expect(legacySpy).toHaveBeenCalled();
-      expect(console.warn).toHaveBeenCalledWith(
-        'BulkRerunService.processNextBulkRerunJob failed, falling back to legacy:',
-        expect.any(String)
-      );
     });
   });
 

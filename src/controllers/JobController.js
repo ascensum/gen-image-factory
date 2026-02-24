@@ -63,7 +63,7 @@ function registerJobHandlers(ipcMain, backendAdapter) {
   });
 
   ipcMain.handle('job-execution:get', async (event, id) => {
-    return await backendAdapter.jobExecution.getJobExecution(id);
+    return await backendAdapter.getJobExecution(id);
   });
 
   ipcMain.handle('job-execution:get-all', async (event, options = {}) => {
@@ -111,12 +111,7 @@ function registerJobHandlers(ipcMain, backendAdapter) {
   });
 
   ipcMain.handle('job-execution:get-bulk-rerun-queue-size', async () => {
-    return await backendAdapter.ensureInitialized().then(() => {
-      const size = (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) 
-        ? global.bulkRerunQueue.length 
-        : 0;
-      return { success: true, count: size };
-    }).catch(error => ({ success: false, error: error.message }));
+    return await backendAdapter.getBulkRerunQueueSize().catch(error => ({ success: false, error: error.message }));
   });
 
   ipcMain.handle('job-execution:rerun', async (event, id) => {
@@ -154,9 +149,7 @@ function registerJobHandlers(ipcMain, backendAdapter) {
   });
 
   ipcMain.handle('generated-image:get-by-execution', async (event, executionId) => {
-    return await backendAdapter.ensureInitialized().then(() => 
-      backendAdapter.generatedImage.getGeneratedImagesByExecution(executionId)
-    ).catch(error => ({ success: false, error: error.message }));
+    return await backendAdapter.getGeneratedImagesByExecution(executionId).catch(error => ({ success: false, error: error.message }));
   });
 
   ipcMain.handle('generated-image:get-all', async (event, options = {}) => {
