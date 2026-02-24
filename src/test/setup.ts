@@ -18,6 +18,32 @@ Object.defineProperty(window, 'electronAPI', {
   writable: true,
 })
 
+// Mock browser APIs not available in JSDOM
+global.ResizeObserver = class ResizeObserver {
+  private callback: ResizeObserverCallback
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback
+  }
+  observe(target: Element) {
+    this.callback(
+      [{ contentRect: { width: 1200, height: 800 }, target } as any],
+      this as any,
+    )
+  }
+  unobserve() {}
+  disconnect() {}
+}
+
+global.IntersectionObserver = class IntersectionObserver {
+  root = null
+  rootMargin = ''
+  thresholds = []
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() { return [] }
+} as any
+
 // Mock console methods to avoid noise in tests
 global.console = {
   ...console,

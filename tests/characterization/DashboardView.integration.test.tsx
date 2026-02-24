@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
@@ -15,6 +15,7 @@ const mockElectronAPI = {
   jobManagement: {
     getJobStatus: vi.fn(),
     getJobHistory: vi.fn(),
+    getAllJobExecutions: vi.fn(),
     getJobStatistics: vi.fn(),
     getAllGeneratedImages: vi.fn(),
     getConfiguration: vi.fn(),
@@ -32,6 +33,7 @@ const mockElectronAPI = {
     getParentJobForRerun: vi.fn(),
   },
   generatedImages: {
+    getImagesByQCStatus: vi.fn(),
     exportZip: vi.fn(),
     onZipExportProgress: vi.fn(),
     onZipExportCompleted: vi.fn(),
@@ -65,6 +67,7 @@ describe('DashboardView Modular Integration (Feature Flag Enabled)', () => {
       totalSteps: 2
     });
     mockElectronAPI.jobManagement.getJobHistory.mockResolvedValue([]);
+    mockElectronAPI.jobManagement.getAllJobExecutions.mockResolvedValue([]);
     mockElectronAPI.jobManagement.getJobStatistics.mockResolvedValue({
       totalJobs: 0,
       completedJobs: 0,
@@ -74,6 +77,7 @@ describe('DashboardView Modular Integration (Feature Flag Enabled)', () => {
       successRate: 0
     });
     mockElectronAPI.jobManagement.getAllGeneratedImages.mockResolvedValue([]);
+    mockElectronAPI.generatedImages.getImagesByQCStatus.mockResolvedValue({ images: [], hasMore: false });
     mockElectronAPI.jobManagement.getConfiguration.mockResolvedValue({ success: true, settings: {} });
     mockElectronAPI.jobManagement.getJobLogs.mockResolvedValue([]);
     mockElectronAPI.getSettings.mockResolvedValue({ settings: { advanced: { debugMode: false } } });
@@ -123,7 +127,8 @@ describe('DashboardView Modular Integration (Feature Flag Enabled)', () => {
       successRate: 100
     };
 
-    mockElectronAPI.jobManagement.getJobHistory.mockResolvedValue(mockJobs);
+    // Component uses getAllJobExecutions (not getJobHistory) for Dashboard history
+    mockElectronAPI.jobManagement.getAllJobExecutions.mockResolvedValue(mockJobs);
     mockElectronAPI.jobManagement.getJobStatistics.mockResolvedValue(mockStats);
 
     render(<DashboardPanel />);
@@ -170,8 +175,8 @@ describe('DashboardView Modular Integration (Feature Flag Enabled)', () => {
       settings: { parameters: { count: 10 } }
     });
     
-    // Mock history to have a running job
-    mockElectronAPI.jobManagement.getJobHistory.mockResolvedValue([
+    // Mock history to have a running job (uses getAllJobExecutions)
+    mockElectronAPI.jobManagement.getAllJobExecutions.mockResolvedValue([
       { id: 'job-run-1', label: 'Running Job', status: 'running', startedAt: new Date() }
     ]);
 

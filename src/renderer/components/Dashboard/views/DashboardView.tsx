@@ -61,6 +61,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       actions.loadGeneratedImages();
     }, 80);
     return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardGalleryRefreshTrigger, actions.loadGeneratedImages]);
 
   const { progressSteps, smartProgress } = useDashboardProgress(
@@ -100,10 +101,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
     observer.observe(el);
     return () => observer.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.galleryHasMore, state.activeTab, actions.loadNextGalleryPage]);
 
   const [showExportZipModal, setShowExportZipModal] = React.useState(false);
-  const [showSingleExportModal, setShowSingleExportModal] = React.useState(false);
   const galleryScrollRef = React.useRef<HTMLDivElement | null>(null);
   const galleryContainerSize = useGalleryContainerSize(state.activeTab, galleryScrollRef);
 
@@ -307,9 +308,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </div>
 
+      {/* Single Job Constraint Message */}
+      {state.jobStatus.state === 'running' && (
+        <div className="fixed bottom-4 left-4 z-50 bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md shadow-lg">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-blue-800">
+                Only one job can run at a time. Please wait for the current job to complete.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {state.error && (
         <div className="fixed top-4 right-4 bg-red-50 border border-red-200 rounded-lg p-4 max-w-md">
-           {/* Error content */}
            <p className="text-sm text-red-800">{state.error}</p>
            <button onClick={() => state.setError(null)}>Dismiss</button>
         </div>
@@ -339,8 +357,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 }
               }
               const options = mode === 'custom' ? { outputPath: resolvedOutputPath || filename, duplicatePolicy } : undefined;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const result = await (window as any).electronAPI.generatedImages.exportZip(ids, includeExcel !== false, options);
               if (result?.success && result.zipPath) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 try { await (window as any).electronAPI.revealInFolder(result.zipPath); } catch { /* ignore */ }
               }
             } catch (e) {
@@ -362,6 +382,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
           const job = state.jobHistory.find(j => String(j.id) === String(state.exportJobId));
           const shortId = state.exportJobId ? String(state.exportJobId).slice(-6) : '';
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const base = (job && ((job as any).displayLabel || (job as any).label || (job as any).configurationName)) || shortId || 'Job';
           const safe = String(base).replace(/[^a-zA-Z0-9-_]/g, '_');
           return `${safe}_${ts}.xlsx`;
@@ -380,8 +401,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               }
             }
             const options = mode === 'custom' ? { outputPath: resolvedOutputPath || filename, duplicatePolicy } : undefined;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const result = await (window as any).electronAPI.jobManagement.exportJobToExcel(state.exportJobId, options);
             if (result && result.success && result.filePath) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               try { await (window as any).electronAPI.revealInFolder(result.filePath); } catch {}
             }
           } finally {
