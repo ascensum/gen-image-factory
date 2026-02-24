@@ -267,6 +267,24 @@ describe('JobRepository Unit Tests', () => {
         expect.any(Function)
       );
     });
+
+    it('should apply filters.ids (Has pending reruns / bulk rerun queue)', async () => {
+      mockDb.all.mockImplementation((sql, params, callback) => {
+        callback(null, [{ id: '7', configuration_id: 1, started_at: null, status: 'completed', total_images: 0, successful_images: 0, failed_images: 0, error_message: null, label: 'Job 7', configuration_label: null, configuration_name: null, completed_at: null, configuration_snapshot: null }]);
+      });
+
+      const result = await repository.getJobExecutionsWithFilters({ ids: [7, 9] }, 1, 25);
+
+      expect(mockDb.all).toHaveBeenCalledWith(
+        expect.stringMatching(/je\.id IN \(\?,\?\)/),
+        expect.arrayContaining([7, 9, 25, 0]),
+        expect.any(Function)
+      );
+      expect(result.jobs).toBeDefined();
+      expect(result.jobs).toHaveLength(1);
+      expect(result.jobs![0].id).toBe('7');
+      expect(result.executions).toEqual(result.jobs);
+    });
   });
 
   describe('getJobExecutionsCount()', () => {
@@ -300,6 +318,22 @@ describe('JobRepository Unit Tests', () => {
 
       // Assert
       expect(result.count).toBe(0);
+    });
+
+    it('should apply filters.ids (Has pending reruns)', async () => {
+      mockDb.get.mockImplementation((sql, params, callback) => {
+        callback(null, { count: 2 });
+      });
+
+      const result = await repository.getJobExecutionsCount({ ids: [7, 9] });
+
+      expect(mockDb.get).toHaveBeenCalledWith(
+        expect.stringMatching(/id IN \(\?,\?\)/),
+        [7, 9],
+        expect.any(Function)
+      );
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(2);
     });
   });
 

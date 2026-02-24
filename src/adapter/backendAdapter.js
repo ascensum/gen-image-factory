@@ -121,6 +121,13 @@ class BackendAdapter {
       jobRunner: this.jobRunner,
       getSettings: () => this.getSettings()
     });
+    // JobListService: list/count with "Has pending reruns" (Story 3.1/3.2 gap; Epic 3 layered architecture)
+    const { JobListService } = require('../services/JobListService');
+    this.jobListService = new JobListService({
+      fetchJobExecutionsWithFilters: (f, p, ps) => this._getJobExecutionsWithFiltersFromRepoOrLegacy(f, p, ps),
+      fetchJobExecutionsCount: (f) => this._getJobExecutionsCountFromRepoOrLegacy(f),
+      getPendingRerunExecutionIds: () => this.bulkRerunService.getPendingRerunExecutionIds()
+    });
   }
 
   _deriveEncryptionKey() {
@@ -770,8 +777,7 @@ class BackendAdapter {
       _ipc.handle('get-job-executions-with-filters', async (event, filters, page = 1, pageSize = 25) => {
         try {
           await this.ensureInitialized();
-          const result = await this.jobExecution.getJobExecutionsWithFilters(filters, page, pageSize);
-          return result;
+          return await this.getJobExecutionsWithFilters(filters, page, pageSize);
         } catch (error) {
           console.error('Error getting job executions with filters:', error);
           return { success: false, error: error.message };
@@ -781,8 +787,7 @@ class BackendAdapter {
       _ipc.handle('get-job-executions-count', async (event, filters) => {
         try {
           await this.ensureInitialized();
-          const result = await this.jobExecution.getJobExecutionsCount(filters);
-          return result;
+          return await this.getJobExecutionsCount(filters);
         } catch (error) {
           console.error('Error getting job executions count:', error);
           return { success: false, error: error.message };
@@ -3221,66 +3226,42 @@ class BackendAdapter {
     return await this._legacyBulkRerunJobExecutions(ids);
   }
 
-  async getJobExecutionsWithFilters(filters) {
+  /** Shadow Bridge only: repo vs legacy. No filter/enrichment logic (delegated to JobListService). */
+  async _getJobExecutionsWithFiltersFromRepoOrLegacy(filters, page, pageSize) {
+    if (this.jobRepository) {
+      try {
+        shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsWithFilters');
+        return await this.jobRepository.getJobExecutionsWithFilters(filters, page, pageSize);
+      } catch (error) {
+        shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsWithFilters', error);
+        console.warn('JobRepository.getJobExecutionsWithFilters failed, falling back to legacy:', error.message);
+        return await this.jobExecution.getJobExecutionsWithFilters(filters, page, pageSize);
+      }
+    }
+    shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsWithFilters', 'repository not available');
+    return await this.jobExecution.getJobExecutionsWithFilters(filters, page, pageSize);
+  }
+
+  /** Shadow Bridge only: repo vs legacy. No filter logic (delegated to JobListService). */
+  async _getJobExecutionsCountFromRepoOrLegacy(filters) {
+    if (this.jobRepository) {
+      try {
+        shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsCount');
+        return await this.jobRepository.getJobExecutionsCount(filters);
+      } catch (error) {
+        shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsCount', error);
+        console.warn('JobRepository.getJobExecutionsCount failed, falling back to legacy:', error.message);
+        return await this.jobExecution.getJobExecutionsCount(filters);
+      }
+    }
+    shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsCount', 'repository not available');
+    return await this.jobExecution.getJobExecutionsCount(filters);
+  }
+
+  async getJobExecutionsWithFilters(filters, page = 1, pageSize = 25) {
     try {
       await this.ensureInitialized();
-      
-      // Handle "Has pending reruns" filter
-      if (filters.hasPendingRetries) {
-        console.log('DEBUG: Filtering for pending reruns. Queue:', global.bulkRerunQueue?.length || 0);
-        const pendingRerunIds = [];
-        if (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) {
-          global.bulkRerunQueue.forEach(item => {
-            if (item.jobId) pendingRerunIds.push(item.jobId);
-          });
-        }
-        console.log('DEBUG: Pending rerun IDs found:', pendingRerunIds);
-        
-        if (pendingRerunIds.length === 0) {
-          console.log('DEBUG: No pending reruns found, returning empty list');
-          // Filter is ON but no pending reruns -> return empty result
-          return { success: true, jobs: [] };
-        }
-        
-        // Pass specific IDs to DB
-        filters.ids = pendingRerunIds;
-      } else {
-        console.log('DEBUG: hasPendingRetries filter is OFF');
-      }
-
-      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
-      let result;
-      if (this.jobRepository) {
-        try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsWithFilters');
-          result = await this.jobRepository.getJobExecutionsWithFilters(filters);
-        } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsWithFilters', error);
-          console.warn('JobRepository.getJobExecutionsWithFilters failed, falling back to legacy:', error.message);
-          result = await this.jobExecution.getJobExecutionsWithFilters(filters);
-        }
-      } else {
-        // Legacy path
-        shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsWithFilters', 'repository not available');
-        result = await this.jobExecution.getJobExecutionsWithFilters(filters);
-      }
-      
-      if (result.success && Array.isArray(result.jobs)) {
-        // Enrich jobs with pending rerun status from global queue
-        const pendingRerunIds = new Set();
-        if (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) {
-          global.bulkRerunQueue.forEach(item => {
-            if (item.jobId) pendingRerunIds.add(item.jobId);
-          });
-        }
-        
-        result.jobs = result.jobs.map(job => ({
-          ...job,
-          pendingJobs: pendingRerunIds.has(job.id) ? 1 : 0
-        }));
-      }
-      
-      return result;
+      return await this.jobListService.getJobExecutionsWithFilters(filters, page, pageSize);
     } catch (error) {
       console.error('Error getting job executions with filters:', error);
       return { success: false, error: error.message };
@@ -3290,40 +3271,7 @@ class BackendAdapter {
   async getJobExecutionsCount(filters) {
     try {
       await this.ensureInitialized();
-
-      // Handle "Has pending reruns" filter
-      if (filters.hasPendingRetries) {
-        const pendingRerunIds = [];
-        if (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) {
-          global.bulkRerunQueue.forEach(item => {
-            if (item.jobId) pendingRerunIds.push(item.jobId);
-          });
-        }
-        
-        if (pendingRerunIds.length === 0) {
-          return { success: true, count: 0 };
-        }
-        
-        filters.ids = pendingRerunIds;
-      }
-
-      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
-      if (this.jobRepository) {
-        try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsCount');
-          const result = await this.jobRepository.getJobExecutionsCount(filters);
-          return result;
-        } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsCount', error);
-          console.warn('JobRepository.getJobExecutionsCount failed, falling back to legacy:', error.message);
-        }
-      } else {
-        shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsCount', 'repository not available');
-      }
-      
-      // Legacy path
-      const result = await this.jobExecution.getJobExecutionsCount(filters);
-      return result;
+      return await this.jobListService.getJobExecutionsCount(filters);
     } catch (error) {
       console.error('Error getting job executions count:', error);
       return { success: false, error: error.message };

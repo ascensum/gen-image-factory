@@ -130,6 +130,12 @@ class JobRepository {
         params.push(filters.endDate);
       }
 
+      // Has pending reruns: restrict to execution ids in bulk rerun queue (Strangler Fig parity with legacy)
+      if (filters.ids && Array.isArray(filters.ids) && filters.ids.length > 0) {
+        conditions.push(`je.id IN (${filters.ids.map(() => '?').join(',')})`);
+        params.push(...filters.ids);
+      }
+
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
       const offset = (page - 1) * pageSize;
 
@@ -168,8 +174,10 @@ class JobRepository {
             configurationSnapshot: row.configuration_snapshot ? JSON.parse(row.configuration_snapshot) : null
           }));
 
+          // Adapter expects result.jobs for pending-rerun enrichment; keep .executions for callers that use it
           resolve({
             success: true,
+            jobs: executions,
             executions,
             pagination: {
               page,
@@ -214,6 +222,11 @@ class JobRepository {
       if (filters.endDate) {
         conditions.push('started_at <= ?');
         params.push(filters.endDate);
+      }
+
+      if (filters.ids && Array.isArray(filters.ids) && filters.ids.length > 0) {
+        conditions.push(`id IN (${filters.ids.map(() => '?').join(',')})`);
+        params.push(...filters.ids);
       }
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

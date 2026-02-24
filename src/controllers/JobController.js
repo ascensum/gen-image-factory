@@ -124,15 +124,11 @@ function registerJobHandlers(ipcMain, backendAdapter) {
   });
 
   ipcMain.handle('get-job-executions-with-filters', async (event, filters, page = 1, pageSize = 25) => {
-    return await backendAdapter.ensureInitialized().then(() => 
-      backendAdapter.jobExecution.getJobExecutionsWithFilters(filters, page, pageSize)
-    ).catch(error => ({ success: false, error: error.message }));
+    return await backendAdapter.getJobExecutionsWithFilters(filters, page, pageSize).catch(error => ({ success: false, error: error.message }));
   });
 
   ipcMain.handle('get-job-executions-count', async (event, filters) => {
-    return await backendAdapter.ensureInitialized().then(() => 
-      backendAdapter.jobExecution.getJobExecutionsCount(filters)
-    ).catch(error => ({ success: false, error: error.message }));
+    return await backendAdapter.getJobExecutionsCount(filters).catch(error => ({ success: false, error: error.message }));
   });
 
   // Job Management (Legacy Handlers)
