@@ -288,12 +288,13 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
         if (normalized && normalized.state === 'error') {
           normalized.state = 'failed';
         }
-        // If UI sees 'running' but Job History has no running items, reconcile to failed (orphan protection)
+        // If UI sees 'running' but Job History has no running items, treat as idle (stale-running protection).
+        // 'failed' must only come from the backend explicitly reporting failure.
         try {
           const hasRunningInHistory = Array.isArray(jobHistory) && jobHistory.some(j => String(j.status).toLowerCase() === 'running');
-          if (normalized && normalized.state === 'running' && !hasRunningInHistory) {
-            normalized.state = 'failed';
-            // reset transient fields for clarity
+          const hasCurrentJobFromBackend = normalized?.currentJob != null;
+          if (normalized && normalized.state === 'running' && !hasCurrentJobFromBackend && !hasRunningInHistory) {
+            normalized.state = 'idle';
             normalized.currentJob = null;
             normalized.progress = 0;
             normalized.currentStep = 1;
@@ -1503,7 +1504,18 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({ onBack, onOpenFailedIma
                 searchQuery={imageSearchQuery}
                 sortBy={imageSortBy}
                 jobIdToLabel={Object.fromEntries(jobHistory.map(j => {
-                  const base = (((j as any).label || (j as any).displayLabel || (j as any).configurationName || `Job ${j.id}`) as string);
+                  const jAny = j as any;
+                  let base = (jAny.label || jAny.displayLabel || jAny.configurationName || '').toString().trim();
+                  if (!base) {
+                    const rawStarted = jAny.startedAt ?? jAny.started_at;
+                    const started = rawStarted instanceof Date ? rawStarted : (rawStarted ? new Date(rawStarted) : null);
+                    if (started && !isNaN(started.getTime())) {
+                      const pad = (n: number) => String(n).padStart(2, '0');
+                      base = `job_${started.getFullYear()}${pad(started.getMonth() + 1)}${pad(started.getDate())}_${pad(started.getHours())}${pad(started.getMinutes())}${pad(started.getSeconds())}`;
+                    } else {
+                      base = `Job ${j.id}`;
+                    }
+                  }
                   const isRerun = base.endsWith('(Rerun)');
                   const name = isRerun ? base.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(j.id).slice(-6)})` : base;
                   return [j.id, name];
