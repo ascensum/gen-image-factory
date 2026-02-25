@@ -58,6 +58,42 @@ describe('JobHistory rerun label formatting', () => {
 
     expect(screen.getByText('Portrait 2')).toBeInTheDocument();
   });
+
+  it('with sortBy="newest", single rerun in progress appears at top', () => {
+    const jobs = [
+      {
+        id: 'older-completed',
+        status: 'completed',
+        configurationName: 'Older Job',
+        displayLabel: 'Older Job',
+        startedAt: new Date('2025-01-01T09:00:00Z'),
+        completedAt: new Date('2025-01-01T09:10:00Z')
+      } as any,
+      {
+        id: 'single-rerun-running',
+        status: 'running',
+        configurationName: 'Single Rerun (Rerun)',
+        displayLabel: 'Single Rerun (Rerun)',
+        startedAt: new Date('2025-01-01T10:00:00Z')
+      } as any
+    ];
+
+    render(
+      <JobHistory
+        jobs={jobs as any}
+        onJobAction={() => {}}
+        isLoading={false}
+        statusFilter="all"
+        sortBy="newest"
+      />
+    );
+
+    const listItems = screen.getAllByRole('listitem');
+    expect(listItems.length).toBe(2);
+    // First item (top) must be the running single rerun
+    expect(listItems[0]).toHaveAttribute('aria-label', expect.stringContaining('Single Rerun'));
+    expect(listItems[0]).toHaveAttribute('aria-label', expect.stringMatching(/running|processing/));
+  });
 });
 
 

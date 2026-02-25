@@ -26,7 +26,10 @@ export function useJobHistoryFilteredSorted({
     }
 
     const sorted = [...filtered].sort((a, b) => {
-      const isRunning = (j: JobExecution) => String(j?.status).toLowerCase() === 'running';
+      const isRunning = (j: JobExecution) => {
+        const s = String(j?.status ?? '').toLowerCase();
+        return s === 'running' || s === 'processing';
+      };
       switch (activeSortBy) {
         case 'oldest':
           if (!a.startedAt && !b.startedAt) return 0;

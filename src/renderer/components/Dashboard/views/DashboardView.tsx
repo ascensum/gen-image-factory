@@ -347,16 +347,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 setShowExportZipModal(false);
                 return;
               }
-              let resolvedOutputPath: string | undefined;
-              if (mode === 'custom') {
-                if (outputPath && !/\.zip$/i.test(outputPath)) {
-                  const base = outputPath.replace(/[\\/]+$/, '');
-                  resolvedOutputPath = `${base}/${filename}`;
-                } else {
-                  resolvedOutputPath = outputPath || filename;
-                }
-              }
-              const options = mode === 'custom' ? { outputPath: resolvedOutputPath || filename, duplicatePolicy } : undefined;
+              // ExportZipModal sends full path for custom mode; duplicatePolicy applies there
+              const resolvedOutputPath = mode === 'custom' ? (outputPath || filename) : undefined;
+              const options = mode === 'custom' ? { outputPath: resolvedOutputPath, duplicatePolicy } : undefined;
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const result = await (window as any).electronAPI.generatedImages.exportZip(ids, includeExcel !== false, options);
               if (result?.success && result.zipPath) {

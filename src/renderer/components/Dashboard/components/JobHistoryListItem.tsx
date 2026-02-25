@@ -32,7 +32,7 @@ function getJobLabel(job: JobExecution & { displayLabel?: string; label?: string
   const s = prefer != null && prefer !== '' ? String(prefer).trim() : '';
   if (s === '' || s === 'undefined') return fallbackLabelFromStartedAt(job);
   const isRerun = s.endsWith('(Rerun)');
-  return isRerun ? s.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(job.id).slice(-6)})` : s;
+  return isRerun ? s.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(job.id).slice(-3)})` : s;
 }
 
 function formatDuration(startedAt: Date | null, completedAt?: Date | null): string {

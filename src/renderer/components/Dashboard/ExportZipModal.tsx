@@ -87,7 +87,14 @@ const ExportZipModal: React.FC<ExportZipModalProps> = ({ isOpen, count, defaultF
 
   const handleExport = () => {
     const safeName = ensureZipExt(sanitize(filename.trim() || defaultFilename));
-    const outputPath = mode === 'custom' ? (locationPath || safeName) : undefined;
+    // For custom mode, pass full path so backend can apply duplicatePolicy (append/overwrite) correctly
+    let outputPath: string | undefined;
+    if (mode === 'custom') {
+      const loc = (locationPath || '').trim();
+      if (loc && /\.zip$/i.test(loc)) outputPath = loc;
+      else if (loc) outputPath = `${loc.replace(/[\\/]+$/, '')}/${safeName}`;
+      else outputPath = safeName;
+    }
     onExport({ mode, outputPath, filename: safeName, includeExcel, duplicatePolicy });
   };
 

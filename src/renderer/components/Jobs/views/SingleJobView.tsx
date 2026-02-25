@@ -3,7 +3,7 @@
  * Same UI and behavior as SingleJobView.legacy.tsx.
  */
 import React from 'react';
-import ExportDialog from '../../Common/ExportDialog';
+import ExportFileModal from '../../Common/ExportFileModal';
 import LogViewer from '../../Dashboard/LogViewer';
 import { useSingleJobData } from '../hooks/useSingleJobData';
 import { useSingleJobActions } from '../hooks/useSingleJobActions';
@@ -334,13 +334,31 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
         job={job}
       />
 
-      <ExportDialog
-        isOpen={showExportDialog}
-        onClose={() => setShowExportDialog(false)}
-        onExport={async () => window.electronAPI.exportJobToExcel(jobId)}
-        title="Export Job"
-        description="Export this job to Excel format with all details and settings."
-      />
+      {showExportDialog && (
+        <ExportFileModal
+          isOpen={true}
+          title="Export Job"
+          fileKind="xlsx"
+          defaultFilename={(() => {
+            const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const base = (getDisplayLabel() || (job as { label?: string })?.label || String(job?.id ?? '')).toString().replace(/[^a-zA-Z0-9-_]/g, '_') || 'Job';
+            return `${base}_${ts}.xlsx`;
+          })()}
+          onClose={() => setShowExportDialog(false)}
+          onExport={async ({ mode, outputPath, filename, duplicatePolicy }) => {
+            try {
+              let resolved = outputPath && !/\.xlsx$/i.test(outputPath) ? `${outputPath.replace(/[\\/]+$/, '')}/${filename}` : outputPath || filename;
+              const options = mode === 'custom' ? { outputPath: resolved, duplicatePolicy } : undefined;
+              const result = await (window as unknown as { electronAPI: { jobManagement: { exportJobToExcel: (id: string | number, opts?: unknown) => Promise<{ success?: boolean; filePath?: string }> }; revealInFolder: (p: string) => Promise<void> } }).electronAPI.jobManagement.exportJobToExcel(jobId, options);
+              if (result?.success && result.filePath) {
+                try { await (window as unknown as { electronAPI: { revealInFolder: (p: string) => Promise<void> } }).electronAPI.revealInFolder(result.filePath); } catch { /* ignore */ }
+              }
+            } finally {
+              setShowExportDialog(false);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
