@@ -3,6 +3,10 @@
  * Mocks keytar, fs, DB models, JobRunner, ErrorTranslationService.
  * Provides CJS cache patch/restore for require() inside backendAdapter.js.
  * Each file < 400 lines (ADR-011).
+ *
+ * CRITICAL: Tests must never call vi.unmock('keytar'). Unmocking keytar leaves it
+ * unmocked for other test files; any test that then loads BackendAdapter and calls
+ * setApiKey/saveSettings can write test keys (e.g. 'test-openai-key') to the real OS keychain.
  */
 
 import path from 'path';

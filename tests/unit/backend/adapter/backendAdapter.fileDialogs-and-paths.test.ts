@@ -11,7 +11,7 @@ describe('BackendAdapter (unit) file dialogs + path validation', () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
-    vi.unmock('keytar');
+    // Do NOT vi.unmock('keytar') — leaves keytar unmocked for other test files and can write test keys to real OS keychain.
     vi.unmock('fs');
     vi.unmock('../../../../src/database/models/JobConfiguration');
     vi.unmock('../../../../src/database/models/JobExecution');
@@ -38,8 +38,8 @@ describe('BackendAdapter (unit) file dialogs + path validation', () => {
     electron?: any;
     fs?: any;
   } = {}) {
-    vi.unmock('keytar');
     vi.unmock('fs');
+    // Keep keytar mocked (doMock) — never unmock keytar or tests in other files can write to real OS keychain.
 
     vi.doMock('keytar', () => ({
       getPassword: vi.fn().mockResolvedValue(null),
