@@ -90,6 +90,7 @@ export function SettingsTabProcessing({
                 <p className="text-xs text-gray-500">Trim transparent edges after background removal</p>
               </div>
               <Toggle
+                ariaLabel="Toggle trim transparent background"
                 checked={form.processing.trimTransparentBackground}
                 onChange={handleToggleChange('processing', 'trimTransparentBackground')}
               />
@@ -103,6 +104,7 @@ export function SettingsTabProcessing({
               <p className="text-xs text-gray-500">Enable image conversion and processing</p>
             </div>
             <Toggle
+              ariaLabel="Toggle image conversion"
               checked={form.processing.imageConvert}
               onChange={handleToggleChange('processing', 'imageConvert')}
             />

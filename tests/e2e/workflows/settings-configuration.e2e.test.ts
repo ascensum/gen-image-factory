@@ -396,10 +396,9 @@ test.describe('Settings Configuration E2E Tests', () => {
     await removeBgSizeSelect.selectOption('full');
     await expect(removeBgSizeSelect).toHaveValue('full');
 
-    // Test Image Convert toggle (master switch for image conversion) - Active State Synchronization
-    const imageConvertToggle = page.locator('button[role="switch"]').nth(1);
-    await page.waitForSelector('button[role="switch"]', { state: 'attached', timeout: 15000 });
-    await expect(imageConvertToggle).toBeVisible();
+    // Test Image Convert toggle (master switch for image conversion) - use label to avoid index drift
+    const imageConvertToggle = page.getByRole('switch', { name: /image conversion/i });
+    await expect(imageConvertToggle).toBeVisible({ timeout: 15000 });
     await imageConvertToggle.click();
     await expect(imageConvertToggle).toHaveAttribute('aria-checked', 'true');
 
@@ -460,10 +459,9 @@ test.describe('Settings Configuration E2E Tests', () => {
     await expect(pngQualityInput).toHaveValue('90');
     */
 
-    // Test Trim Transparent Background toggle (appears when Remove Background is enabled) - Active State Synchronization
-    const trimTransparentToggle = page.locator('button[role="switch"]').nth(3);
-    await page.waitForSelector('button[role="switch"]', { state: 'attached', timeout: 15000 });
-    await expect(trimTransparentToggle).toBeVisible();
+    // Test Trim Transparent Background toggle (appears when Remove Background is enabled) - use label to avoid index drift
+    const trimTransparentToggle = page.getByRole('switch', { name: /trim transparent/i });
+    await expect(trimTransparentToggle).toBeVisible({ timeout: 15000 });
     await trimTransparentToggle.click();
     await expect(trimTransparentToggle).toHaveAttribute('aria-checked', 'true');
   });
