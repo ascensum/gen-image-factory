@@ -442,6 +442,7 @@ jobs:
       - name: Create or Update Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NOTES: ${{ steps.build_changelog.outputs.changelog }}
         run: |
           # Check if there are any files to upload
           if [ -z "$(ls -A artifacts-filtered/)" ]; then
@@ -465,7 +466,7 @@ jobs:
             echo "Creating new release ${{ github.ref_name }}"
             gh release create ${{ github.ref_name }} \
               --title "Release ${{ github.ref_name }}" \
-              --notes "${{ steps.build_changelog.outputs.changelog }}" \
+              --notes "$RELEASE_NOTES" \
               $PRERELEASE_FLAGS \
               artifacts-filtered/*
           fi
