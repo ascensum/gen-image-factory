@@ -130,6 +130,22 @@ class JobRepository {
         params.push(filters.endDate);
       }
 
+      // dateFrom/dateTo: same semantics as legacy JobExecution (calendar-day filter on started_at)
+      if (filters.dateFrom || filters.dateTo) {
+        if (filters.dateFrom) {
+          const d = new Date(typeof filters.dateFrom === 'string' ? filters.dateFrom : filters.dateFrom);
+          const fromYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          conditions.push('date(je.started_at) >= date(?)');
+          params.push(fromYmd);
+        }
+        if (filters.dateTo) {
+          const d = new Date(typeof filters.dateTo === 'string' ? filters.dateTo : filters.dateTo);
+          const toYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          conditions.push('date(je.started_at) <= date(?)');
+          params.push(toYmd);
+        }
+      }
+
       // Has pending reruns: restrict to execution ids in bulk rerun queue (Strangler Fig parity with legacy)
       // Normalize to integers so SQLite INTEGER PRIMARY KEY matches (queue may send strings from IPC/serialization)
       const rawIds = (filters.ids && Array.isArray(filters.ids)) ? filters.ids : [];
@@ -235,6 +251,21 @@ class JobRepository {
       if (filters.endDate) {
         conditions.push('started_at <= ?');
         params.push(filters.endDate);
+      }
+
+      if (filters.dateFrom || filters.dateTo) {
+        if (filters.dateFrom) {
+          const d = new Date(typeof filters.dateFrom === 'string' ? filters.dateFrom : filters.dateFrom);
+          const fromYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          conditions.push('date(started_at) >= date(?)');
+          params.push(fromYmd);
+        }
+        if (filters.dateTo) {
+          const d = new Date(typeof filters.dateTo === 'string' ? filters.dateTo : filters.dateTo);
+          const toYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          conditions.push('date(started_at) <= date(?)');
+          params.push(toYmd);
+        }
       }
 
       const rawCountIds = (filters.ids && Array.isArray(filters.ids)) ? filters.ids : [];

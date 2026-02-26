@@ -101,6 +101,11 @@ export const DashboardGalleryTabContent: React.FC<DashboardGalleryTabContentProp
             selectedIds={props.selectedImages}
             onSelectionChange={props.setSelectedImages}
             jobIdToLabel={jobIdToLabel}
+            jobFilter={props.imageJobFilter}
+            searchQuery={props.imageSearchQuery}
+            sortBy={props.imageSortBy}
+            dateFrom={props.imageDateFrom ?? null}
+            dateTo={props.imageDateTo ?? null}
             containerWidth={props.galleryContainerSize.width}
             containerHeight={props.galleryContainerSize.height}
             onLoadMore={props.galleryHasMore ? props.onLoadMore : undefined}
