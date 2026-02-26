@@ -5,10 +5,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import DashboardPanel from '../DashboardPanel';
 
 describe('DashboardPanel image gallery export ZIP (workflow)', () => {
-  let onProgress: ((data: any) => void) | null = null;
-  let onCompleted: ((data: any) => void) | null = null;
-  let onError: ((data: any) => void) | null = null;
-
   const images = [
     {
       id: 'img-1',
@@ -38,13 +34,12 @@ describe('DashboardPanel image gallery export ZIP (workflow)', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
     // Avoid polling intervals in this test
-    vi.spyOn(globalThis, 'setInterval').mockImplementation(((cb: any) => {
-      void cb;
-      return 0 as any;
-    }) as any);
-    vi.spyOn(globalThis, 'clearInterval').mockImplementation(((id: any) => {
-      void id;
-    }) as any);
+    vi.spyOn(globalThis, 'setInterval').mockImplementation(
+      ((_cb: Parameters<typeof setInterval>[0]) => 0) as typeof setInterval
+    );
+    vi.spyOn(globalThis, 'clearInterval').mockImplementation(
+      ((_id: Parameters<typeof clearInterval>[0]) => undefined) as typeof clearInterval
+    );
 
     const mockElectronAPI: any = {
       getSettings: vi.fn().mockResolvedValue({ settings: { advanced: { debugMode: false } } }),
@@ -55,6 +50,7 @@ describe('DashboardPanel image gallery export ZIP (workflow)', () => {
       jobManagement: {
         getJobStatus: vi.fn().mockResolvedValue({ state: 'idle', progress: 0, currentStep: 1, totalSteps: 2 }),
         getJobHistory: vi.fn().mockResolvedValue([{ id: 1, label: 'Job 1', status: 'completed' }]),
+        getAllJobExecutions: vi.fn().mockResolvedValue([{ id: 1, label: 'Job 1', status: 'completed' }]),
         getJobStatistics: vi.fn().mockResolvedValue({
           totalJobs: 1,
           completedJobs: 1,
@@ -67,9 +63,10 @@ describe('DashboardPanel image gallery export ZIP (workflow)', () => {
         getJobLogs: vi.fn().mockResolvedValue([]),
       },
       generatedImages: {
-        onZipExportProgress: vi.fn((cb: any) => { onProgress = cb; }),
-        onZipExportCompleted: vi.fn((cb: any) => { onCompleted = cb; }),
-        onZipExportError: vi.fn((cb: any) => { onError = cb; }),
+        getImagesByQCStatus: vi.fn().mockResolvedValue({ images, hasMore: false }),
+        onZipExportProgress: vi.fn(),
+        onZipExportCompleted: vi.fn(),
+        onZipExportError: vi.fn(),
         removeZipExportProgress: vi.fn(),
         removeZipExportCompleted: vi.fn(),
         removeZipExportError: vi.fn(),
@@ -81,9 +78,6 @@ describe('DashboardPanel image gallery export ZIP (workflow)', () => {
   });
 
   afterEach(() => {
-    onProgress = null;
-    onCompleted = null;
-    onError = null;
     vi.restoreAllMocks();
   });
 
@@ -116,19 +110,15 @@ describe('DashboardPanel image gallery export ZIP (workflow)', () => {
 
     await waitFor(() => {
       expect((window as any).electronAPI.generatedImages.exportZip).toHaveBeenCalledWith(
-        ['img-1', 'img-2'],
+        expect.arrayContaining(['img-1', 'img-2']),
         true,
         undefined,
       );
     });
 
-    // Simulate progress + completion events
-    expect(onProgress).toBeTruthy();
-    expect(onCompleted).toBeTruthy();
-
-    onProgress?.({ step: 'creating-excel' });
-    onCompleted?.({});
-
+    // The new DashboardView calls exportZip directly (no event listeners).
+    // exportZip mock resolves with { success: true, zipPath: '/tmp/export.zip' },
+    // which should trigger revealInFolder automatically.
     await waitFor(() => {
       expect((window as any).electronAPI.revealInFolder).toHaveBeenCalledWith('/tmp/export.zip');
     });

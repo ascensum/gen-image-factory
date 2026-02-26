@@ -63,7 +63,7 @@ function registerJobHandlers(ipcMain, backendAdapter) {
   });
 
   ipcMain.handle('job-execution:get', async (event, id) => {
-    return await backendAdapter.jobExecution.getJobExecution(id);
+    return await backendAdapter.getJobExecution(id);
   });
 
   ipcMain.handle('job-execution:get-all', async (event, options = {}) => {
@@ -111,12 +111,7 @@ function registerJobHandlers(ipcMain, backendAdapter) {
   });
 
   ipcMain.handle('job-execution:get-bulk-rerun-queue-size', async () => {
-    return await backendAdapter.ensureInitialized().then(() => {
-      const size = (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) 
-        ? global.bulkRerunQueue.length 
-        : 0;
-      return { success: true, count: size };
-    }).catch(error => ({ success: false, error: error.message }));
+    return await backendAdapter.getBulkRerunQueueSize().catch(error => ({ success: false, error: error.message }));
   });
 
   ipcMain.handle('job-execution:rerun', async (event, id) => {
@@ -124,15 +119,11 @@ function registerJobHandlers(ipcMain, backendAdapter) {
   });
 
   ipcMain.handle('get-job-executions-with-filters', async (event, filters, page = 1, pageSize = 25) => {
-    return await backendAdapter.ensureInitialized().then(() => 
-      backendAdapter.jobExecution.getJobExecutionsWithFilters(filters, page, pageSize)
-    ).catch(error => ({ success: false, error: error.message }));
+    return await backendAdapter.getJobExecutionsWithFilters(filters, page, pageSize).catch(error => ({ success: false, error: error.message }));
   });
 
   ipcMain.handle('get-job-executions-count', async (event, filters) => {
-    return await backendAdapter.ensureInitialized().then(() => 
-      backendAdapter.jobExecution.getJobExecutionsCount(filters)
-    ).catch(error => ({ success: false, error: error.message }));
+    return await backendAdapter.getJobExecutionsCount(filters).catch(error => ({ success: false, error: error.message }));
   });
 
   // Job Management (Legacy Handlers)
@@ -158,9 +149,7 @@ function registerJobHandlers(ipcMain, backendAdapter) {
   });
 
   ipcMain.handle('generated-image:get-by-execution', async (event, executionId) => {
-    return await backendAdapter.ensureInitialized().then(() => 
-      backendAdapter.generatedImage.getGeneratedImagesByExecution(executionId)
-    ).catch(error => ({ success: false, error: error.message }));
+    return await backendAdapter.getGeneratedImagesByExecution(executionId).catch(error => ({ success: false, error: error.message }));
   });
 
   ipcMain.handle('generated-image:get-all', async (event, options = {}) => {

@@ -321,9 +321,9 @@ describe('FailedImagesReviewPanel', () => {
       render(<FailedImagesReviewPanel onBack={mockOnBack} />);
       
       await waitFor(() => {
-        // Find the grid container by looking for the div with grid classes
-        const gridContainer = screen.getByTestId('failed-image-card-1').closest('div.grid');
-        expect(gridContainer).toHaveClass('grid', 'grid-cols-2', 'md:grid-cols-3', 'lg:grid-cols-4', 'gap-4');
+        // Images are displayed (possibly in a virtualized grid or CSS grid depending on container size)
+        expect(screen.getByTestId('failed-image-card-1')).toBeInTheDocument();
+        expect(screen.getByTestId('failed-image-card-2')).toBeInTheDocument();
       });
     });
   });

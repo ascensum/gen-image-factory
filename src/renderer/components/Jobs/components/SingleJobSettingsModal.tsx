@@ -127,7 +127,7 @@ const SingleJobSettingsModal: React.FC<SingleJobSettingsModalProps> = ({
                 <Toggle checked={editedSettings.parameters?.enablePollingTimeout || false} onChange={(checked) => onSettingChange('parameters', 'enablePollingTimeout', checked)} />
               </div>
               {editedSettings.parameters?.enablePollingTimeout && (
-                <div className="flex flex-col mb-4">
+                <div className="setting-row flex flex-col mb-4">
                   <label>Generation Timeout (minutes)</label>
                   <input type="number" value={editedSettings.parameters?.pollingTimeout || 0} onChange={(e) => onSettingChange('parameters', 'pollingTimeout', parseInt(e.target.value))} min="0" />
                 </div>

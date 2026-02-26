@@ -160,7 +160,7 @@ describe('BackendAdapter (unit) - bulk export + retry init + filters (more cover
 
     const res = await adapter.getJobExecutionsWithFilters({ hasPendingRetries: true });
     expect(res.success).toBe(true);
-    expect(adapter.jobExecution.getJobExecutionsWithFilters).toHaveBeenCalledWith(expect.objectContaining({ ids: [7, 9] }));
+    expect(adapter.jobExecution.getJobExecutionsWithFilters).toHaveBeenCalledWith(expect.objectContaining({ ids: [7, 9] }), 1, 25);
     expect(res.jobs).toEqual([
       expect.objectContaining({ id: 7, pendingJobs: 1 }),
       expect.objectContaining({ id: 8, pendingJobs: 0 }),

@@ -168,6 +168,18 @@ class BulkRerunService {
   }
 
   /**
+   * Return execution ids currently in the bulk rerun queue (read-only).
+   * Used by JobListService for "Has pending reruns" filter without coupling to global state outside this service.
+   * @returns {string[]|number[]} Array of job execution ids (jobId from each queue item)
+   */
+  getPendingRerunExecutionIds() {
+    if (!global.bulkRerunQueue || !Array.isArray(global.bulkRerunQueue)) {
+      return [];
+    }
+    return global.bulkRerunQueue.map(item => item.jobId).filter(id => id != null);
+  }
+
+  /**
    * Process the next job in global.bulkRerunQueue (called when a job finishes).
    * @returns {Promise<{ success: boolean, message?: string, error?: string, jobId?: string, executionId?: string, remainingInQueue?: number }>}
    */

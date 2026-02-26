@@ -99,6 +99,22 @@ export function useJobList() {
           break;
       }
     }
+    if (filters.dateFrom || filters.dateTo) {
+      filtered = filtered.filter((job) => {
+        const started = job.startedAt ? new Date(job.startedAt as string | Date) : null;
+        if (!started || isNaN(started.getTime())) return false;
+        const ymd = `${started.getFullYear()}-${String(started.getMonth() + 1).padStart(2, '0')}-${String(started.getDate()).padStart(2, '0')}`;
+        const fromStr = filters.dateFrom
+          ? (filters.dateFrom instanceof Date ? filters.dateFrom.toISOString().slice(0, 10) : String(filters.dateFrom).slice(0, 10))
+          : null;
+        const toStr = filters.dateTo
+          ? (filters.dateTo instanceof Date ? filters.dateTo.toISOString().slice(0, 10) : String(filters.dateTo).slice(0, 10))
+          : null;
+        if (fromStr && ymd < fromStr) return false;
+        if (toStr && ymd > toStr) return false;
+        return true;
+      });
+    }
     if ((filters.label || '').trim()) {
       const labelQuery = (filters.label || '').toLowerCase();
       filtered = filtered.filter((job) => job.label?.toLowerCase().includes(labelQuery));

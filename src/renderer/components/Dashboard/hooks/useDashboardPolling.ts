@@ -55,7 +55,9 @@ export const useDashboardPolling = ({
           const hasRunningInHistory = Array.isArray(jobHistory) && jobHistory.some(j => String(j.status).toLowerCase() === 'running');
           const hasCurrentJobFromBackend = normalized?.currentJob != null;
           if (normalized && normalized.state === 'running' && !hasCurrentJobFromBackend && !hasRunningInHistory) {
-            normalized.state = 'failed';
+            // Stale running state (e.g. after crash/restart): reset to idle, not failed.
+            // 'failed' should only come from the backend explicitly reporting a failure.
+            normalized.state = 'idle';
             normalized.currentJob = null;
             normalized.progress = 0;
             normalized.currentStep = 1;
@@ -113,14 +115,14 @@ export const useDashboardPolling = ({
   useEffect(() => {
     if (jobStatus.state === 'completed') {
       lastCompletionRef.current = Date.now();
-      loadJobHistory();
+      loadJobHistory(true);  // silent: keep history list visible, no spinner flash
       loadStatistics();
       setTimeout(() => {
         loadGeneratedImages();
       }, 500);
     } else if (jobStatus.state === 'failed') {
       lastCompletionRef.current = Date.now();
-      loadJobHistory();
+      loadJobHistory(true);  // silent: keep history list visible, no spinner flash
       loadStatistics();
     } else if (jobStatus.state === 'running') {
       lastCompletionRef.current = null;

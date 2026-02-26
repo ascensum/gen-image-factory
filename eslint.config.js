@@ -85,6 +85,8 @@ module.exports = [
         alert: 'readonly',
         URL: 'readonly',
         ResizeObserver: 'readonly',
+        ResizeObserverCallback: 'readonly',
+        ResizeObserverEntry: 'readonly',
         Blob: 'readonly',
         AbortController: 'readonly',
         React: 'readonly',
@@ -235,7 +237,7 @@ module.exports = [
     },
   },
   {
-    files: ['**/*.test.{js,ts,tsx}', '**/*.spec.{js,ts,tsx}', '**/__tests__/**/*.{js,ts,tsx}', 'tests/**/*.{js,ts,tsx}'],
+    files: ['**/*.test.{js,ts,tsx}', '**/*.spec.{js,ts,tsx}', '**/__tests__/**/*.{js,ts,tsx}', 'tests/**/*.{js,ts,tsx}', 'src/test/**/*.{js,ts,tsx}'],
     languageOptions: {
       globals: {
         // Vitest globals
@@ -263,6 +265,8 @@ module.exports = [
     },
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-explicit-any': 'off',
       'no-empty': 'warn',
     },
   },

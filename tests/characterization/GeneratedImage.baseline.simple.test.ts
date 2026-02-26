@@ -11,7 +11,6 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createRequire } from 'node:module';
-import * as fs from 'fs';
 import * as path from 'path';
 
 const req = createRequire(import.meta.url);
@@ -26,11 +25,9 @@ const BASE_TEST_IMAGES = [
 describe('GeneratedImage.js Characterization Tests (Baseline - Simplified)', () => {
   let GeneratedImage: any;
   let generatedImage: any;
-  let testDbPath: string;
 
   beforeEach(async () => {
-    // createRequire bypasses vi.mock; all instances share data/gen-image-factory.db
-    testDbPath = path.join(process.cwd(), 'data', 'gen-image-factory.db');
+    const _testDbPath = path.join(process.cwd(), 'data', 'gen-image-factory.db'); // documents actual DB location
 
     delete req.cache[req.resolve('../../src/database/models/GeneratedImage.js')];
     const module = req('../../src/database/models/GeneratedImage.js');
@@ -38,6 +35,20 @@ describe('GeneratedImage.js Characterization Tests (Baseline - Simplified)', () 
 
     generatedImage = new GeneratedImage();
     await generatedImage.init();
+
+    // Ensure job_executions table exists (required for LEFT JOIN in getImageMetadata)
+    await new Promise<void>((resolve) => {
+      generatedImage.db.run(`
+        CREATE TABLE IF NOT EXISTS job_executions (
+          id TEXT PRIMARY KEY,
+          configuration_id INTEGER,
+          status TEXT DEFAULT 'pending',
+          started_at DATETIME,
+          completed_at DATETIME,
+          error_message TEXT
+        )
+      `, () => resolve());
+    });
 
     // Truncate for isolation (shared DB with baseline.test.ts running in parallel)
     await new Promise<void>((resolve) => {

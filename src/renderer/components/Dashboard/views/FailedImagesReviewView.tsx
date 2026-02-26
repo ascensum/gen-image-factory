@@ -159,7 +159,6 @@ export const FailedImagesReviewView: React.FC<FailedImagesReviewViewProps> = ({ 
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-gray-700">Label filter:</span>
               <SimpleDropdown
                 options={FAILED_FILTER_OPTIONS}
                 value={failed.imageFilter}

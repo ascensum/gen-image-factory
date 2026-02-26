@@ -68,29 +68,29 @@ const SingleJobOverviewTab: React.FC<SingleJobOverviewTabProps> = ({
 
     <h2 className="text-lg font-semibold mb-4 text-[var(--foreground)]">Generated Images Summary</h2>
     <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4 mb-6">
-      <div className="p-4 border border-[var(--border)] rounded-[var(--radius)] bg-[var(--card)] text-center">
-        <div className="text-[0.813rem] text-[var(--muted-foreground)] mb-1 uppercase tracking-wide">Total Images</div>
-        <div className="text-[1.375rem] font-bold text-[var(--foreground)]">{job.totalImages || 0}</div>
+      <div className="stats-card p-4 border border-[var(--border)] rounded-[var(--radius)] bg-[var(--card)] text-center">
+        <div className="stats-label text-[0.813rem] text-[var(--muted-foreground)] mb-1 uppercase tracking-wide">Total Images</div>
+        <div className="stats-value text-[1.375rem] font-bold text-[var(--foreground)]">{job.totalImages || 0}</div>
       </div>
-      <div className="p-4 border border-[var(--border)] rounded-[var(--radius)] bg-[var(--card)] text-center">
-        <div className="text-[0.813rem] text-[var(--muted-foreground)] mb-1 uppercase tracking-wide">Successful</div>
-        <div className="text-[1.375rem] font-bold text-[var(--status-completed)]">{job.successfulImages || 0}</div>
+      <div className="stats-card p-4 border border-[var(--border)] rounded-[var(--radius)] bg-[var(--card)] text-center">
+        <div className="stats-label text-[0.813rem] text-[var(--muted-foreground)] mb-1 uppercase tracking-wide">Successful</div>
+        <div className="stats-value success text-[1.375rem] font-bold text-[var(--status-completed)]">{job.successfulImages || 0}</div>
         {(job.successfulImages || 0) > 0 && (
           <div className="mt-3 pt-3 border-t border-[var(--border)] flex flex-col gap-2">
-            <div className="flex justify-between items-center text-sm py-1">
-              <span className="text-[var(--muted-foreground)] font-medium">Approved:</span>
-              <span className="font-semibold text-[var(--status-completed)]">{(job as any).approvedImages || 0}</span>
+            <div className="breakdown-item flex justify-between items-center text-sm py-1">
+              <span className="breakdown-label text-[var(--muted-foreground)] font-medium">Approved:</span>
+              <span className="breakdown-value font-semibold text-[var(--status-completed)]">{(job as any).approvedImages || 0}</span>
             </div>
-            <div className="flex justify-between items-center text-sm py-1">
-              <span className="text-[var(--muted-foreground)] font-medium">Failed Processing:</span>
-              <span className="font-semibold text-[var(--status-failed)]">{failedProcessingCount}</span>
+            <div className="breakdown-item flex justify-between items-center text-sm py-1">
+              <span className="breakdown-label text-[var(--muted-foreground)] font-medium">Failed Processing:</span>
+              <span className="breakdown-value font-semibold text-[var(--status-failed)]">{failedProcessingCount}</span>
             </div>
           </div>
         )}
       </div>
-      <div className="p-4 border border-[var(--border)] rounded-[var(--radius)] bg-[var(--card)] text-center">
-        <div className="text-[0.813rem] text-[var(--muted-foreground)] mb-1 uppercase tracking-wide">Failed</div>
-        <div className="text-[1.375rem] font-bold text-[var(--status-failed)]">{job.failedImages || 0}</div>
+      <div className="stats-card p-4 border border-[var(--border)] rounded-[var(--radius)] bg-[var(--card)] text-center">
+        <div className="stats-label text-[0.813rem] text-[var(--muted-foreground)] mb-1 uppercase tracking-wide">Failed</div>
+        <div className="stats-value failed text-[1.375rem] font-bold text-[var(--status-failed)]">{job.failedImages || 0}</div>
         <div className="text-xs text-[var(--muted-foreground)] mt-2 italic">Generation failed</div>
       </div>
     </div>

@@ -19,7 +19,7 @@ class JobRepository {
       const sql = `
         SELECT 
           je.*,
-          jc.label as configuration_label,
+          jc.name as configuration_label,
           jc.name as configuration_name
         FROM job_executions je
         LEFT JOIN job_configurations jc ON je.configuration_id = jc.id
@@ -110,7 +110,7 @@ class JobRepository {
       const conditions = [];
       const params = [];
 
-      if (filters.status) {
+      if (filters.status && filters.status !== 'all') {
         conditions.push('je.status = ?');
         params.push(filters.status);
       }
@@ -130,13 +130,38 @@ class JobRepository {
         params.push(filters.endDate);
       }
 
+      // dateFrom/dateTo: same semantics as legacy JobExecution (calendar-day filter on started_at)
+      if (filters.dateFrom || filters.dateTo) {
+        if (filters.dateFrom) {
+          const d = new Date(typeof filters.dateFrom === 'string' ? filters.dateFrom : filters.dateFrom);
+          const fromYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          conditions.push('date(je.started_at) >= date(?)');
+          params.push(fromYmd);
+        }
+        if (filters.dateTo) {
+          const d = new Date(typeof filters.dateTo === 'string' ? filters.dateTo : filters.dateTo);
+          const toYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          conditions.push('date(je.started_at) <= date(?)');
+          params.push(toYmd);
+        }
+      }
+
+      // Has pending reruns: restrict to execution ids in bulk rerun queue (Strangler Fig parity with legacy)
+      // Normalize to integers so SQLite INTEGER PRIMARY KEY matches (queue may send strings from IPC/serialization)
+      const rawIds = (filters.ids && Array.isArray(filters.ids)) ? filters.ids : [];
+      const ids = rawIds.map(id => (typeof id === 'number' && !Number.isNaN(id)) ? id : Number(id)).filter(n => !Number.isNaN(n));
+      if (ids.length > 0) {
+        conditions.push(`je.id IN (${ids.map(() => '?').join(',')})`);
+        params.push(...ids);
+      }
+
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
       const offset = (page - 1) * pageSize;
 
       const sql = `
         SELECT 
           je.*,
-          jc.label as configuration_label,
+          jc.name as configuration_label,
           jc.name as configuration_name
         FROM job_executions je
         LEFT JOIN job_configurations jc ON je.configuration_id = jc.id
@@ -152,24 +177,36 @@ class JobRepository {
           console.error('Error getting filtered job executions:', err);
           reject(err);
         } else {
-          const executions = rows.map(row => ({
-            id: row.id,
-            configurationId: row.configuration_id,
-            configurationLabel: row.configuration_label,
-            configurationName: row.configuration_name,
-            startedAt: row.started_at ? new Date(row.started_at) : null,
-            completedAt: row.completed_at ? new Date(row.completed_at) : null,
-            status: row.status,
-            totalImages: row.total_images,
-            successfulImages: row.successful_images,
-            failedImages: row.failed_images,
-            errorMessage: row.error_message,
-            label: row.label,
-            configurationSnapshot: row.configuration_snapshot ? JSON.parse(row.configuration_snapshot) : null
-          }));
+          const executions = rows.map(row => {
+            let configurationSnapshot = null;
+            if (row.configuration_snapshot) {
+              try {
+                configurationSnapshot = JSON.parse(row.configuration_snapshot);
+              } catch (_) {
+                configurationSnapshot = null;
+              }
+            }
+            return {
+              id: row.id,
+              configurationId: row.configuration_id,
+              configurationLabel: row.configuration_label,
+              configurationName: row.configuration_name,
+              startedAt: row.started_at ? new Date(row.started_at) : null,
+              completedAt: row.completed_at ? new Date(row.completed_at) : null,
+              status: row.status,
+              totalImages: row.total_images,
+              successfulImages: row.successful_images,
+              failedImages: row.failed_images,
+              errorMessage: row.error_message,
+              label: row.label,
+              configurationSnapshot
+            };
+          });
 
+          // Adapter expects result.jobs for pending-rerun enrichment; keep .executions for callers that use it
           resolve({
             success: true,
+            jobs: executions,
             executions,
             pagination: {
               page,
@@ -196,7 +233,7 @@ class JobRepository {
       const conditions = [];
       const params = [];
 
-      if (filters.status) {
+      if (filters.status && filters.status !== 'all') {
         conditions.push('status = ?');
         params.push(filters.status);
       }
@@ -214,6 +251,28 @@ class JobRepository {
       if (filters.endDate) {
         conditions.push('started_at <= ?');
         params.push(filters.endDate);
+      }
+
+      if (filters.dateFrom || filters.dateTo) {
+        if (filters.dateFrom) {
+          const d = new Date(typeof filters.dateFrom === 'string' ? filters.dateFrom : filters.dateFrom);
+          const fromYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          conditions.push('date(started_at) >= date(?)');
+          params.push(fromYmd);
+        }
+        if (filters.dateTo) {
+          const d = new Date(typeof filters.dateTo === 'string' ? filters.dateTo : filters.dateTo);
+          const toYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          conditions.push('date(started_at) <= date(?)');
+          params.push(toYmd);
+        }
+      }
+
+      const rawCountIds = (filters.ids && Array.isArray(filters.ids)) ? filters.ids : [];
+      const countIds = rawCountIds.map(id => (typeof id === 'number' && !Number.isNaN(id)) ? id : Number(id)).filter(n => !Number.isNaN(n));
+      if (countIds.length > 0) {
+        conditions.push(`id IN (${countIds.map(() => '?').join(',')})`);
+        params.push(...countIds);
       }
 
       const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -276,7 +335,7 @@ class JobRepository {
       const sql = `
         SELECT 
           je.*,
-          jc.label as configuration_label,
+          jc.name as configuration_label,
           jc.name as configuration_name
         FROM job_executions je
         LEFT JOIN job_configurations jc ON je.configuration_id = jc.id

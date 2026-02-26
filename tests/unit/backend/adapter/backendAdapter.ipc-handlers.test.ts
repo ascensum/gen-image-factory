@@ -15,7 +15,7 @@ describe('BackendAdapter.setupIpcHandlers (unit, isolated)', () => {
     handlers.clear();
     vi.clearAllMocks();
     vi.resetModules();
-    vi.unmock('keytar');
+    // Do NOT vi.unmock('keytar') — leaves keytar unmocked for other files and can write test keys to real OS keychain.
     vi.unmock('electron');
     vi.unmock('../../../../src/database/models/JobConfiguration');
     vi.unmock('../../../../src/database/models/JobExecution');

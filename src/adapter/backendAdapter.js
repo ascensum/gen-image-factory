@@ -35,6 +35,14 @@ const ACCOUNT_NAMES = {
   REMOVE_BG: 'remove-bg-api-key'
 };
 
+// Normalize camelCase service names from the frontend form (e.g. 'removeBg') to the
+// ACCOUNT_NAMES key format (e.g. 'REMOVE_BG'). Without this, removeBg.toUpperCase()
+// produces 'REMOVEBG' which does not match 'REMOVE_BG' and silently skips keytar save.
+function normalizeServiceKey(service) {
+  if (service === 'removeBg' || service === 'removebg' || service === 'remove_bg') return 'REMOVE_BG';
+  return service.toUpperCase();
+}
+
 // Encryption settings for fallback storage
 const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
@@ -112,6 +120,13 @@ class BackendAdapter {
       jobConfig: this.jobConfig,
       jobRunner: this.jobRunner,
       getSettings: () => this.getSettings()
+    });
+    // JobListService: list/count with "Has pending reruns" (Story 3.1/3.2 gap; Epic 3 layered architecture)
+    const { JobListService } = require('../services/JobListService');
+    this.jobListService = new JobListService({
+      fetchJobExecutionsWithFilters: (f, p, ps) => this._getJobExecutionsWithFiltersFromRepoOrLegacy(f, p, ps),
+      fetchJobExecutionsCount: (f) => this._getJobExecutionsCountFromRepoOrLegacy(f),
+      getPendingRerunExecutionIds: () => this.bulkRerunService.getPendingRerunExecutionIds()
     });
   }
 
@@ -747,23 +762,13 @@ class BackendAdapter {
         return await this.processNextBulkRerunJob();
       });
 
-      // Expose the current bulk rerun queue size for UI Pending stats
-      _ipc.handle('job-execution:get-bulk-rerun-queue-size', async () => {
-        try {
-          await this.ensureInitialized();
-          const size = (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) ? global.bulkRerunQueue.length : 0;
-          return { success: true, count: size };
-        } catch (error) {
-          console.error('Error getting bulk rerun queue size:', error);
-          return { success: false, error: error.message };
-        }
-      });
+      // Expose the current bulk rerun queue size for UI Pending stats (Epic 3: delegate to adapter API)
+      _ipc.handle('job-execution:get-bulk-rerun-queue-size', async () => this.getBulkRerunQueueSize());
 
       _ipc.handle('get-job-executions-with-filters', async (event, filters, page = 1, pageSize = 25) => {
         try {
           await this.ensureInitialized();
-          const result = await this.jobExecution.getJobExecutionsWithFilters(filters, page, pageSize);
-          return result;
+          return await this.getJobExecutionsWithFilters(filters, page, pageSize);
         } catch (error) {
           console.error('Error getting job executions with filters:', error);
           return { success: false, error: error.message };
@@ -773,8 +778,7 @@ class BackendAdapter {
       _ipc.handle('get-job-executions-count', async (event, filters) => {
         try {
           await this.ensureInitialized();
-          const result = await this.jobExecution.getJobExecutionsCount(filters);
-          return result;
+          return await this.getJobExecutionsCount(filters);
         } catch (error) {
           console.error('Error getting job executions count:', error);
           return { success: false, error: error.message };
@@ -1011,7 +1015,6 @@ class BackendAdapter {
         try {
           result = await this.jobConfigurationRepository.getSettings();
         } catch (error) {
-          console.warn('JobConfigurationRepository.getSettings failed, falling back to legacy:', error.message);
           result = await this.jobConfig.getSettings();
         }
       } else {
@@ -1079,7 +1082,6 @@ class BackendAdapter {
         try {
           return await this.jobConfigurationRepository.getConfigurationById(id);
         } catch (error) {
-          console.warn('JobConfigurationRepository.getConfigurationById failed, falling back to legacy:', error.message);
         }
       }
       
@@ -1117,7 +1119,6 @@ class BackendAdapter {
         try {
           return await this.jobConfigurationRepository.updateConfiguration(id, settingsObject);
         } catch (error) {
-          console.warn('JobConfigurationRepository.updateConfiguration failed, falling back to legacy:', error.message);
         }
       }
       
@@ -1139,7 +1140,6 @@ class BackendAdapter {
         try {
           return await this.jobConfigurationRepository.updateConfigurationName(id, newName);
         } catch (error) {
-          console.warn('JobConfigurationRepository.updateConfigurationName failed, falling back to legacy:', error.message);
         }
       }
       
@@ -1171,7 +1171,7 @@ class BackendAdapter {
 
       // Save API keys to secure storage
       for (const [service, apiKey] of Object.entries(settingsObject.apiKeys)) {
-        const accountName = ACCOUNT_NAMES[service.toUpperCase()];
+        const accountName = ACCOUNT_NAMES[normalizeServiceKey(service)];
         if (accountName) {
           try {
             if (apiKey && apiKey.trim() !== '') {
@@ -1192,7 +1192,6 @@ class BackendAdapter {
         try {
           result = await this.jobConfigurationRepository.saveSettings(settingsObject);
         } catch (error) {
-          console.warn('JobConfigurationRepository.saveSettings failed, falling back to legacy:', error.message);
           result = await this.jobConfig.saveSettings(settingsObject);
         }
       } else {
@@ -1595,7 +1594,6 @@ class BackendAdapter {
           return await this.jobRepository.saveJobExecution(execution);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('JobRepository', 'saveJobExecution', error);
-          console.warn('JobRepository.saveJobExecution failed, falling back to legacy:', error.message);
         }
       }
       
@@ -1620,7 +1618,6 @@ class BackendAdapter {
           return await this.jobRepository.getJobExecution(id);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecution', error);
-          console.warn('JobRepository.getJobExecution failed, falling back to legacy:', error.message);
         }
       }
       
@@ -1672,7 +1669,6 @@ class BackendAdapter {
           return await this.jobRepository.updateJobExecution(id, execution);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('JobRepository', 'updateJobExecution', error);
-          console.warn('JobRepository.updateJobExecution failed, falling back to legacy:', error.message);
         }
       }
       
@@ -1697,7 +1693,6 @@ class BackendAdapter {
           return await this.jobRepository.deleteJobExecution(id);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('JobRepository', 'deleteJobExecution', error);
-          console.warn('JobRepository.deleteJobExecution failed, falling back to legacy:', error.message);
         }
       }
       
@@ -1724,7 +1719,6 @@ class BackendAdapter {
         }
         // Fallback to legacy on error
         shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobHistory', new Error('Repository returned unexpected format'));
-        console.warn('JobRepository.getJobHistory failed, falling back to legacy');
       } else {
         shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobHistory', 'repository not available');
       }
@@ -1767,7 +1761,6 @@ class BackendAdapter {
         }
         // Fallback to legacy on error
         shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobStatistics', new Error('Repository returned unexpected format'));
-        console.warn('JobRepository.getJobStatistics failed, falling back to legacy');
       } else {
         shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobStatistics', 'repository not available');
       }
@@ -1811,7 +1804,6 @@ class BackendAdapter {
           return await this.jobRepository.calculateJobExecutionStatistics(executionId);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('JobRepository', 'calculateJobExecutionStatistics', error);
-          console.warn('JobRepository.calculateJobExecutionStatistics failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('JobRepository', 'calculateJobExecutionStatistics', 'repository not available');
@@ -1837,7 +1829,6 @@ class BackendAdapter {
           return await this.jobRepository.updateJobExecutionStatistics(executionId);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('JobRepository', 'updateJobExecutionStatistics', error);
-          console.warn('JobRepository.updateJobExecutionStatistics failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('JobRepository', 'updateJobExecutionStatistics', 'repository not available');
@@ -1864,7 +1855,6 @@ class BackendAdapter {
         return await this.exportService.exportJobToExcel(jobId, options);
       } catch (error) {
         shadowBridgeLogger.logLegacyFallback('ExportService', 'exportJobToExcel', error);
-        console.warn('ExportService.exportJobToExcel failed, falling back to legacy:', error);
         return await this._legacyExportJobToExcel(jobId, options);
       }
     }
@@ -2219,7 +2209,6 @@ class BackendAdapter {
           return await this.imageRepository.saveGeneratedImage(image);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'saveGeneratedImage', error);
-          console.warn('ImageRepository.saveGeneratedImage failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'saveGeneratedImage', 'repository not available');
@@ -2245,7 +2234,6 @@ class BackendAdapter {
           return await this.imageRepository.getGeneratedImage(id);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getGeneratedImage', error);
-          console.warn('ImageRepository.getGeneratedImage failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'getGeneratedImage', 'repository not available');
@@ -2271,7 +2259,6 @@ class BackendAdapter {
           return await this.imageRepository.getGeneratedImagesByExecution(executionId);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getGeneratedImagesByExecution', error);
-          console.warn('ImageRepository.getGeneratedImagesByExecution failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'getGeneratedImagesByExecution', 'repository not available');
@@ -2300,7 +2287,6 @@ class BackendAdapter {
           }
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getAllGeneratedImages', error);
-          console.warn('ImageRepository.getAllGeneratedImages failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'getAllGeneratedImages', 'repository not available');
@@ -2331,7 +2317,6 @@ class BackendAdapter {
           return await this.imageRepository.updateGeneratedImage(id, image);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateGeneratedImage', error);
-          console.warn('ImageRepository.updateGeneratedImage failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateGeneratedImage', 'repository not available');
@@ -2357,7 +2342,6 @@ class BackendAdapter {
           return await this.imageRepository.deleteGeneratedImage(id);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'deleteGeneratedImage', error);
-          console.warn('ImageRepository.deleteGeneratedImage failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'deleteGeneratedImage', 'repository not available');
@@ -2383,7 +2367,6 @@ class BackendAdapter {
           return await this.imageRepository.bulkDeleteGeneratedImages(imageIds);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'bulkDeleteGeneratedImages', error);
-          console.warn('ImageRepository.bulkDeleteGeneratedImages failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'bulkDeleteGeneratedImages', 'repository not available');
@@ -2413,7 +2396,6 @@ class BackendAdapter {
           return result;
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'findByQcStatus', error);
-          console.warn('ImageRepository.findByQcStatus failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'findByQcStatus', 'repository not available');
@@ -2442,7 +2424,6 @@ class BackendAdapter {
           return await this.imageRepository.updateQCStatus(id, qcStatus, qcReason);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateQCStatus', error);
-          console.warn('ImageRepository.updateQCStatus failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateQCStatus', 'repository not available');
@@ -2468,7 +2449,6 @@ class BackendAdapter {
           return await this.imageRepository.updateQCStatusByMappingId(mappingId, qcStatus, qcReason);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateQCStatusByMappingId', error);
-          console.warn('ImageRepository.updateQCStatusByMappingId failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateQCStatusByMappingId', 'repository not available');
@@ -2494,7 +2474,6 @@ class BackendAdapter {
           return await this.imageRepository.updateGeneratedImageByMappingId(mappingId, image);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateGeneratedImageByMappingId', error);
-          console.warn('ImageRepository.updateGeneratedImageByMappingId failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateGeneratedImageByMappingId', 'repository not available');
@@ -2520,7 +2499,6 @@ class BackendAdapter {
           return await this.imageRepository.updateMetadataById(id, newMetadata);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateMetadataById', error);
-          console.warn('ImageRepository.updateMetadataById failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateMetadataById', 'repository not available');
@@ -2578,7 +2556,6 @@ class BackendAdapter {
           return await this.imageRepository.getImageMetadata(executionId);
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getImageMetadata', error);
-          console.warn('ImageRepository.getImageMetadata failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'getImageMetadata', 'repository not available');
@@ -2604,7 +2581,6 @@ class BackendAdapter {
           return await this.imageRepository.getImageStatistics();
         } catch (error) {
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getImageStatistics', error);
-          console.warn('ImageRepository.getImageStatistics failed, falling back to legacy:', error.message);
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'getImageStatistics', 'repository not available');
@@ -2907,7 +2883,6 @@ class BackendAdapter {
         return await this.exportService.bulkExportJobExecutions(ids, options);
       } catch (error) {
         shadowBridgeLogger.logLegacyFallback('ExportService', 'bulkExportJobExecutions', error);
-        console.warn('ExportService.bulkExportJobExecutions failed, falling back to legacy:', error);
         return await this._legacyBulkExportJobExecutions(ids, options);
       }
     }
@@ -3186,7 +3161,6 @@ class BackendAdapter {
         return await this.singleRerunService.rerunJobExecution(id);
       } catch (error) {
         shadowBridgeLogger.logLegacyFallback('SingleRerunService', 'rerunJobExecution', error);
-        console.warn('SingleRerunService.rerunJobExecution failed, falling back to legacy:', error.message);
         return await this._legacyRerunJobExecution(id);
       }
     }
@@ -3205,7 +3179,6 @@ class BackendAdapter {
         return await this.bulkRerunService.bulkRerunJobExecutions(ids);
       } catch (error) {
         shadowBridgeLogger.logLegacyFallback('BulkRerunService', 'bulkRerunJobExecutions', error);
-        console.warn('BulkRerunService.bulkRerunJobExecutions failed, falling back to legacy:', error.message);
         return await this._legacyBulkRerunJobExecutions(ids);
       }
     }
@@ -3213,66 +3186,40 @@ class BackendAdapter {
     return await this._legacyBulkRerunJobExecutions(ids);
   }
 
-  async getJobExecutionsWithFilters(filters) {
+  /** Shadow Bridge only: repo vs legacy. No filter/enrichment logic (delegated to JobListService). */
+  async _getJobExecutionsWithFiltersFromRepoOrLegacy(filters, page, pageSize) {
+    if (this.jobRepository) {
+      try {
+        shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsWithFilters');
+        return await this.jobRepository.getJobExecutionsWithFilters(filters, page, pageSize);
+      } catch (error) {
+        shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsWithFilters', error);
+        return await this.jobExecution.getJobExecutionsWithFilters(filters, page, pageSize);
+      }
+    }
+    shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsWithFilters', 'repository not available');
+    return await this.jobExecution.getJobExecutionsWithFilters(filters, page, pageSize);
+  }
+
+  /** Shadow Bridge only: repo vs legacy. No filter logic (delegated to JobListService). */
+  async _getJobExecutionsCountFromRepoOrLegacy(filters) {
+    if (this.jobRepository) {
+      try {
+        shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsCount');
+        return await this.jobRepository.getJobExecutionsCount(filters);
+      } catch (error) {
+        shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsCount', error);
+        return await this.jobExecution.getJobExecutionsCount(filters);
+      }
+    }
+    shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsCount', 'repository not available');
+    return await this.jobExecution.getJobExecutionsCount(filters);
+  }
+
+  async getJobExecutionsWithFilters(filters, page = 1, pageSize = 25) {
     try {
       await this.ensureInitialized();
-      
-      // Handle "Has pending reruns" filter
-      if (filters.hasPendingRetries) {
-        console.log('DEBUG: Filtering for pending reruns. Queue:', global.bulkRerunQueue?.length || 0);
-        const pendingRerunIds = [];
-        if (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) {
-          global.bulkRerunQueue.forEach(item => {
-            if (item.jobId) pendingRerunIds.push(item.jobId);
-          });
-        }
-        console.log('DEBUG: Pending rerun IDs found:', pendingRerunIds);
-        
-        if (pendingRerunIds.length === 0) {
-          console.log('DEBUG: No pending reruns found, returning empty list');
-          // Filter is ON but no pending reruns -> return empty result
-          return { success: true, jobs: [] };
-        }
-        
-        // Pass specific IDs to DB
-        filters.ids = pendingRerunIds;
-      } else {
-        console.log('DEBUG: hasPendingRetries filter is OFF');
-      }
-
-      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
-      let result;
-      if (this.jobRepository) {
-        try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsWithFilters');
-          result = await this.jobRepository.getJobExecutionsWithFilters(filters);
-        } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsWithFilters', error);
-          console.warn('JobRepository.getJobExecutionsWithFilters failed, falling back to legacy:', error.message);
-          result = await this.jobExecution.getJobExecutionsWithFilters(filters);
-        }
-      } else {
-        // Legacy path
-        shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsWithFilters', 'repository not available');
-        result = await this.jobExecution.getJobExecutionsWithFilters(filters);
-      }
-      
-      if (result.success && Array.isArray(result.jobs)) {
-        // Enrich jobs with pending rerun status from global queue
-        const pendingRerunIds = new Set();
-        if (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) {
-          global.bulkRerunQueue.forEach(item => {
-            if (item.jobId) pendingRerunIds.add(item.jobId);
-          });
-        }
-        
-        result.jobs = result.jobs.map(job => ({
-          ...job,
-          pendingJobs: pendingRerunIds.has(job.id) ? 1 : 0
-        }));
-      }
-      
-      return result;
+      return await this.jobListService.getJobExecutionsWithFilters(filters, page, pageSize);
     } catch (error) {
       console.error('Error getting job executions with filters:', error);
       return { success: false, error: error.message };
@@ -3282,42 +3229,25 @@ class BackendAdapter {
   async getJobExecutionsCount(filters) {
     try {
       await this.ensureInitialized();
-
-      // Handle "Has pending reruns" filter
-      if (filters.hasPendingRetries) {
-        const pendingRerunIds = [];
-        if (global.bulkRerunQueue && Array.isArray(global.bulkRerunQueue)) {
-          global.bulkRerunQueue.forEach(item => {
-            if (item.jobId) pendingRerunIds.push(item.jobId);
-          });
-        }
-        
-        if (pendingRerunIds.length === 0) {
-          return { success: true, count: 0 };
-        }
-        
-        filters.ids = pendingRerunIds;
-      }
-
-      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
-      if (this.jobRepository) {
-        try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsCount');
-          const result = await this.jobRepository.getJobExecutionsCount(filters);
-          return result;
-        } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsCount', error);
-          console.warn('JobRepository.getJobExecutionsCount failed, falling back to legacy:', error.message);
-        }
-      } else {
-        shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsCount', 'repository not available');
-      }
-      
-      // Legacy path
-      const result = await this.jobExecution.getJobExecutionsCount(filters);
-      return result;
+      return await this.jobListService.getJobExecutionsCount(filters);
     } catch (error) {
       console.error('Error getting job executions count:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get bulk rerun queue size (Epic 3: single place for queue via BulkRerunService, no global in controllers).
+   * @returns {Promise<{ success: boolean, count: number, error?: string }>}
+   */
+  async getBulkRerunQueueSize() {
+    try {
+      await this.ensureInitialized();
+      const ids = this.bulkRerunService.getPendingRerunExecutionIds();
+      const count = Array.isArray(ids) ? ids.length : 0;
+      return { success: true, count };
+    } catch (error) {
+      console.error('Error getting bulk rerun queue size:', error);
       return { success: false, error: error.message };
     }
   }
@@ -3332,7 +3262,6 @@ class BackendAdapter {
         return await this.bulkRerunService.processNextBulkRerunJob();
       } catch (error) {
         shadowBridgeLogger.logLegacyFallback('BulkRerunService', 'processNextBulkRerunJob', error);
-        console.warn('BulkRerunService.processNextBulkRerunJob failed, falling back to legacy:', error.message);
         return await this._legacyProcessNextBulkRerunJob();
       }
     }
