@@ -2341,6 +2341,11 @@ class BackendAdapter {
           shadowBridgeLogger.logModularPath('ImageRepository', 'deleteGeneratedImage');
           return await this.imageRepository.deleteGeneratedImage(id);
         } catch (error) {
+          // Not-found: same outcome as legacy (throw). Return error without calling legacy to avoid fallback log.
+          const isNotFound = error && (error.message === `Image ${id} not found` || /Image .+ not found/.test(error.message));
+          if (isNotFound) {
+            return { success: false, error: error.message };
+          }
           shadowBridgeLogger.logLegacyFallback('ImageRepository', 'deleteGeneratedImage', error);
         }
       } else {

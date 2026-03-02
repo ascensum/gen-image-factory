@@ -58,6 +58,15 @@ const ExportZipModal: React.FC<ExportZipModalProps> = ({ isOpen, count, defaultF
           if (res && res.success) setDefaultExportsPath(res.path);
         }).catch(() => {});
       } catch {}
+      // Load last used custom location (same key as Job Export zip so behavior is consistent)
+      try {
+        const key = 'lastExportPath:zip';
+        const last = localStorage.getItem(key);
+        if (last && typeof last === 'string' && last.trim() !== '') {
+          setLocationPath(last);
+          setMode('custom');
+        }
+      } catch {}
     }
     if (!isOpen && openedRef.current) {
       openedRef.current = false;
@@ -79,6 +88,9 @@ const ExportZipModal: React.FC<ExportZipModalProps> = ({ isOpen, count, defaultF
         setLocationPath(res.filePath);
         const base = res.filePath.split(/\\|\//).pop() || filename;
         setFilename(base);
+        try {
+          localStorage.setItem('lastExportPath:zip', res.filePath);
+        } catch {}
       }
     } catch (e: any) {
       setError(e?.message || 'Failed to open Save dialog');

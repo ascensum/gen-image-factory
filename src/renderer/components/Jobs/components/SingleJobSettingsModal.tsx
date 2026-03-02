@@ -2,7 +2,7 @@
  * Story 3.4 Phase 5b: Settings edit modal for SingleJobView.
  * Extracted from SingleJobView.legacy.tsx (Edit Job Settings form).
  */
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Toggle } from '../../Settings/Toggle';
 import styles from '../SingleJobView.module.css';
 import type { SettingsObject } from '../../../../../types/settings';
@@ -24,6 +24,41 @@ export interface SingleJobSettingsModalProps {
 
 type DeepPartial<T> = { [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K] };
 
+function serializeLora(editedSettings: DeepPartial<SettingsObject> | null): string {
+  if (!editedSettings?.parameters) return '';
+  const lora = (editedSettings.parameters as { lora?: Array<{ model: string; weight?: number }> }).lora;
+  const adv = editedSettings.parameters.runwareAdvanced?.lora;
+  if (Array.isArray(lora)) return lora.map(l => `${l.model}:${l.weight ?? 1}`).join('\n');
+  if (Array.isArray(adv)) return adv.map(l => `${l.model}:${l.weight ?? 1}`).join('\n');
+  return '';
+}
+
+function parseLoraText(text: string): Array<{ model: string; weight?: number }> {
+  const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+  return lines.map(line => {
+    const [model, weightStr] = line.split(':').map(s => s.trim());
+    return model ? { model, weight: Number(weightStr) || 1 } : null;
+  }).filter(Boolean) as Array<{ model: string; weight?: number }>;
+}
+
+const LoraListField: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+}> = ({ value, onChange, onBlur }) => (
+  <div className="flex flex-col mb-4">
+    <label>LoRA list (model:weight per line)</label>
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onBlur}
+      rows={4}
+      placeholder={'flux-lora:0.8\nartist-style:0.5'}
+      className="w-full box-border py-2 px-3 border border-[var(--border)] rounded-[var(--radius)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:border-[var(--ring)] focus:ring-2 focus:ring-[var(--ring)]/20 resize-y"
+    />
+  </div>
+);
+
 const SingleJobSettingsModal: React.FC<SingleJobSettingsModalProps> = ({
   isOpen,
   onClose,
@@ -36,6 +71,28 @@ const SingleJobSettingsModal: React.FC<SingleJobSettingsModalProps> = ({
   isLoading,
   saveError,
 }) => {
+  const [loraText, setLoraText] = useState('');
+  const didOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (isOpen && !didOpenRef.current) {
+      didOpenRef.current = true;
+      setLoraText(serializeLora(editedSettings));
+    }
+    if (!isOpen) didOpenRef.current = false;
+  }, [isOpen, editedSettings]);
+
+  const flushLoraToParent = () => {
+    if (editedSettings?.parameters?.loraEnabled) {
+      onSettingChange('parameters', 'lora', parseLoraText(loraText));
+    }
+  };
+
+  const handleSave = () => {
+    flushLoraToParent();
+    onSave();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -132,30 +189,17 @@ const SingleJobSettingsModal: React.FC<SingleJobSettingsModalProps> = ({
                   <input type="number" value={editedSettings.parameters?.pollingTimeout || 0} onChange={(e) => onSettingChange('parameters', 'pollingTimeout', parseInt(e.target.value))} min="0" />
                 </div>
               )}
-              <div className="flex flex-row justify-between items-start mb-4">
-                <div>
-                  <label>LoRA Models</label>
-                  <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-snug">Note: Check Runware model list for valid LoRA AIR ID:LoRA weight and valid weight ranges. LoRA weight defaults to 1 if no other valid number set. Not all models support LoRAs!</p>
-                </div>
+              <div className="flex flex-col mb-4">
+                <label>LoRA Models</label>
+                <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-snug mb-2">Note: Check Runware model list for valid LoRA AIR ID:LoRA weight and valid weight ranges. LoRA weight defaults to 1 if no other valid number set. Not all models support LoRAs!</p>
                 <Toggle checked={!!editedSettings.parameters?.loraEnabled} onChange={(checked) => onSettingChange('parameters', 'loraEnabled', checked)} />
               </div>
               {editedSettings.parameters?.loraEnabled && (
-                <div className="flex flex-col mb-4">
-                  <label>LoRA list (model:weight per line)</label>
-                  <textarea
-                    value={Array.isArray((editedSettings.parameters as { lora?: Array<{ model: string; weight?: number }> })?.lora) ? ((editedSettings.parameters as { lora: Array<{ model: string; weight?: number }> }).lora).map(l => `${l.model}:${l.weight ?? 1}`).join('\n') : (Array.isArray(editedSettings.parameters?.runwareAdvanced?.lora) ? editedSettings.parameters!.runwareAdvanced!.lora!.map(l => `${l.model}:${l.weight ?? 1}`).join('\n') : '')}
-                    onChange={(e) => {
-                      const lines = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
-                      const lora = lines.map(line => {
-                        const [model, weightStr] = line.split(':').map(s => s.trim());
-                        return model ? { model, weight: Number(weightStr) || 1 } : null;
-                      }).filter(Boolean) as Array<{ model: string; weight?: number }>;
-                      onSettingChange('parameters', 'lora', lora);
-                    }}
-                    rows={4}
-                    placeholder={'flux-lora:0.8\nartist-style:0.5'}
-                  />
-                </div>
+                <LoraListField
+                  value={loraText}
+                  onChange={setLoraText}
+                  onBlur={flushLoraToParent}
+                />
               )}
               <div className="flex flex-col mb-4">
                 <label htmlFor="gen-retry-attempts-modal">Generation Retry Attempts</label>
@@ -165,11 +209,9 @@ const SingleJobSettingsModal: React.FC<SingleJobSettingsModalProps> = ({
                 <label htmlFor="gen-retry-backoff-modal">Retry Backoff (ms)</label>
                 <input id="gen-retry-backoff-modal" type="number" value={(editedSettings.parameters as { generationRetryBackoffMs?: number })?.generationRetryBackoffMs ?? 0} onChange={(e) => onSettingChange('parameters', 'generationRetryBackoffMs', Math.max(0, Math.min(60000, parseInt(e.target.value))))} min="0" max="60000" step="100" />
               </div>
-              <div className="flex flex-row justify-between items-start mb-4">
-                <div>
-                  <label>Runware Advanced Controls</label>
-                  <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-snug">Show advanced Runware generation controls</p>
-                </div>
+              <div className="flex flex-col mb-4">
+                <label>Runware Advanced Controls</label>
+                <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-snug mb-2">Show advanced Runware generation controls</p>
                 <Toggle checked={!!editedSettings.parameters?.runwareAdvancedEnabled} onChange={(checked) => onSettingChange('parameters', 'runwareAdvancedEnabled', checked)} />
               </div>
               {editedSettings.parameters?.runwareAdvancedEnabled && (
@@ -360,7 +402,7 @@ const SingleJobSettingsModal: React.FC<SingleJobSettingsModalProps> = ({
           <button onClick={onCancel} className="px-4 py-2 bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] rounded-[var(--radius)] cursor-pointer transition hover:bg-[var(--accent)]">
             Cancel
           </button>
-          <button onClick={onSave} disabled={isSaving || isLoading || !editedSettings} className="px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] border-0 rounded-[var(--radius)] cursor-pointer transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
+          <button onClick={handleSave} disabled={isSaving || isLoading || !editedSettings} className="px-4 py-2 bg-[var(--primary)] text-[var(--primary-foreground)] border-0 rounded-[var(--radius)] cursor-pointer transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed">
             {isSaving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>

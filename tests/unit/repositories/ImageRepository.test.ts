@@ -811,15 +811,15 @@ describe('ImageRepository Unit Tests', () => {
       );
     });
 
-    it('should reject when image not found', async () => {
-      // Arrange
+    it('should reject when image not found (parity with legacy GeneratedImage)', async () => {
+      // Modular must match legacy: legacy throws "Image X not found". Adapter treats not-found as return { success: false } without fallback.
       vi.spyOn(repository, 'getGeneratedImage').mockResolvedValue({
         success: false,
-        error: 'Image not found'
+        error: 'Generated image not found'
       });
 
-      // Act & Assert
       await expect(repository.deleteGeneratedImage(999)).rejects.toThrow('Image 999 not found');
+      expect(mockDb.run).not.toHaveBeenCalled();
     });
 
     it('should reject on database error', async () => {

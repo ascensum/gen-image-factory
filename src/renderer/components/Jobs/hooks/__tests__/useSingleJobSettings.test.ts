@@ -173,4 +173,34 @@ describe('useSingleJobSettings', () => {
     expect(result.current.settingsSaveError).toBe('Save failed');
     expect(result.current.isEditingSettings).toBe(true);
   });
+
+  it('handleSettingChange with parameters.lora updates editedSettings and save sends it', async () => {
+    const { result } = renderHook(() =>
+      useSingleJobSettings(mockJob as any, mockConfiguration, setJobConfiguration)
+    );
+
+    await act(async () => {
+      result.current.handleSettingsEdit();
+    });
+
+    const lora = [{ model: 'flux-lora', weight: 0.8 }];
+    act(() => {
+      result.current.handleSettingChange('parameters', 'lora', lora);
+    });
+
+    expect(result.current.editedSettings?.parameters).toEqual(
+      expect.objectContaining({ lora })
+    );
+
+    await act(async () => {
+      await result.current.handleSettingsSave();
+    });
+
+    expect(mockElectronAPI.updateJobConfiguration).toHaveBeenCalledWith(
+      'config-1',
+      expect.objectContaining({
+        parameters: expect.objectContaining({ lora }),
+      })
+    );
+  });
 });

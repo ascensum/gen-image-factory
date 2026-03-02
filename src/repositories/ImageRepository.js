@@ -320,11 +320,15 @@ class ImageRepository {
     });
   }
 
-  /** Delete generated image by ID with file cleanup - Extracted from: GeneratedImage.js lines 578-609 */
+  /** Delete generated image by ID with file cleanup - Extracted from: GeneratedImage.js lines 578-609.
+   *  Same contract as legacy: throw "Image X not found" when missing (parity). Adapter avoids fallback for not-found. */
   async deleteGeneratedImage(id) {
     return new Promise((resolve, reject) => {
       this.getGeneratedImage(id).then(imageResult => {
-        if (!imageResult.success || !imageResult.image) { reject(new Error(`Image ${id} not found`)); return; }
+        if (!imageResult.success || !imageResult.image) {
+          reject(new Error(`Image ${id} not found`));
+          return;
+        }
         const filePath = imageResult.image.finalImagePath || imageResult.image.tempImagePath;
         this.db.run('DELETE FROM generated_images WHERE id = ?', [id], function(err) {
           if (err) { reject(err); }

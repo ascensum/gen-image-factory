@@ -94,6 +94,48 @@ describe('SingleJobView - Settings Save (focused)', () => {
     expect(payload.parameters.enablePollingTimeout).toBe(true);
     expect(payload.parameters.pollingTimeout).toBe(45);
   });
+
+  it('LoRA list: initial value from config when modal opens, blur then save sends parsed lora', async () => {
+    mockElectronAPI.getJobConfigurationById.mockResolvedValue({
+      success: true,
+      configuration: {
+        settings: {
+          apiKeys: {},
+          filePaths: { outputDirectory: '', tempDirectory: '', systemPromptFile: '', keywordsFile: '', qualityCheckPromptFile: '', metadataPromptFile: '' },
+          parameters: {
+            label: '',
+            count: 1,
+            loraEnabled: true,
+            lora: [{ model: 'flux-lora', weight: 0.8 }, { model: 'artist-style', weight: 0.5 }]
+          },
+          processing: {},
+          ai: {},
+          advanced: {}
+        }
+      }
+    });
+
+    render(<SingleJobView {...defaultProps} />);
+    await waitFor(() => expect(mockElectronAPI.getJobConfigurationById).toHaveBeenCalled());
+
+    const editBtn = await screen.findByTitle('Edit job settings');
+    fireEvent.click(editBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Edit Job Settings' })).toBeInTheDocument();
+    });
+
+    const loraTextarea = await screen.findByPlaceholderText(/flux-lora/);
+    expect((loraTextarea as { value: string }).value).toBe('flux-lora:0.8\nartist-style:0.5');
+
+    fireEvent.change(loraTextarea, { target: { value: 'new-model:0.9' } });
+    fireEvent.blur(loraTextarea);
+    fireEvent.click(screen.getByText('Save Settings'));
+
+    await waitFor(() => expect(mockElectronAPI.updateJobConfiguration).toHaveBeenCalled());
+    const payload = mockElectronAPI.updateJobConfiguration.mock.calls[0][1];
+    expect(payload.parameters?.lora).toEqual([{ model: 'new-model', weight: 0.9 }]);
+  });
 });
 
 

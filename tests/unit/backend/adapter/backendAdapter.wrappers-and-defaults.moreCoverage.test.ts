@@ -204,5 +204,22 @@ describe('BackendAdapter wrappers/defaults (unit) - more coverage', () => {
     adapter.jobExecution.deleteJobExecution = vi.fn(async () => { throw new Error('db down'); });
     await expect(adapter.deleteJobExecution(2)).resolves.toEqual({ success: false, error: 'db down' });
   });
+
+  it('deleteGeneratedImage: when modular throws "Image X not found", returns success false without calling legacy (no fallback)', async () => {
+    patchCjs();
+    const mod: any = await import('../../../../src/adapter/backendAdapter');
+    const adapter: any = new mod.BackendAdapter({ skipIpcSetup: true });
+    adapter.ensureInitialized = vi.fn().mockResolvedValue(undefined);
+    adapter.imageRepository = {
+      deleteGeneratedImage: vi.fn().mockRejectedValue(new Error('Image 99 not found')),
+    };
+    const legacyDelete = vi.fn();
+    adapter.generatedImage = { deleteGeneratedImage: legacyDelete };
+
+    const result = await adapter.deleteGeneratedImage(99);
+
+    expect(result).toEqual({ success: false, error: 'Image 99 not found' });
+    expect(legacyDelete).not.toHaveBeenCalled();
+  });
 });
 
