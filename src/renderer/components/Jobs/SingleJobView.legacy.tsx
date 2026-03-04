@@ -9,6 +9,7 @@ import styles from './SingleJobView.module.css';
 import StatusBadge from '../Common/StatusBadge';
 import LogViewer from '../Dashboard/LogViewer';
 import { formatQcLabel } from '../../utils/qc';
+import { parseLoraText } from '../../utils/lora';
 
 interface SingleJobViewProps {
   jobId: string | number;
@@ -1315,11 +1316,7 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({
                               ? editedSettings.parameters!.runwareAdvanced!.lora!.map(l => `${l.model}:${l.weight ?? 1}`).join('\n')
                               : '')}
                         onChange={(e) => {
-                          const lines = e.target.value.split('\n').map(s => s.trim()).filter(Boolean);
-                          const lora = lines.map(line => {
-                            const [model, weightStr] = line.split(':').map(s => s.trim());
-                            return model ? { model, weight: Number(weightStr) || 1 } : null;
-                          }).filter(Boolean) as Array<{ model: string; weight?: number }>;
+                          const lora = parseLoraText(e.target.value);
                           handleSettingChange('parameters', 'lora' as any, lora);
                         }}
                         rows={4}

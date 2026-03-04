@@ -4,6 +4,7 @@ import type { SettingsObject as SharedSettingsObject } from '../../../types/sett
 import { Eye, EyeOff, Save, RefreshCw, AlertCircle, CheckCircle, X, Key, FolderOpen, Sliders, Cog, Settings } from 'lucide-react';
 import { Toggle } from './Toggle';
 import { FileSelector } from './FileSelector';
+import { parseLoraText } from '../../utils/lora';
 import ConfirmResetDialog from '../Common/ConfirmResetDialog';
 
 // Types and Interfaces
@@ -564,11 +565,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                         ? form.parameters.runwareAdvanced!.lora!.map(l => `${l.model}:${l.weight ?? 1}`).join('\n')
                         : '')}
                   onBlur={(e) => {
-                    const lines = e.currentTarget.value.split('\n').map(s => s.trim()).filter(Boolean);
-                    const lora = lines.map(line => {
-                      const [model, weightStr] = line.split(':').map(s => s.trim());
-                      return model ? { model, weight: Number(weightStr) || 1 } : null;
-                    }).filter(Boolean) as Array<{ model: string; weight?: number }>;
+                    const lora = parseLoraText(e.currentTarget.value);
                     setForm(prev => ({ ...prev, parameters: { ...prev.parameters, lora } }));
                     setHasUnsavedChanges(true);
                   }}

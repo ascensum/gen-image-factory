@@ -263,7 +263,7 @@ Configure job execution parameters for image generation:
 
 - **LoRA Models Toggle** - Enable/disable LoRA (Low-Rank Adaptation) model support
 - **LoRA List** - List of LoRA models with optional weights (one per line)
-  - Format: `model:weight` (e.g., `flux-lora:0.8`)
+  - Format: `model` or `model:weight` per line. Model IDs may contain colons (e.g. `civitai:144142@160130`); weight is the number after the last colon when in 0–10 range (e.g. `civitai:144142@160130:0.8`, or `flux-lora:0.8`).
   - Weight defaults to 1 if not specified
   - Multiple models can be listed, one per line
   - Example:

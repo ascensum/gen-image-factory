@@ -4,6 +4,7 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { Toggle } from '../../Settings/Toggle';
+import { parseLoraText } from '../../../utils/lora';
 import styles from '../SingleJobView.module.css';
 import type { SettingsObject } from '../../../../../types/settings';
 import type { JobExecution } from '../../../../../types/job';
@@ -31,14 +32,6 @@ function serializeLora(editedSettings: DeepPartial<SettingsObject> | null): stri
   if (Array.isArray(lora)) return lora.map(l => `${l.model}:${l.weight ?? 1}`).join('\n');
   if (Array.isArray(adv)) return adv.map(l => `${l.model}:${l.weight ?? 1}`).join('\n');
   return '';
-}
-
-function parseLoraText(text: string): Array<{ model: string; weight?: number }> {
-  const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
-  return lines.map(line => {
-    const [model, weightStr] = line.split(':').map(s => s.trim());
-    return model ? { model, weight: Number(weightStr) || 1 } : null;
-  }).filter(Boolean) as Array<{ model: string; weight?: number }>;
 }
 
 const LoraListField: React.FC<{

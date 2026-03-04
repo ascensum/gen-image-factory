@@ -1,6 +1,7 @@
 import React from 'react';
 import type { SettingsObject } from '../../../../../types/settings';
 import { Toggle } from '../../Toggle';
+import { parseLoraText } from '../../../../utils/lora';
 
 interface SettingsTabParametersProps {
   form: SettingsObject;
@@ -129,21 +130,12 @@ export function SettingsTabParameters({ form, setForm, setHasUnsavedChanges }: S
                     : ''
               }
               onBlur={(e) => {
-                const lines = e.currentTarget.value
-                  .split('\n')
-                  .map((s) => s.trim())
-                  .filter(Boolean);
-                const lora = lines
-                  .map((line) => {
-                    const [model, weightStr] = line.split(':').map((s) => s.trim());
-                    return model ? { model, weight: Number(weightStr) || 1 } : null;
-                  })
-                  .filter(Boolean) as Array<{ model: string; weight?: number }>;
+                const lora = parseLoraText(e.currentTarget.value);
                 updateParams({ lora });
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               rows={3}
-              placeholder="flux-lora:0.8"
+              placeholder="civitai:144142@160130 or model:0.8"
             />
           </div>
         )}
