@@ -4,6 +4,7 @@
 .env.development
 .env.test
 .env.production
+.env.story-3.2-test
 
 # Certificate files (stored as GitHub Secrets)
 .certs/
