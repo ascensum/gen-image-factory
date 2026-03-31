@@ -3,7 +3,7 @@
  *
  * Purpose: Verify Shadow Bridge routing logic for SingleRerunService and BulkRerunService.
  * Tests BOTH paths: new services (FEATURE_MODULAR_RERUN enabled) and legacy (flag disabled).
- * Tests fallback when service throws.
+ * RC4: modular path fail-fast — when flag is on and service throws, error propagates (no legacy fallback).
  *
  * Coverage Target: 100% of rerun bridge routing logic
  * ADR-006: Shadow Bridge Pattern with feature toggles
@@ -186,15 +186,13 @@ describe('BackendAdapter Rerun Bridge Integration Tests', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should fallback to legacy when SingleRerunService throws', async () => {
+    it('should propagate error (fail-fast) when SingleRerunService throws and flag is on', async () => {
       process.env.FEATURE_MODULAR_RERUN = 'true';
       vi.spyOn(adapter.singleRerunService, 'rerunJobExecution').mockRejectedValue(new Error('Service crashed'));
       const legacySpy = vi.spyOn(adapter, '_legacyRerunJobExecution');
 
-      const result = await adapter.rerunJobExecution(1);
-
-      expect(legacySpy).toHaveBeenCalledWith(1);
-      expect(result.success).toBe(true);
+      await expect(adapter.rerunJobExecution(1)).rejects.toThrow('Service crashed');
+      expect(legacySpy).not.toHaveBeenCalled();
     });
   });
 
@@ -219,15 +217,13 @@ describe('BackendAdapter Rerun Bridge Integration Tests', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should fallback to legacy when BulkRerunService throws', async () => {
+    it('should propagate error (fail-fast) when BulkRerunService throws and flag is on', async () => {
       process.env.FEATURE_MODULAR_RERUN = 'true';
       vi.spyOn(adapter.bulkRerunService, 'bulkRerunJobExecutions').mockRejectedValue(new Error('Bulk service error'));
       const legacySpy = vi.spyOn(adapter, '_legacyBulkRerunJobExecutions');
 
-      const result = await adapter.bulkRerunJobExecutions([1]);
-
-      expect(legacySpy).toHaveBeenCalledWith([1]);
-      expect(result.success).toBe(true);
+      await expect(adapter.bulkRerunJobExecutions([1])).rejects.toThrow('Bulk service error');
+      expect(legacySpy).not.toHaveBeenCalled();
     });
   });
 
@@ -252,15 +248,14 @@ describe('BackendAdapter Rerun Bridge Integration Tests', () => {
       expect(legacySpy).toHaveBeenCalled();
     });
 
-    it('should fallback to legacy when BulkRerunService.processNextBulkRerunJob throws', async () => {
+    it('should propagate error (fail-fast) when BulkRerunService.processNextBulkRerunJob throws and flag is on', async () => {
       process.env.FEATURE_MODULAR_RERUN = 'true';
       (global as any).bulkRerunQueue = [];
       vi.spyOn(adapter.bulkRerunService, 'processNextBulkRerunJob').mockRejectedValue(new Error('Process next error'));
       const legacySpy = vi.spyOn(adapter, '_legacyProcessNextBulkRerunJob');
 
-      await adapter.processNextBulkRerunJob();
-
-      expect(legacySpy).toHaveBeenCalled();
+      await expect(adapter.processNextBulkRerunJob()).rejects.toThrow('Process next error');
+      expect(legacySpy).not.toHaveBeenCalled();
     });
   });
 

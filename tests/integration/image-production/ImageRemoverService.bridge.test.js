@@ -104,7 +104,7 @@ describe('ImageRemoverService Bridge Integration Tests', () => {
     expect(mockAxios.post).toHaveBeenCalled();
   });
 
-  it('should fallback to legacy if modular path fails', async () => {
+  it('should continue with original image when modular remover fails (soft approve; no legacy remover round-trip)', async () => {
     process.env.FEATURE_MODULAR_REMOVER = 'true';
     
     // Runware
@@ -112,14 +112,10 @@ describe('ImageRemoverService Bridge Integration Tests', () => {
       status: 200,
       data: { data: [{ imageURL: 'https://example.com/img.png' }] }
     });
-    // First call (modular remover) fails
-    mockAxios.post.mockRejectedValueOnce(new Error('Modular failed'));
-
-    // Second call (legacy remover) succeeds
-    mockAxios.post.mockResolvedValueOnce({
-      status: 200,
-      data: whitePngBuffer
-    });
+    // Non-retryable remove.bg failure (4xx) so ImageRemoverService does not sleep through retries
+    const modularFail = new Error('Modular failed');
+    modularFail.response = { status: 400, statusText: 'Bad Request' };
+    mockAxios.post.mockRejectedValueOnce(modularFail);
 
     mockAxios.get.mockResolvedValue({
       status: 200,
@@ -138,6 +134,6 @@ describe('ImageRemoverService Bridge Integration Tests', () => {
     });
     
     expect(result.processedImages).toHaveLength(1);
-    expect(mockAxios.post).toHaveBeenCalledTimes(3); // 1 Runware + 1 failed modular remover + 1 legacy remover
+    expect(mockAxios.post).toHaveBeenCalledTimes(2);
   });
 });

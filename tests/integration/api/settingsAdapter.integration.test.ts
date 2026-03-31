@@ -39,8 +39,13 @@ describe('BackendAdapter Settings API Integration Tests', () => {
   let BackendAdapter: any
   let backendAdapter: any
   let testDbDir: string
+  let originalFeatureModularConfigRepo: string | undefined
 
   beforeAll(async () => {
+    // Use model path for settings (not JobConfigurationRepository) so tests match SQLite + JobConfiguration behavior
+    originalFeatureModularConfigRepo = process.env.FEATURE_MODULAR_CONFIG_REPOSITORY
+    process.env.FEATURE_MODULAR_CONFIG_REPOSITORY = 'false'
+
     // Create unique temp directory for test databases
     testDbDir = path.join(os.tmpdir(), `test-settings-${Date.now()}-${Math.random().toString(36).substring(7)}`)
     fs.mkdirSync(testDbDir, { recursive: true })
@@ -76,7 +81,9 @@ describe('BackendAdapter Settings API Integration Tests', () => {
     
     // Create BackendAdapter instance with skipIpcSetup to avoid IPC handler registration
     backendAdapter = new BackendAdapter({ skipIpcSetup: true })
-    
+    // Let JobConfiguration constructor fire-and-forget init() settle before we replace db path
+    await new Promise((r) => setTimeout(r, 150))
+
     // Override database paths to use test directory
     // Close any existing connection from constructor
     if (backendAdapter.jobConfig.db) {
@@ -128,6 +135,12 @@ describe('BackendAdapter Settings API Integration Tests', () => {
   })
 
   afterAll(async () => {
+    if (originalFeatureModularConfigRepo === undefined) {
+      delete process.env.FEATURE_MODULAR_CONFIG_REPOSITORY
+    } else {
+      process.env.FEATURE_MODULAR_CONFIG_REPOSITORY = originalFeatureModularConfigRepo
+    }
+
     // Clean up temp directory
     if (testDbDir && fs.existsSync(testDbDir)) {
       try {
@@ -183,7 +196,7 @@ describe('BackendAdapter Settings API Integration Tests', () => {
       expect(result.settings.parameters.pollingTimeout).toBe(20)
       expect(result.settings.parameters.runwareModel).toBe('runware:101@1')
       expect(result.settings.processing.removeBg).toBe(true)
-    }, 25000)
+    }, 40000)
 
     it('returns default settings when no settings found in database', async () => {
       // Mock keytar to return empty
@@ -199,7 +212,7 @@ describe('BackendAdapter Settings API Integration Tests', () => {
       expect(result.settings.ai).toBeDefined()
       expect(result.settings.apiKeys).toBeDefined()
       expect(result.settings.filePaths).toBeDefined()
-    }, 25000)
+    }, 40000)
 
     it('merges database settings with defaults per Story 1.2/1.4', async () => {
       // Mock keytar

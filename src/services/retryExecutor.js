@@ -9,6 +9,7 @@ const { RetryQueueService } = require(path.join(__dirname, 'RetryQueueService'))
 const { RetryProcessorService } = require(path.join(__dirname, 'RetryProcessorService'));
 const RetryConfigService = require(path.join(__dirname, 'RetryConfigService'));
 const { run: runPostProcessingService } = require(path.join(__dirname, 'RetryPostProcessingService'));
+const shadowBridgeLogger = require(path.join(__dirname, '../utils/shadowBridgeLogger'));
 
 /**
  * RetryExecutor - Handles post-processing retry for failed images
@@ -103,8 +104,8 @@ class RetryExecutor extends EventEmitter {
       try {
         return await this.retryQueueService.addBatchRetryJob(batchRetryJob);
       } catch (error) {
-        console.warn(' RetryExecutor: RetryQueueService failed, falling back to legacy:', error?.message || error);
-        return this._legacyAddBatchRetryJob(batchRetryJob);
+        shadowBridgeLogger.logFailFast('RetryQueueService', 'addBatchRetryJob', error);
+        throw error;
       }
     }
     return this._legacyAddBatchRetryJob(batchRetryJob);
@@ -193,8 +194,8 @@ class RetryExecutor extends EventEmitter {
       try {
         return await this.retryQueueService.startProcessing();
       } catch (error) {
-        console.warn(' RetryExecutor: RetryQueueService.startProcessing failed, falling back to legacy:', error?.message || error);
-        return this._legacyProcessQueue();
+        shadowBridgeLogger.logFailFast('RetryQueueService', 'startProcessing', error);
+        throw error;
       }
     }
     return this._legacyProcessQueue();
@@ -425,8 +426,8 @@ class RetryExecutor extends EventEmitter {
       try {
         return await this.retryProcessorService.processImage(job);
       } catch (error) {
-        console.warn(' RetryExecutor: RetryProcessorService failed, falling back to legacy:', error?.message || error);
-        return this._legacyProcessSingleImage(job);
+        shadowBridgeLogger.logFailFast('RetryProcessorService', 'processImage', error);
+        throw error;
       }
     }
     return this._legacyProcessSingleImage(job);
@@ -580,8 +581,8 @@ class RetryExecutor extends EventEmitter {
       try {
         return await RetryConfigService.getOriginalJobConfiguration(this, image);
       } catch (error) {
-        console.warn(' RetryExecutor: RetryConfigService.getOriginalJobConfiguration failed, falling back to legacy:', error?.message || error);
-        return this._legacyGetOriginalJobConfiguration(image);
+        shadowBridgeLogger.logFailFast('RetryConfigService', 'getOriginalJobConfiguration', error);
+        throw error;
       }
     }
     return this._legacyGetOriginalJobConfiguration(image);
@@ -677,8 +678,8 @@ class RetryExecutor extends EventEmitter {
       try {
         return RetryConfigService.getFallbackConfiguration(this);
       } catch (error) {
-        console.warn(' RetryExecutor: RetryConfigService.getFallbackConfiguration failed, falling back to legacy:', error?.message || error);
-        return this._legacyGetFallbackConfiguration();
+        shadowBridgeLogger.logFailFast('RetryConfigService', 'getFallbackConfiguration', error);
+        throw error;
       }
     }
     return this._legacyGetFallbackConfiguration();
@@ -707,8 +708,8 @@ class RetryExecutor extends EventEmitter {
       try {
         return await RetryConfigService.getOriginalProcessingSettings(this, image);
       } catch (error) {
-        console.warn(' RetryExecutor: RetryConfigService.getOriginalProcessingSettings failed, falling back to legacy:', error?.message || error);
-        return this._legacyGetOriginalProcessingSettings(image);
+        shadowBridgeLogger.logFailFast('RetryConfigService', 'getOriginalProcessingSettings', error);
+        throw error;
       }
     }
     return this._legacyGetOriginalProcessingSettings(image);
@@ -780,8 +781,8 @@ class RetryExecutor extends EventEmitter {
         await RetryConfigService.updateImageStatus(this, imageId, status, reason);
         return;
       } catch (error) {
-        console.warn(' RetryExecutor: RetryConfigService.updateImageStatus failed, falling back to legacy:', error?.message || error);
-        return this._legacyUpdateImageStatus(imageId, status, reason);
+        shadowBridgeLogger.logFailFast('RetryConfigService', 'updateImageStatus', error);
+        throw error;
       }
     }
     return this._legacyUpdateImageStatus(imageId, status, reason);
@@ -818,8 +819,8 @@ class RetryExecutor extends EventEmitter {
       try {
         return await runPostProcessingService(this, sourcePath, settings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions);
       } catch (error) {
-        console.warn(' RetryExecutor: RetryPostProcessingService.run failed, falling back to legacy:', error?.message || error);
-        return this._legacyRunPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions);
+        shadowBridgeLogger.logFailFast('RetryPostProcessingService', 'run', error);
+        throw error;
       }
     }
     return this._legacyRunPostProcessing(sourcePath, settings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions);
@@ -1257,8 +1258,8 @@ class RetryExecutor extends EventEmitter {
       try {
         return this.retryQueueService.getQueueStatus();
       } catch (error) {
-        console.warn(' RetryExecutor: RetryQueueService.getQueueStatus failed, falling back to legacy:', error?.message || error);
-        return this._legacyGetQueueStatus();
+        shadowBridgeLogger.logFailFast('RetryQueueService', 'getQueueStatus', error);
+        throw error;
       }
     }
     return this._legacyGetQueueStatus();
@@ -1287,8 +1288,8 @@ class RetryExecutor extends EventEmitter {
       try {
         return this.retryQueueService.clearCompletedJobs();
       } catch (error) {
-        console.warn(' RetryExecutor: RetryQueueService.clearCompletedJobs failed, falling back to legacy:', error?.message || error);
-        return this._legacyClearCompletedJobs();
+        shadowBridgeLogger.logFailFast('RetryQueueService', 'clearCompletedJobs', error);
+        throw error;
       }
     }
     return this._legacyClearCompletedJobs();
@@ -1312,8 +1313,8 @@ class RetryExecutor extends EventEmitter {
       try {
         return this.retryQueueService.stopProcessing();
       } catch (error) {
-        console.warn(' RetryExecutor: RetryQueueService.stopProcessing failed, falling back to legacy:', error?.message || error);
-        return this._legacyStop();
+        shadowBridgeLogger.logFailFast('RetryQueueService', 'stopProcessing', error);
+        throw error;
       }
     }
     return this._legacyStop();

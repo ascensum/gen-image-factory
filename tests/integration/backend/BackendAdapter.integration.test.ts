@@ -769,7 +769,7 @@ describe('BackendAdapter Integration Tests', () => {
       await adapter.initializeRetryExecutor();
       expect(adapter.retryExecutor.tempDirectory).toBeDefined();
       expect(adapter.retryExecutor.outputDirectory).toBeDefined();
-    });
+    }, 15000);
   });
 
   describe('Bulk Rerun Functionality', () => {

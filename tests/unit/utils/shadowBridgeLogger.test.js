@@ -190,6 +190,18 @@ describe('ShadowBridgeLogger - Security', () => {
       
       consoleSpy.mockRestore();
     });
+
+    it('should log fail-fast (high visibility) and sanitize error', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const error = new Error('Modular path threw');
+      logger.logFailFast('ExportService', 'exportJobToExcel', error);
+      expect(consoleSpy).toHaveBeenCalled();
+      const msg = consoleSpy.mock.calls[0][0];
+      expect(msg).toContain('[FAIL-FAST]');
+      expect(msg).toContain('ExportService.exportJobToExcel()');
+      expect(msg).toContain('Modular path threw');
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('Summary Report', () => {

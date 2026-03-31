@@ -264,12 +264,8 @@ async function producePictureModule(
 
       return { processedImages, failedItems };
     } catch (error) {
-      console.warn('ImageGeneratorService failed, falling back to legacy:', error.message);
-      return await _legacyProducePictureModule(settings, imgNameBase, customMetadataPrompt, {
-         ...config,
-         axios: axiosInstance,
-         fs: fsInstance
-      });
+      shadowBridgeLogger.logFailFast('ImageGeneratorService', 'generateImages', error);
+      throw error;
     }
   }
 
@@ -794,8 +790,8 @@ async function processImage(inputImagePath, imgName, config = {}) {
       logDebug(`processImage: Completed successfully (modular). Output: ${outputPath}`);
       return outputPath;
     } catch (error) {
-      console.warn('ImageProcessorService failed, falling back to legacy:', error.message);
-      // Fallback to legacy Sharp logic below
+      shadowBridgeLogger.logFailFast('ImageProcessorService', 'process', error);
+      throw error;
     }
   }
 

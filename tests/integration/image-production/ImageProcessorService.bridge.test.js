@@ -49,21 +49,20 @@ describe('ImageProcessorService Bridge Integration Tests', () => {
     expect(result).toContain('test-job.png');
   });
 
-  it('should fallback to legacy if modular path fails', async () => {
+  it('should fail fast (no legacy fallback) if modular path fails', async () => {
     process.env.FEATURE_MODULAR_PROCESSOR = 'true';
     
-    // Create a failing service
     class FailingProcessor {
        async process() { throw new Error('Modular failed'); }
     }
 
-    const result = await processImage('/tmp/input.png', 'test-job', { 
-       fs: mockFs,
-       ImageProcessorService: FailingProcessor,
-       outputDirectory: '/tmp', 
-       preserveInput: true 
-    });
-    
-    expect(result).toContain('test-job.png');
+    await expect(
+      processImage('/tmp/input.png', 'test-job', {
+        fs: mockFs,
+        ImageProcessorService: FailingProcessor,
+        outputDirectory: '/tmp',
+        preserveInput: true
+      })
+    ).rejects.toThrow(/Modular failed/);
   });
 });

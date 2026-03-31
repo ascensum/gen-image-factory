@@ -1,6 +1,6 @@
 /**
  * Bridge Integration Tests: RetryExecutor <-> RetryQueueService (Story 3.5 Phase 1).
- * Coverage: FEATURE_MODULAR_RETRY_QUEUE = 'true' (service path), 'false' (legacy path), fallback when service fails.
+ * Coverage: FEATURE_MODULAR_RETRY_QUEUE = 'true' (service path), 'false' (legacy path), fail-fast when service throws.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -142,34 +142,34 @@ describe('RetryExecutor RetryQueueService Bridge Integration', () => {
     });
   });
 
-  describe('Fallback when RetryQueueService fails', () => {
+  describe('Fail-fast when RetryQueueService throws', () => {
     beforeEach(() => {
       process.env.FEATURE_MODULAR_RETRY_QUEUE = 'true';
     });
 
-    it('should fall back to legacy addBatchRetryJob when service.addBatchRetryJob throws', async () => {
+    it('should reject when service.addBatchRetryJob throws (no legacy fallback)', async () => {
       const executor = new RetryExecutor({ jobConfig: jobConfigStub, generatedImage: generatedImageStub });
       executor.retryQueueService.addBatchRetryJob = vi.fn().mockRejectedValue(new Error('Service error'));
       executor.isProcessing = true;
-      const result = await executor.addBatchRetryJob({
-        type: 'retry',
-        imageIds: ['img-1'],
-        useOriginalSettings: true,
-        modifiedSettings: {},
-      });
-      expect(result.success).toBe(true);
-      expect(executor.queue).toHaveLength(1);
+      await expect(
+        executor.addBatchRetryJob({
+          type: 'retry',
+          imageIds: ['img-1'],
+          useOriginalSettings: true,
+          modifiedSettings: {},
+        })
+      ).rejects.toThrow(/Service error/);
+      expect(executor.queue).toHaveLength(0);
     });
 
-    it('should fall back to legacy getQueueStatus when service.getQueueStatus throws', () => {
+    it('should throw when service.getQueueStatus throws (no legacy fallback)', () => {
       const executor = new RetryExecutor({ jobConfig: jobConfigStub, generatedImage: generatedImageStub });
       executor.retryQueueService.getQueueStatus = vi.fn().mockImplementation(() => {
         throw new Error('Service error');
       });
       executor.queue = [{ id: '1', status: 'pending' }];
       executor.isProcessing = false;
-      const status = executor.getQueueStatus();
-      expect(status.queueLength).toBe(1);
+      expect(() => executor.getQueueStatus()).toThrow(/Service error/);
     });
   });
 });

@@ -214,7 +214,7 @@ describe('BackendAdapter SecurityService Bridge Integration Tests', () => {
     });
   });
 
-  describe('Fallback Behavior (SecurityService Fails)', () => {
+  describe('Fail-Fast Behavior (RC4 – no legacy fallback)', () => {
     beforeEach(() => {
       process.env.FEATURE_MODULAR_SECURITY = 'true';
       const module = req('../../../src/adapter/backendAdapter.js');
@@ -223,21 +223,11 @@ describe('BackendAdapter SecurityService Bridge Integration Tests', () => {
       adapter.ensureInitialized = vi.fn().mockResolvedValue(true);
     });
 
-    it('should fallback to legacy when SecurityService throws unexpected error', async () => {
-      // Simulate SecurityService failure by making it throw
-      const originalGetSecret = adapter.securityService.getSecret;
-      adapter.securityService.getSecret = vi.fn().mockRejectedValue(new Error('Service crashed'));
-      
-      // Legacy should still work
-      mockKeytar.getPassword.mockResolvedValue('fallback-legacy-key');
+    it('should propagate error (fail-fast) when SecurityService throws and flag is on', async () => {
+      const err = new Error('Service crashed');
+      adapter.securityService.getSecret = vi.fn().mockRejectedValue(err);
 
-      const result = await adapter.getApiKey('openai');
-
-      expect(result.success).toBe(true);
-      expect(result.apiKey).toBe('fallback-legacy-key');
-      
-      // Restore
-      adapter.securityService.getSecret = originalGetSecret;
+      await expect(adapter.getApiKey('openai')).rejects.toThrow('Service crashed');
     });
   });
 

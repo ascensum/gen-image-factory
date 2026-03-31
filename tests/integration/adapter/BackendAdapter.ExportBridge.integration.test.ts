@@ -272,19 +272,13 @@ describe('BackendAdapter Export Bridge Integration Tests', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should fallback to legacy when ExportService throws error', async () => {
+    it('should propagate error (fail-fast) when ExportService throws and flag is on', async () => {
       process.env.FEATURE_MODULAR_EXPORT = 'true';
-
-      // Make ExportService throw error
       vi.spyOn(adapter.exportService, 'exportJobToExcel').mockRejectedValue(new Error('ExportService error'));
-
-      // Spy on legacy method
       const legacySpy = vi.spyOn(adapter, '_legacyExportJobToExcel');
 
-      const result = await adapter.exportJobToExcel(123);
-
-      expect(legacySpy).toHaveBeenCalledWith(123, {});
-      expect(result.success).toBe(true);
+      await expect(adapter.exportJobToExcel(123)).rejects.toThrow('ExportService error');
+      expect(legacySpy).not.toHaveBeenCalled();
     });
 
     it('should pass options to both ExportService and legacy', async () => {
@@ -347,19 +341,13 @@ describe('BackendAdapter Export Bridge Integration Tests', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should fallback to legacy when ExportService throws error', async () => {
+    it('should propagate error (fail-fast) when ExportService throws and flag is on', async () => {
       process.env.FEATURE_MODULAR_EXPORT = 'true';
-
-      // Make ExportService throw error
       vi.spyOn(adapter.exportService, 'bulkExportJobExecutions').mockRejectedValue(new Error('ExportService error'));
-
-      // Spy on legacy method
       const legacySpy = vi.spyOn(adapter, '_legacyBulkExportJobExecutions');
 
-      const result = await adapter.bulkExportJobExecutions([1, 2]);
-
-      expect(legacySpy).toHaveBeenCalledWith([1, 2], {});
-      expect(result.success).toBe(true);
+      await expect(adapter.bulkExportJobExecutions([1, 2])).rejects.toThrow('ExportService error');
+      expect(legacySpy).not.toHaveBeenCalled();
     });
 
     it('should pass options to both ExportService and legacy', async () => {

@@ -1,6 +1,6 @@
 /**
  * Bridge Integration Tests: RetryExecutor <-> RetryProcessorService (Story 3.5 Phase 2).
- * Coverage: FEATURE_MODULAR_RETRY_PROCESSOR = 'true' (service path), 'false' (legacy path), fallback when service fails.
+ * Coverage: FEATURE_MODULAR_RETRY_PROCESSOR = 'true' (service path), 'false' (legacy path), fail-fast when service throws.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -105,12 +105,12 @@ describe('RetryExecutor RetryProcessorService Bridge Integration', () => {
     });
   });
 
-  describe('Fallback when RetryProcessorService fails', () => {
+  describe('Fail-fast when RetryProcessorService throws', () => {
     beforeEach(() => {
       process.env.FEATURE_MODULAR_RETRY_PROCESSOR = 'true';
     });
 
-    it('should fall back to legacy processSingleImage when retryProcessorService.processImage throws', async () => {
+    it('should reject when retryProcessorService.processImage throws (no legacy fallback)', async () => {
       const executor = new RetryExecutor({ jobConfig: jobConfigStub, generatedImage: generatedImageStub });
       executor.retryProcessorService.processImage = vi.fn().mockRejectedValue(new Error('Processor error'));
       const job = {
@@ -120,9 +120,8 @@ describe('RetryExecutor RetryProcessorService Bridge Integration', () => {
         includeMetadata: false,
         failOptions: { enabled: false, steps: [] },
       };
-      const result = await executor.processSingleImage(job);
-      expect(result.success).toBe(true);
-      expect(generatedImageStub.getGeneratedImage).toHaveBeenCalledWith('img-1');
+      await expect(executor.processSingleImage(job)).rejects.toThrow(/Processor error/);
+      expect(executor.retryProcessorService.processImage).toHaveBeenCalledWith(job);
     });
   });
 });

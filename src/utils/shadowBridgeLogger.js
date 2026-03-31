@@ -115,6 +115,24 @@ class ShadowBridgeLogger {
   }
 
   /**
+   * Fail-fast / gap detection: log when modular path throws (RC4 – no legacy fallback).
+   * Always logs (high visibility) so manual UTM stress testing surfaces all gaps.
+   * SECURITY: Error messages are sanitized to remove sensitive data.
+   */
+  logFailFast(serviceName, methodName, error) {
+    const timestamp = new Date().toISOString();
+    const sanitizedError = this._sanitizeError(error);
+    const message = `[FAIL-FAST] ${timestamp} - ${serviceName}.${methodName}() - Modular path threw (no legacy fallback): ${sanitizedError}`;
+    console.error(`[FAIL-FAST] ${message}`);
+    if (error && error.stack) {
+      console.error(`[FAIL-FAST] Stack: ${error.stack.split('\n').slice(0, 5).join('\n')}`);
+    }
+    if (this.logToFile) {
+      this._writeToFile(message);
+    }
+  }
+
+  /**
    * Log feature flag initialization status
    */
   logFeatureFlagStatus(flags) {

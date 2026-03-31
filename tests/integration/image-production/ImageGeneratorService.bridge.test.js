@@ -82,16 +82,10 @@ describe('ImageGeneratorService Bridge Integration Tests', () => {
     expect(mockAxios.post).toHaveBeenCalledTimes(1);
   });
 
-  it('should fallback to legacy if modular path fails', async () => {
+  it('should fail fast (no legacy fallback) if modular path fails', async () => {
     process.env.FEATURE_MODULAR_GENERATOR = 'true';
     
-    // First call (modular) fails with something that triggers fallback
     mockAxios.post.mockRejectedValueOnce(new Error('Service failed'));
-
-    // Second call (legacy) succeeds
-    mockAxios.post.mockResolvedValueOnce({
-      data: { data: [{ imageURL: 'https://example.com/fallback.png' }] }
-    });
 
     mockAxios.get.mockResolvedValue({
       status: 200,
@@ -99,16 +93,17 @@ describe('ImageGeneratorService Bridge Integration Tests', () => {
       headers: { 'content-type': 'image/png' }
     });
 
-    const result = await producePictureModule({ prompt: 'test' }, 'job', null, { 
-       axios: mockAxios,
-       fs: mockFs,
-       ImageGeneratorService: ImageGeneratorService,
-       tempDirectory: '/tmp', 
-       outputDirectory: '/tmp', 
-       preserveInput: true 
-    });
-    
-    expect(result.processedImages).toHaveLength(1);
-    expect(mockAxios.post).toHaveBeenCalledTimes(2);
+    await expect(
+      producePictureModule({ prompt: 'test' }, 'job', null, {
+        axios: mockAxios,
+        fs: mockFs,
+        ImageGeneratorService: ImageGeneratorService,
+        tempDirectory: '/tmp',
+        outputDirectory: '/tmp',
+        preserveInput: true
+      })
+    ).rejects.toThrow(/Service failed/);
+
+    expect(mockAxios.post).toHaveBeenCalledTimes(1);
   });
 });

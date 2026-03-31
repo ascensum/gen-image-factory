@@ -793,16 +793,15 @@ class BackendAdapter {
         try {
           await this.ensureInitialized();
           if (this.jobRepository) {
+            shadowBridgeLogger.logModularPath('JobRepository', 'exportJobExecution');
             try {
-              shadowBridgeLogger.logModularPath('JobRepository', 'exportJobExecution');
               return await this.jobRepository.exportJobExecution(id);
             } catch (err) {
-              shadowBridgeLogger.logLegacyFallback('JobRepository', 'exportJobExecution', err);
-              return await this.jobExecution.exportJobExecution(id);
+              shadowBridgeLogger.logFailFast('JobRepository', 'exportJobExecution', err);
+              throw err;
             }
           }
-          const result = await this.jobExecution.exportJobExecution(id);
-          return result;
+          return await this.jobExecution.exportJobExecution(id);
         } catch (error) {
           console.error('Error exporting job execution:', error);
           return { success: false, error: error.message };
@@ -837,18 +836,16 @@ class BackendAdapter {
    * Routes to SecurityService if FEATURE_MODULAR_SECURITY enabled, else uses legacy code
    */
   async getApiKey(serviceName) {
-    // Shadow Bridge: Check feature flag
+    // Hard routing (RC4): when flag on, strictly modular — no legacy fallback
     if (process.env.FEATURE_MODULAR_SECURITY === 'true') {
+      shadowBridgeLogger.logModularPath('SecurityService', 'getSecret');
       try {
-        shadowBridgeLogger.logModularPath('SecurityService', 'getSecret');
         return await this.securityService.getSecret(serviceName);
       } catch (error) {
-        shadowBridgeLogger.logLegacyFallback('SecurityService', 'getSecret', error);
-        safeLogger.warn('SecurityService failed, falling back to legacy:', error);
-        return await this._legacyGetApiKey(serviceName);
+        shadowBridgeLogger.logFailFast('SecurityService', 'getSecret', error);
+        throw error;
       }
     }
-    // Legacy path (default)
     shadowBridgeLogger.logLegacyPath('SecurityService', 'getSecret', 'flag disabled');
     return await this._legacyGetApiKey(serviceName);
   }
@@ -944,18 +941,16 @@ class BackendAdapter {
    * Routes to SecurityService if FEATURE_MODULAR_SECURITY enabled, else uses legacy code
    */
   async setApiKey(serviceName, apiKey) {
-    // Shadow Bridge: Check feature flag
+    // Hard routing (RC4): when flag on, strictly modular — no legacy fallback
     if (process.env.FEATURE_MODULAR_SECURITY === 'true') {
+      shadowBridgeLogger.logModularPath('SecurityService', 'setSecret');
       try {
-        shadowBridgeLogger.logModularPath('SecurityService', 'setSecret');
         return await this.securityService.setSecret(serviceName, apiKey);
       } catch (error) {
-        shadowBridgeLogger.logLegacyFallback('SecurityService', 'setSecret', error);
-        safeLogger.warn('SecurityService failed, falling back to legacy:', error);
-        return await this._legacySetApiKey(serviceName, apiKey);
+        shadowBridgeLogger.logFailFast('SecurityService', 'setSecret', error);
+        throw error;
       }
     }
-    // Legacy path (default)
     shadowBridgeLogger.logLegacyPath('SecurityService', 'setSecret', 'flag disabled');
     return await this._legacySetApiKey(serviceName, apiKey);
   }
@@ -1009,16 +1004,16 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       
-      // Shadow Bridge: Use JobConfigurationRepository if available (Story 3.2 Phase 5)
+      // Shadow Bridge: Hard routing (RC4) — when repo used, no legacy fallback
       let result;
-      if (this.jobConfigurationRepository) {
+      if (this.configRepository) {
         try {
-          result = await this.jobConfigurationRepository.getSettings();
+          result = await this.configRepository.getSettings();
         } catch (error) {
-          result = await this.jobConfig.getSettings();
+          shadowBridgeLogger.logFailFast('JobConfigurationRepository', 'getSettings', error);
+          throw error;
         }
       } else {
-        // Legacy path
         result = await this.jobConfig.getSettings();
       }
       
@@ -1077,15 +1072,15 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       
-      // Shadow Bridge: Use JobConfigurationRepository if available (Story 3.2 Phase 5)
-      if (this.jobConfigurationRepository) {
+      // Shadow Bridge: Hard routing (RC4) — when repo used, no legacy fallback
+      if (this.configRepository) {
         try {
-          return await this.jobConfigurationRepository.getConfigurationById(id);
+          return await this.configRepository.getConfigurationById(id);
         } catch (error) {
+          shadowBridgeLogger.logFailFast('JobConfigurationRepository', 'getConfigurationById', error);
+          throw error;
         }
       }
-      
-      // Legacy path
       const result = await this.jobConfig.getConfigurationById(id);
       return result;
     } catch (error) {
@@ -1114,15 +1109,15 @@ class BackendAdapter {
         // Ignore errors when normalizing parameters
       }
       
-      // Shadow Bridge: Use JobConfigurationRepository if available (Story 3.2 Phase 5)
-      if (this.jobConfigurationRepository) {
+      // Shadow Bridge: Hard routing (RC4) — when repo used, no legacy fallback
+      if (this.configRepository) {
         try {
-          return await this.jobConfigurationRepository.updateConfiguration(id, settingsObject);
+          return await this.configRepository.updateConfiguration(id, settingsObject);
         } catch (error) {
+          shadowBridgeLogger.logFailFast('JobConfigurationRepository', 'updateConfiguration', error);
+          throw error;
         }
       }
-      
-      // Legacy path
       const result = await this.jobConfig.updateConfiguration(id, settingsObject);
       return result;
     } catch (error) {
@@ -1135,15 +1130,15 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       
-      // Shadow Bridge: Use JobConfigurationRepository if available (Story 3.2 Phase 5)
-      if (this.jobConfigurationRepository) {
+      // Shadow Bridge: Hard routing (RC4) — when repo used, no legacy fallback
+      if (this.configRepository) {
         try {
-          return await this.jobConfigurationRepository.updateConfigurationName(id, newName);
+          return await this.configRepository.updateConfigurationName(id, newName);
         } catch (error) {
+          shadowBridgeLogger.logFailFast('JobConfigurationRepository', 'updateConfigurationName', error);
+          throw error;
         }
       }
-      
-      // Legacy path
       const result = await this.jobConfig.updateConfigurationName(id, newName);
       return result;
     } catch (error) {
@@ -1186,16 +1181,16 @@ class BackendAdapter {
         }
       }
 
-      // Shadow Bridge: Use JobConfigurationRepository if available (Story 3.2 Phase 5)
+      // Shadow Bridge: Hard routing (RC4) — when repo used, no legacy fallback
       let result;
-      if (this.jobConfigurationRepository) {
+      if (this.configRepository) {
         try {
-          result = await this.jobConfigurationRepository.saveSettings(settingsObject);
+          result = await this.configRepository.saveSettings(settingsObject);
         } catch (error) {
-          result = await this.jobConfig.saveSettings(settingsObject);
+          shadowBridgeLogger.logFailFast('JobConfigurationRepository', 'saveSettings', error);
+          throw error;
         }
       } else {
-        // Legacy path: Save other settings to database
         result = await this.jobConfig.saveSettings(settingsObject);
       }
       
@@ -1587,17 +1582,16 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       
-      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      // Shadow Bridge: Hard routing (RC4) — when repo used, no legacy fallback
       if (this.jobRepository) {
+        shadowBridgeLogger.logModularPath('JobRepository', 'saveJobExecution');
         try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'saveJobExecution');
           return await this.jobRepository.saveJobExecution(execution);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'saveJobExecution', error);
+          shadowBridgeLogger.logFailFast('JobRepository', 'saveJobExecution', error);
+          throw error;
         }
       }
-      
-      // Legacy path
       shadowBridgeLogger.logLegacyPath('JobRepository', 'saveJobExecution', 'repository not available');
       const result = await this.jobExecution.saveJobExecution(execution);
       return result;
@@ -1611,17 +1605,16 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       
-      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      // Shadow Bridge: Hard routing (RC4) — when repo used, no legacy fallback
       if (this.jobRepository) {
+        shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecution');
         try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecution');
           return await this.jobRepository.getJobExecution(id);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecution', error);
+          shadowBridgeLogger.logFailFast('JobRepository', 'getJobExecution', error);
+          throw error;
         }
       }
-      
-      // Legacy path
       shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecution', 'repository not available');
       const result = await this.jobExecution.getJobExecution(id);
       return result;
@@ -1662,17 +1655,16 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       
-      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      // Shadow Bridge: Hard routing (RC4) — when repo used, no legacy fallback
       if (this.jobRepository) {
+        shadowBridgeLogger.logModularPath('JobRepository', 'updateJobExecution');
         try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'updateJobExecution');
           return await this.jobRepository.updateJobExecution(id, execution);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'updateJobExecution', error);
+          shadowBridgeLogger.logFailFast('JobRepository', 'updateJobExecution', error);
+          throw error;
         }
       }
-      
-      // Legacy path
       shadowBridgeLogger.logLegacyPath('JobRepository', 'updateJobExecution', 'repository not available');
       const result = await this.jobExecution.updateJobExecution(id, execution);
       return result;
@@ -1686,17 +1678,16 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       
-      // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
+      // Shadow Bridge: Hard routing (RC4) — when repo used, no legacy fallback
       if (this.jobRepository) {
+        shadowBridgeLogger.logModularPath('JobRepository', 'deleteJobExecution');
         try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'deleteJobExecution');
           return await this.jobRepository.deleteJobExecution(id);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'deleteJobExecution', error);
+          shadowBridgeLogger.logFailFast('JobRepository', 'deleteJobExecution', error);
+          throw error;
         }
       }
-      
-      // Legacy path
       shadowBridgeLogger.logLegacyPath('JobRepository', 'deleteJobExecution', 'repository not available');
       const result = await this.jobExecution.deleteJobExecution(id);
       return result;
@@ -1713,12 +1704,16 @@ class BackendAdapter {
       // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
       if (this.jobRepository) {
         shadowBridgeLogger.logModularPath('JobRepository', 'getJobHistory');
-        const result = await this.jobRepository.getJobHistory(limit);
-        if (result && result.success && result.executions) {
-          return result.executions; // Repository returns { success, executions }
+        try {
+          const result = await this.jobRepository.getJobHistory(limit);
+          if (result && result.success && result.executions) {
+            return result.executions; // Repository returns { success, executions }
+          }
+          throw new Error('Repository returned unexpected format');
+        } catch (error) {
+          shadowBridgeLogger.logFailFast('JobRepository', 'getJobHistory', error);
+          throw error;
         }
-        // Fallback to legacy on error
-        shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobHistory', new Error('Repository returned unexpected format'));
       } else {
         shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobHistory', 'repository not available');
       }
@@ -1744,23 +1739,26 @@ class BackendAdapter {
       // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
       if (this.jobRepository) {
         shadowBridgeLogger.logModularPath('JobRepository', 'getJobStatistics');
-        const result = await this.jobRepository.getJobStatistics();
-        if (result && result.success && result.statistics) {
-          // Frontend expects flat shape: totalJobs, completedJobs, failedJobs, averageExecutionTime, totalImagesGenerated, successRate
-          const s = result.statistics;
-          const totalImages = Number(s.totalImages) || 0;
-          const successfulImages = Number(s.successfulImages) || 0;
-          return {
-            totalJobs: Number(s.totalJobs) || 0,
-            completedJobs: Number(s.completedJobs) || 0,
-            failedJobs: Number(s.failedJobs) || 0,
-            averageExecutionTime: Math.round(Number(s.avgDurationSeconds) || 0),
-            totalImagesGenerated: successfulImages,
-            successRate: totalImages > 0 ? Math.round((successfulImages / totalImages) * 100) : 0
-          };
+        try {
+          const result = await this.jobRepository.getJobStatistics();
+          if (result && result.success && result.statistics) {
+            const s = result.statistics;
+            const totalImages = Number(s.totalImages) || 0;
+            const successfulImages = Number(s.successfulImages) || 0;
+            return {
+              totalJobs: Number(s.totalJobs) || 0,
+              completedJobs: Number(s.completedJobs) || 0,
+              failedJobs: Number(s.failedJobs) || 0,
+              averageExecutionTime: Math.round(Number(s.avgDurationSeconds) || 0),
+              totalImagesGenerated: successfulImages,
+              successRate: totalImages > 0 ? Math.round((successfulImages / totalImages) * 100) : 0
+            };
+          }
+          throw new Error('Repository returned unexpected format');
+        } catch (error) {
+          shadowBridgeLogger.logFailFast('JobRepository', 'getJobStatistics', error);
+          throw error;
         }
-        // Fallback to legacy on error
-        shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobStatistics', new Error('Repository returned unexpected format'));
       } else {
         shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobStatistics', 'repository not available');
       }
@@ -1799,15 +1797,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
       if (this.jobRepository) {
+        shadowBridgeLogger.logModularPath('JobRepository', 'calculateJobExecutionStatistics');
         try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'calculateJobExecutionStatistics');
           return await this.jobRepository.calculateJobExecutionStatistics(executionId);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'calculateJobExecutionStatistics', error);
+          shadowBridgeLogger.logFailFast('JobRepository', 'calculateJobExecutionStatistics', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('JobRepository', 'calculateJobExecutionStatistics', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('JobRepository', 'calculateJobExecutionStatistics', 'repository not available');
       
       // Legacy path
       const result = await this.jobExecution.calculateJobExecutionStatistics(executionId);
@@ -1824,15 +1822,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use JobRepository if available (Story 3.2 Phase 5)
       if (this.jobRepository) {
+        shadowBridgeLogger.logModularPath('JobRepository', 'updateJobExecutionStatistics');
         try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'updateJobExecutionStatistics');
           return await this.jobRepository.updateJobExecutionStatistics(executionId);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'updateJobExecutionStatistics', error);
+          shadowBridgeLogger.logFailFast('JobRepository', 'updateJobExecutionStatistics', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('JobRepository', 'updateJobExecutionStatistics', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('JobRepository', 'updateJobExecutionStatistics', 'repository not available');
       
       // Legacy path
       const result = await this.jobExecution.updateJobExecutionStatistics(executionId);
@@ -1848,17 +1846,16 @@ class BackendAdapter {
    * Routes to ExportService if FEATURE_MODULAR_EXPORT enabled, else uses legacy code
    */
   async exportJobToExcel(jobId, options = {}) {
-    // Shadow Bridge: Check feature flag
+    // Hard routing (RC4): when flag on, strictly modular — no legacy fallback
     if (process.env.FEATURE_MODULAR_EXPORT === 'true') {
+      shadowBridgeLogger.logModularPath('ExportService', 'exportJobToExcel');
       try {
-        shadowBridgeLogger.logModularPath('ExportService', 'exportJobToExcel');
         return await this.exportService.exportJobToExcel(jobId, options);
       } catch (error) {
-        shadowBridgeLogger.logLegacyFallback('ExportService', 'exportJobToExcel', error);
-        return await this._legacyExportJobToExcel(jobId, options);
+        shadowBridgeLogger.logFailFast('ExportService', 'exportJobToExcel', error);
+        throw error;
       }
     }
-    // Legacy path (default)
     shadowBridgeLogger.logLegacyPath('ExportService', 'exportJobToExcel', 'flag disabled');
     return await this._legacyExportJobToExcel(jobId, options);
   }
@@ -2204,15 +2201,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'saveGeneratedImage');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'saveGeneratedImage');
           return await this.imageRepository.saveGeneratedImage(image);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'saveGeneratedImage', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'saveGeneratedImage', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'saveGeneratedImage', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'saveGeneratedImage', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.saveGeneratedImage(image);
@@ -2229,15 +2226,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'getGeneratedImage');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'getGeneratedImage');
           return await this.imageRepository.getGeneratedImage(id);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getGeneratedImage', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'getGeneratedImage', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'getGeneratedImage', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'getGeneratedImage', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.getGeneratedImage(id);
@@ -2254,15 +2251,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'getGeneratedImagesByExecution');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'getGeneratedImagesByExecution');
           return await this.imageRepository.getGeneratedImagesByExecution(executionId);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getGeneratedImagesByExecution', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'getGeneratedImagesByExecution', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'getGeneratedImagesByExecution', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'getGeneratedImagesByExecution', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.getGeneratedImagesByExecution(executionId);
@@ -2279,14 +2276,16 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'getAllGeneratedImages');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'getAllGeneratedImages');
           const result = await this.imageRepository.getAllGeneratedImages(limit);
           if (result && result.success && result.images) {
             return result.images;
           }
+          throw new Error('Repository returned unexpected format');
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getAllGeneratedImages', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'getAllGeneratedImages', error);
+          throw error;
         }
       } else {
         shadowBridgeLogger.logLegacyPath('ImageRepository', 'getAllGeneratedImages', 'repository not available');
@@ -2312,15 +2311,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'updateGeneratedImage');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'updateGeneratedImage');
           return await this.imageRepository.updateGeneratedImage(id, image);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateGeneratedImage', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'updateGeneratedImage', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateGeneratedImage', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateGeneratedImage', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.updateGeneratedImage(id, image);
@@ -2337,20 +2336,19 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'deleteGeneratedImage');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'deleteGeneratedImage');
           return await this.imageRepository.deleteGeneratedImage(id);
         } catch (error) {
-          // Not-found: same outcome as legacy (throw). Return error without calling legacy to avoid fallback log.
           const isNotFound = error && (error.message === `Image ${id} not found` || /Image .+ not found/.test(error.message));
           if (isNotFound) {
             return { success: false, error: error.message };
           }
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'deleteGeneratedImage', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'deleteGeneratedImage', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'deleteGeneratedImage', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'deleteGeneratedImage', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.deleteGeneratedImage(id);
@@ -2367,15 +2365,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'bulkDeleteGeneratedImages');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'bulkDeleteGeneratedImages');
           return await this.imageRepository.bulkDeleteGeneratedImages(imageIds);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'bulkDeleteGeneratedImages', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'bulkDeleteGeneratedImages', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'bulkDeleteGeneratedImages', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'bulkDeleteGeneratedImages', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.bulkDeleteGeneratedImages(imageIds);
@@ -2392,19 +2390,19 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'findByQcStatus');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'findByQcStatus');
           const result = await this.imageRepository.findByQcStatus(qcStatus, options);
           if (result && result.images && options.limit != null) {
             result.hasMore = result.images.length === options.limit;
           }
           return result;
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'findByQcStatus', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'findByQcStatus', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'findByQcStatus', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'findByQcStatus', 'repository not available');
       
       // Legacy path (optionally with limit/offset)
       const result = await this.generatedImage.getImagesByQCStatus(qcStatus, options);
@@ -2424,15 +2422,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'updateQCStatus');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'updateQCStatus');
           return await this.imageRepository.updateQCStatus(id, qcStatus, qcReason);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateQCStatus', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'updateQCStatus', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateQCStatus', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateQCStatus', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.updateQCStatus(id, qcStatus, qcReason);
@@ -2449,15 +2447,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'updateQCStatusByMappingId');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'updateQCStatusByMappingId');
           return await this.imageRepository.updateQCStatusByMappingId(mappingId, qcStatus, qcReason);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateQCStatusByMappingId', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'updateQCStatusByMappingId', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateQCStatusByMappingId', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateQCStatusByMappingId', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.updateQCStatusByMappingId(mappingId, qcStatus, qcReason);
@@ -2474,15 +2472,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'updateGeneratedImageByMappingId');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'updateGeneratedImageByMappingId');
           return await this.imageRepository.updateGeneratedImageByMappingId(mappingId, image);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateGeneratedImageByMappingId', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'updateGeneratedImageByMappingId', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateGeneratedImageByMappingId', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateGeneratedImageByMappingId', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.updateGeneratedImageByMappingId(mappingId, image);
@@ -2499,15 +2497,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'updateMetadataById');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'updateMetadataById');
           return await this.imageRepository.updateMetadataById(id, newMetadata);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateMetadataById', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'updateMetadataById', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateMetadataById', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'updateMetadataById', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.updateMetadataById(id, newMetadata);
@@ -2522,8 +2520,8 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'updateImagePathsByMappingId');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'updateImagePathsByMappingId');
           let result = await this.imageRepository.updateImagePathsByMappingId(mappingId, tempImagePath, finalImagePath);
           if (result && result.success && result.changes === 0 && /^(\d+)$/.test(String(mappingId))) {
             const id = Number(mappingId);
@@ -2531,7 +2529,8 @@ class BackendAdapter {
           }
           return result;
         } catch (err) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'updateImagePathsByMappingId', err);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'updateImagePathsByMappingId', err);
+          throw err;
         }
       }
       const result = await this.generatedImage.updateImagePathsByMappingId(mappingId, tempImagePath, finalImagePath);
@@ -2556,15 +2555,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'getImageMetadata');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'getImageMetadata');
           return await this.imageRepository.getImageMetadata(executionId);
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getImageMetadata', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'getImageMetadata', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'getImageMetadata', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'getImageMetadata', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.getImageMetadata(executionId);
@@ -2581,15 +2580,15 @@ class BackendAdapter {
       
       // Shadow Bridge: Use ImageRepository if available (Story 3.2 Phase 5)
       if (this.imageRepository) {
+        shadowBridgeLogger.logModularPath('ImageRepository', 'getImageStatistics');
         try {
-          shadowBridgeLogger.logModularPath('ImageRepository', 'getImageStatistics');
           return await this.imageRepository.getImageStatistics();
         } catch (error) {
-          shadowBridgeLogger.logLegacyFallback('ImageRepository', 'getImageStatistics', error);
+          shadowBridgeLogger.logFailFast('ImageRepository', 'getImageStatistics', error);
+          throw error;
         }
-      } else {
-        shadowBridgeLogger.logLegacyPath('ImageRepository', 'getImageStatistics', 'repository not available');
       }
+      shadowBridgeLogger.logLegacyPath('ImageRepository', 'getImageStatistics', 'repository not available');
       
       // Legacy path
       const result = await this.generatedImage.getImageStatistics();
@@ -2842,11 +2841,12 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       if (this.jobRepository) {
+        shadowBridgeLogger.logModularPath('JobRepository', 'renameJobExecution');
         try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'renameJobExecution');
           return await this.jobRepository.renameJobExecution(id, label);
         } catch (err) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'renameJobExecution', err);
+          shadowBridgeLogger.logFailFast('JobRepository', 'renameJobExecution', err);
+          throw err;
         }
       }
       const result = await this.jobExecution.renameJobExecution(id, label);
@@ -2861,11 +2861,12 @@ class BackendAdapter {
     try {
       await this.ensureInitialized();
       if (this.jobRepository) {
+        shadowBridgeLogger.logModularPath('JobRepository', 'bulkDeleteJobExecutions');
         try {
-          shadowBridgeLogger.logModularPath('JobRepository', 'bulkDeleteJobExecutions');
           return await this.jobRepository.bulkDeleteJobExecutions(ids);
         } catch (err) {
-          shadowBridgeLogger.logLegacyFallback('JobRepository', 'bulkDeleteJobExecutions', err);
+          shadowBridgeLogger.logFailFast('JobRepository', 'bulkDeleteJobExecutions', err);
+          throw err;
         }
       }
       const result = await this.jobExecution.bulkDeleteJobExecutions(ids);
@@ -2881,17 +2882,16 @@ class BackendAdapter {
    * Routes to ExportService if FEATURE_MODULAR_EXPORT enabled, else uses legacy code
    */
   async bulkExportJobExecutions(ids, options = {}) {
-    // Shadow Bridge: Check feature flag
+    // Hard routing (RC4): when flag on, strictly modular — no legacy fallback
     if (process.env.FEATURE_MODULAR_EXPORT === 'true') {
+      shadowBridgeLogger.logModularPath('ExportService', 'bulkExportJobExecutions');
       try {
-        shadowBridgeLogger.logModularPath('ExportService', 'bulkExportJobExecutions');
         return await this.exportService.bulkExportJobExecutions(ids, options);
       } catch (error) {
-        shadowBridgeLogger.logLegacyFallback('ExportService', 'bulkExportJobExecutions', error);
-        return await this._legacyBulkExportJobExecutions(ids, options);
+        shadowBridgeLogger.logFailFast('ExportService', 'bulkExportJobExecutions', error);
+        throw error;
       }
     }
-    // Legacy path (default)
     shadowBridgeLogger.logLegacyPath('ExportService', 'bulkExportJobExecutions', 'flag disabled');
     return await this._legacyBulkExportJobExecutions(ids, options);
   }
@@ -3160,13 +3160,13 @@ class BackendAdapter {
    */
   async rerunJobExecution(id) {
     if (process.env.FEATURE_MODULAR_RERUN === 'true') {
+      shadowBridgeLogger.logModularPath('SingleRerunService', 'rerunJobExecution');
+      await this.ensureInitialized();
       try {
-        shadowBridgeLogger.logModularPath('SingleRerunService', 'rerunJobExecution');
-        await this.ensureInitialized();
         return await this.singleRerunService.rerunJobExecution(id);
       } catch (error) {
-        shadowBridgeLogger.logLegacyFallback('SingleRerunService', 'rerunJobExecution', error);
-        return await this._legacyRerunJobExecution(id);
+        shadowBridgeLogger.logFailFast('SingleRerunService', 'rerunJobExecution', error);
+        throw error;
       }
     }
     shadowBridgeLogger.logLegacyPath('SingleRerunService', 'rerunJobExecution', 'flag disabled');
@@ -3178,43 +3178,43 @@ class BackendAdapter {
    */
   async bulkRerunJobExecutions(ids) {
     if (process.env.FEATURE_MODULAR_RERUN === 'true') {
+      shadowBridgeLogger.logModularPath('BulkRerunService', 'bulkRerunJobExecutions');
+      await this.ensureInitialized();
       try {
-        shadowBridgeLogger.logModularPath('BulkRerunService', 'bulkRerunJobExecutions');
-        await this.ensureInitialized();
         return await this.bulkRerunService.bulkRerunJobExecutions(ids);
       } catch (error) {
-        shadowBridgeLogger.logLegacyFallback('BulkRerunService', 'bulkRerunJobExecutions', error);
-        return await this._legacyBulkRerunJobExecutions(ids);
+        shadowBridgeLogger.logFailFast('BulkRerunService', 'bulkRerunJobExecutions', error);
+        throw error;
       }
     }
     shadowBridgeLogger.logLegacyPath('BulkRerunService', 'bulkRerunJobExecutions', 'flag disabled');
     return await this._legacyBulkRerunJobExecutions(ids);
   }
 
-  /** Shadow Bridge only: repo vs legacy. No filter/enrichment logic (delegated to JobListService). */
+  /** Shadow Bridge only: repo vs legacy. Hard routing (RC4): when repo used, no legacy fallback. */
   async _getJobExecutionsWithFiltersFromRepoOrLegacy(filters, page, pageSize) {
     if (this.jobRepository) {
+      shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsWithFilters');
       try {
-        shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsWithFilters');
         return await this.jobRepository.getJobExecutionsWithFilters(filters, page, pageSize);
       } catch (error) {
-        shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsWithFilters', error);
-        return await this.jobExecution.getJobExecutionsWithFilters(filters, page, pageSize);
+        shadowBridgeLogger.logFailFast('JobRepository', 'getJobExecutionsWithFilters', error);
+        throw error;
       }
     }
     shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsWithFilters', 'repository not available');
     return await this.jobExecution.getJobExecutionsWithFilters(filters, page, pageSize);
   }
 
-  /** Shadow Bridge only: repo vs legacy. No filter logic (delegated to JobListService). */
+  /** Shadow Bridge only: repo vs legacy. Hard routing (RC4): when repo used, no legacy fallback. */
   async _getJobExecutionsCountFromRepoOrLegacy(filters) {
     if (this.jobRepository) {
+      shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsCount');
       try {
-        shadowBridgeLogger.logModularPath('JobRepository', 'getJobExecutionsCount');
         return await this.jobRepository.getJobExecutionsCount(filters);
       } catch (error) {
-        shadowBridgeLogger.logLegacyFallback('JobRepository', 'getJobExecutionsCount', error);
-        return await this.jobExecution.getJobExecutionsCount(filters);
+        shadowBridgeLogger.logFailFast('JobRepository', 'getJobExecutionsCount', error);
+        throw error;
       }
     }
     shadowBridgeLogger.logLegacyPath('JobRepository', 'getJobExecutionsCount', 'repository not available');
@@ -3262,12 +3262,12 @@ class BackendAdapter {
    */
   async processNextBulkRerunJob() {
     if (process.env.FEATURE_MODULAR_RERUN === 'true') {
+      shadowBridgeLogger.logModularPath('BulkRerunService', 'processNextBulkRerunJob');
       try {
-        shadowBridgeLogger.logModularPath('BulkRerunService', 'processNextBulkRerunJob');
         return await this.bulkRerunService.processNextBulkRerunJob();
       } catch (error) {
-        shadowBridgeLogger.logLegacyFallback('BulkRerunService', 'processNextBulkRerunJob', error);
-        return await this._legacyProcessNextBulkRerunJob();
+        shadowBridgeLogger.logFailFast('BulkRerunService', 'processNextBulkRerunJob', error);
+        throw error;
       }
     }
     shadowBridgeLogger.logLegacyPath('BulkRerunService', 'processNextBulkRerunJob', 'flag disabled');
