@@ -113,10 +113,11 @@ if (process.env.FEATURE_MODULAR_IPC_CONTROLLERS === 'true') {
 }
 
 // JobConfiguration for dynamic, cross-platform default and saved paths
-console.log(' MAIN PROCESS: Requiring JobConfiguration/GeneratedImage...');
+console.log(' MAIN PROCESS: Requiring JobConfiguration/ImageRepository...');
 const { JobConfiguration } = require(path.join(__dirname, '../src/database/models/JobConfiguration'));
 const { GeneratedImage } = require(path.join(__dirname, '../src/database/models/GeneratedImage'));
-console.log(' MAIN PROCESS: Database models required successfully');
+const { ImageRepository } = require(path.join(__dirname, '../src/repositories/ImageRepository'));
+console.log(' MAIN PROCESS: Database models/repositories required successfully');
 
 let mainWindow;
 
@@ -182,7 +183,9 @@ async function refreshAllowedRoots(extraPaths = []) {
     // Include a few recent image parent directories (best effort)
     try {
       const gi = new GeneratedImage();
-      const recent = await gi.getAllGeneratedImages(50).catch(() => null);
+      await gi.init().catch(() => {});
+      const imageRepo = new ImageRepository(gi);
+      const recent = await imageRepo.getAllGeneratedImages(50).catch(() => null);
       if (recent && recent.success && Array.isArray(recent.images)) {
         recent.images.forEach((img) => {
           const p = img.finalImagePath || img.tempImagePath;

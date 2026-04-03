@@ -6,8 +6,14 @@
 
 const path = require('path');
 const fs = require('fs').promises;
-const { processImage } = require(path.join(__dirname, '../producePictureModule'));
 const aiVision = require(path.join(__dirname, '../aiVision'));
+
+// Lazy-load processImage from producePictureModule — static import removed (ADR-003, Story 5.2).
+// retryExecutor.js (frozen monolith, deleted in Story 5.3) does not inject imageProcessorService,
+// so we fall back to lazy-loading processImage for compatibility.
+function _getProcessImage() {
+  return require(path.join(__dirname, '../producePictureModule')).processImage;
+}
 
 /**
  * Run post-processing on an image (processImage, metadata, move, DB update).
@@ -57,6 +63,11 @@ async function run(executor, sourcePath, settings, includeMetadata, jobConfigura
       const { normalizeProcessingSettings } = require('../utils/processing');
       Object.assign(processingConfig, normalizeProcessingSettings(processingConfig));
     } catch (e) {}
+
+    // Resolve processImage — injected via executor.imageProcessorService or lazy-loaded fallback
+    const processImage = (executor.imageProcessorService && typeof executor.imageProcessorService.processFile === 'function')
+      ? (src, name, cfg) => executor.imageProcessorService.processFile(src, name, cfg)
+      : _getProcessImage();
 
     let processedImagePath;
     try {

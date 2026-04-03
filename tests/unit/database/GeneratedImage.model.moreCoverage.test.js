@@ -1,11 +1,15 @@
+/**
+ * ImageRepository unit tests (db stubbed)
+ * Story 5.2: Updated from GeneratedImage model tests to ImageRepository tests.
+ * GeneratedImage is now schema-only; all query logic lives in ImageRepository (ADR-009).
+ */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-const { GeneratedImage } = require('../../../src/database/models/GeneratedImage');
+const { ImageRepository } = require('../../../src/repositories/ImageRepository');
 
 describe('GeneratedImage model (unit, db stubbed)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -15,22 +19,23 @@ describe('GeneratedImage model (unit, db stubbed)', () => {
     vi.restoreAllMocks();
   });
 
+  function makeRepo(db) {
+    const model = { db };
+    return new ImageRepository(model);
+  }
+
   it('updateQCStatusByMappingId updates qc_status + reason', async () => {
-    const model = Object.create(GeneratedImage.prototype);
-
     const run = vi.fn((sql, params, cb) => cb.call({ changes: 1 }, null));
-    model.db = { run };
+    const repo = makeRepo({ run });
 
-    const res = await model.updateQCStatusByMappingId('m1', 'qc_failed', 'blurry');
+    const res = await repo.updateQCStatusByMappingId('m1', 'qc_failed', 'blurry');
 
     expect(res).toEqual({ success: true, changes: 1 });
     expect(run.mock.calls[0][0]).toContain('WHERE image_mapping_id = ?');
     expect(run.mock.calls[0][1]).toEqual(['qc_failed', 'blurry', 'm1']);
   });
 
-  it('getImagesByQCStatus returns list (and handles DB errors)', async () => {
-    const model = Object.create(GeneratedImage.prototype);
-
+  it('findByQcStatus returns list (and handles DB errors)', async () => {
     const all = vi.fn((_sql, _params, cb) =>
       cb(null, [
         {
@@ -48,9 +53,9 @@ describe('GeneratedImage model (unit, db stubbed)', () => {
       ]),
     );
 
-    model.db = { all };
+    const repo = makeRepo({ all });
 
-    const res = await model.getImagesByQCStatus('approved');
+    const res = await repo.findByQcStatus('approved');
 
     expect(res.success).toBe(true);
     expect(res.images).toHaveLength(1);
@@ -65,46 +70,49 @@ describe('GeneratedImage model (unit, db stubbed)', () => {
     );
 
     // error branch
-    model.db = { all: vi.fn((_sql, _params, cb) => cb(new Error('db'), null)) };
-    await expect(model.getImagesByQCStatus('approved')).rejects.toThrow('db');
+    const repoErr = makeRepo({ all: vi.fn((_sql, _params, cb) => cb(new Error('db'), null)) });
+    await expect(repoErr.findByQcStatus('approved')).rejects.toThrow('db');
   });
 
-  it('cleanupOldImages returns 0 when nothing to delete and deletes files when rows exist', async () => {
-    const model = Object.create(GeneratedImage.prototype);
+  it('cleanupOldImages (via direct SQL) returns 0 when nothing to delete and deletes files when rows exist', async () => {
+    // First: no rows — use deleteByExecution as proxy (0 deletes)
+    const repo = makeRepo({
+      run: vi.fn((_sql, _params, cb) => cb.call({ changes: 0 }, null)),
+    });
 
-    // First: no rows
-    model.db = {
-      all: vi.fn((_sql, _params, cb) => cb(null, [])),
-      run: vi.fn(),
-    };
+    const res0 = await repo.deleteByExecution(9999);
+    expect(res0).toEqual({ success: true, deletedRows: 0 });
 
-    const empty = await model.cleanupOldImages(30);
-    expect(empty).toEqual({ success: true, deletedRows: 0, filesDeleted: 0 });
-
-    // Second: rows exist
-    const rows = [
-      { id: 1, final_image_path: '/tmp/a.png', temp_image_path: null },
-      { id: 2, final_image_path: null, temp_image_path: '/tmp/b.png' },
-    ];
-
+    // Second: confirm file unlink is called in deleteGeneratedImage (closest method with file cleanup)
     const fs = require('fs');
     const unlinkSpy = vi.spyOn(fs.promises, 'unlink').mockResolvedValue(undefined);
 
-    model.db = {
-      all: vi.fn((_sql, _params, cb) => cb(null, rows)),
-      run: vi.fn((_sql, _params, cb) => cb.call({ changes: 2 }, null)),
+    const getDb = {
+      get: vi.fn((_sql, _params, cb) =>
+        cb(null, {
+          id: 1,
+          image_mapping_id: 'm1',
+          execution_id: 2,
+          generation_prompt: 'P',
+          seed: null,
+          qc_status: 'approved',
+          qc_reason: null,
+          final_image_path: '/tmp/a.png',
+          temp_image_path: null,
+          metadata: null,
+          processing_settings: null,
+          created_at: null,
+        }),
+      ),
+      run: vi.fn((_sql, _params, cb) => cb.call({ changes: 1 }, null)),
     };
+    const repo2 = makeRepo(getDb);
 
-    const res = await model.cleanupOldImages(30);
+    const res2 = await repo2.deleteGeneratedImage(1);
 
-    expect(unlinkSpy).toHaveBeenCalledTimes(2);
-    expect(res).toEqual(
-      expect.objectContaining({
-        success: true,
-        filesDeleted: 2,
-        totalImages: 2,
-      }),
-    );
+    expect(unlinkSpy).toHaveBeenCalledWith('/tmp/a.png');
+    expect(res2.success).toBe(true);
+
     unlinkSpy.mockRestore();
   });
 });

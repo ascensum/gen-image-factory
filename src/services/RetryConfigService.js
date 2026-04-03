@@ -2,9 +2,23 @@
  * RetryConfigService - Config and status helpers for retry flow (Story 3.5, same pattern as 3.1).
  * Logic copied from retryExecutor; used via Shadow Bridge when FEATURE_MODULAR_RETRY_CONFIG === 'true'.
  * No "Legacy" in name; legacy remains in retryExecutor.js.
+ * Story 5.2: Refactored to use JobRepository instead of JobExecution model directly (ADR-003, ADR-009).
  */
 
 const path = require('path');
+
+/**
+ * Get or create a JobRepository instance backed by a fresh JobExecution model.
+ * Used when executor does not provide a pre-initialized repository.
+ * @returns {Promise<Object>} JobRepository instance
+ */
+async function _createJobRepository() {
+  const { JobExecution } = require(path.join(__dirname, '../database/models/JobExecution'));
+  const { JobRepository } = require(path.join(__dirname, '../repositories/JobRepository'));
+  const jobExecution = new JobExecution();
+  try { await jobExecution.init(); } catch (e) { console.warn('RetryConfigService: jobExecution.init failed (continuing):', e?.message || e); }
+  return new JobRepository(jobExecution);
+}
 
 /**
  * Get original job configuration including file paths.
@@ -14,15 +28,13 @@ const path = require('path');
  */
 async function getOriginalJobConfiguration(executor, image) {
   try {
-    const { JobExecution } = require(path.join(__dirname, '../database/models/JobExecution'));
-    const jobExecution = new JobExecution();
-    try { await jobExecution.init(); } catch (e) { console.warn('RetryExecutor: jobExecution.init failed (continuing):', e?.message || e); }
+    const jobRepository = await _createJobRepository();
     try { if (executor.jobConfig && executor.jobConfig.init) { await executor.jobConfig.init(); } } catch (e) { console.warn('RetryExecutor: jobConfig.init failed (continuing):', e?.message || e); }
 
-    let executionResult = await jobExecution.getJobExecution(image.executionId);
+    let executionResult = await jobRepository.getJobExecution(image.executionId);
     if (!executionResult.success) {
       try { await executor.delay(300); } catch {}
-      executionResult = await jobExecution.getJobExecution(image.executionId);
+      executionResult = await jobRepository.getJobExecution(image.executionId);
     }
     if (!executionResult.success) {
       return getFallbackConfiguration(executor);

@@ -9,8 +9,7 @@
 const { EventEmitter } = require('events');
 const path = require('path');
 
-// Import existing pipeline modules
-const producePictureModule = require(path.join(__dirname, '../producePictureModule'));
+// paramsGeneratorModule is a lightweight utility; no frozen-monolith concern
 const paramsGeneratorModule = require(path.join(__dirname, '../paramsGeneratorModule'));
 
 /**
@@ -18,21 +17,20 @@ const paramsGeneratorModule = require(path.join(__dirname, '../paramsGeneratorMo
  * 
  * Pure orchestration of image generation pipeline.
  * Returns Result Objects instead of persisting directly.
- * 
- * @NOTE: This is a SIMPLIFIED version for Phase 4.
- * Full extraction requires JobRepository (Story 3.2 Phase 1).
+ * Story 5.2: producePictureModule removed as static import — must be injected via constructor (ADR-003).
  */
 class JobEngine extends EventEmitter {
   /**
    * @param {Object} options - Configuration options
-   * @param {Object} options.producePictureModule - Image generation module (DI)
+   * @param {Object} options.producePictureModule - Image generation module (DI, required)
    * @param {Object} options.paramsGeneratorModule - Parameter generation module (DI)
    */
   constructor(options = {}) {
     super();
     
-    // Dependency Injection (ADR-003)
-    this.producePictureModule = options.producePictureModule || producePictureModule;
+    // Dependency Injection (ADR-003) — producePictureModule injected via options.
+    // Lazy-load fallback preserves compatibility with jobRunner.js (frozen, deleted in Story 5.3).
+    this.producePictureModule = options.producePictureModule || null;
     this.paramsGeneratorModule = options.paramsGeneratorModule || paramsGeneratorModule;
     
     // Internal state (no database dependencies)
@@ -245,8 +243,12 @@ class JobEngine extends EventEmitter {
 
     const moduleConfig = this._buildModuleConfig(config, genParameters, genIndex);
 
+    // Resolve producePictureModule — injected or lazy-loaded for frozen jobRunner.js compatibility
+    const pictureModule = this.producePictureModule ||
+      require(require('path').join(__dirname, '../producePictureModule'));
+
     // Call image generation module
-    const result = await this.producePictureModule.producePictureModule(
+    const result = await pictureModule.producePictureModule(
       settings,
       imgNameBase,
       (config.ai && config.ai.metadataPrompt) ? config.ai.metadataPrompt : null,
