@@ -1,6 +1,5 @@
 /**
- * Story 3.4 Phase 5b: Settings edit modal for SingleJobView.
- * Extracted from SingleJobView.legacy.tsx (Edit Job Settings form).
+ * Settings edit modal for SingleJobView (ADR-010).
  */
 import React, { useState, useEffect, useRef } from 'react';
 import { Toggle } from '../../Settings/Toggle';

@@ -1,6 +1,5 @@
 /**
- * Story 3.4 Phase 5b: Images tab content for SingleJobView.
- * Extracted from SingleJobView.legacy.tsx – filter, grid/list view.
+ * Images tab content for SingleJobView — filter, grid/list view (ADR-010).
  */
 import React from 'react';
 import { buildLocalFileUrl } from '../../../utils/urls';

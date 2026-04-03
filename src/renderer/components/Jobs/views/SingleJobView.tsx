@@ -1,6 +1,5 @@
 /**
- * Story 3.4 Phase 5b: SingleJobView – decomposed view using hooks + tab components.
- * Same UI and behavior as SingleJobView.legacy.tsx.
+ * SingleJobView — decomposed view using hooks + tab components (ADR-010).
  */
 import React from 'react';
 import ExportFileModal from '../../Common/ExportFileModal';

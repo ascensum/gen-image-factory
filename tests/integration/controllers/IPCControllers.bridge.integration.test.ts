@@ -182,7 +182,7 @@ describe('IPC Controllers Shadow Bridge Integration Tests', () => {
       ExportController.registerExportHandlers(mockIpcMain, mockAdapter);
       
       const calls = mockIpcMain.handle.mock.calls;
-      const exportHandlers = ['job-execution:export-to-excel', 'job-execution:bulk-export', 'generated-image:export-zip'];
+      const exportHandlers = ['job-execution:export-to-excel', 'job-execution:bulk-export', 'job-execution:export', 'generated-image:export-zip'];
       
       exportHandlers.forEach(handlerName => {
         const handlerCall = calls.find((call: any[]) => call[0] === handlerName);

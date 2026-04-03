@@ -790,22 +790,7 @@ class BackendAdapter {
       });
 
       _ipc.handle('job-execution:export', async (event, id) => {
-        try {
-          await this.ensureInitialized();
-          if (this.jobRepository) {
-            shadowBridgeLogger.logModularPath('JobRepository', 'exportJobExecution');
-            try {
-              return await this.jobRepository.exportJobExecution(id);
-            } catch (err) {
-              shadowBridgeLogger.logFailFast('JobRepository', 'exportJobExecution', err);
-              throw err;
-            }
-          }
-          return await this.jobExecution.exportJobExecution(id);
-        } catch (error) {
-          console.error('Error exporting job execution:', error);
-          return { success: false, error: error.message };
-        }
+        return await this.exportJobExecution(id);
       });
     }
   }
@@ -1837,6 +1822,30 @@ class BackendAdapter {
       return result;
     } catch (error) {
       console.error('Error updating job execution statistics:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Export Job Execution data - Shadow Bridge Pattern (ADR-006)
+   * Routes to JobRepository if available, else falls back to legacy JobExecution model.
+   * Extracted from setupIpcHandlers IPC closure for ExportController delegation (Story 5.1).
+   */
+  async exportJobExecution(id) {
+    try {
+      await this.ensureInitialized();
+      if (this.jobRepository) {
+        shadowBridgeLogger.logModularPath('JobRepository', 'exportJobExecution');
+        try {
+          return await this.jobRepository.exportJobExecution(id);
+        } catch (err) {
+          shadowBridgeLogger.logFailFast('JobRepository', 'exportJobExecution', err);
+          throw err;
+        }
+      }
+      return await this.jobExecution.exportJobExecution(id);
+    } catch (error) {
+      console.error('Error exporting job execution:', error);
       return { success: false, error: error.message };
     }
   }

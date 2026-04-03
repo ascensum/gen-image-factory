@@ -1,7 +1,6 @@
 /**
  * DashboardPanel — thin wrapper (ADR-010 Frontend Decomposition).
  * Full implementation lives in views/DashboardView.tsx.
- * Legacy monolith preserved in DashboardPanel.legacy.tsx.
  *
  * This file only re-exports:
  *  - The shared type interfaces (backward-compat: JobHistory, LogViewer, ProgressIndicator, index.ts import them from here)

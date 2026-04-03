@@ -1,6 +1,5 @@
 /**
- * Story 3.4 Phase 5b: Overview tab content for SingleJobView.
- * Extracted from SingleJobView.legacy.tsx – job info, stats, read-only settings summary.
+ * Overview tab content for SingleJobView — job info, stats, read-only settings summary (ADR-010).
  */
 import React from 'react';
 import StatusBadge from '../../Common/StatusBadge';
