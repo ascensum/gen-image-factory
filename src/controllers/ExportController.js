@@ -36,6 +36,10 @@ function registerExportHandlers(ipcMain, backendAdapter) {
     return await backendAdapter.exportJobToExcel(jobId, options);
   });
 
+  ipcMain.handle('job-execution:export', async (event, id) =>
+    await backendAdapter.exportJobExecution(id)
+  );
+
   // Generated Image Export Handlers
   ipcMain.handle('generated-image:export-zip', async (event, { imageIds, includeExcel, options }) => {
     return await backendAdapter.createZipExport(imageIds, includeExcel, options);
