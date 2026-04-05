@@ -140,7 +140,16 @@ export function patchCjsDeps() {
 }
 
 function restore(prevCache: Record<string, unknown>) {
+  let keytarId: string | undefined;
+  try { keytarId = req.resolve('keytar'); } catch { /* ignore */ }
   for (const [id, entry] of Object.entries(prevCache)) {
+    // NEVER restore the real keytar binary — doing so allows a subsequent
+    // backendAdapter.js re-require to capture the real native module and write
+    // test keys to the real OS keychain.
+    if (id === keytarId) {
+      delete (req as any).cache[id];
+      continue;
+    }
     if (entry != null) (req as any).cache[id] = entry;
     else delete (req as any).cache[id];
   }

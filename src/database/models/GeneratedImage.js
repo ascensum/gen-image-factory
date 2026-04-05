@@ -190,6 +190,82 @@ class GeneratedImage {
       });
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // TEMPORARY PROXIES — backendAdapter.js compatibility (delete in Story 5.3)
+  // backendAdapter.js (frozen monolith) calls these methods directly on the
+  // model instance, bypassing Shadow Bridge routing. These thin proxies delegate
+  // to ImageRepository so backendAdapter.js continues to work until it is deleted.
+  // ---------------------------------------------------------------------------
+
+  _requireImageRepository() {
+    if (!this.imageRepository) throw new Error('ImageRepository not initialized');
+    return this.imageRepository;
+  }
+
+  async getGeneratedImage(id) {
+    return this._requireImageRepository().getGeneratedImage(id);
+  }
+
+  async getGeneratedImagesByExecution(executionId) {
+    return this._requireImageRepository().getGeneratedImagesByExecution(executionId);
+  }
+
+  async saveGeneratedImage(image) {
+    return this._requireImageRepository().saveGeneratedImage(image);
+  }
+
+  async updateGeneratedImage(id, data) {
+    return this._requireImageRepository().updateGeneratedImage(id, data);
+  }
+
+  async deleteGeneratedImage(id) {
+    return this._requireImageRepository().deleteGeneratedImage(id);
+  }
+
+  async bulkDeleteGeneratedImages(imageIds) {
+    return this._requireImageRepository().bulkDeleteGeneratedImages(imageIds);
+  }
+
+  async getImagesByQCStatus(qcStatus, options) {
+    return this._requireImageRepository().findByQcStatus(qcStatus, options);
+  }
+
+  async updateQCStatus(id, qcStatus, qcReason) {
+    return this._requireImageRepository().updateQCStatus(id, qcStatus, qcReason);
+  }
+
+  async updateQCStatusByMappingId(mappingId, qcStatus, qcReason) {
+    return this._requireImageRepository().updateQCStatusByMappingId(mappingId, qcStatus, qcReason);
+  }
+
+  async updateGeneratedImageByMappingId(mappingId, image) {
+    return this._requireImageRepository().updateGeneratedImageByMappingId(mappingId, image);
+  }
+
+  async updateMetadataById(id, newMetadata) {
+    return this._requireImageRepository().updateMetadataById(id, newMetadata);
+  }
+
+  async updateImagePathsByMappingId(mappingId, tempImagePath, finalImagePath) {
+    return this._requireImageRepository().updateImagePathsByMappingId(mappingId, tempImagePath, finalImagePath);
+  }
+
+  async updateImagePathsById(id, tempImagePath, finalImagePath) {
+    return this._requireImageRepository().updateImagePathsById(id, tempImagePath, finalImagePath);
+  }
+
+  async getImageMetadata(executionId) {
+    return this._requireImageRepository().getImageMetadata(executionId);
+  }
+
+  async getImageStatistics() {
+    return this._requireImageRepository().getImageStatistics();
+  }
+
+  async getAllGeneratedImages(limit) {
+    return this._requireImageRepository().getAllGeneratedImages(limit);
+  }
 }
 
 module.exports = { GeneratedImage };

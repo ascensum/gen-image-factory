@@ -111,7 +111,7 @@ class ImageRepository {
 
     return new Promise((resolve, reject) => {
       // First, get all image data to find file paths
-      const getPromises = imageIds.map(id => this.model.getGeneratedImage(id));
+      const getPromises = imageIds.map(id => this.getGeneratedImage(id));
       
       Promise.all(getPromises).then(results => {
         const imagesToDelete = results

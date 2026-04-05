@@ -88,7 +88,15 @@ describe('BackendAdapter SecurityService Bridge Integration Tests', () => {
   };
 
   const unpatchCjs = () => {
+    let keytarId: string | undefined;
+    try { keytarId = req.resolve('keytar'); } catch { /* ignore */ }
     for (const id in prevCache) {
+      // NEVER restore the real keytar binary — doing so allows a subsequent
+      // backendAdapter.js re-require to capture it and write test keys to the real OS keychain.
+      if (id === keytarId) {
+        delete req.cache[id];
+        continue;
+      }
       if (prevCache[id] === undefined) delete req.cache[id];
       else req.cache[id] = prevCache[id];
     }

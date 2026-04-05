@@ -293,29 +293,23 @@ describe('ImageRepository Unit Tests', () => {
         }
       }));
 
-      mockModel.getGeneratedImage.mockImplementation((id) => 
-        Promise.resolve(mockImages.find(img => img.image.id === id))
-      );
+      // Spy on the repository's own getGeneratedImage (BUG-002 fix: no longer calls model.getGeneratedImage)
+      const getGeneratedImageSpy = vi.spyOn(repository, 'getGeneratedImage')
+        .mockImplementation((id: number) =>
+          Promise.resolve(mockImages.find(img => img.image.id === id))
+        );
 
-      mockDb.run.mockImplementation(function(sql, params, callback) {
+      mockDb.run.mockImplementation(function(sql: string, params: unknown[], callback: Function) {
         // Use function() to preserve 'this' context
-        this.changes = 3;
+        (this as any).changes = 3;
         callback.call(this, null);
       });
-
-      // Mock fs.promises.unlink
-      const mockUnlink = vi.fn().mockResolvedValue(undefined);
-      vi.doMock('fs', () => ({
-        promises: {
-          unlink: mockUnlink
-        }
-      }));
 
       // Act
       const result = await repository.bulkDeleteGeneratedImages(imageIds);
 
       // Assert
-      expect(mockModel.getGeneratedImage).toHaveBeenCalledTimes(3);
+      expect(getGeneratedImageSpy).toHaveBeenCalledTimes(3);
       expect(mockDb.run).toHaveBeenCalledWith(
         expect.stringContaining('DELETE FROM generated_images WHERE id IN'),
         imageIds,
@@ -346,13 +340,14 @@ describe('ImageRepository Unit Tests', () => {
 
     it('should continue even if file deletion fails', async () => {
       // Arrange
-      mockModel.getGeneratedImage.mockResolvedValue({
+      // Spy on the repository's own getGeneratedImage (BUG-002 fix: no longer calls model.getGeneratedImage)
+      vi.spyOn(repository, 'getGeneratedImage').mockResolvedValue({
         success: true,
         image: { id: 1, finalImagePath: '/test/1.png' }
       });
 
-      mockDb.run.mockImplementation(function(sql, params, callback) {
-        this.changes = 1;
+      mockDb.run.mockImplementation(function(sql: string, params: unknown[], callback: Function) {
+        (this as any).changes = 1;
         callback.call(this, null);
       });
 

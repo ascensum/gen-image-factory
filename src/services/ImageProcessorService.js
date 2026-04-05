@@ -94,7 +94,8 @@ class ImageProcessorService {
     // 4. Encode and Save
     try {
       if (finalExtension === '.jpg') {
-        const backgroundColor = jpgBackground === 'black' ? '#000000' : '#ffffff';
+        const BLACK_VALUES = ['black', '#000000', '#000'];
+        const backgroundColor = BLACK_VALUES.includes(String(jpgBackground || '').toLowerCase()) ? '#000000' : '#ffffff';
         await sharpInstance
           .flatten({ background: backgroundColor })
           .jpeg({ quality: jpgQuality || 80, chromaSubsampling: '4:4:4' })

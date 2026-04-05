@@ -136,14 +136,12 @@ describe('BackendAdapter - API key handling', () => {
       prevCache = {};
     }
 
-    // Restore keytar require cache
+    // Clear keytar from the CJS cache — NEVER restore the real binary.
+    // Restoring prevKeytarCacheEntry (the real native keytar) would allow the next
+    // backendAdapter.js re-require to capture it and write test keys to the real OS keychain.
     try {
       const resolvedKeytar = require.resolve('keytar');
-      if (prevKeytarCacheEntry) {
-        require.cache[resolvedKeytar] = prevKeytarCacheEntry;
-      } else {
-        delete require.cache[resolvedKeytar];
-      }
+      delete require.cache[resolvedKeytar];
     } catch {
       // ignore
     } finally {

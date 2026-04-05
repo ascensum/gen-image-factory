@@ -220,7 +220,16 @@ export function buildCjsPatcher(req: RequireLike, backendAdapterPath: string): {
 
   const restoreCjsDeps = (): void => {
     const cache = (req as unknown as { cache: Record<string, unknown> }).cache;
+    let keytarId: string | undefined;
+    try { keytarId = req.resolve('keytar'); } catch { /* ignore */ }
     for (const [id, entry] of Object.entries(prevCache)) {
+      // NEVER restore the real keytar binary — doing so allows a subsequent
+      // backendAdapter.js re-require to capture the real native module and write
+      // test keys (e.g. 'test-openai-key') to the real OS keychain.
+      if (id === keytarId) {
+        delete cache[id];
+        continue;
+      }
       if (entry != null) cache[id] = entry as typeof cache[string];
       else delete cache[id];
     }

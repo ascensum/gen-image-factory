@@ -162,6 +162,82 @@ class JobExecution {
       });
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // TEMPORARY PROXIES — backendAdapter.js compatibility (delete in Story 5.3)
+  // backendAdapter.js (frozen monolith) calls these methods directly on the
+  // model instance, bypassing Shadow Bridge routing. These thin proxies delegate
+  // to JobRepository so backendAdapter.js continues to work until it is deleted.
+  // ---------------------------------------------------------------------------
+
+  _requireJobRepository() {
+    if (!this.jobRepository) throw new Error('JobRepository not initialized');
+    return this.jobRepository;
+  }
+
+  async getAllJobExecutions(limit) {
+    return this._requireJobRepository().getAllJobExecutions(limit);
+  }
+
+  async getJobExecution(id) {
+    return this._requireJobRepository().getJobExecution(id);
+  }
+
+  async saveJobExecution(execution) {
+    return this._requireJobRepository().saveJobExecution(execution);
+  }
+
+  async updateJobExecution(id, execution) {
+    return this._requireJobRepository().updateJobExecution(id, execution);
+  }
+
+  async deleteJobExecution(id) {
+    return this._requireJobRepository().deleteJobExecution(id);
+  }
+
+  async getJobHistory(limit) {
+    return this._requireJobRepository().getJobHistory(limit);
+  }
+
+  async getJobStatistics() {
+    return this._requireJobRepository().getJobStatistics();
+  }
+
+  async calculateJobExecutionStatistics(executionId) {
+    return this._requireJobRepository().calculateJobExecutionStatistics(executionId);
+  }
+
+  async updateJobExecutionStatistics(executionId) {
+    return this._requireJobRepository().updateJobExecutionStatistics(executionId);
+  }
+
+  async exportJobExecution(id) {
+    return this._requireJobRepository().exportJobExecution(id);
+  }
+
+  async getJobExecutionsByIds(ids) {
+    return this._requireJobRepository().getJobExecutionsByIds(ids);
+  }
+
+  async renameJobExecution(id, label) {
+    return this._requireJobRepository().renameJobExecution(id, label);
+  }
+
+  async bulkDeleteJobExecutions(ids) {
+    return this._requireJobRepository().bulkDeleteJobExecutions(ids);
+  }
+
+  async getJobExecutionsWithFilters(filters, page, pageSize) {
+    return this._requireJobRepository().getJobExecutionsWithFilters(filters, page, pageSize);
+  }
+
+  async getJobExecutionsCount(filters) {
+    return this._requireJobRepository().getJobExecutionsCount(filters);
+  }
+
+  async updateJobExecutionStatus(id, status, jobId, errorMessage) {
+    return this._requireJobRepository().updateJobExecutionStatus(id, status, jobId, errorMessage);
+  }
 }
 
 module.exports = { JobExecution };

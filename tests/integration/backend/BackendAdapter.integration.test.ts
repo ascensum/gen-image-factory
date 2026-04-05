@@ -188,7 +188,16 @@ describe('BackendAdapter Integration Tests', () => {
   };
 
   const restoreCjsDeps = () => {
+    let keytarId: string | undefined;
+    try { keytarId = req.resolve('keytar'); } catch { /* ignore */ }
     for (const [id, entry] of Object.entries(prevCache)) {
+      // NEVER restore the real keytar binary to the CJS cache — doing so allows the
+      // next backendAdapter.js re-require to capture the real native module and write
+      // test keys (e.g. 'test-openai-key') to the real OS keychain.
+      if (id === keytarId) {
+        delete (req as any).cache[id];
+        continue;
+      }
       if (entry) (req as any).cache[id] = entry;
       else delete (req as any).cache[id];
     }
