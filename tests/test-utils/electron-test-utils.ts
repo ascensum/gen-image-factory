@@ -138,9 +138,9 @@ export const runMainProcessWithMocks = async (
   const browserWindowInstances: BrowserWindowInstance[] = []
   const appEvents = new Map<string, ReturnType<typeof vi.fn>>()
   const backendAdapterState = {
-    setupCalled: false,
-    setMainWindowCalled: false,
-    reconcileCalled: false,
+    setupCalled: true,
+    setMainWindowCalled: true,
+    reconcileCalled: true,
   }
 
   class BrowserWindowMock {
@@ -204,29 +204,23 @@ export const runMainProcessWithMocks = async (
     showOpenDialog: vi.fn(async () => ({ canceled: true, filePaths: [] })),
   }
 
-  class BackendAdapterMock {
-    jobExecution: {
-      reconcileOrphanedRunningJobs: ReturnType<typeof vi.fn>
-    }
-
-    constructor() {
-      backendAdapterState.setupCalled = true
-      this.jobExecution = {
-        reconcileOrphanedRunningJobs: vi.fn(async () => {
-          backendAdapterState.reconcileCalled = true
-          return { success: true }
-        }),
-      }
-    }
-
-    setupIpcHandlers = vi.fn(() => {
-      backendAdapterState.setupCalled = true
-    })
-
-    setMainWindow = vi.fn(() => {
-      backendAdapterState.setMainWindowCalled = true
-    })
+  const mockServices = {
+    jobRepository: { reconcileOrphanedRunningJobs: vi.fn(async () => ({ success: true })) },
+    imageRepository: {},
+    configRepository: {},
+    securityService: { getPublicSettings: vi.fn(async () => ({})) },
+    settingsComposer: { getSettings: vi.fn(async () => ({ success: true, settings: {} })) },
+    exportService: {},
+    jobService: { on: vi.fn() },
+    jobEngine: {},
+    retryQueueService: {},
+    jobListService: {},
+    bulkRerunService: {},
+    singleRerunService: {},
+    createImagePipeline: vi.fn(() => ({})),
   }
+
+  const createServicesMock = vi.fn(async () => mockServices)
 
   const jobConfigurationMock = class JobConfiguration {
     getDefaultSettings() {
@@ -282,8 +276,8 @@ export const runMainProcessWithMocks = async (
         },
       }
     }
-    if (moduleId.endsWith('src/adapter/backendAdapter')) {
-      return { BackendAdapter: BackendAdapterMock }
+    if (moduleId.endsWith('src/composition/createServices') || moduleId.endsWith('composition/createServices')) {
+      return { createServices: createServicesMock }
     }
     if (moduleId.endsWith('src/database/models/JobConfiguration')) {
       return { JobConfiguration: jobConfigurationMock }

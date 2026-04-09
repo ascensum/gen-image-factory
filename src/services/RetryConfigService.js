@@ -1,8 +1,6 @@
 /**
- * RetryConfigService - Config and status helpers for retry flow (Story 3.5, same pattern as 3.1).
- * Logic copied from retryExecutor; used via Shadow Bridge when FEATURE_MODULAR_RETRY_CONFIG === 'true'.
- * No "Legacy" in name; legacy remains in retryExecutor.js.
- * Story 5.2: Refactored to use JobRepository instead of JobExecution model directly (ADR-003, ADR-009).
+ * RetryConfigService - Config and status helpers for retry flow.
+ * ADR-003: DI.  Story 5.3: standalone (retryExecutor deleted).
  */
 
 const path = require('path');

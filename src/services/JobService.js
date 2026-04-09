@@ -16,10 +16,7 @@
  * Related ADRs:
  * - ADR-001: File Size Guardrail (< 400 lines)
  * - ADR-003: Dependency Injection
- * - ADR-006: Shadow Bridge Pattern
  * - ADR-009: Persistence Repository Layer
- * 
- * Feature Toggle: FEATURE_MODULAR_JOB_SERVICE
  */
 
 const { EventEmitter } = require('events');
@@ -41,65 +38,86 @@ class JobService extends EventEmitter {
   constructor(options = {}) {
     super();
     
-    if (!options.jobEngine) {
-      throw new Error('JobService requires jobEngine dependency');
-    }
-    if (!options.jobRepository) {
-      throw new Error('JobService requires jobRepository dependency');
-    }
+    if (!options.jobEngine) throw new Error('JobService requires jobEngine dependency');
+    if (!options.jobRepository) throw new Error('JobService requires jobRepository dependency');
     
-    // Dependency Injection (ADR-003)
     this.jobEngine = options.jobEngine;
     this.jobRepository = options.jobRepository;
+    this.imageRepository = options.imageRepository || null;
     
-    // Internal state
     this.currentExecutionId = null;
     this.currentJobId = null;
+    this.currentLabel = null;
+    this.currentConfigurationId = null;
+    this.currentStartedAt = null;
     this.abortController = null;
+    this.liveProgress = { state: 'idle', progress: 0, currentStep: '', totalImages: 0, totalGenerations: 1, variations: 1, gensDone: 0 };
+    this._logBuffer = [];
     
-    // Wire up JobEngine event listeners
     this._setupJobEngineListeners();
   }
 
-  /**
-   * Setup event listeners for JobEngine
-   * Pattern: JobEngine emits → JobService persists → JobService re-emits
-   */
+  _addLog(level, message, opts = {}) {
+    const entry = {
+      id: Date.now().toString() + '_' + this._logBuffer.length,
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      source: opts.source || 'job-service',
+      stepName: opts.stepName || '',
+      subStep: opts.subStep || '',
+      metadata: opts.metadata || {}
+    };
+    this._logBuffer.push(entry);
+    if (this._logBuffer.length > 500) this._logBuffer.shift();
+  }
+
+  getLogs(mode) {
+    if (mode === 'debug') return [...this._logBuffer];
+    return this._logBuffer.filter(l => l.level !== 'debug');
+  }
+
   _setupJobEngineListeners() {
-    // Progress events - forward to consumers
     this.jobEngine.on('progress', (data) => {
+      const step = data.step || '';
+      const meta = data.metadata || {};
+      const gensDone = step === 'image_generation' ? (meta.generationIndex != null ? meta.generationIndex + 1 : this.liveProgress.gensDone) : this.liveProgress.gensDone;
+      this.liveProgress = {
+        ...this.liveProgress,
+        state: 'running',
+        progress: data.progress || 0,
+        currentStep: step,
+        totalImages: meta.totalImages || this.liveProgress.totalImages,
+        totalGenerations: meta.generations || this.liveProgress.totalGenerations,
+        variations: meta.variations || this.liveProgress.variations,
+        gensDone
+      };
       this.emit('progress', data);
     });
 
-    // Image generation events - persist + forward
-    this.jobEngine.on('image-generated', async (data) => {
-      // Forward event to consumers immediately
-      this.emit('image-generated', data);
-      
-      // Persist image result (non-blocking)
-      if (this.currentExecutionId && data.image) {
-        try {
-          // Note: Image persistence is handled by ImageRepository
-          // This is a placeholder for future integration
-          // await this.imageRepository.saveGeneratedImage(data.image);
-        } catch (err) {
-          console.warn('JobService: Failed to persist image:', err.message);
-        }
-      }
+    this.jobEngine.on('log', (logEntry) => {
+      this._addLog(logEntry.level || 'info', logEntry.message || '', {
+        source: logEntry.source || 'job-engine',
+        stepName: logEntry.stepName || '',
+        subStep: logEntry.subStep || '',
+        metadata: logEntry.metadata || {}
+      });
     });
 
-    // Error events - persist + forward
-    this.jobEngine.on('error', async (error) => {
-      this.emit('error', error);
-      
-      // Update job execution status to failed
+    this.jobEngine.on('image-generated', async (data) => {
+      this.emit('image-generated', data);
+    });
+
+    this.jobEngine.on('error', async (errorData) => {
+      const errorMsg = errorData?.error || errorData?.message || 'Unknown error';
+      this.emit('error', errorData);
       if (this.currentExecutionId) {
         try {
           await this.jobRepository.updateJobExecutionStatus(
             this.currentExecutionId,
             'failed',
             this.currentJobId,
-            error.message || 'Unknown error'
+            errorMsg
           );
         } catch (err) {
           console.error('JobService: Failed to update execution status:', err);
@@ -129,94 +147,80 @@ class JobService extends EventEmitter {
     });
   }
 
-  /**
-   * Start job execution
-   * 
-   * Flow:
-   * 1. Create job execution record (JobRepository)
-   * 2. Delegate orchestration to JobEngine
-   * 3. Listen to events and persist incrementally
-   * 4. Return execution ID for tracking
-   * 
-   * @param {Object} config - Job configuration
-   * @param {Object} options - Execution options
-   * @param {string} options.configurationId - Configuration ID for tracking
-   * @param {string} options.label - Human-readable job label
-   * @returns {Promise<Object>} { success: true, executionId, jobId }
-   */
-  async startJob(config, options = {}) {
+  async startJobAsync(config, options = {}) {
+    const execution = {
+      configurationId: options.configurationId || null,
+      label: options.label || 'Untitled Job',
+      status: 'running',
+      startedAt: new Date().toISOString(),
+      totalImages: 0, successfulImages: 0, failedImages: 0, errorMessage: null
+    };
+    const saveResult = await this.jobRepository.saveJobExecution(execution);
+    if (!saveResult.success) throw new Error('Failed to create job execution record');
+
+    this.currentExecutionId = saveResult.id;
+    this.currentJobId = saveResult.jobId || null;
+    this.currentLabel = options.label || 'Untitled Job';
+    this.currentConfigurationId = options.configurationId || null;
+    this.currentStartedAt = new Date(execution.startedAt);
+    this.abortController = new AbortController();
+    this._logBuffer = [];
+    const gens = Math.max(1, Number(config?.parameters?.count || 1));
+    const vars = Math.max(1, Math.min(20, Number(config?.parameters?.variations || 1)));
+    this.liveProgress = { state: 'running', progress: 0, currentStep: 'starting', totalImages: 0, totalGenerations: gens, variations: vars, gensDone: 0 };
+    this._addLog('info', `Job started: ${gens} generation(s), ${vars} variation(s)`, { stepName: 'initialization', subStep: 'job_start', metadata: { generations: gens, variations: vars } });
+
+    // Fire-and-forget: run job in background so IPC returns immediately
+    this._runJobInBackground(config);
+
+    return this.currentExecutionId;
+  }
+
+  async _runJobInBackground(config) {
     try {
-      // Validate configuration
-      if (!config) {
-        throw new Error('Job configuration is required');
-      }
-
-      // Step 1: Create job execution record
-      const execution = {
-        configurationId: options.configurationId || null,
-        label: options.label || 'Untitled Job',
-        status: 'running',
-        startedAt: new Date().toISOString(),
-        totalImages: 0,
-        successfulImages: 0,
-        failedImages: 0,
-        errorMessage: null
-      };
-
-      const saveResult = await this.jobRepository.saveJobExecution(execution);
-      if (!saveResult.success) {
-        throw new Error('Failed to create job execution record');
-      }
-
-      this.currentExecutionId = saveResult.id;
-      this.currentJobId = saveResult.jobId || null;
-
-      // Step 2: Create abort controller for cancellation
-      this.abortController = new AbortController();
-
-      // Step 3: Execute job via JobEngine
-      // JobEngine will emit events that we're listening to
       const result = await this.jobEngine.executeJob(config, this.abortController.signal);
 
-      // Step 4: Return execution tracking info
-      return {
-        success: true,
-        executionId: this.currentExecutionId,
-        jobId: this.currentJobId,
-        result: result
-      };
-    } catch (error) {
-      console.error('JobService.startJob failed:', error);
-      
-      // Update execution status to failed
-      if (this.currentExecutionId) {
-        try {
-          await this.jobRepository.updateJobExecutionStatus(
-            this.currentExecutionId,
-            'failed',
-            this.currentJobId,
-            error.message
-          );
-        } catch (updateErr) {
-          console.error('Failed to update execution status:', updateErr);
+      if (this.imageRepository && Array.isArray(result.images)) {
+        for (const img of result.images) {
+          try {
+            await this.imageRepository.saveGeneratedImage({ ...img, executionId: this.currentExecutionId });
+          } catch (e) { console.warn('JobService: Failed to persist image:', e.message); }
         }
       }
-      
-      throw error;
+
+      if (this.currentExecutionId) {
+        await this.jobRepository.updateJobExecution(this.currentExecutionId, {
+          configurationId: this.currentConfigurationId,
+          startedAt: this.currentStartedAt,
+          completedAt: new Date(),
+          status: result.status || 'completed',
+          totalImages: result.totalImages || 0,
+          successfulImages: result.successfulImages || 0,
+          failedImages: result.failedImages || 0,
+          errorMessage: null,
+          label: this.currentLabel
+        }).catch(e => console.warn('JobService: Failed to update execution:', e.message));
+      }
+
+      this.liveProgress = { state: 'completed', progress: 100, currentStep: 'completed', totalImages: result.totalImages || 0 };
+    } catch (error) {
+      console.error('JobService: background job failed:', error);
+      if (this.currentExecutionId) {
+        await this.jobRepository.updateJobExecutionStatus(
+          this.currentExecutionId, 'failed', this.currentJobId, error.message
+        ).catch(e => console.error('Failed to update execution status:', e));
+      }
+      this.liveProgress = { state: 'failed', progress: 0, currentStep: 'failed', totalImages: 0 };
     } finally {
-      // Cleanup
       this.currentExecutionId = null;
       this.currentJobId = null;
+      this.currentLabel = null;
+      this.currentConfigurationId = null;
+      this.currentStartedAt = null;
       this.abortController = null;
     }
   }
 
-  /**
-   * Stop current job execution
-   * Delegates to JobEngine's stop mechanism
-   * 
-   * @returns {Promise<Object>} { success: true, message }
-   */
   async stopJob() {
     try {
       if (!this.abortController) {

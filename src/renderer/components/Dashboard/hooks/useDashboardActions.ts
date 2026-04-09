@@ -232,12 +232,11 @@ export const useDashboardActions = ({
         if (settingsRes?.settings?.advanced?.debugMode) {
           mode = 'debug';
         }
-      } catch (e) {}
+      } catch {}
 
       const jobLogs = await window.electronAPI.jobManagement.getJobLogs(mode);
-      if (jobLogs && Array.isArray(jobLogs)) {
-        setLogs(jobLogs);
-      }
+      const logsArray = Array.isArray(jobLogs) ? jobLogs : (jobLogs?.logs ?? []);
+      setLogs(logsArray);
     } catch (error) {
       console.error('Failed to load logs:', error);
       setLogs([]);

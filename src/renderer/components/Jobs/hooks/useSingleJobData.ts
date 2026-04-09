@@ -85,8 +85,14 @@ export function useSingleJobData(jobId: string | number) {
       }
 
       try {
-        const jobLogs = await window.electronAPI.jobManagement.getJobLogs('standard');
-        setLogs(Array.isArray(jobLogs) ? jobLogs : []);
+        let logMode = 'standard';
+        try {
+          const settingsRes: any = await (window as any).electronAPI.getSettings?.();
+          if (settingsRes?.settings?.advanced?.debugMode) logMode = 'debug';
+        } catch {}
+        const jobLogs = await window.electronAPI.jobManagement.getJobLogs(logMode);
+        const logsArray = Array.isArray(jobLogs) ? jobLogs : (jobLogs?.logs ?? []);
+        setLogs(logsArray);
       } catch {
         setLogs([]);
       }

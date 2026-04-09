@@ -33,9 +33,7 @@ describe('JobEngine Unit Tests', () => {
       producePictureModule: vi.fn()
     };
 
-    mockParamsGeneratorModule = {
-      generateParameters: vi.fn()
-    };
+    mockParamsGeneratorModule = vi.fn();
 
     // Load JobEngine
     const module = req('../../../src/services/JobEngine.js');
@@ -75,7 +73,7 @@ describe('JobEngine Unit Tests', () => {
         ai: {}
       };
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt',
         promptContext: 'test context'
       });
@@ -92,7 +90,7 @@ describe('JobEngine Unit Tests', () => {
       expect(result.images).toHaveLength(1);
       expect(result.successfulImages).toBe(1);
       expect(result.failedImages).toBe(0);
-      expect(mockParamsGeneratorModule.generateParameters).toHaveBeenCalledTimes(1);
+      expect(mockParamsGeneratorModule).toHaveBeenCalledTimes(1);
       expect(mockProducePictureModule.producePictureModule).toHaveBeenCalledTimes(1);
     });
 
@@ -106,7 +104,7 @@ describe('JobEngine Unit Tests', () => {
         apiKeys: { test: 'key' }
       };
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt'
       });
 
@@ -121,7 +119,7 @@ describe('JobEngine Unit Tests', () => {
       // Assert
       expect(result.status).toBe('completed');
       expect(result.images).toHaveLength(6); // 3 generations × 2 images each
-      expect(mockParamsGeneratorModule.generateParameters).toHaveBeenCalledTimes(3);
+      expect(mockParamsGeneratorModule).toHaveBeenCalledTimes(3);
       expect(mockProducePictureModule.producePictureModule).toHaveBeenCalledTimes(3);
     });
 
@@ -132,7 +130,7 @@ describe('JobEngine Unit Tests', () => {
         apiKeys: { test: 'key' }
       };
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt'
       });
 
@@ -159,7 +157,7 @@ describe('JobEngine Unit Tests', () => {
         apiKeys: { test: 'key' }
       };
 
-      mockParamsGeneratorModule.generateParameters
+      mockParamsGeneratorModule
         .mockRejectedValueOnce(new Error('Parameter generation failed'))
         .mockResolvedValueOnce({ prompt: 'test prompt' });
 
@@ -186,7 +184,7 @@ describe('JobEngine Unit Tests', () => {
         apiKeys: { test: 'key' }
       };
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt'
       });
 
@@ -241,7 +239,7 @@ describe('JobEngine Unit Tests', () => {
         apiKeys: { test: 'key' }
       };
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt'
       });
 
@@ -270,7 +268,7 @@ describe('JobEngine Unit Tests', () => {
 
       const abortController = new AbortController();
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt'
       });
 

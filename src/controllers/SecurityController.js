@@ -1,39 +1,31 @@
 /**
  * SecurityController - IPC Handler Registration for Security and API Key operations
- * 
- * Architectural Requirements (ADR-002):
- * - All handlers must be < 5 lines
- * - Handlers are thin adapters - no business logic
- * - All validation, transformation, and business logic belongs in Services
- * 
- * Responsibility: Map Electron IPC events to BackendAdapter/SecurityService calls
- * Extracted from: backendAdapter.js (lines ~387-393, ~514-516)
- * Related ADRs: ADR-002 (Vertical Slice IPC), ADR-003 (Dependency Injection)
+ *
+ * ADR-002: All handlers < 5 lines, thin adapters only.
+ * ADR-003: Dependency Injection - accepts modular services, not backendAdapter.
+ * Story 5.3: Decommissioned backendAdapter dependency.
  */
 
 const { safeLogger } = require('../utils/logMasking');
 
 /**
- * Register all security:* and API key IPC handlers
- * @param {Electron.IpcMain} ipcMain - Electron IPC Main interface
- * @param {BackendAdapter} backendAdapter - Backend service adapter
+ * @param {Electron.IpcMain} ipcMain
+ * @param {Object} deps - Injected service dependencies
+ * @param {Object} deps.securityService
  */
-function registerSecurityHandlers(ipcMain, backendAdapter) {
+function registerSecurityHandlers(ipcMain, deps) {
   safeLogger.log('SecurityController: Registering security:* IPC handlers');
 
-  // API Key Management
-  ipcMain.handle('get-api-key', async (event, serviceName) => {
-    return await backendAdapter.getApiKey(serviceName);
-  });
+  const { securityService } = deps;
 
-  ipcMain.handle('set-api-key', async (event, serviceName, apiKey) => {
-    return await backendAdapter.setApiKey(serviceName, apiKey);
-  });
+  ipcMain.handle('get-api-key', async (_event, serviceName) =>
+    securityService.getSecret(serviceName));
 
-  // Security Status
-  ipcMain.handle('get-security-status', async () => {
-    return await backendAdapter.getSecurityStatus();
-  });
+  ipcMain.handle('set-api-key', async (_event, serviceName, apiKey) =>
+    securityService.setSecret(serviceName, apiKey));
+
+  ipcMain.handle('get-security-status', async () =>
+    securityService.getSecurityStatus());
 
   safeLogger.log('SecurityController: Security IPC handlers registered');
 }

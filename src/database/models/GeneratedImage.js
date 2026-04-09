@@ -8,10 +8,9 @@ let sqlite3;
  *
  * Schema-only: Provides SQLite table definition, init, and close.
  * All query logic lives in ImageRepository (ADR-009).
- * Story 5.2: Stripped from 1,082 lines — removed all query methods, Shadow Bridge routing,
- * and feature-flag-gated repository lazy-initialization.
- * imageRepository is always initialized in init() so backendAdapter.js (deleted in Story 5.3)
- * continues to route all operations through the repository.
+ * Story 5.2: Reduced from 1,082 lines — query methods moved to ImageRepository.
+ * imageRepository is initialized in init(); callers use this model and proxy methods
+ * that delegate persistence to ImageRepository.
  */
 class GeneratedImage {
   constructor() {
@@ -192,10 +191,9 @@ class GeneratedImage {
   }
 
   // ---------------------------------------------------------------------------
-  // TEMPORARY PROXIES — backendAdapter.js compatibility (delete in Story 5.3)
-  // backendAdapter.js (frozen monolith) calls these methods directly on the
-  // model instance, bypassing Shadow Bridge routing. These thin proxies delegate
-  // to ImageRepository so backendAdapter.js continues to work until it is deleted.
+  // Proxy methods — delegate to ImageRepository.
+  // Used by RetryPostProcessingService and other services that receive
+  // the GeneratedImage model instance via DI.
   // ---------------------------------------------------------------------------
 
   _requireImageRepository() {

@@ -28,10 +28,14 @@ function formatDuration(startTime: string | Date, endTime?: string | Date): stri
   if (!endTime) return 'In Progress';
   const start = startTime instanceof Date ? startTime : new Date(startTime);
   const end = endTime instanceof Date ? endTime : new Date(endTime);
-  const duration = end.getTime() - start.getTime();
-  const hours = Math.floor(duration / 3600000);
-  const minutes = Math.floor((duration % 3600000) / 60000);
-  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+  const ms = end.getTime() - start.getTime();
+  const totalSec = Math.round(ms / 1000);
+  const hours = Math.floor(totalSec / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
 }
 
 const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, onDelete }) => {

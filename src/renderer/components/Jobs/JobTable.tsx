@@ -50,11 +50,14 @@ const JobTable: React.FC<JobTableProps> = ({
 
   const formatDuration = (startTime: string, endTime?: string) => {
     if (!endTime) return 'In Progress';
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const duration = end.getTime() - start.getTime();
-    const minutes = Math.floor(duration / 60000);
-    return `${minutes}m`;
+    const ms = new Date(endTime).getTime() - new Date(startTime).getTime();
+    const totalSec = Math.round(ms / 1000);
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
   };
 
   const getStatusColor = (status: string) => {

@@ -1,7 +1,7 @@
 /**
- * JobRepository - Persistence layer for job executions (ADR-009)
- * Extracted from: JobExecution.js | Feature: FEATURE_MODULAR_JOB_REPOSITORY
- * Related ADRs: 001 (< 400 lines), 003 (DI), 006 (Shadow Bridge), 009 (Repository)
+ * JobRepository - Persistence layer for job executions (ADR-009).
+ * Extracted from: JobExecution.js
+ * Related ADRs: 001 (< 400 lines), 003 (DI), 006, 009 (Repository)
  * Handles all DB operations for job_executions table
  */
 class JobRepository {

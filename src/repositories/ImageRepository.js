@@ -1,7 +1,7 @@
 /**
- * ImageRepository - Persistence layer for generated images (ADR-009)
- * Extracted from: GeneratedImage.js | Feature: FEATURE_MODULAR_IMAGE_REPOSITORY
- * Related ADRs: 001 (< 400 lines), 003 (DI), 006 (Shadow Bridge), 009 (Repository)
+ * ImageRepository - Persistence layer for generated images (ADR-009).
+ * Extracted from: GeneratedImage.js
+ * Related ADRs: 001 (< 400 lines), 003 (DI), 006, 009 (Repository)
  * Handles all DB operations for generated_images table
  */
 class ImageRepository {
