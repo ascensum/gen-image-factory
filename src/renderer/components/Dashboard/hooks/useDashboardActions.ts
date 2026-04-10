@@ -36,6 +36,7 @@ export const useDashboardActions = ({
   onOpenSingleJobView
 }: DashboardActionsProps) => {
   const galleryLoadingMoreRef = useRef(false);
+  const galleryFingerprintRef = useRef<string>('');
 
   const loadJobConfiguration = useCallback(async () => {
     try {
@@ -174,6 +175,16 @@ export const useDashboardActions = ({
       const response = await api.getImagesByQCStatus('approved', { limit: GALLERY_PAGE_SIZE, offset: 0 });
       const raw = response?.images ?? [];
       const approvedImages = normalizeImages(Array.isArray(raw) ? raw : []);
+
+      const fp = approvedImages.map((img: any) => {
+        const meta = img.metadata;
+        const metaTitle = meta && typeof meta === 'object' ? (meta.title || '') : '';
+        return `${img.id}:${img.qcStatus || ''}:${metaTitle}`;
+      }).join('|');
+
+      if (fp === galleryFingerprintRef.current) return;
+      galleryFingerprintRef.current = fp;
+
       setGeneratedImages(approvedImages);
       setGalleryHasMore(!!(response?.hasMore ?? (approvedImages.length === GALLERY_PAGE_SIZE)));
       if (approvedImages.length > 0) {
@@ -193,6 +204,7 @@ export const useDashboardActions = ({
       }
     } catch (error) {
       console.error('Failed to load generated images:', error);
+      galleryFingerprintRef.current = '';
       setGeneratedImages([]);
       setGalleryHasMore(false);
     }

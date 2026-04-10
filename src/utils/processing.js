@@ -97,6 +97,32 @@ function normalizeRemoveBgFailureMode(v) {
   return (val === 'fail' || val === 'mark_failed') ? 'mark_failed' : 'approve';
 }
 
-module.exports = { normalizeProcessingSettings, normalizeRemoveBgFailureMode };
+/**
+ * Build processing config for post-QC processing pass.
+ * Merges global processing settings with optional per-image overrides.
+ * Ported from legacy jobRunner post-QC processing config construction.
+ */
+function buildPostQCProcessingConfig(proc, perImage, tempDir, effectiveFailMode) {
+  const p = perImage || {};
+  return {
+    tempDirectory: tempDir,
+    outputDirectory: tempDir,
+    _softFailures: [],
+    removeBg: !!(p.removeBg ?? proc.removeBg),
+    imageConvert: !!(p.imageConvert ?? proc.imageConvert),
+    convertToJpg: !!(p.convertToJpg ?? proc.convertToJpg),
+    convertToWebp: !!(p.convertToWebp ?? proc.convertToWebp),
+    trimTransparentBackground: !!(p.trimTransparentBackground ?? proc.trimTransparentBackground),
+    imageEnhancement: !!(p.imageEnhancement ?? proc.imageEnhancement),
+    sharpening: (p.sharpening !== undefined) ? p.sharpening : (proc.sharpening ?? 0),
+    saturation: (p.saturation !== undefined) ? p.saturation : (proc.saturation ?? 1),
+    jpgBackground: p.jpgBackground || proc.jpgBackground || 'white',
+    removeBgSize: p.removeBgSize || proc.removeBgSize || 'preview',
+    removeBgFailureMode: effectiveFailMode,
+    jpgQuality: (p.jpgQuality !== undefined) ? p.jpgQuality : (proc.jpgQuality ?? 85),
+    pngQuality: (p.pngQuality !== undefined) ? p.pngQuality : (proc.pngQuality ?? 100),
+    webpQuality: (p.webpQuality !== undefined) ? p.webpQuality : (proc.webpQuality ?? 85)
+  };
+}
 
-
+module.exports = { normalizeProcessingSettings, normalizeRemoveBgFailureMode, buildPostQCProcessingConfig };

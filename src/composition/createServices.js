@@ -122,7 +122,8 @@ async function createServices(opts = {}) {
   const jobService = new JobService({
     jobEngine,
     jobRepository,
-    imageRepository
+    imageRepository,
+    createImagePipeline
   });
 
   // Forward JobService events to renderer via webContentsSender

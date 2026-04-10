@@ -115,20 +115,23 @@ export const useDashboardPolling = ({
   useEffect(() => {
     if (jobStatus.state === 'completed') {
       lastCompletionRef.current = Date.now();
-      loadJobHistory(true);  // silent: keep history list visible, no spinner flash
+      loadJobHistory(true);
       loadStatistics();
+      loadLogs('completed');
       setTimeout(() => {
         loadGeneratedImages();
+        loadLogs('completed');
       }, 500);
     } else if (jobStatus.state === 'failed') {
       lastCompletionRef.current = Date.now();
-      loadJobHistory(true);  // silent: keep history list visible, no spinner flash
+      loadJobHistory(true);
       loadStatistics();
+      loadLogs('failed');
     } else if (jobStatus.state === 'running') {
       lastCompletionRef.current = null;
       loadJobHistory(true);
     }
-  }, [jobStatus.state, loadJobHistory, loadStatistics, loadGeneratedImages]);
+  }, [jobStatus.state, loadJobHistory, loadStatistics, loadGeneratedImages, loadLogs]);
 
   return { lastCompletionRef };
 };

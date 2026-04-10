@@ -66,7 +66,7 @@ interface ImageGalleryGridProps {
   hasMore?: boolean;
 }
 
-function GalleryCard({
+const GalleryCard = React.memo(function GalleryCard({
   image,
   selectedImages,
   onImageSelect,
@@ -204,7 +204,7 @@ function GalleryCard({
       </div>
     </div>
   );
-}
+});
 
 const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   images,

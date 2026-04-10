@@ -240,16 +240,37 @@ class JobEngine extends EventEmitter {
     const maxAllowed = Math.max(1, Math.min(20, Math.floor(10000 / Math.max(1, generations))));
     const effectiveVariations = Math.min(requestedVariations, maxAllowed);
 
+    const proc = config.processing || {};
+    const processingEnabled = !(config.ai?.runQualityCheck === true);
+
     return {
       generationIndex: genIndex,
       variations: effectiveVariations,
       runwareDimensionsCsv: (config.parameters && config.parameters.runwareDimensionsCsv) || '',
-      processing: config.processing || {},
-      ai: config.ai || {},
+      removeBg: processingEnabled ? (proc.removeBg || false) : false,
+      imageConvert: processingEnabled ? (proc.imageConvert || false) : false,
+      convertToJpg: processingEnabled ? (proc.convertToJpg || false) : false,
+      convertToWebp: processingEnabled ? (proc.convertToWebp || false) : false,
+      trimTransparentBackground: processingEnabled ? (proc.trimTransparentBackground || false) : false,
+      imageEnhancement: processingEnabled ? (proc.imageEnhancement || false) : false,
+      sharpening: processingEnabled ? (proc.sharpening || 0) : 0,
+      saturation: processingEnabled ? (proc.saturation || 1) : 1,
+      jpgBackground: processingEnabled ? (proc.jpgBackground || 'white') : 'white',
+      jpgQuality: processingEnabled ? (proc.jpgQuality || 85) : 85,
+      pngQuality: processingEnabled ? (proc.pngQuality || 100) : 100,
+      webpQuality: processingEnabled ? (proc.webpQuality || 85) : 85,
+      removeBgSize: processingEnabled ? (proc.removeBgSize || 'preview') : 'preview',
+      removeBgFailureMode: proc.removeBgFailureMode || 'approve',
+      failRetryEnabled: proc.failRetryEnabled || false,
+      failOnSteps: Array.isArray(proc.failOnSteps) ? proc.failOnSteps : [],
+      pollingTimeout: config.parameters?.enablePollingTimeout ? (config.parameters?.pollingTimeout || 15) : null,
+      processMode: config.parameters?.processMode || 'single',
+      runQualityCheck: config.ai?.runQualityCheck || false,
+      runMetadataGen: false,
       apiKeys: config.apiKeys || {},
       filePaths: config.filePaths || {},
-      outputDirectory: config.filePaths?.outputDirectory || '',
-      tempDirectory: config.filePaths?.tempDirectory || ''
+      outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
+      tempDirectory: config.filePaths?.tempDirectory || './pictures/generated'
     };
   }
 

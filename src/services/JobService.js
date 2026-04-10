@@ -20,6 +20,10 @@
  */
 
 const { EventEmitter } = require('events');
+const path = require('path');
+const fsSync = require('fs');
+const { PostGenerationService } = require(path.join(__dirname, './PostGenerationService'));
+const { moveImageToFinal } = require(path.join(__dirname, '../utils/moveImageToFinal'));
 
 /**
  * JobService
@@ -44,6 +48,11 @@ class JobService extends EventEmitter {
     this.jobEngine = options.jobEngine;
     this.jobRepository = options.jobRepository;
     this.imageRepository = options.imageRepository || null;
+    this._createImagePipeline = options.createImagePipeline || null;
+
+    this.postGen = this.imageRepository
+      ? new PostGenerationService({ imageRepository: this.imageRepository, addLog: this._addLog.bind(this), createImagePipeline: this._createImagePipeline })
+      : null;
     
     this.currentExecutionId = null;
     this.currentJobId = null;
@@ -78,14 +87,18 @@ class JobService extends EventEmitter {
   }
 
   _setupJobEngineListeners() {
+    this._postGenPending = false;
+
     this.jobEngine.on('progress', (data) => {
       const step = data.step || '';
       const meta = data.metadata || {};
       const gensDone = step === 'image_generation' ? (meta.generationIndex != null ? meta.generationIndex + 1 : this.liveProgress.gensDone) : this.liveProgress.gensDone;
+      let progress = data.progress || 0;
+      if (this._postGenPending && progress > 95) progress = 95;
       this.liveProgress = {
         ...this.liveProgress,
         state: 'running',
-        progress: data.progress || 0,
+        progress,
         currentStep: step,
         totalImages: meta.totalImages || this.liveProgress.totalImages,
         totalGenerations: meta.generations || this.liveProgress.totalGenerations,
@@ -125,25 +138,8 @@ class JobService extends EventEmitter {
       }
     });
 
-    // Job completion events - persist final results
     this.jobEngine.on('job-complete', async (result) => {
       this.emit('job-complete', result);
-      
-      // Update job execution with final statistics
-      if (this.currentExecutionId) {
-        try {
-          await this.jobRepository.updateJobExecution(this.currentExecutionId, {
-            status: result.status || 'completed',
-            endedAt: new Date().toISOString(),
-            totalImages: result.totalImages || 0,
-            successfulImages: result.successfulImages || 0,
-            failedImages: result.failedImages || 0,
-            errorMessage: result.error || null
-          });
-        } catch (err) {
-          console.error('JobService: Failed to update final execution:', err);
-        }
-      }
     });
   }
 
@@ -178,6 +174,10 @@ class JobService extends EventEmitter {
 
   async _runJobInBackground(config) {
     try {
+      const hasMetadataGen = config.ai?.runMetadataGen === true;
+      const hasQC = config.ai?.runQualityCheck === true;
+      this._postGenPending = hasMetadataGen || hasQC;
+
       const result = await this.jobEngine.executeJob(config, this.abortController.signal);
 
       if (this.imageRepository && Array.isArray(result.images)) {
@@ -187,6 +187,48 @@ class JobService extends EventEmitter {
           } catch (e) { console.warn('JobService: Failed to persist image:', e.message); }
         }
       }
+
+      const hasImages = Array.isArray(result.images) && result.images.length > 0;
+
+      // Legacy flow: when QC disabled, move ALL images to final immediately and auto-approve.
+      // Processing already happened at module level (JobEngine._buildModuleConfig disables
+      // module-level processing when QC IS enabled, defers it to post-QC).
+      if (!hasQC && hasImages && this.imageRepository) {
+        const moveState = {};
+        for (const image of result.images) {
+          const sourcePath = image.tempImagePath || image.finalImagePath;
+          const mId = image.imageMappingId;
+          if (!sourcePath || !mId) continue;
+          try { fsSync.accessSync(sourcePath); } catch { continue; }
+          const finalPath = await moveImageToFinal(sourcePath, mId, config, moveState);
+          if (finalPath) {
+            await this.imageRepository.updateImagePathsByMappingId(mId, null, finalPath);
+            image.finalImagePath = finalPath;
+            image.tempImagePath = null;
+            await this.imageRepository.updateQCStatusByMappingId(mId, 'approved', 'QC disabled, auto-approved').catch(() => {});
+          }
+        }
+      }
+
+      // Metadata generation runs on ALL images regardless of QC outcome.
+      if (hasMetadataGen && hasImages && this.postGen) {
+        this.liveProgress = { ...this.liveProgress, state: 'running', progress: 95, currentStep: 'metadata_generation' };
+        await this.postGen.runMetadataGeneration(result.images, config, this.abortController?.signal);
+      }
+
+      // QC + post-QC processing (only when QC enabled).
+      if (hasQC && hasImages && this.postGen) {
+        this.liveProgress = { ...this.liveProgress, state: 'running', progress: 95, currentStep: 'quality_check' };
+        await this.postGen.runQualityChecks(result.images, config, this.abortController?.signal);
+
+        const approvedImages = result.images.filter(img => img.qcStatus === 'approved');
+        if (approvedImages.length > 0) {
+          this.liveProgress = { ...this.liveProgress, progress: 95, currentStep: 'post_qc_processing' };
+          await this.postGen.runPostQCProcessing(approvedImages, config, this.abortController?.signal);
+        }
+      }
+
+      this._postGenPending = false;
 
       if (this.currentExecutionId) {
         await this.jobRepository.updateJobExecution(this.currentExecutionId, {
@@ -212,6 +254,7 @@ class JobService extends EventEmitter {
       }
       this.liveProgress = { state: 'failed', progress: 0, currentStep: 'failed', totalImages: 0 };
     } finally {
+      this._postGenPending = false;
       this.currentExecutionId = null;
       this.currentJobId = null;
       this.currentLabel = null;

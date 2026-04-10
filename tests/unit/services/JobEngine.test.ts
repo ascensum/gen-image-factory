@@ -420,7 +420,7 @@ describe('JobEngine Unit Tests', () => {
           variations: 5,
           runwareDimensionsCsv: '512x512'
         },
-        processing: { sharpening: 1 },
+        processing: { sharpening: 1, imageEnhancement: true },
         ai: { metadataPrompt: 'test' }
       };
       const genParameters = { prompt: 'test' };
@@ -432,8 +432,9 @@ describe('JobEngine Unit Tests', () => {
       expect(moduleConfig.generationIndex).toBe(0);
       expect(moduleConfig.variations).toBe(5);
       expect(moduleConfig.runwareDimensionsCsv).toBe('512x512');
-      expect(moduleConfig.processing.sharpening).toBe(1);
-      expect(moduleConfig.ai.metadataPrompt).toBe('test');
+      expect(moduleConfig.sharpening).toBe(1);
+      expect(moduleConfig.imageEnhancement).toBe(true);
+      expect(moduleConfig.runMetadataGen).toBe(false);
     });
 
     it('should clamp variations to max allowed (10000 total cap)', () => {
