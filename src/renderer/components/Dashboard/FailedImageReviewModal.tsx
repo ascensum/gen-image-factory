@@ -4,6 +4,7 @@ import './FailedImageReviewModal.css';
 import StatusBadge from '../Common/StatusBadge';
 import type { GeneratedImage } from '../../../types/generatedImage';
 import { formatQcLabel, formatQcFailureReason } from '../../utils/qc';
+import { mergeImageProcessingForDisplay } from '../../utils/mergeImageProcessingForDisplay';
 
 type TabType = 'details' | 'metadata' | 'processing';
 
@@ -541,32 +542,10 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
               {activeTab === 'processing' && (
                 <div className="space-y-4">
                   {(() => {
-                    // Prefer per-image settings only when they differ from snapshot (custom retry),
-                    // otherwise prefer execution snapshot (as-run).
-                    const toObject = (val: any) => {
-                      if (!val) return null;
-                      if (typeof val === 'string') {
-                        try { return JSON.parse(val); } catch { return null; }
-                      }
-                      if (typeof val === 'object') return val;
-                      return null;
-                    };
-                    const pickProcessingKeys = (obj: any) => {
-                      if (!obj || typeof obj !== 'object') return null;
-                      const keys = [
-                        'imageEnhancement','sharpening','saturation','imageConvert','convertToJpg',
-                        'jpgQuality','pngQuality','removeBg','trimTransparentBackground','jpgBackground','removeBgSize'
-                      ];
-                      const out: any = {};
-                      keys.forEach(k => { if (k in obj) out[k] = obj[k]; });
-                      return out;
-                    };
-                    const perImageProc = pickProcessingKeys(toObject((image as any)?.processingSettings));
-                    const snapshotProc = pickProcessingKeys(snapshotProcessing);
-                    const isCustomRetry = !!(perImageProc && snapshotProc && JSON.stringify(perImageProc) !== JSON.stringify(snapshotProc));
-                    const ps = isCustomRetry
-                      ? (toObject((image as any)?.processingSettings) || snapshotProcessing || {})
-                      : (snapshotProcessing || toObject((image as any)?.processingSettings) || {});
+                    const ps = mergeImageProcessingForDisplay(
+                      snapshotProcessing,
+                      (image as any)?.processingSettings
+                    ) as Record<string, any>;
                     return (
                       <div className="grid grid-cols-2 gap-4">
                         <div>

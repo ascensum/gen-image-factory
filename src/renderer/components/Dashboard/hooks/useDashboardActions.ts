@@ -179,7 +179,9 @@ export const useDashboardActions = ({
       const fp = approvedImages.map((img: any) => {
         const meta = img.metadata;
         const metaTitle = meta && typeof meta === 'object' ? (meta.title || '') : '';
-        return `${img.id}:${img.qcStatus || ''}:${metaTitle}`;
+        // Paths must be part of the fingerprint: after job completion rows update temp→final with same id/qc/metadata; skipping here left stale gallery URLs until app restart.
+        const pathSig = JSON.stringify([img.finalImagePath ?? null, img.tempImagePath ?? null]);
+        return `${img.id}:${img.qcStatus || ''}:${metaTitle}:${pathSig}`;
       }).join('|');
 
       if (fp === galleryFingerprintRef.current) return;

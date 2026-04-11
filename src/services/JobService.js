@@ -24,6 +24,7 @@ const path = require('path');
 const fsSync = require('fs');
 const { PostGenerationService } = require(path.join(__dirname, './PostGenerationService'));
 const { moveImageToFinal } = require(path.join(__dirname, '../utils/moveImageToFinal'));
+const { sanitizeConfigurationSnapshot } = require(path.join(__dirname, '../utils/sanitizeConfigurationSnapshot'));
 
 /**
  * JobService
@@ -60,6 +61,8 @@ class JobService extends EventEmitter {
     this.currentConfigurationId = null;
     this.currentStartedAt = null;
     this.abortController = null;
+    /** True while _runJobInBackground is in flight (after executeJob returns, persist/move/postGen still run). Caps JobEngine progress at 95 so UI never treats the job as completed until paths are final. */
+    this._backgroundPipelineActive = false;
     this.liveProgress = { state: 'idle', progress: 0, currentStep: '', totalImages: 0, totalGenerations: 1, variations: 1, gensDone: 0 };
     this._logBuffer = [];
     
@@ -87,14 +90,12 @@ class JobService extends EventEmitter {
   }
 
   _setupJobEngineListeners() {
-    this._postGenPending = false;
-
     this.jobEngine.on('progress', (data) => {
       const step = data.step || '';
       const meta = data.metadata || {};
       const gensDone = step === 'image_generation' ? (meta.generationIndex != null ? meta.generationIndex + 1 : this.liveProgress.gensDone) : this.liveProgress.gensDone;
       let progress = data.progress || 0;
-      if (this._postGenPending && progress > 95) progress = 95;
+      if (this._backgroundPipelineActive && progress > 95) progress = 95;
       this.liveProgress = {
         ...this.liveProgress,
         state: 'running',
@@ -138,18 +139,18 @@ class JobService extends EventEmitter {
       }
     });
 
-    this.jobEngine.on('job-complete', async (result) => {
-      this.emit('job-complete', result);
-    });
+    // job-complete is emitted from _runJobInBackground after persist/move/metadata/QC so IPC matches final paths (not when JobEngine returns).
   }
 
   async startJobAsync(config, options = {}) {
+    const configurationSnapshot = sanitizeConfigurationSnapshot(config);
     const execution = {
       configurationId: options.configurationId || null,
       label: options.label || 'Untitled Job',
       status: 'running',
       startedAt: new Date().toISOString(),
-      totalImages: 0, successfulImages: 0, failedImages: 0, errorMessage: null
+      totalImages: 0, successfulImages: 0, failedImages: 0, errorMessage: null,
+      configurationSnapshot
     };
     const saveResult = await this.jobRepository.saveJobExecution(execution);
     if (!saveResult.success) throw new Error('Failed to create job execution record');
@@ -176,7 +177,7 @@ class JobService extends EventEmitter {
     try {
       const hasMetadataGen = config.ai?.runMetadataGen === true;
       const hasQC = config.ai?.runQualityCheck === true;
-      this._postGenPending = hasMetadataGen || hasQC;
+      this._backgroundPipelineActive = true;
 
       const result = await this.jobEngine.executeJob(config, this.abortController.signal);
 
@@ -228,8 +229,6 @@ class JobService extends EventEmitter {
         }
       }
 
-      this._postGenPending = false;
-
       if (this.currentExecutionId) {
         await this.jobRepository.updateJobExecution(this.currentExecutionId, {
           configurationId: this.currentConfigurationId,
@@ -245,6 +244,7 @@ class JobService extends EventEmitter {
       }
 
       this.liveProgress = { state: 'completed', progress: 100, currentStep: 'completed', totalImages: result.totalImages || 0 };
+      this.emit('job-complete', result);
     } catch (error) {
       console.error('JobService: background job failed:', error);
       if (this.currentExecutionId) {
@@ -254,7 +254,7 @@ class JobService extends EventEmitter {
       }
       this.liveProgress = { state: 'failed', progress: 0, currentStep: 'failed', totalImages: 0 };
     } finally {
-      this._postGenPending = false;
+      this._backgroundPipelineActive = false;
       this.currentExecutionId = null;
       this.currentJobId = null;
       this.currentLabel = null;

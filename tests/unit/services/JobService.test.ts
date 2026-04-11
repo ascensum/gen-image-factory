@@ -104,7 +104,8 @@ describe('JobService Unit Tests', () => {
       expect(mockJobEngine.listenerCount('progress')).toBeGreaterThan(0);
       expect(mockJobEngine.listenerCount('image-generated')).toBeGreaterThan(0);
       expect(mockJobEngine.listenerCount('error')).toBeGreaterThan(0);
-      expect(mockJobEngine.listenerCount('job-complete')).toBeGreaterThan(0);
+      // job-complete is emitted by JobService after persist/post-processing, not forwarded from JobEngine
+      expect(mockJobEngine.listenerCount('job-complete')).toBe(0);
     });
   });
 
@@ -126,7 +127,10 @@ describe('JobService Unit Tests', () => {
         expect.objectContaining({
           configurationId: 'cfg-1',
           label: 'Test Job',
-          status: 'running'
+          status: 'running',
+          configurationSnapshot: expect.objectContaining({
+            parameters: expect.objectContaining({ count: 5 })
+          })
         })
       );
     });
@@ -252,18 +256,14 @@ describe('JobService Unit Tests', () => {
       );
     });
 
-    it('should persist final results on job-complete event (integration)', async () => {
-      mockJobEngine.executeJob.mockImplementation(async () => {
-        const result = {
-          status: 'completed',
-          images: [],
-          totalImages: 10,
-          successfulImages: 8,
-          failedImages: 2
-        };
-        mockJobEngine.emit('job-complete', result);
-        return result;
-      });
+    it('should persist final results after executeJob returns (integration)', async () => {
+      mockJobEngine.executeJob.mockImplementation(async () => ({
+        status: 'completed',
+        images: [],
+        totalImages: 10,
+        successfulImages: 8,
+        failedImages: 2
+      }));
 
       const config = { parameters: { count: 5 } };
       await jobService.startJobAsync(config);

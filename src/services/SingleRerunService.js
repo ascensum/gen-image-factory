@@ -92,36 +92,15 @@ class SingleRerunService {
       try {
         const cfg = configResult?.configuration?.settings || null;
         if (cfg) {
-          // eslint-disable-next-line no-unused-vars
-          const { apiKeys, ...sanitized } = cfg;
-          if (sanitized && sanitized.parameters) {
-            const adv = sanitized.parameters.runwareAdvanced || {};
-            const advEnabled = Boolean(
-              adv && (
-                adv.CFGScale != null ||
-                adv.steps != null ||
-                (adv.scheduler && String(adv.scheduler).trim() !== '') ||
-                adv.checkNSFW === true ||
-                (Array.isArray(adv.lora) && adv.lora.length > 0)
-              )
-            );
-            sanitized.parameters.runwareAdvancedEnabled = advEnabled;
+          const { sanitizeConfigurationSnapshot } = require('../utils/sanitizeConfigurationSnapshot');
+          const sanitized = sanitizeConfigurationSnapshot(cfg);
+          if (sanitized) {
+            await this.jobExecution.updateJobExecution(newExecutionId, {
+              configurationId: jobData.execution.configurationId,
+              status: 'running',
+              configurationSnapshot: sanitized
+            });
           }
-          try {
-            if (!sanitized.processing) sanitized.processing = {};
-            const { normalizeRemoveBgFailureMode } = require('../utils/processing');
-            const modeFromCfg = (cfg.processing && cfg.processing.removeBgFailureMode) ? String(cfg.processing.removeBgFailureMode) : undefined;
-            const existing = (sanitized.processing && sanitized.processing.removeBgFailureMode) ? String(sanitized.processing.removeBgFailureMode) : undefined;
-            const mode = modeFromCfg || existing;
-            sanitized.processing.removeBgFailureMode = normalizeRemoveBgFailureMode(mode);
-          } catch {
-            // Ignore errors when setting removeBgFailureMode
-          }
-          await this.jobExecution.updateJobExecution(newExecutionId, {
-            configurationId: jobData.execution.configurationId,
-            status: 'running',
-            configurationSnapshot: sanitized || null
-          });
         }
       } catch (e) {
         console.warn(' Rerun snapshot persistence failed (non-fatal):', e.message);

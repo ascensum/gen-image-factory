@@ -154,6 +154,30 @@ describe('useDashboardActions', () => {
     expect(result.current.state.generatedImages).toHaveLength(2);
   });
 
+  it('loadGeneratedImages applies API result when only file paths change (same id/qc/metadata)', async () => {
+    mockGetImagesByQCStatus
+      .mockResolvedValueOnce({
+        images: [{ id: 'i1', qcStatus: 'approved', tempImagePath: '/tmp/a.png', finalImagePath: null, metadata: {} }],
+      })
+      .mockResolvedValueOnce({
+        images: [{ id: 'i1', qcStatus: 'approved', tempImagePath: null, finalImagePath: '/out/a.png', metadata: {} }],
+      });
+
+    const { result } = renderHook(() => useDashboardActionsWithState());
+
+    await act(async () => {
+      await result.current.actions.loadGeneratedImages();
+    });
+    expect(result.current.state.generatedImages[0].tempImagePath).toBe('/tmp/a.png');
+    expect(result.current.state.generatedImages[0].finalImagePath).toBeNull();
+
+    await act(async () => {
+      await result.current.actions.loadGeneratedImages();
+    });
+    expect(result.current.state.generatedImages[0].finalImagePath).toBe('/out/a.png');
+    expect(result.current.state.generatedImages[0].tempImagePath).toBeNull();
+  });
+
   it('handleStartJob calls getConfiguration, jobStart, then loadJobHistory and loadStatistics', async () => {
     mockJobManagement.jobStart.mockResolvedValue(undefined);
 

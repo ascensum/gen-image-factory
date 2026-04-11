@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { buildLocalFileUrl } from '../../utils/urls';
+import { mergeImageProcessingForDisplay } from '../../utils/mergeImageProcessingForDisplay';
 import './FailedImageReviewModal.css';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import StatusBadge from '../Common/StatusBadge';
@@ -232,33 +233,11 @@ const ImageModal: React.FC<ImageModalProps> = ({
     try { console.log('ImageModal - Final metadata object:', metadata); } catch {}
   }
   
-  // Ensure processingSettings is always defined for the Processing tab
-  // Logic: if per-image settings differ from execution snapshot, treat as "retry with custom settings" and prefer per-image.
-  // Otherwise prefer execution snapshot (as-run) for regular flow.
-  const toObject = (val: any) => {
-    if (!val) return null;
-    if (typeof val === 'string') {
-      try { return JSON.parse(val); } catch { return null; }
-    }
-    if (typeof val === 'object') return val;
-    return null;
-  };
-  const pickProcessingKeys = (obj: any) => {
-    if (!obj || typeof obj !== 'object') return null;
-    const keys = [
-      'imageEnhancement','sharpening','saturation','imageConvert','convertToJpg',
-      'jpgQuality','pngQuality','removeBg','trimTransparentBackground','jpgBackground','removeBgSize'
-    ];
-    const out: any = {};
-    keys.forEach(k => { if (k in obj) out[k] = obj[k]; });
-    return out;
-  };
-  const perImageProc = pickProcessingKeys(toObject((image as any)?.processingSettings));
-  const snapshotProc = pickProcessingKeys(snapshotProcessing);
-  const isCustomRetry = !!(perImageProc && snapshotProc && JSON.stringify(perImageProc) !== JSON.stringify(snapshotProc));
-  const processingSettings: any = isCustomRetry
-    ? (toObject((image as any)?.processingSettings) || snapshotProcessing || {})
-    : (snapshotProcessing || toObject((image as any)?.processingSettings) || {});
+  // Processing tab: prefer persisted per-image processing_settings (as-processed after retry) over job snapshot; see mergeImageProcessingForDisplay.
+  const processingSettings: any = mergeImageProcessingForDisplay(
+    snapshotProcessing,
+    (image as any)?.processingSettings
+  );
 
 
   return (
