@@ -3,6 +3,7 @@
 const path = require('path');
 const fs = require('fs').promises;
 const aiVision = require(path.join(__dirname, '../aiVision'));
+const { emitPipelineStage } = require(path.join(__dirname, '../utils/pipelineStageLog'));
 const { moveImageToFinal } = require(path.join(__dirname, '../utils/moveImageToFinal'));
 const {
   buildPostQCProcessingConfig,
@@ -87,6 +88,15 @@ class PostGenerationService {
         metadata: { imageMappingId: mId, imagePath }
       });
 
+      emitPipelineStage(config, 'quality_check_api_begin', `Vision QC API call for image ${i + 1}/${images.length}`, {
+        phase: 'network',
+        scope: 'post_engine',
+        imageMappingId: mId,
+        openaiModel,
+        imageIndex: i + 1,
+        total: images.length
+      });
+
       try {
         const result = await Promise.race([
           aiVision.runQualityCheck(imagePath, openaiModel, customPrompt),
@@ -94,6 +104,14 @@ class PostGenerationService {
         ]);
 
         if (result) {
+          emitPipelineStage(config, 'quality_check_api_end', `Vision QC returned for image ${i + 1}/${images.length}`, {
+            phase: 'network',
+            scope: 'post_engine',
+            imageMappingId: mId,
+            passed: !!result.passed,
+            imageIndex: i + 1
+          });
+
           const qcStatus = result.passed ? 'approved' : 'qc_failed';
           const qcReason = result.reason || (result.passed ? 'Quality check passed' : 'Quality check failed');
 
@@ -117,6 +135,13 @@ class PostGenerationService {
           image.qcReason = qcReason;
           if (result.passed) approvedCount++; else failedCount++;
         } else {
+          emitPipelineStage(config, 'quality_check_api_end', `Vision QC returned empty for image ${i + 1}/${images.length}`, {
+            phase: 'network',
+            scope: 'post_engine',
+            imageMappingId: mId,
+            emptyResult: true,
+            imageIndex: i + 1
+          });
           this._addLog('warn', `Quality check returned no result for image ${i + 1}/${images.length}`, {
             stepName: 'ai_operations', subStep: 'quality_check_no_result',
             metadata: { imageMappingId: mId }
@@ -129,6 +154,12 @@ class PostGenerationService {
           failedCount++;
         }
       } catch (err) {
+        emitPipelineStage(config, 'quality_check_api_error', `Vision QC failed for image ${i + 1}/${images.length}`, {
+          phase: 'network',
+          scope: 'post_engine',
+          imageMappingId: mId,
+          error: err.message
+        });
         this._addLog('error', `Quality check error for image ${i + 1}/${images.length}: ${err.message}`, {
           stepName: 'ai_operations', subStep: 'quality_check_image_error',
           metadata: { imageMappingId: mId, error: err.message }
@@ -194,11 +225,28 @@ class PostGenerationService {
         metadata: { imageMappingId: mId, imageIndex: i, imagePath: localPath }
       });
 
+      emitPipelineStage(config, 'metadata_api_begin', `AI metadata API call for image ${i + 1}/${images.length}`, {
+        phase: 'network',
+        scope: 'post_engine',
+        imageMappingId: mId,
+        openaiModel,
+        imageIndex: i + 1,
+        total: images.length
+      });
+
       try {
         const result = await Promise.race([
           aiVision.generateMetadata(localPath, image.metadata?.prompt || 'default image', customPrompt, openaiModel),
           new Promise((_, rej) => setTimeout(() => rej(new Error('Metadata generation timed out')), timeoutMs))
         ]);
+
+        emitPipelineStage(config, 'metadata_api_end', `AI metadata API returned for image ${i + 1}/${images.length}`, {
+          phase: 'network',
+          scope: 'post_engine',
+          imageMappingId: mId,
+          imageIndex: i + 1,
+          hasResult: !!result
+        });
 
         if (result && mId) {
           const tags = result.uploadTags || result.tags || result.upload_tags || null;
@@ -244,6 +292,12 @@ class PostGenerationService {
         }
       } catch (err) {
         failCount++;
+        emitPipelineStage(config, 'metadata_api_error', `AI metadata API failed for image ${i + 1}/${images.length}`, {
+          phase: 'network',
+          scope: 'post_engine',
+          imageMappingId: mId,
+          error: err.message
+        });
         this._addLog('warn', `Metadata generation failed for image ${i + 1}/${images.length}: ${err.message}`, {
           stepName: 'image_generation', subStep: 'metadata_error',
           metadata: { imageMappingId: mId, error: err.message }
@@ -290,9 +344,13 @@ class PostGenerationService {
       stepName: 'image_generation', subStep: 'finalize_approved_start',
       metadata: { count: approvedImages.length, deferredRemoveBg: runDeferredPipeline }
     });
-    if (!process.env.VITEST) {
-      console.info(runDeferredPipeline ? '[finalize_approved] deferred pipeline after QC' : '[finalize_approved] move only', approvedImages.length);
-    }
+    emitPipelineStage(config, 'finalize_approved_begin', runDeferredPipeline
+      ? 'Post-QC: deferred remove.bg + Sharp then move to final'
+      : 'Post-QC: move approved images to final (no deferred pipeline)', {
+      scope: 'post_engine',
+      deferredRemoveBg: runDeferredPipeline,
+      count: approvedImages.length
+    });
 
     let processedCount = 0;
 
@@ -310,7 +368,11 @@ class PostGenerationService {
         const effectiveFailMode = proc.removeBgFailureMode || 'approve';
         const processingConfig = buildPostQCProcessingConfig(proc, null, tempProcessingDir, effectiveFailMode);
         if (Number.isFinite(pollingTimeout)) processingConfig.pollingTimeout = pollingTimeout;
-        Object.assign(processingConfig, { apiKeys: config.apiKeys, abortSignal });
+        Object.assign(processingConfig, {
+          apiKeys: config.apiKeys,
+          abortSignal,
+          pipelineStageLog: config.pipelineStageLog
+        });
         const isMarkFailed = processingConfig.removeBg === true && processingConfig.removeBgFailureMode === 'mark_failed';
 
         if (isMarkFailed && !removeBgKey.trim()) {
@@ -324,10 +386,29 @@ class PostGenerationService {
         let removeBgThrew = false;
         try {
           if (!isPostQCPipelineNoOp(processingConfig)) {
+            emitPipelineStage(config, 'post_qc_process_image_begin', 'Deferred pipeline.processImage (remove.bg + Sharp)', {
+              scope: 'post_engine',
+              phase: 'network_then_local',
+              imageMappingId: mId,
+              sourcePath,
+              removeBg: !!processingConfig.removeBg
+            });
             pathForFinal = await pipeline.processImage(sourcePath, path.basename(sourcePath), processingConfig);
+            emitPipelineStage(config, 'post_qc_process_image_end', 'Deferred pipeline.processImage finished', {
+              scope: 'post_engine',
+              phase: 'local',
+              imageMappingId: mId,
+              outputPath: pathForFinal
+            });
           }
         } catch (procErr) {
           removeBgThrew = true;
+          emitPipelineStage(config, 'post_qc_process_image_error', 'Deferred pipeline.processImage failed', {
+            scope: 'post_engine',
+            imageMappingId: mId,
+            error: procErr.message,
+            stage: procErr.stage
+          });
           this._addLog('warn', `Post-QC processing threw: ${procErr.message}`, {
             stepName: 'image_generation', subStep: 'post_qc_catch',
             metadata: { imageMappingId: mId, error: procErr.message, stage: procErr.stage }

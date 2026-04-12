@@ -17,6 +17,8 @@ interface DashboardActionsProps {
   setShowSingleExportModal: (show: boolean) => void;
   setJobConfiguration: (config: any) => void;
   setGalleryHasMore: (hasMore: boolean) => void;
+  logIpcMode: 'standard' | 'debug';
+  setLogIpcMode: (mode: 'standard' | 'debug') => void;
   onOpenSingleJobView?: (jobId: string) => void;
 }
 
@@ -33,6 +35,8 @@ export const useDashboardActions = ({
   setShowSingleExportModal,
   setJobConfiguration,
   setGalleryHasMore,
+  logIpcMode,
+  setLogIpcMode,
   onOpenSingleJobView
 }: DashboardActionsProps) => {
   const galleryLoadingMoreRef = useRef(false);
@@ -240,22 +244,44 @@ export const useDashboardActions = ({
         // setLogs([]);
         // return;
       }
-      let mode = 'standard';
+      let settingsDebug = false;
       try {
-        const settingsRes: any = await (window as any).electronAPI.getSettings?.();
-        if (settingsRes?.settings?.advanced?.debugMode) {
-          mode = 'debug';
-        }
-      } catch {}
+        const settingsRes: unknown = await (window as any).electronAPI.getSettings?.();
+        const s = settingsRes as { settings?: { advanced?: { debugMode?: boolean } } } | undefined;
+        settingsDebug = !!s?.settings?.advanced?.debugMode;
+      } catch {
+        settingsDebug = false;
+      }
 
-      const jobLogs = await window.electronAPI.jobManagement.getJobLogs(mode);
+      let ipcMode: 'standard' | 'debug' = 'standard';
+      if (settingsDebug && logIpcMode === 'debug') {
+        ipcMode = 'debug';
+      } else {
+        ipcMode = 'standard';
+        if (logIpcMode === 'debug' && !settingsDebug) {
+          setLogIpcMode('standard');
+        }
+      }
+
+      const jobLogs = await window.electronAPI.jobManagement.getJobLogs(ipcMode);
       const logsArray = Array.isArray(jobLogs) ? jobLogs : (jobLogs?.logs ?? []);
-      setLogs(logsArray);
+      const normalized = (logsArray as Record<string, unknown>[]).map((entry) => ({
+        ...entry,
+        timestamp:
+          entry.timestamp != null
+            ? new Date(entry.timestamp as string | number | Date)
+            : new Date(),
+        metadata:
+          entry.metadata && typeof entry.metadata === 'object' && !Array.isArray(entry.metadata)
+            ? (entry.metadata as Record<string, unknown>)
+            : {}
+      })) as LogEntry[];
+      setLogs(normalized);
     } catch (error) {
       console.error('Failed to load logs:', error);
       setLogs([]);
     }
-  }, [setLogs]);
+  }, [setLogs, logIpcMode, setLogIpcMode]);
 
   const handleStartJob = useCallback(async () => {
     try {

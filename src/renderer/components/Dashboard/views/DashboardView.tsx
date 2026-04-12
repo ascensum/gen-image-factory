@@ -266,6 +266,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <LogViewer
                   logs={state.logs}
                   jobStatus={state.jobStatus.state}
+                  ipcLogMode={state.logIpcMode}
+                  onIpcLogModeChange={state.setLogIpcMode}
                   onRefresh={() => actions.loadLogs(state.jobStatus.state)}
                 />
               </div>

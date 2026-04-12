@@ -40,7 +40,8 @@ function formatDuration(startTime: string | Date, endTime?: string | Date): stri
 
 const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, onDelete }) => {
   const data = useSingleJobData(jobId);
-  const actions = useSingleJobActions(jobId, onBack, onRerun, onDelete, data.refreshLogs);
+  const [logIpcMode, setLogIpcMode] = React.useState<'standard' | 'debug'>('standard');
+  const actions = useSingleJobActions(jobId, onBack, onRerun, onDelete, () => data.refreshLogs(logIpcMode));
   const settings = useSingleJobSettings(data.job, data.jobConfiguration, data.setJobConfiguration);
   const imagesState = useSingleJobImages(data.images, data.job);
 
@@ -53,7 +54,32 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
     jobConfiguration,
     overviewSettings,
     logs,
+    refreshLogs,
   } = data;
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res: unknown = await (window as any).electronAPI.getSettings?.();
+        const s = res as { settings?: { advanced?: { debugMode?: boolean } } } | undefined;
+        if (cancelled) return;
+        if (!s?.settings?.advanced?.debugMode && logIpcMode === 'debug') {
+          setLogIpcMode('standard');
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [logIpcMode]);
+
+  React.useEffect(() => {
+    if (String(job?.status).toLowerCase() !== 'running') return;
+    void refreshLogs(logIpcMode);
+  }, [logIpcMode, job?.status, refreshLogs]);
   const {
     activeTab,
     handleTabChange,
@@ -250,7 +276,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
               <LogViewer
                 logs={logs}
                 jobStatus="running"
-                onRefresh={data.refreshLogs}
+                ipcLogMode={logIpcMode}
+                onIpcLogModeChange={setLogIpcMode}
+                onRefresh={() => refreshLogs(logIpcMode)}
                 minHeight={320}
                 maxHeight="70vh"
               />

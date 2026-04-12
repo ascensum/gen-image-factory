@@ -85,6 +85,8 @@ export const useDashboardState = () => {
   const [exportJobId, setExportJobId] = useState<string | null>(null);
   const [showSingleExportModal, setShowSingleExportModal] = useState(false);
   const [galleryHasMore, setGalleryHasMore] = useState(false);
+  /** Drives `job:get-logs` IPC mode: Standard = no debug-level rows; Debug = full buffer (matches LogViewer toggle). */
+  const [logIpcMode, setLogIpcMode] = useState<'standard' | 'debug'>('standard');
 
   // Derived statistics (moved from DashboardPanel.tsx)
   const computedStatistics = useMemo(() => {
@@ -140,6 +142,7 @@ export const useDashboardState = () => {
     jobConfiguration, setJobConfiguration,
     exportJobId, setExportJobId,
     showSingleExportModal, setShowSingleExportModal,
-    galleryHasMore, setGalleryHasMore
+    galleryHasMore, setGalleryHasMore,
+    logIpcMode, setLogIpcMode
   };
 };

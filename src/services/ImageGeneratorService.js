@@ -1,5 +1,6 @@
 const path = require('path');
 const { randomUUID } = require('node:crypto');
+const { emitPipelineStage } = require(path.join(__dirname, '../utils/pipelineStageLog'));
 
 console.log('LOADING ImageGeneratorService');
 
@@ -160,6 +161,13 @@ class ImageGeneratorService {
       throw new Error('Runware API key is missing. Please set it in Settings → API Keys.');
     }
 
+    emitPipelineStage(config, 'runware_api_begin', 'POST https://api.runware.ai/v1/images/generate (imageInference)', {
+      phase: 'network',
+      host: 'api.runware.ai',
+      variations,
+      generationIndex: config.generationIndex
+    });
+
     let rwResponse;
     try {
       this.logDebug('Runware payload (sanitized):', { ...body, positivePrompt: '[redacted]' });
@@ -179,6 +187,12 @@ class ImageGeneratorService {
       throw new Error(message);
     }
 
+    emitPipelineStage(config, 'runware_api_end', 'Runware generate response received', {
+      phase: 'network',
+      host: 'api.runware.ai',
+      generationIndex: config.generationIndex
+    });
+
     let imageUrls = this.extractRunwareImageUrls(rwResponse?.data);
     if (!imageUrls.length) {
       throw new Error('Runware returned no images. Please adjust parameters or try again.');
@@ -189,6 +203,13 @@ class ImageGeneratorService {
       let attempts = 0;
       while (remaining > 0 && attempts < 5) {
         try {
+          emitPipelineStage(config, 'runware_api_extra_begin', 'POST Runware (top-up variations)', {
+            phase: 'network',
+            host: 'api.runware.ai',
+            attempt: attempts + 1,
+            remaining,
+            generationIndex: config.generationIndex
+          });
           const extraBody = { ...body, taskUUID: randomUUID(), numberResults: Math.min(remaining, 20) };
           const extraResp = await this.axios.post(
             'https://api.runware.ai/v1/images/generate',
@@ -201,7 +222,16 @@ class ImageGeneratorService {
               if (imageUrls.length < variations) imageUrls.push(u);
             }
           }
+          emitPipelineStage(config, 'runware_api_extra_end', 'Runware top-up response received', {
+            phase: 'network',
+            generationIndex: config.generationIndex
+          });
         } catch (e) {
+          emitPipelineStage(config, 'runware_api_extra_error', 'Runware top-up request failed', {
+            phase: 'network',
+            error: String(e && e.message || e),
+            generationIndex: config.generationIndex
+          });
           break;
         } finally {
           remaining = Math.max(0, variations - imageUrls.length);
@@ -214,12 +244,31 @@ class ImageGeneratorService {
     const failedItems = [];
     const tempDir = config.outputDirectory || config.tempDirectory || './pictures/generated';
 
+    emitPipelineStage(config, 'runware_download_phase_begin', 'Downloading result image URLs to disk', {
+      phase: 'network',
+      urlCount: imageUrls.length,
+      generationIndex: config.generationIndex
+    });
+
     for (let i = 0; i < imageUrls.length; i++) {
       const imageUrl = imageUrls[i];
       const imageSuffix = `_${i + 1}`;
       const mappingId = this.generateImageMappingId(imageUrl, i + 1, imgNameBase);
 
+      let downloadHost = 'unknown';
       try {
+        downloadHost = new URL(imageUrl).hostname;
+      } catch (_) { /* ignore */ }
+
+      try {
+        emitPipelineStage(config, 'runware_download_item_begin', `GET result image ${i + 1}/${imageUrls.length}`, {
+          phase: 'network',
+          index: i + 1,
+          total: imageUrls.length,
+          host: downloadHost,
+          mappingId,
+          generationIndex: config.generationIndex
+        });
         const response = await this.axios.get(imageUrl, { responseType: 'arraybuffer', timeout: httpTimeoutMs, signal: abortSignal });
         
         let inferredExt = '';
@@ -248,7 +297,23 @@ class ImageGeneratorService {
           imageUrl,
           imageSuffix
         });
+        emitPipelineStage(config, 'runware_download_item_end', `Saved result image ${i + 1}/${imageUrls.length}`, {
+          phase: 'network',
+          index: i + 1,
+          host: downloadHost,
+          mappingId,
+          inputImagePath,
+          generationIndex: config.generationIndex
+        });
       } catch (err) {
+        emitPipelineStage(config, 'runware_download_item_error', `Download failed for image ${i + 1}/${imageUrls.length}`, {
+          phase: 'network',
+          index: i + 1,
+          host: downloadHost,
+          mappingId,
+          error: String(err && err.message || err),
+          generationIndex: config.generationIndex
+        });
         failedItems.push({
           mappingId,
           stage: 'download',
@@ -257,6 +322,13 @@ class ImageGeneratorService {
         });
       }
     }
+
+    emitPipelineStage(config, 'runware_download_phase_end', 'Runware download phase finished', {
+      phase: 'network',
+      saved: successfulDownloads.length,
+      failed: failedItems.filter((f) => f.stage === 'download').length,
+      generationIndex: config.generationIndex
+    });
 
     return { successfulDownloads, failedItems };
   }

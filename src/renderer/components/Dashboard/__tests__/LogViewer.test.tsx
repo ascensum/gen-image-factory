@@ -37,6 +37,9 @@ describe('LogViewer', () => {
 
   const defaultProps = {
     logs: mockLogs,
+    jobStatus: 'idle' as const,
+    ipcLogMode: 'standard' as const,
+    onIpcLogModeChange: vi.fn(),
     isLoading: false,
     onRefresh: vi.fn()
   };
@@ -67,11 +70,21 @@ describe('LogViewer', () => {
   });
 
   it('switches to debug mode when debug tab is clicked', () => {
-    render(<LogViewer {...defaultProps} />);
-    
+    const onIpcLogModeChange = vi.fn();
+    const { rerender } = render(<LogViewer {...defaultProps} onIpcLogModeChange={onIpcLogModeChange} />);
+
     const debugTab = screen.getByText('Debug');
     fireEvent.click(debugTab);
-    
+
+    expect(onIpcLogModeChange).toHaveBeenCalledWith('debug');
+    rerender(
+      <LogViewer
+        {...defaultProps}
+        ipcLogMode="debug"
+        onIpcLogModeChange={onIpcLogModeChange}
+      />
+    );
+
     expect(screen.getByText('Processing image 1 of 5')).toBeInTheDocument();
     expect(screen.getByText('Job started successfully')).toBeInTheDocument();
   });
@@ -79,7 +92,7 @@ describe('LogViewer', () => {
   it('filters logs by search term', () => {
     render(<LogViewer {...defaultProps} />);
     
-    const searchInput = screen.getByPlaceholderText('Search logs...');
+    const searchInput = screen.getByPlaceholderText(/Search logs/);
     fireEvent.change(searchInput, { target: { value: 'quality' } });
     
     expect(screen.getByText('Image quality below threshold')).toBeInTheDocument();
@@ -193,22 +206,25 @@ describe('LogViewer', () => {
   });
 
   it('switches modes without scroll position issues', () => {
-    render(<LogViewer {...defaultProps} />);
-    
-    const logContainer = screen.getByRole('list', { name: 'Log entries' });
+    const onIpcLogModeChange = vi.fn();
+    const { rerender } = render(<LogViewer {...defaultProps} onIpcLogModeChange={onIpcLogModeChange} />);
+
     const debugTab = screen.getByText('Debug');
-    
-    // Should be able to switch to debug mode without errors
+
     fireEvent.click(debugTab);
-    
-    // Should display debug logs
+    rerender(
+      <LogViewer {...defaultProps} ipcLogMode="debug" onIpcLogModeChange={onIpcLogModeChange} />
+    );
+
     expect(screen.getByText('Processing image 1 of 5')).toBeInTheDocument();
-    
-    // Should be able to switch back to standard mode
+
     const standardTab = screen.getByText('Standard');
     fireEvent.click(standardTab);
-    
-    // Should display standard logs
+    expect(onIpcLogModeChange).toHaveBeenCalledWith('standard');
+    rerender(
+      <LogViewer {...defaultProps} ipcLogMode="standard" onIpcLogModeChange={onIpcLogModeChange} />
+    );
+
     expect(screen.getByText('Job started successfully')).toBeInTheDocument();
     expect(screen.queryByText('Processing image 1 of 5')).not.toBeInTheDocument();
   });
@@ -225,7 +241,15 @@ describe('LogViewer', () => {
       { id: '4', timestamp: new Date(), level: 'info', message: 'New log entry', source: 'test' }
     ];
     
-    rerender(<LogViewer {...defaultProps} logs={newLogs} />);
+    rerender(
+      <LogViewer
+        {...defaultProps}
+        logs={newLogs}
+        jobStatus="idle"
+        ipcLogMode="standard"
+        onIpcLogModeChange={vi.fn()}
+      />
+    );
     
     // Check if scroll to bottom was called
     expect(scrollSpy).toHaveBeenCalledWith(logContainer.scrollHeight);
@@ -236,7 +260,7 @@ describe('LogViewer', () => {
   it('handles case-sensitive search', () => {
     render(<LogViewer {...defaultProps} />);
     
-    const searchInput = screen.getByPlaceholderText('Search logs...');
+    const searchInput = screen.getByPlaceholderText(/Search logs/);
     fireEvent.change(searchInput, { target: { value: 'QUALITY' } });
     
     // Should not find case-sensitive match
@@ -256,7 +280,7 @@ describe('LogViewer', () => {
     
     render(<LogViewer {...defaultProps} logs={logsWithSpecialChars} />);
     
-    const searchInput = screen.getByPlaceholderText('Search logs...');
+    const searchInput = screen.getByPlaceholderText(/Search logs/);
     fireEvent.change(searchInput, { target: { value: '@example' } });
     
     expect(screen.getByText('Processing file: test@example.com')).toBeInTheDocument();
@@ -265,7 +289,7 @@ describe('LogViewer', () => {
   it('filters by multiple criteria', () => {
     render(<LogViewer {...defaultProps} />);
     
-    const searchInput = screen.getByPlaceholderText('Search logs...');
+    const searchInput = screen.getByPlaceholderText(/Search logs/);
     const levelFilter = screen.getByDisplayValue('All Levels');
     
     // Search for "Image" (with capital I) and filter by warning level
@@ -301,17 +325,19 @@ describe('LogViewer', () => {
   });
 
   it('handles rapid mode switching', () => {
-    render(<LogViewer {...defaultProps} />);
-    
+    const onIpcLogModeChange = vi.fn();
+    const { rerender } = render(<LogViewer {...defaultProps} onIpcLogModeChange={onIpcLogModeChange} />);
+
     const standardTab = screen.getByText('Standard');
     const debugTab = screen.getByText('Debug');
-    
-    // Rapidly switch between modes
+
     fireEvent.click(debugTab);
+    rerender(<LogViewer {...defaultProps} ipcLogMode="debug" onIpcLogModeChange={onIpcLogModeChange} />);
     fireEvent.click(standardTab);
+    rerender(<LogViewer {...defaultProps} ipcLogMode="standard" onIpcLogModeChange={onIpcLogModeChange} />);
     fireEvent.click(debugTab);
-    
-    // Should still display debug logs
+    rerender(<LogViewer {...defaultProps} ipcLogMode="debug" onIpcLogModeChange={onIpcLogModeChange} />);
+
     expect(screen.getByText('Processing image 1 of 5')).toBeInTheDocument();
   });
 
@@ -329,7 +355,7 @@ describe('LogViewer', () => {
   it('handles keyboard navigation', () => {
     render(<LogViewer {...defaultProps} />);
     
-    const searchInput = screen.getByPlaceholderText('Search logs...');
+    const searchInput = screen.getByPlaceholderText(/Search logs/);
     const debugTab = screen.getByText('Debug');
     
     // Tab navigation should work

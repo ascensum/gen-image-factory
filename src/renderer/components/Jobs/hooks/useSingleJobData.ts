@@ -85,12 +85,7 @@ export function useSingleJobData(jobId: string | number) {
       }
 
       try {
-        let logMode = 'standard';
-        try {
-          const settingsRes: any = await (window as any).electronAPI.getSettings?.();
-          if (settingsRes?.settings?.advanced?.debugMode) logMode = 'debug';
-        } catch {}
-        const jobLogs = await window.electronAPI.jobManagement.getJobLogs(logMode);
+        const jobLogs = await window.electronAPI.jobManagement.getJobLogs('standard');
         const logsArray = Array.isArray(jobLogs) ? jobLogs : (jobLogs?.logs ?? []);
         setLogs(logsArray);
       } catch {
@@ -145,15 +140,21 @@ export function useSingleJobData(jobId: string | number) {
     }
   }, [job?.id, job?.status]);
 
-  const refreshLogs = useCallback(async () => {
+  const refreshLogs = useCallback(async (preferred: 'standard' | 'debug' = 'standard') => {
     try {
-      let mode = 'standard';
+      let settingsDebug = false;
       try {
-        const settingsRes = await (window as any).electronAPI.getSettings?.();
-        if (settingsRes?.settings?.advanced?.debugMode) mode = 'debug';
-      } catch {}
+        const settingsRes: unknown = await (window as any).electronAPI.getSettings?.();
+        const s = settingsRes as { settings?: { advanced?: { debugMode?: boolean } } } | undefined;
+        settingsDebug = !!s?.settings?.advanced?.debugMode;
+      } catch {
+        settingsDebug = false;
+      }
+      const mode: 'standard' | 'debug' =
+        settingsDebug && preferred === 'debug' ? 'debug' : 'standard';
       const jobLogs = await (window as any).electronAPI.jobManagement.getJobLogs(mode);
-      setLogs(Array.isArray(jobLogs) ? jobLogs : []);
+      const logsArray = Array.isArray(jobLogs) ? jobLogs : (jobLogs?.logs ?? []);
+      setLogs(logsArray);
     } catch {
       setLogs([]);
     }

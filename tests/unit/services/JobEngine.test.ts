@@ -435,6 +435,7 @@ describe('JobEngine Unit Tests', () => {
       expect(moduleConfig.sharpening).toBe(1);
       expect(moduleConfig.imageEnhancement).toBe(true);
       expect(moduleConfig.runMetadataGen).toBe(false);
+      expect(typeof moduleConfig.pipelineStageLog).toBe('function');
     });
 
     it('defers local processing when QC and remove.bg are both on (remove.bg runs only after QC approves)', () => {

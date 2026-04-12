@@ -27,6 +27,7 @@ const { moveImageToFinal } = require(path.join(__dirname, '../utils/moveImageToF
 const { sanitizeConfigurationSnapshot } = require(path.join(__dirname, '../utils/sanitizeConfigurationSnapshot'));
 const { finalizeBackgroundRun } = require(path.join(__dirname, './jobServiceBackgroundFinalize'));
 const { startJobForExistingExecution } = require(path.join(__dirname, './jobServiceRerunStart'));
+const { attachPostEnginePipelineStageLog } = require(path.join(__dirname, '../utils/attachPostEnginePipelineStageLog'));
 
 /**
  * JobService
@@ -201,6 +202,8 @@ class JobService extends EventEmitter {
       this._backgroundPipelineActive = true;
 
       const result = await this.jobEngine.executeJob(config, this.abortController.signal);
+
+      attachPostEnginePipelineStageLog(config, this._addLog.bind(this));
 
       if (this.imageRepository && Array.isArray(result.images)) {
         for (const img of result.images) {

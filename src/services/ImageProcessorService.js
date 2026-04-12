@@ -1,6 +1,7 @@
 const sharp = require('sharp');
 const fs = require('fs').promises;
 const path = require('path');
+const { emitPipelineStage } = require(path.join(__dirname, '../utils/pipelineStageLog'));
 
 class ImageProcessorService {
   constructor(dependencies = {}) {
@@ -25,6 +26,15 @@ class ImageProcessorService {
       outputDirectory,
       inputImagePath // for cleanup
     } = config;
+
+    emitPipelineStage(config, 'sharp_local_begin', 'Sharp encode/write (local CPU, no network)', {
+      phase: 'local',
+      imgName,
+      generationIndex: config.generationIndex,
+      imageConvert: !!imageConvert,
+      trim: !!trimTransparentBackground,
+      enhancement: !!imageEnhancement
+    });
 
     let sharpInstance = sharp(imageBuffer);
 
@@ -130,6 +140,12 @@ class ImageProcessorService {
     } catch (error) {
       console.error(`Error deleting original downloaded image:`, error);
     }
+
+    emitPipelineStage(config, 'sharp_local_end', 'Sharp pipeline finished', {
+      phase: 'local',
+      outputPath,
+      generationIndex: config.generationIndex
+    });
 
     return outputPath;
   }

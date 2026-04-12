@@ -260,7 +260,10 @@ class JobEngine extends EventEmitter {
       filePaths: config.filePaths || {},
       outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
       tempDirectory: config.filePaths?.tempDirectory || './pictures/generated',
-      skipLocalImageProcessing
+      skipLocalImageProcessing,
+      pipelineStageLog: (subStep, message, metadata = {}) => {
+        this._emitLog('info', 'image_pipeline', subStep, message, { generationIndex: genIndex, ...metadata });
+      }
     };
 
     if (skipLocalImageProcessing) {

@@ -13,6 +13,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const { logDebug } = require(path.join(__dirname, '../utils/logDebug'));
+const { emitPipelineStage } = require(path.join(__dirname, '../utils/pipelineStageLog'));
 
 class ImagePipelineService {
   /**
@@ -41,6 +42,13 @@ class ImagePipelineService {
    * @returns {Promise<{processedImages: Array, failedItems: Array}>}
    */
   async producePictures(settings, imgNameBase, _customMetadataPrompt = null, config = {}) {
+    emitPipelineStage(config, 'pipeline_produce_pictures_begin', 'ImagePipelineService.producePictures (generate + optional local process)', {
+      phase: 'orchestration',
+      skipLocalImageProcessing: !!config.skipLocalImageProcessing,
+      removeBg: !!config.removeBg,
+      generationIndex: config.generationIndex
+    });
+
     const { successfulDownloads, failedItems } = await this.generator.generateImages(
       settings,
       imgNameBase,
@@ -51,6 +59,12 @@ class ImagePipelineService {
     for (const item of successfulDownloads) {
       try {
         if (config.skipLocalImageProcessing) {
+          emitPipelineStage(config, 'pipeline_skip_local_processing', 'QC deferred local processing — saving raw download path only', {
+            phase: 'orchestration',
+            mappingId: item.mappingId,
+            path: item.inputImagePath,
+            generationIndex: config.generationIndex
+          });
           processedImages.push({
             outputPath: item.inputImagePath,
             settings: { ...settings },
@@ -86,6 +100,13 @@ class ImagePipelineService {
       throw new Error('No images were successfully generated.');
     }
 
+    emitPipelineStage(config, 'pipeline_produce_pictures_end', 'ImagePipelineService.producePictures finished', {
+      phase: 'orchestration',
+      processedCount: processedImages.length,
+      failedCount: failedItems.length,
+      generationIndex: config.generationIndex
+    });
+
     return { processedImages, failedItems };
   }
 
@@ -102,6 +123,14 @@ class ImagePipelineService {
     const fsInstance = config.fs || fs;
 
     logDebug(`ImagePipelineService.processImage: ${inputImagePath}`);
+
+    emitPipelineStage(config, 'process_image_begin', 'Local post-process chain starting (remove.bg optional → Sharp)', {
+      phase: 'local',
+      inputImagePath,
+      imgName,
+      removeBg: !!config.removeBg,
+      generationIndex: config.generationIndex
+    });
 
     let imageBuffer;
     try {
@@ -123,6 +152,13 @@ class ImagePipelineService {
     });
 
     logDebug(`ImagePipelineService.processImage: Completed → ${outputPath}`);
+
+    emitPipelineStage(config, 'process_image_end', 'Local post-process chain finished', {
+      phase: 'local',
+      outputPath,
+      generationIndex: config.generationIndex
+    });
+
     return outputPath;
   }
 
@@ -147,7 +183,9 @@ class ImagePipelineService {
       const result = await this.remover.retryRemoveBackground(inputImagePath, {
         removeBgSize: config.removeBgSize,
         signal: config.abortSignal,
-        timeoutMs: removeBgTimeoutMs
+        timeoutMs: removeBgTimeoutMs,
+        pipelineStageLog: config.pipelineStageLog,
+        generationIndex: config.generationIndex
       });
       logDebug('Background removal successful');
       config._removeBgApplied = true;

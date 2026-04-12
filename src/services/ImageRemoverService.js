@@ -2,6 +2,7 @@ const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
 const sharp = require('sharp');
+const { emitPipelineStage } = require(path.join(__dirname, '../utils/pipelineStageLog'));
 
 class ImageRemoverService {
   constructor(apiKey, dependencies = {}) {
@@ -33,6 +34,17 @@ class ImageRemoverService {
         'X-Api-Key': this.apiKey || ''
       };
 
+      const stageCfg = {
+        pipelineStageLog: options.pipelineStageLog
+      };
+      emitPipelineStage(stageCfg, 'remove_bg_http_begin', 'POST https://api.remove.bg/v1.0/removebg', {
+        phase: 'network',
+        host: 'api.remove.bg',
+        generationIndex: options.generationIndex,
+        attempt: options.removeBgAttempt,
+        maxAttempts: options.removeBgMaxAttempts
+      });
+
       const response = await this.axios.post('https://api.remove.bg/v1.0/removebg', form, {
         headers,
         responseType: 'arraybuffer',
@@ -40,11 +52,29 @@ class ImageRemoverService {
         signal
       });
 
+      emitPipelineStage(stageCfg, 'remove_bg_http_end', 'remove.bg HTTP response received', {
+        phase: 'network',
+        status: response.status,
+        generationIndex: options.generationIndex,
+        attempt: options.removeBgAttempt
+      });
+
       if (response.status === 200 && response.data) {
         return Buffer.from(response.data);
       }
       throw new Error(`Failed to remove background: ${response.status} ${response.statusText}`);
     } catch (error) {
+      emitPipelineStage(
+        { pipelineStageLog: options.pipelineStageLog },
+        'remove_bg_http_error',
+        'remove.bg request failed',
+        {
+          phase: 'network',
+          generationIndex: options.generationIndex,
+          attempt: options.removeBgAttempt,
+          error: String(error && error.message || error)
+        }
+      );
       try {
         const status = error?.response?.status;
         const statusText = error?.response?.statusText;
@@ -69,12 +99,20 @@ class ImageRemoverService {
   }
 
   async retryRemoveBackground(input, options = {}) {
-    const { retries = 3, delay = 2000, removeBgSize, signal, timeoutMs } = options;
+    const { retries = 3, delay = 2000, removeBgSize, signal, timeoutMs, pipelineStageLog, generationIndex } = options;
     let currentDelay = delay;
 
     for (let i = 0; i < retries; i++) {
       try {
-        return await this.removeBackground(input, { removeBgSize, signal, timeoutMs });
+        return await this.removeBackground(input, {
+          removeBgSize,
+          signal,
+          timeoutMs,
+          pipelineStageLog,
+          generationIndex,
+          removeBgAttempt: i + 1,
+          removeBgMaxAttempts: retries
+        });
       } catch (error) {
         const status = error?.response?.status;
         const isRetryable = !error.response || (status >= 500) || error.code === 'ECONNABORTED' || status === 429;
