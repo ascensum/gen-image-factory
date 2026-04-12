@@ -219,31 +219,65 @@ function registerJobHandlers(ipcMain, deps) {
 
   ipcMain.handle('failed-image:retry-original', async (_event, { imageId }) => {
     try {
-      retryQueueService.addToQueue({ imageId, useOriginalSettings: true });
-      return { success: true };
+      const result = await retryQueueService.addToQueue(imageId, { useOriginalSettings: true });
+      return { success: result.success, error: result.error };
     } catch (error) { return { success: false, error: error.message }; }
   });
 
   ipcMain.handle('failed-image:retry-modified', async (_event, { imageId, settings }) => {
     try {
-      retryQueueService.addToQueue({ imageId, settings, useOriginalSettings: false });
-      return { success: true };
+      const result = await retryQueueService.addToQueue(imageId, {
+        useOriginalSettings: false,
+        modifiedSettings: settings
+      });
+      return { success: result.success, error: result.error };
     } catch (error) { return { success: false, error: error.message }; }
   });
 
-  ipcMain.handle('failed-image:retry-batch', async (_event, { imageIds, useOriginalSettings, modifiedSettings, includeMetadata, failOptions }) => {
+  ipcMain.handle('failed-image:retry-batch', async (_event, body) => {
     try {
-      for (const imageId of imageIds) {
-        retryQueueService.addToQueue({ imageId, settings: modifiedSettings, useOriginalSettings, includeMetadata, failOptions });
-      }
-      return { success: true };
+      await validateRetryBatchSameExecutionForOriginal(imageRepository, body);
+      const result = await retryQueueService.addBatchRetryJob({
+        type: 'retry',
+        imageIds: body.imageIds,
+        useOriginalSettings: body.useOriginalSettings,
+        modifiedSettings: body.modifiedSettings,
+        includeMetadata: body.includeMetadata,
+        failOptions: body.failOptions
+      });
+      return { success: result.success, error: result.error };
     } catch (error) { return { success: false, error: error.message }; }
   });
 
-  ipcMain.handle('failed-image:get-queue-status', async () =>
-    retryQueueService.getQueueStatus());
+  ipcMain.handle('failed-image:get-queue-status', async () => ({
+    success: true,
+    queueStatus: retryQueueService.getQueueStatus()
+  }));
 
   safeLogger.log('JobController: Job IPC handlers registered');
+}
+
+/**
+ * Original-settings retry assumes one shared job config snapshot; mixed executions are invalid.
+ */
+async function validateRetryBatchSameExecutionForOriginal(imageRepository, body) {
+  const { useOriginalSettings, imageIds } = body || {};
+  if (useOriginalSettings !== true || !Array.isArray(imageIds) || imageIds.length < 2) return;
+  const keys = new Set();
+  for (const imageId of imageIds) {
+    const res = await imageRepository.getGeneratedImage(imageId);
+    if (!res.success || !res.image) {
+      throw new Error(`Image not found: ${imageId}`);
+    }
+    const eid = res.image.executionId;
+    keys.add(eid == null ? '__no_execution__' : String(eid));
+  }
+  if (keys.size > 1) {
+    throw new Error(
+      'Retry with original settings is only available when all selected images belong to the same job execution. ' +
+      'Use Retry with custom settings for a mixed selection.'
+    );
+  }
 }
 
 module.exports = { registerJobHandlers };

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { buildLocalFileUrl } from '../../utils/urls';
 import { mergeImageProcessingForDisplay } from '../../utils/mergeImageProcessingForDisplay';
+import { coerceProcessingBoolean } from '../../utils/coerceProcessingBoolean';
+import { formatSaturationDisplay, formatSharpeningDisplay } from '../../utils/formatProcessingDisplay';
 import './FailedImageReviewModal.css';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import StatusBadge from '../Common/StatusBadge';
@@ -238,7 +240,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
     snapshotProcessing,
     (image as any)?.processingSettings
   );
-
+  const enhancementOn = coerceProcessingBoolean(processingSettings.imageEnhancement);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -603,26 +605,24 @@ const ImageModal: React.FC<ImageModalProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Image Enhancement</label>
-                        <p className="text-sm text-gray-900">{processingSettings.imageEnhancement ? 'Yes' : 'No'}</p>
+                        <p className="text-sm text-gray-900">{enhancementOn ? 'Yes' : 'No'}</p>
                       </div>
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Sharpening</label>
                         <p className="text-sm text-gray-900">
-                          {processingSettings.imageEnhancement ? 
-                            (processingSettings.sharpening || 0) : 
-                            <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>
-                          }
+                          {enhancementOn
+                            ? formatSharpeningDisplay(processingSettings.sharpening)
+                            : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
                         </p>
                       </div>
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Saturation</label>
                         <p className="text-sm text-gray-900">
-                          {processingSettings.imageEnhancement ? 
-                            (processingSettings.saturation || 1.4) : 
-                            <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>
-                          }
+                          {enhancementOn
+                            ? formatSaturationDisplay(processingSettings.saturation)
+                            : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
                         </p>
                       </div>
                       

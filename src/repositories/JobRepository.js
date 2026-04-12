@@ -397,10 +397,43 @@ class JobRepository {
   /** Get all job executions - Extracted from: JobExecution.js lines 401-427 */
   async getAllJobExecutions() {
     return new Promise((resolve, reject) => {
-      this.db.all('SELECT * FROM job_executions ORDER BY started_at DESC', [], (err, rows) => {
+      const sql = `
+        SELECT
+          je.*,
+          jc.name as configuration_label,
+          jc.name as configuration_name
+        FROM job_executions je
+        LEFT JOIN job_configurations jc ON je.configuration_id = jc.id
+        ORDER BY je.started_at DESC
+      `;
+      this.db.all(sql, [], (err, rows) => {
         if (err) { console.error('Error getting all job executions:', err); reject(err); }
         else {
-          const executions = rows.map(row => ({ id: row.id, configurationId: row.configuration_id, startedAt: row.started_at ? new Date(row.started_at) : null, completedAt: row.completed_at ? new Date(row.completed_at) : null, status: row.status, totalImages: row.total_images, successfulImages: row.successful_images, failedImages: row.failed_images, errorMessage: row.error_message, label: row.label }));
+          const executions = rows.map(row => {
+            let configurationSnapshot = null;
+            if (row.configuration_snapshot) {
+              try {
+                configurationSnapshot = JSON.parse(row.configuration_snapshot);
+              } catch (_) {
+                configurationSnapshot = null;
+              }
+            }
+            return {
+              id: row.id,
+              configurationId: row.configuration_id,
+              configurationLabel: row.configuration_label,
+              configurationName: row.configuration_name,
+              startedAt: row.started_at ? new Date(row.started_at) : null,
+              completedAt: row.completed_at ? new Date(row.completed_at) : null,
+              status: row.status,
+              totalImages: row.total_images,
+              successfulImages: row.successful_images,
+              failedImages: row.failed_images,
+              errorMessage: row.error_message,
+              label: row.label,
+              configurationSnapshot
+            };
+          });
           resolve({ success: true, executions });
         }
       });

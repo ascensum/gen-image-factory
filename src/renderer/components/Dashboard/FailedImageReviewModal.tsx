@@ -5,6 +5,8 @@ import StatusBadge from '../Common/StatusBadge';
 import type { GeneratedImage } from '../../../types/generatedImage';
 import { formatQcLabel, formatQcFailureReason } from '../../utils/qc';
 import { mergeImageProcessingForDisplay } from '../../utils/mergeImageProcessingForDisplay';
+import { coerceProcessingBoolean } from '../../utils/coerceProcessingBoolean';
+import { formatSaturationDisplay, formatSharpeningDisplay } from '../../utils/formatProcessingDisplay';
 
 type TabType = 'details' | 'metadata' | 'processing';
 
@@ -546,19 +548,28 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
                       snapshotProcessing,
                       (image as any)?.processingSettings
                     ) as Record<string, any>;
+                    const enhancementOn = coerceProcessingBoolean(ps.imageEnhancement);
                     return (
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Image Enhancement</label>
-                          <p className="text-sm text-gray-900">{ps.imageEnhancement ? 'Yes' : 'No'}</p>
+                          <p className="text-sm text-gray-900">{enhancementOn ? 'Yes' : 'No'}</p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Sharpening</label>
-                          <p className="text-sm text-gray-900">{ps.imageEnhancement ? (ps.sharpening || 0) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}</p>
+                          <p className="text-sm text-gray-900">
+                            {enhancementOn
+                              ? formatSharpeningDisplay(ps.sharpening)
+                              : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
+                          </p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Saturation</label>
-                          <p className="text-sm text-gray-900">{ps.imageEnhancement ? (ps.saturation || 1.4) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}</p>
+                          <p className="text-sm text-gray-900">
+                            {enhancementOn
+                              ? formatSaturationDisplay(ps.saturation)
+                              : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
+                          </p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Image Convert</label>

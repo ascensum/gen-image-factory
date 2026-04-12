@@ -376,7 +376,11 @@ describe('ImageRepository Unit Tests', () => {
           temp_image_path: null,
           metadata: null,
           processing_settings: null,
-          created_at: '2024-01-01T00:00:00Z'
+          created_at: '2024-01-01T00:00:00Z',
+          je_label: null,
+          je_started_at: null,
+          je_configuration_snapshot: null,
+          jc_configuration_name: null,
         }
       ];
 
@@ -389,13 +393,14 @@ describe('ImageRepository Unit Tests', () => {
 
       // Assert
       expect(mockDb.all).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE qc_status = ?'),
+        expect.stringMatching(/FROM\s+generated_images\s+gi[\s\S]*job_executions/i),
         ['approved'],
         expect.any(Function)
       );
       expect(result.success).toBe(true);
       expect(result.images).toHaveLength(1);
       expect(result.images[0].qcStatus).toBe('approved');
+      expect(result.images[0].jobDisplayLabel).toBe('Job exec-1');
     });
 
     it('should return empty array for non-matching status', async () => {

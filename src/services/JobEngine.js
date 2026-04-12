@@ -241,25 +241,14 @@ class JobEngine extends EventEmitter {
     const effectiveVariations = Math.min(requestedVariations, maxAllowed);
 
     const proc = config.processing || {};
-    const processingEnabled = !(config.ai?.runQualityCheck === true);
+    const hasQc = config.ai?.runQualityCheck === true;
+    // remove.bg is expensive: when QC is on, skip local processing until QC approves (see PostGenerationService.runPostQCProcessing).
+    const skipLocalImageProcessing = hasQc && !!(proc.removeBg);
 
-    return {
+    const shared = {
       generationIndex: genIndex,
       variations: effectiveVariations,
       runwareDimensionsCsv: (config.parameters && config.parameters.runwareDimensionsCsv) || '',
-      removeBg: processingEnabled ? (proc.removeBg || false) : false,
-      imageConvert: processingEnabled ? (proc.imageConvert || false) : false,
-      convertToJpg: processingEnabled ? (proc.convertToJpg || false) : false,
-      convertToWebp: processingEnabled ? (proc.convertToWebp || false) : false,
-      trimTransparentBackground: processingEnabled ? (proc.trimTransparentBackground || false) : false,
-      imageEnhancement: processingEnabled ? (proc.imageEnhancement || false) : false,
-      sharpening: processingEnabled ? (proc.sharpening || 0) : 0,
-      saturation: processingEnabled ? (proc.saturation || 1) : 1,
-      jpgBackground: processingEnabled ? (proc.jpgBackground || 'white') : 'white',
-      jpgQuality: processingEnabled ? (proc.jpgQuality || 85) : 85,
-      pngQuality: processingEnabled ? (proc.pngQuality || 100) : 100,
-      webpQuality: processingEnabled ? (proc.webpQuality || 85) : 85,
-      removeBgSize: processingEnabled ? (proc.removeBgSize || 'preview') : 'preview',
       removeBgFailureMode: proc.removeBgFailureMode || 'approve',
       failRetryEnabled: proc.failRetryEnabled || false,
       failOnSteps: Array.isArray(proc.failOnSteps) ? proc.failOnSteps : [],
@@ -270,7 +259,44 @@ class JobEngine extends EventEmitter {
       apiKeys: config.apiKeys || {},
       filePaths: config.filePaths || {},
       outputDirectory: config.filePaths?.tempDirectory || './pictures/generated',
-      tempDirectory: config.filePaths?.tempDirectory || './pictures/generated'
+      tempDirectory: config.filePaths?.tempDirectory || './pictures/generated',
+      skipLocalImageProcessing
+    };
+
+    if (skipLocalImageProcessing) {
+      return {
+        ...shared,
+        removeBg: false,
+        imageConvert: false,
+        convertToJpg: false,
+        convertToWebp: false,
+        trimTransparentBackground: false,
+        imageEnhancement: false,
+        sharpening: 0,
+        saturation: 1,
+        jpgBackground: proc.jpgBackground || 'white',
+        jpgQuality: proc.jpgQuality || 85,
+        pngQuality: proc.pngQuality || 100,
+        webpQuality: proc.webpQuality || 85,
+        removeBgSize: proc.removeBgSize || 'preview'
+      };
+    }
+
+    return {
+      ...shared,
+      removeBg: proc.removeBg || false,
+      imageConvert: proc.imageConvert || false,
+      convertToJpg: proc.convertToJpg || false,
+      convertToWebp: proc.convertToWebp || false,
+      trimTransparentBackground: proc.trimTransparentBackground || false,
+      imageEnhancement: proc.imageEnhancement || false,
+      sharpening: proc.sharpening || 0,
+      saturation: proc.saturation || 1,
+      jpgBackground: proc.jpgBackground || 'white',
+      jpgQuality: proc.jpgQuality || 85,
+      pngQuality: proc.pngQuality || 100,
+      webpQuality: proc.webpQuality || 85,
+      removeBgSize: proc.removeBgSize || 'preview'
     };
   }
 

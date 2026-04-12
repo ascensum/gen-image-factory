@@ -437,6 +437,31 @@ describe('JobEngine Unit Tests', () => {
       expect(moduleConfig.runMetadataGen).toBe(false);
     });
 
+    it('defers local processing when QC and remove.bg are both on (remove.bg runs only after QC approves)', () => {
+      const config = {
+        parameters: { count: 1, variations: 1 },
+        processing: { removeBg: true, imageEnhancement: true, sharpening: 7 },
+        ai: { runQualityCheck: true }
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.skipLocalImageProcessing).toBe(true);
+      expect(moduleConfig.removeBg).toBe(false);
+      expect(moduleConfig.imageEnhancement).toBe(false);
+      expect(moduleConfig.sharpening).toBe(0);
+    });
+
+    it('keeps processing during generation when QC is on but remove.bg is off', () => {
+      const config = {
+        parameters: { count: 1, variations: 1 },
+        processing: { removeBg: false, imageEnhancement: true, sharpening: 4 },
+        ai: { runQualityCheck: true }
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.skipLocalImageProcessing).toBe(false);
+      expect(moduleConfig.imageEnhancement).toBe(true);
+      expect(moduleConfig.sharpening).toBe(4);
+    });
+
     it('should clamp variations to max allowed (10000 total cap)', () => {
       // Arrange
       const config = {

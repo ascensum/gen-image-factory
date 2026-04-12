@@ -1,23 +1,14 @@
-/**
- * PostGenerationService - Handles post-generation AI operations.
- *
- * Extracted from JobService to respect ADR-001 (<400 lines) and
- * consolidate Quality Check + Metadata Generation in one place.
- *
- * Responsibility:
- *   1. Quality Check  – calls aiVision.runQualityCheck per image, updates DB status.
- *   2. Metadata Gen   – calls aiVision.generateMetadata per image, persists results.
- *
- * Both methods accept an AbortSignal so the caller (JobService) can cancel.
- *
- * ADR-003: Dependency Injection (imageRepository + addLog callback).
- */
+/** Post-generation: QC, metadata, post-QC pipeline. ADR-003 DI (imageRepository, addLog, createImagePipeline). */
 
 const path = require('path');
 const fs = require('fs').promises;
 const aiVision = require(path.join(__dirname, '../aiVision'));
 const { moveImageToFinal } = require(path.join(__dirname, '../utils/moveImageToFinal'));
-const { buildPostQCProcessingConfig } = require(path.join(__dirname, '../utils/processing'));
+const {
+  buildPostQCProcessingConfig,
+  isPostQCPipelineNoOp,
+  normalizeProcessingSettings
+} = require(path.join(__dirname, '../utils/processing'));
 
 const QC_THROTTLE_MS = 2000;
 
@@ -268,19 +259,20 @@ class PostGenerationService {
     return { successCount, failCount };
   }
 
-  // ─── Post-QC Processing (ported from legacy jobRunner.js) ───────────
-
+  /**
+   * After QC approves: move to output. If remove.bg was deferred (QC on + remove.bg in settings), run full
+   * ImagePipelineService.processImage here so remove.bg + Sharp run only for approved images.
+   */
   async runPostQCProcessing(approvedImages, config, abortSignal) {
-    if (!this._createImagePipeline) return;
+    const proc = normalizeProcessingSettings(config.processing || {});
+    const runDeferredPipeline = config.ai?.runQualityCheck === true && !!proc.removeBg;
     const apiKeys = config.apiKeys || {};
-    const pipeline = this._createImagePipeline(apiKeys);
-    const proc = config.processing || {};
+    const pipeline = this._createImagePipeline ? this._createImagePipeline(apiKeys) : null;
     const paramsCfg = config.parameters || {};
     const pollingTimeout = (paramsCfg.enablePollingTimeout === true && Number.isFinite(Number(paramsCfg.pollingTimeout)))
       ? Number(paramsCfg.pollingTimeout) : undefined;
     const removeBgKey = apiKeys.removeBg || apiKeys.remove_bg || process.env.REMOVE_BG_API_KEY || '';
 
-    // Resolve temp processing dir once
     let tempProcessingDir;
     try {
       const { app } = require('electron');
@@ -289,15 +281,20 @@ class PostGenerationService {
       const os = require('os');
       tempProcessingDir = path.join(os.homedir(), 'Documents', 'gen-image-factory', 'pictures', 'temp_processing');
     }
-    await fs.mkdir(tempProcessingDir, { recursive: true });
+    if (runDeferredPipeline && pipeline) await fs.mkdir(tempProcessingDir, { recursive: true });
 
-    this._addLog('info', `Starting post-QC processing for ${approvedImages.length} approved image(s)`, {
-      stepName: 'image_generation', subStep: 'post_qc_processing_start',
-      metadata: { count: approvedImages.length, removeBg: !!proc.removeBg }
+    this._addLog('info', runDeferredPipeline
+      ? `Post-QC: remove.bg + processing for ${approvedImages.length} approved image(s)`
+      : `Moving ${approvedImages.length} QC-approved image(s) to final output`,
+    {
+      stepName: 'image_generation', subStep: 'finalize_approved_start',
+      metadata: { count: approvedImages.length, deferredRemoveBg: runDeferredPipeline }
     });
+    if (!process.env.VITEST) {
+      console.info(runDeferredPipeline ? '[finalize_approved] deferred pipeline after QC' : '[finalize_approved] move only', approvedImages.length);
+    }
 
     let processedCount = 0;
-    let failedCount = 0;
 
     for (let i = 0; i < approvedImages.length; i++) {
       if (abortSignal?.aborted) break;
@@ -307,49 +304,52 @@ class PostGenerationService {
       if (!sourcePath) continue;
       try { await fs.access(sourcePath); } catch { continue; }
 
-      let perImageProcessing;
-      try {
-        if (image.processingSettings && typeof image.processingSettings === 'string' && image.processingSettings.trim().startsWith('{'))
-          perImageProcessing = JSON.parse(image.processingSettings);
-      } catch {}
+      let pathForFinal = sourcePath;
 
-      const effectiveFailMode = perImageProcessing?.removeBgFailureMode || proc.removeBgFailureMode || 'approve';
-      const processingConfig = buildPostQCProcessingConfig(proc, perImageProcessing, tempProcessingDir, effectiveFailMode);
-      if (Number.isFinite(pollingTimeout)) processingConfig.pollingTimeout = pollingTimeout;
-      const isMarkFailed = processingConfig.removeBg === true && String(effectiveFailMode) === 'mark_failed';
+      if (runDeferredPipeline && pipeline) {
+        const effectiveFailMode = proc.removeBgFailureMode || 'approve';
+        const processingConfig = buildPostQCProcessingConfig(proc, null, tempProcessingDir, effectiveFailMode);
+        if (Number.isFinite(pollingTimeout)) processingConfig.pollingTimeout = pollingTimeout;
+        Object.assign(processingConfig, { apiKeys: config.apiKeys, abortSignal });
+        const isMarkFailed = processingConfig.removeBg === true && processingConfig.removeBgFailureMode === 'mark_failed';
 
-      // Guard: mark_failed + missing API key (check config.apiKeys, not just env var)
-      if (isMarkFailed && !removeBgKey.trim()) {
-        this._addLog('warn', 'Remove.bg API key missing with Mark Failed; marking qc_failed', {
-          stepName: 'image_generation', subStep: 'post_qc_missing_key', metadata: { imageMappingId: mId }
+        if (isMarkFailed && !removeBgKey.trim()) {
+          this._addLog('warn', 'Remove.bg API key missing with Mark Failed; marking qc_failed', {
+            stepName: 'image_generation', subStep: 'post_qc_missing_key', metadata: { imageMappingId: mId }
+          });
+          await this._markImageFailed(mId, image);
+          continue;
+        }
+
+        let removeBgThrew = false;
+        try {
+          if (!isPostQCPipelineNoOp(processingConfig)) {
+            pathForFinal = await pipeline.processImage(sourcePath, path.basename(sourcePath), processingConfig);
+          }
+        } catch (procErr) {
+          removeBgThrew = true;
+          this._addLog('warn', `Post-QC processing threw: ${procErr.message}`, {
+            stepName: 'image_generation', subStep: 'post_qc_catch',
+            metadata: { imageMappingId: mId, error: procErr.message, stage: procErr.stage }
+          });
+          if (isMarkFailed) { await this._markImageFailed(mId, image); continue; }
+          continue;
+        }
+
+        const hadSoftBg = Array.isArray(processingConfig._softFailures) && processingConfig._softFailures.some(f => f?.stage === 'remove_bg');
+        if (isMarkFailed && (removeBgThrew || !processingConfig._removeBgApplied || hadSoftBg)) {
+          this._addLog('warn', 'Mark Failed override: forcing qc_failed', {
+            stepName: 'image_generation', subStep: 'post_qc_mark_failed_override', metadata: { imageMappingId: mId }
+          });
+          await this._markImageFailed(mId, image);
+          continue;
+        }
+      } else if (runDeferredPipeline && !pipeline) {
+        this._addLog('warn', 'Deferred remove.bg requires createImagePipeline; skipping processing for image', {
+          stepName: 'image_generation', subStep: 'finalize_no_pipeline', metadata: { imageMappingId: mId }
         });
-        await this._markImageFailed(mId, image); failedCount++; continue;
       }
 
-      let processedPath = null;
-      let removeBgThrew = false;
-      try {
-        processedPath = await pipeline.processImage(sourcePath, path.basename(sourcePath), processingConfig);
-      } catch (procErr) {
-        removeBgThrew = true;
-        this._addLog('warn', `Post-QC processing threw: ${procErr.message}`, {
-          stepName: 'image_generation', subStep: 'post_qc_catch',
-          metadata: { imageMappingId: mId, error: procErr.message, stage: procErr.stage }
-        });
-        if (isMarkFailed) { await this._markImageFailed(mId, image); failedCount++; continue; }
-      }
-
-      // Consolidated mark_failed guard: not-applied, soft failure, or threw
-      const hadSoftBg = Array.isArray(processingConfig._softFailures) && processingConfig._softFailures.some(f => f?.stage === 'remove_bg');
-      if (isMarkFailed && (removeBgThrew || !processingConfig._removeBgApplied || hadSoftBg)) {
-        this._addLog('warn', 'Mark Failed override: forcing qc_failed', {
-          stepName: 'image_generation', subStep: 'post_qc_mark_failed_override', metadata: { imageMappingId: mId }
-        });
-        await this._markImageFailed(mId, image); failedCount++; continue;
-      }
-
-      // Success: move to final location + update DB + sync in-memory object
-      const pathForFinal = processedPath || sourcePath;
       const finalPath = await moveImageToFinal(pathForFinal, mId, config, this);
       if (finalPath) {
         await this.imageRepository.updateImagePathsByMappingId(mId, null, finalPath);
@@ -369,17 +369,16 @@ class PostGenerationService {
       }
     }
 
-    this._addLog('info', `Post-QC processing completed: ${processedCount} processed, ${failedCount} failed`, {
-      stepName: 'image_generation', subStep: 'post_qc_processing_complete',
-      metadata: { processedCount, failedCount, total: approvedImages.length }
+    this._addLog('info', `Finalize approved completed: ${processedCount}/${approvedImages.length} moved to output`, {
+      stepName: 'image_generation', subStep: 'finalize_approved_complete',
+      metadata: { processedCount, total: approvedImages.length }
     });
   }
 
   async _markImageFailed(mappingId, image) {
     try { await this.imageRepository.updateQCStatusByMappingId(mappingId, 'qc_failed', 'processing_failed:remove_bg'); } catch {}
-    try { image.qcStatus = 'qc_failed'; image.qcReason = 'processing_failed:remove_bg'; } catch {}
+    try { Object.assign(image, { qcStatus: 'qc_failed', qcReason: 'processing_failed:remove_bg' }); } catch {}
   }
-
 }
 
 module.exports = { PostGenerationService };

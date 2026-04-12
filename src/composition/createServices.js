@@ -36,6 +36,8 @@ const { JobListService } = require(path.join(__dirname, '../services/JobListServ
 const { ErrorTranslationService: ErrorTranslation } = require(path.join(__dirname, '../services/errorTranslation'));
 
 const SettingsComposer = require(path.join(__dirname, './settingsComposer'));
+const { resolveRetryJobConfigurationForImage } = require(path.join(__dirname, '../utils/retryResolveJobConfiguration'));
+const { mergeRetryOriginalProcessing } = require(path.join(__dirname, '../utils/mergeRetryOriginalProcessing'));
 
 /**
  * Initialize all database models (creates tables if missing).
@@ -142,8 +144,8 @@ async function createServices(opts = {}) {
   const retryQueueService = new RetryQueueService({
     processOneJob: async (job) => {
       const retryProcessor = _buildRetryProcessor(
-        imageRepository, generatedImage, configRepository, jobConfig,
-        createImagePipeline, settingsComposer
+        imageRepository, generatedImage, jobConfig,
+        createImagePipeline, settingsComposer, jobRepository
       );
       return retryProcessor.processImage(job);
     },
@@ -165,6 +167,14 @@ async function createServices(opts = {}) {
     jobRunner: jobService,
     getSettings: () => settingsComposer.getSettings().then(r => r.settings)
   });
+
+  const advanceBulkRerunChain = () => {
+    bulkRerunService.processNextBulkRerunJob().catch((err) => {
+      console.warn('Bulk rerun chain:', err?.message || err);
+    });
+  };
+  jobService.on('job-complete', advanceBulkRerunChain);
+  jobService.on('job-failed', advanceBulkRerunChain);
 
   // 11. Job list service
   const jobListService = new JobListService({
@@ -217,7 +227,7 @@ function _wireJobEvents(jobService, sender) {
   });
 }
 
-function _buildRetryProcessor(imageRepo, genImage, configRepo, jobConfig, createPipeline, settingsComposer) {
+function _buildRetryProcessor(imageRepo, genImage, jobConfig, createPipeline, settingsComposer, jobRepository) {
   return new (class {
     async processImage(job) {
       try {
@@ -237,14 +247,68 @@ function _buildRetryProcessor(imageRepo, genImage, configRepo, jobConfig, create
           imageProcessorService: { processFile: processImageFn }
         };
 
+        const jobConfiguration = await resolveRetryJobConfigurationForImage(
+          imageRes.image,
+          jobConfig,
+          jobRepository
+        );
+
+        const useOrig = job.useOriginalSettings !== false;
+        let processingSettingsPayload = {};
+        if (useOrig) {
+          let snapshotProcessing = null;
+          if (imageRes.image.executionId && jobRepository) {
+            try {
+              const exRes = await jobRepository.getJobExecution(imageRes.image.executionId);
+              if (exRes.success && exRes.execution?.configurationSnapshot && typeof exRes.execution.configurationSnapshot === 'object') {
+                const snap = exRes.execution.configurationSnapshot;
+                snapshotProcessing = snap.processing != null ? snap.processing : null;
+              }
+            } catch (_) {}
+          }
+          const merged = mergeRetryOriginalProcessing(snapshotProcessing, imageRes.image.processingSettings);
+          const psForOrig =
+            merged && Object.keys(merged).length > 0
+              ? JSON.stringify(merged)
+              : typeof imageRes.image.processingSettings === 'string'
+                ? imageRes.image.processingSettings
+                : imageRes.image.processingSettings != null && typeof imageRes.image.processingSettings === 'object'
+                  ? JSON.stringify(imageRes.image.processingSettings)
+                  : null;
+          const imageForOrig = { ...imageRes.image, processingSettings: psForOrig };
+          processingSettingsPayload = await RetryConfigService.getOriginalProcessingSettings({}, imageForOrig);
+
+          const includeMeta = !!job.includeMetadata;
+          const hasWork =
+            includeMeta ||
+            (processingSettingsPayload &&
+              (processingSettingsPayload.removeBg ||
+                processingSettingsPayload.imageConvert ||
+                processingSettingsPayload.imageEnhancement ||
+                processingSettingsPayload.trimTransparentBackground ||
+                (Number(processingSettingsPayload.sharpening) > 0) ||
+                (Number.isFinite(Number(processingSettingsPayload.saturation)) &&
+                  Math.abs(Number(processingSettingsPayload.saturation) - 1) > 1e-6)));
+          if (!hasWork) {
+            return {
+              success: false,
+              error:
+                'No processing settings available for original-settings retry (missing saved per-image data and job snapshot). Use Retry with custom settings.'
+            };
+          }
+        } else {
+          processingSettingsPayload =
+            job.modifiedSettings != null ? job.modifiedSettings : (job.settings || {});
+        }
+
         const { run } = require(path.join(__dirname, '../services/RetryPostProcessingService'));
         return await run(
           executor,
           imageRes.image.finalImagePath || imageRes.image.tempImagePath,
-          job.settings || {},
+          processingSettingsPayload,
           job.includeMetadata || false,
-          job.jobConfiguration || {},
-          job.useOriginalSettings !== false,
+          jobConfiguration,
+          useOrig,
           job.failOptions || {}
         );
       } catch (error) {

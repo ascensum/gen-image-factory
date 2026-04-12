@@ -1,8 +1,11 @@
 /**
  * SettingsComposer - Composed settings operations (getSettings / saveSettings).
  *
- * Replaces the settings composition that lived in backendAdapter.js.
- * Merges JobConfigurationRepository data with SecurityService API keys.
+ * Replaces the settings composition that lived in backendAdapter.js (pre–Story 5.3).
+ * Contract: shallow-merge defaults with DB (`{ ...defaults, ...result.settings }`), same as
+ * legacy `getSettings`. `prepareJobConfig` merges filePaths, apiKeys, then **processing** with
+ * **processing** / **ai**: when saved settings load, use defaults + DB only (IPC ignored for those sections).
+ * If `getSettings` fails, fall back to defaults + IPC. Boolean-like strings in stored JSON are normalized in `normalizeProcessingSettings`.
  *
  * ADR-001: < 400 lines.  ADR-003: constructor injection.
  */
@@ -113,21 +116,24 @@ class SettingsComposer {
    */
   async prepareJobConfig(config) {
     const normalizedConfig = { ...config };
+    const defaults = this.getDefaultSettings();
 
-    if (!normalizedConfig.filePaths) {
-      try {
-        const currentSettings = await this.getSettings();
-        const fp = currentSettings?.settings?.filePaths;
-        if (fp && (fp.outputDirectory || fp.tempDirectory)) {
-          normalizedConfig.filePaths = { ...fp };
-        }
-      } catch (e) {
-        console.warn('prepareJobConfig: failed to merge saved filePaths:', e.message);
+    let saved = null;
+    try {
+      const r = await this.getSettings();
+      if (r?.success && r.settings) saved = r.settings;
+    } catch (e) {
+      console.warn('prepareJobConfig: failed to load saved settings:', e.message);
+    }
+
+    if (!normalizedConfig.filePaths && saved?.filePaths) {
+      const fp = saved.filePaths;
+      if (fp && (fp.outputDirectory || fp.tempDirectory)) {
+        normalizedConfig.filePaths = { ...fp };
       }
     }
 
     if (normalizedConfig.filePaths) {
-      const defaults = this.getDefaultSettings();
       const dfp = defaults.filePaths || {};
       normalizedConfig.filePaths = {
         ...normalizedConfig.filePaths,
@@ -140,20 +146,47 @@ class SettingsComposer {
       };
     }
 
-    try {
-      const currentSettings = await this.getSettings();
-      const apiKeys = currentSettings?.settings?.apiKeys || {};
+    if (saved) {
+      const apiKeys = saved.apiKeys || {};
       normalizedConfig.apiKeys = { ...(normalizedConfig.apiKeys || {}), ...apiKeys };
-    } catch (e) {
-      console.warn('prepareJobConfig: failed to merge API keys:', e.message);
+    }
+
+    const baseAi = defaults.ai || {};
+    if (saved) {
+      const fromSavedAi = saved.ai && typeof saved.ai === 'object' && saved.ai !== null ? saved.ai : {};
+      normalizedConfig.ai = { ...baseAi, ...fromSavedAi };
+    } else {
+      const ipcAi = normalizedConfig.ai && typeof normalizedConfig.ai === 'object' ? normalizedConfig.ai : {};
+      normalizedConfig.ai = { ...baseAi, ...ipcAi };
     }
 
     try {
-      if (normalizedConfig.processing) {
-        const { normalizeProcessingSettings } = require('../utils/processing');
-        normalizedConfig.processing = normalizeProcessingSettings(normalizedConfig.processing);
+      const { normalizeProcessingSettings } = require('../utils/processing');
+      const baseProc = defaults.processing || {};
+      const ipcProc = normalizedConfig.processing && typeof normalizedConfig.processing === 'object'
+        ? normalizedConfig.processing
+        : {};
+      if (saved) {
+        const fromSaved = saved.processing && typeof saved.processing === 'object' && saved.processing !== null
+          ? saved.processing
+          : {};
+        normalizedConfig.processing = normalizeProcessingSettings({ ...baseProc, ...fromSaved });
+      } else {
+        normalizedConfig.processing = normalizeProcessingSettings({ ...baseProc, ...ipcProc });
       }
     } catch { /* proceed */ }
+
+    if (!process.env.VITEST && process.env.NODE_ENV !== 'test') {
+      try {
+        const p = normalizedConfig.processing || {};
+        console.info('[prepareJobConfig] processing=', JSON.stringify({
+          removeBg: !!p.removeBg,
+          imageConvert: !!p.imageConvert,
+          imageEnhancement: !!p.imageEnhancement,
+          trimTransparentBackground: !!p.trimTransparentBackground
+        }), 'ai=', JSON.stringify(normalizedConfig.ai || {}));
+      } catch { /* ignore */ }
+    }
 
     return normalizedConfig;
   }

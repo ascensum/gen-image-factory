@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Toggle } from '../../Settings/Toggle';
 import { parseLoraText } from '../../../utils/lora';
+import { ImageEnhancementSliders } from '../../Common/ImageEnhancementSliders';
 import styles from '../SingleJobView.module.css';
 import type { SettingsObject } from '../../../../../types/settings';
 import type { JobExecution } from '../../../../../types/job';
@@ -320,26 +321,16 @@ const SingleJobSettingsModal: React.FC<SingleJobSettingsModalProps> = ({
                 <Toggle checked={editedSettings.processing?.imageEnhancement || false} onChange={onToggleChange('processing', 'imageEnhancement')} />
               </div>
               {editedSettings.processing?.imageEnhancement && (
-                <>
-                  <div className="flex flex-col mb-4">
-                    <label>Sharpening Intensity (0-10)</label>
-                    <input type="range" min="0" max="10" step="0.5" value={editedSettings.processing?.sharpening || 5} onChange={(e) => onSettingChange('processing', 'sharpening', parseFloat(e.target.value))} className={styles.rangeSlider} />
-                    <div className="flex justify-between text-xs text-[var(--muted-foreground)] mt-2">
-                      <span>0 (None)</span>
-                      <span>{String(editedSettings.processing?.sharpening || 5)}</span>
-                      <span>10 (Maximum)</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col mb-4">
-                    <label>Saturation Level (0-2)</label>
-                    <input type="range" min="0" max="2" step="0.1" value={editedSettings.processing?.saturation || 1.4} onChange={(e) => onSettingChange('processing', 'saturation', parseFloat(e.target.value))} className={styles.rangeSlider} />
-                    <div className="flex justify-between text-xs text-[var(--muted-foreground)] mt-2">
-                      <span>0 (Grayscale)</span>
-                      <span>{String(editedSettings.processing?.saturation || 1.4)}</span>
-                      <span>2 (Vibrant)</span>
-                    </div>
-                  </div>
-                </>
+                <div className="mb-4">
+                  <ImageEnhancementSliders
+                    variant="jobs"
+                    idSuffix="single-job"
+                    sharpening={Number(editedSettings.processing?.sharpening ?? 5)}
+                    saturation={Number(editedSettings.processing?.saturation ?? 1.4)}
+                    onSharpeningChange={(v) => onSettingChange('processing', 'sharpening', v)}
+                    onSaturationChange={(v) => onSettingChange('processing', 'saturation', v)}
+                  />
+                </div>
               )}
             </div>
 

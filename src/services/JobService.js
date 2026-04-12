@@ -25,6 +25,8 @@ const fsSync = require('fs');
 const { PostGenerationService } = require(path.join(__dirname, './PostGenerationService'));
 const { moveImageToFinal } = require(path.join(__dirname, '../utils/moveImageToFinal'));
 const { sanitizeConfigurationSnapshot } = require(path.join(__dirname, '../utils/sanitizeConfigurationSnapshot'));
+const { finalizeBackgroundRun } = require(path.join(__dirname, './jobServiceBackgroundFinalize'));
+const { startJobForExistingExecution } = require(path.join(__dirname, './jobServiceRerunStart'));
 
 /**
  * JobService
@@ -61,6 +63,11 @@ class JobService extends EventEmitter {
     this.currentConfigurationId = null;
     this.currentStartedAt = null;
     this.abortController = null;
+    /** Set by SingleRerunService / BulkRerunService before startJob() — existing execution row, no new INSERT. */
+    this.databaseExecutionId = null;
+    this.configurationId = null;
+    this.persistedLabel = null;
+    this.isRerun = false;
     /** True while _runJobInBackground is in flight (after executeJob returns, persist/move/postGen still run). Caps JobEngine progress at 95 so UI never treats the job as completed until paths are final. */
     this._backgroundPipelineActive = false;
     this.liveProgress = { state: 'idle', progress: 0, currentStep: '', totalImages: 0, totalGenerations: 1, variations: 1, gensDone: 0 };
@@ -173,7 +180,21 @@ class JobService extends EventEmitter {
     return this.currentExecutionId;
   }
 
+  /**
+   * Legacy JobRunner API for SingleRerunService / BulkRerunService (pre–Story 5.3 parity).
+   * @returns {Promise<{ success: boolean, jobId?: string, error?: string }>}
+   */
+  async startJob(config) {
+    try {
+      return await startJobForExistingExecution(this, config);
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
   async _runJobInBackground(config) {
+    let successResult = null;
+    let lastError = null;
     try {
       const hasMetadataGen = config.ai?.runMetadataGen === true;
       const hasQC = config.ai?.runQualityCheck === true;
@@ -191,9 +212,7 @@ class JobService extends EventEmitter {
 
       const hasImages = Array.isArray(result.images) && result.images.length > 0;
 
-      // Legacy flow: when QC disabled, move ALL images to final immediately and auto-approve.
-      // Processing already happened at module level (JobEngine._buildModuleConfig disables
-      // module-level processing when QC IS enabled, defers it to post-QC).
+      // When QC is off: move all images to final immediately and auto-approve (processing already ran during generation).
       if (!hasQC && hasImages && this.imageRepository) {
         const moveState = {};
         for (const image of result.images) {
@@ -217,14 +236,14 @@ class JobService extends EventEmitter {
         await this.postGen.runMetadataGeneration(result.images, config, this.abortController?.signal);
       }
 
-      // QC + post-QC processing (only when QC enabled).
+      // QC (optional): vision QC on temp files. If remove.bg is on, it runs only after approval (generation skipped local processing; see JobEngine.skipLocalImageProcessing).
       if (hasQC && hasImages && this.postGen) {
         this.liveProgress = { ...this.liveProgress, state: 'running', progress: 95, currentStep: 'quality_check' };
         await this.postGen.runQualityChecks(result.images, config, this.abortController?.signal);
 
         const approvedImages = result.images.filter(img => img.qcStatus === 'approved');
         if (approvedImages.length > 0) {
-          this.liveProgress = { ...this.liveProgress, progress: 95, currentStep: 'post_qc_processing' };
+          this.liveProgress = { ...this.liveProgress, progress: 95, currentStep: 'finalize_approved' };
           await this.postGen.runPostQCProcessing(approvedImages, config, this.abortController?.signal);
         }
       }
@@ -243,9 +262,9 @@ class JobService extends EventEmitter {
         }).catch(e => console.warn('JobService: Failed to update execution:', e.message));
       }
 
-      this.liveProgress = { state: 'completed', progress: 100, currentStep: 'completed', totalImages: result.totalImages || 0 };
-      this.emit('job-complete', result);
+      successResult = result;
     } catch (error) {
+      lastError = error;
       console.error('JobService: background job failed:', error);
       if (this.currentExecutionId) {
         await this.jobRepository.updateJobExecutionStatus(
@@ -254,13 +273,7 @@ class JobService extends EventEmitter {
       }
       this.liveProgress = { state: 'failed', progress: 0, currentStep: 'failed', totalImages: 0 };
     } finally {
-      this._backgroundPipelineActive = false;
-      this.currentExecutionId = null;
-      this.currentJobId = null;
-      this.currentLabel = null;
-      this.currentConfigurationId = null;
-      this.currentStartedAt = null;
-      this.abortController = null;
+      finalizeBackgroundRun(this, { successResult, lastError });
     }
   }
 
@@ -291,12 +304,17 @@ class JobService extends EventEmitter {
   }
 
   /**
-   * Get job execution status
-   * 
-   * @param {string|number} executionId - Execution ID
-   * @returns {Promise<Object>} Execution details
+   * Get job execution status from DB, or legacy no-arg probe for rerun services.
+   *
+   * @param {string|number} [executionId] - When omitted, returns { status: 'running'|'idle' } for in-process runner.
+   * @returns {Promise<Object>}
    */
   async getJobStatus(executionId) {
+    if (arguments.length === 0) {
+      const busy =
+        this.currentExecutionId != null || this._backgroundPipelineActive === true;
+      return { status: busy ? 'running' : 'idle' };
+    }
     try {
       const result = await this.jobRepository.getJobExecution(executionId);
       return result;

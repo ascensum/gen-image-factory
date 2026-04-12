@@ -4,6 +4,8 @@
  */
 import React from 'react';
 import StatusBadge from '../../Common/StatusBadge';
+import { coerceProcessingBoolean } from '../../../utils/coerceProcessingBoolean';
+import { formatSaturationDisplay, formatSharpeningDisplay } from '../../../utils/formatProcessingDisplay';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../../types/generatedImage';
 
 export type ImageModalTabType = 'details' | 'metadata' | 'processing';
@@ -37,7 +39,9 @@ const ImageModalTabsContent: React.FC<ImageModalTabsContentProps> = ({
   activeTab,
   onTabChange,
   formatDate,
-}) => (
+}) => {
+  const enhancementOn = coerceProcessingBoolean(processingSettings.imageEnhancement);
+  return (
   <div className="w-1/2 xl:w-96 border-l border-gray-200 flex flex-col h-full overflow-hidden xl:min-w-[384px]">
     <div className="flex border-b border-gray-200">
       {(Object.values(TAB_CONFIG) as { label: string; id: ImageModalTabType }[]).map((tab) => (
@@ -163,18 +167,18 @@ const ImageModalTabsContent: React.FC<ImageModalTabsContentProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Image Enhancement</label>
-              <p className="text-sm text-gray-900">{processingSettings.imageEnhancement ? 'Yes' : 'No'}</p>
+              <p className="text-sm text-gray-900">{enhancementOn ? 'Yes' : 'No'}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Sharpening</label>
               <p className="text-sm text-gray-900">
-                {processingSettings.imageEnhancement ? String(Number(processingSettings.sharpening ?? 0)) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
+                {enhancementOn ? formatSharpeningDisplay(processingSettings.sharpening) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
               </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Saturation</label>
               <p className="text-sm text-gray-900">
-                {processingSettings.imageEnhancement ? String(Number(processingSettings.saturation ?? 1.4)) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
+                {enhancementOn ? formatSaturationDisplay(processingSettings.saturation) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
               </p>
             </div>
             <div>
@@ -228,6 +232,7 @@ const ImageModalTabsContent: React.FC<ImageModalTabsContentProps> = ({
       )}
     </div>
   </div>
-);
+  );
+};
 
 export default ImageModalTabsContent;

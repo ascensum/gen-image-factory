@@ -22,6 +22,7 @@ const mockConfiguration = {
 const mockElectronAPI = {
   getJobConfigurationById: vi.fn(),
   updateJobConfiguration: vi.fn(),
+  updateJobConfigurationName: vi.fn(),
 };
 
 (global as any).window = global.window || {};
@@ -37,6 +38,7 @@ describe('useSingleJobSettings', () => {
       configuration: mockConfiguration,
     });
     mockElectronAPI.updateJobConfiguration.mockResolvedValue({ success: true });
+    mockElectronAPI.updateJobConfigurationName.mockResolvedValue({ success: true });
   });
 
   it('starts with modal closed and no edited settings', () => {
@@ -149,6 +151,7 @@ describe('useSingleJobSettings', () => {
         parameters: expect.objectContaining({ label: 'Saved Label' }),
       })
     );
+    expect(mockElectronAPI.updateJobConfigurationName).toHaveBeenCalledWith('config-1', 'Saved Label');
     expect(result.current.isEditingSettings).toBe(false);
   });
 

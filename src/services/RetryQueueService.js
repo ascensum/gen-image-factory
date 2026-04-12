@@ -134,6 +134,7 @@ class RetryQueueService {
     this.isProcessing = true;
 
     try {
+      let processed = 0;
       while (this.queue.length > 0) {
         const job = this.queue.shift();
 
@@ -178,9 +179,10 @@ class RetryQueueService {
           });
         }
 
+        processed += 1;
         this.emit('progress', {
-          processed: this.processedCount + 1,
-          total: this.totalCount,
+          processed,
+          total: processed + this.queue.length,
           currentJob: job,
           timestamp: new Date(),
           context: 'retry'

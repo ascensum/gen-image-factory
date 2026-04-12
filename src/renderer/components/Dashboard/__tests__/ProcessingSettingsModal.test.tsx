@@ -361,7 +361,7 @@ describe('ProcessingSettingsModal', () => {
       // Enable enhancement
       fireEvent.click(enhancementToggle);
       
-      expect(screen.getByLabelText(/Sharpening Level/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Sharpening \(0-10\)/)).toBeInTheDocument();
       // Default is 5 in current UI
       expect(screen.getByDisplayValue('5')).toBeInTheDocument();
     });
@@ -372,7 +372,7 @@ describe('ProcessingSettingsModal', () => {
       // Enable enhancement
       fireEvent.click(enhancementToggle);
       
-      expect(screen.getByLabelText(/Saturation Level/)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Saturation \(0-2\)/)).toBeInTheDocument();
     });
 
     it('hides enhancement controls when enhancement is disabled', () => {
@@ -390,20 +390,20 @@ describe('ProcessingSettingsModal', () => {
       const enhancementToggle = screen.getByLabelText('Enable image enhancement');
       fireEvent.click(enhancementToggle);
       
-      const sharpeningInput = screen.getByLabelText(/Sharpening Level/);
+      const sharpeningInput = screen.getByLabelText(/Sharpening \(0-10\)/);
       fireEvent.change(sharpeningInput, { target: { value: '7' } });
       
-      expect(sharpeningInput).toHaveValue(7);
+      expect(sharpeningInput).toHaveValue('7');
     });
 
     it('updates saturation value when input is changed', () => {
       const enhancementToggle = screen.getByLabelText('Enable image enhancement');
       fireEvent.click(enhancementToggle);
       
-      const saturationInput = screen.getByLabelText(/Saturation Level/);
+      const saturationInput = screen.getByLabelText(/Saturation \(0-2\)/);
       fireEvent.change(saturationInput, { target: { value: '1.7' } });
       
-      expect(saturationInput).toHaveValue(1.7);
+      expect(saturationInput).toHaveValue('1.7');
     });
   });
 
@@ -696,11 +696,11 @@ describe('ProcessingSettingsModal', () => {
       fireEvent.click(enhancementToggle);
 
       // Sharpening numeric input
-      const sharpeningInput = screen.getByLabelText(/Sharpening Level/) as HTMLInputElement;
+      const sharpeningInput = screen.getByLabelText(/Sharpening \(0-10\)/) as HTMLInputElement;
       fireEvent.change(sharpeningInput, { target: { value: '7' } });
 
       // Saturation numeric input
-      const saturationInput = screen.getByLabelText(/Saturation Level/) as HTMLInputElement;
+      const saturationInput = screen.getByLabelText(/Saturation \(0-2\)/) as HTMLInputElement;
       fireEvent.change(saturationInput, { target: { value: '1.7' } });
 
       // Trigger retry with modified settings
@@ -819,7 +819,7 @@ describe('ProcessingSettingsModal', () => {
       const enhancementToggle = screen.getByLabelText('Enable image enhancement');
       fireEvent.click(enhancementToggle);
 
-      const sharpeningInput = screen.getByLabelText(/Sharpening Level/);
+      const sharpeningInput = screen.getByLabelText(/Sharpening \(0-10\)/);
       fireEvent.change(sharpeningInput, { target: { value: '7' } });
 
       // Switch back to original
@@ -830,7 +830,7 @@ describe('ProcessingSettingsModal', () => {
       fireEvent.click(modifiedRadio4);
 
       expect(enhancementToggle).toBeChecked();
-      expect(sharpeningInput).toHaveValue(7);
+      expect(sharpeningInput).toHaveValue('7');
     });
   });
 

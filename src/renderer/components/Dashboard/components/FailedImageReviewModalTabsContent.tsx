@@ -3,6 +3,8 @@
  */
 import React from 'react';
 import { formatQcFailureReason } from '../../../utils/qc';
+import { coerceProcessingBoolean } from '../../../utils/coerceProcessingBoolean';
+import { formatSaturationDisplay, formatSharpeningDisplay } from '../../../utils/formatProcessingDisplay';
 import type { GeneratedImage } from '../../../../types/generatedImage';
 
 export type FailedImageReviewTabType = 'details' | 'metadata' | 'processing';
@@ -32,7 +34,9 @@ const FailedImageReviewModalTabsContent: React.FC<FailedImageReviewModalTabsCont
   activeTab,
   onTabChange,
   processingSettings: ps,
-}) => (
+}) => {
+  const enhancementOn = coerceProcessingBoolean(ps.imageEnhancement);
+  return (
   <div className="w-1/2 xl:w-1/3 border-l border-gray-200 flex flex-col h-full overflow-hidden xl:min-w-[400px]">
     <div className="flex border-b border-gray-200">
       {(['details', 'metadata', 'processing'] as FailedImageReviewTabType[]).map((tab) => (
@@ -148,15 +152,19 @@ const FailedImageReviewModalTabsContent: React.FC<FailedImageReviewModalTabsCont
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Image Enhancement</label>
-            <p className="text-sm text-gray-900">{ps.imageEnhancement ? 'Yes' : 'No'}</p>
+            <p className="text-sm text-gray-900">{enhancementOn ? 'Yes' : 'No'}</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Sharpening</label>
-            <p className="text-sm text-gray-900">{ps.imageEnhancement ? String(Number(ps.sharpening ?? 0)) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}</p>
+            <p className="text-sm text-gray-900">
+              {enhancementOn ? formatSharpeningDisplay(ps.sharpening) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Saturation</label>
-            <p className="text-sm text-gray-900">{ps.imageEnhancement ? String(Number(ps.saturation ?? 1.4)) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}</p>
+            <p className="text-sm text-gray-900">
+              {enhancementOn ? formatSaturationDisplay(ps.saturation) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Image Convert</label>
@@ -206,6 +214,7 @@ const FailedImageReviewModalTabsContent: React.FC<FailedImageReviewModalTabsCont
       )}
     </div>
   </div>
-);
+  );
+};
 
 export default FailedImageReviewModalTabsContent;

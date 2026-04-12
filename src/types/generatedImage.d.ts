@@ -37,6 +37,9 @@ export interface GeneratedImage {
   // Timestamps
   createdAt?: Date;
   updatedAt?: Date;
+
+  /** Set when loaded via findByQcStatus (JOIN with job_executions / job_configurations). */
+  jobDisplayLabel?: string;
 }
 
 export interface GeneratedImageWithStringId extends Omit<GeneratedImage, 'id' | 'executionId'> {

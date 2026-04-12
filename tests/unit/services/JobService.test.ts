@@ -190,6 +190,42 @@ describe('JobService Unit Tests', () => {
     });
   });
 
+  describe('startJob() rerun API', () => {
+    beforeEach(() => {
+      jobService = new JobService({
+        jobEngine: mockJobEngine,
+        jobRepository: mockJobRepository
+      });
+      mockJobRepository.getJobExecution.mockResolvedValue({
+        success: true,
+        execution: {
+          id: 77,
+          configurationId: 'cfg-r',
+          label: 'Prior',
+          startedAt: new Date('2020-01-01')
+        }
+      });
+    });
+
+    it('should fail when databaseExecutionId is not set', async () => {
+      const r = await jobService.startJob({ parameters: { count: 1 } });
+      expect(r.success).toBe(false);
+      expect(mockJobEngine.executeJob).not.toHaveBeenCalled();
+    });
+
+    it('should start without saveJobExecution and call JobEngine', async () => {
+      jobService.databaseExecutionId = 77;
+      jobService.persistedLabel = 'My (Rerun)';
+
+      const r = await jobService.startJob({ parameters: { count: 2 } });
+      expect(r.success).toBe(true);
+      expect(r.jobId).toBe('77');
+      expect(mockJobRepository.saveJobExecution).not.toHaveBeenCalled();
+      await flushPromises();
+      expect(mockJobEngine.executeJob).toHaveBeenCalled();
+    });
+  });
+
   describe('Event Coordination', () => {
     beforeEach(() => {
       jobService = new JobService({
@@ -322,6 +358,16 @@ describe('JobService Unit Tests', () => {
         jobEngine: mockJobEngine,
         jobRepository: mockJobRepository
       });
+    });
+
+    it('should return running/idle when called with no args (rerun services)', async () => {
+      const idle = await jobService.getJobStatus();
+      expect(idle).toEqual({ status: 'idle' });
+      expect(mockJobRepository.getJobExecution).not.toHaveBeenCalled();
+
+      (jobService as any).currentExecutionId = 99;
+      const running = await jobService.getJobStatus();
+      expect(running).toEqual({ status: 'running' });
     });
 
     it('should delegate to JobRepository', async () => {

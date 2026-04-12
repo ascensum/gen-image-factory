@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 
 // Use CommonJS require since the util exports via module.exports
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { normalizeProcessingSettings, normalizeRemoveBgFailureMode } = require('../../../src/utils/processing');
+const {
+  normalizeProcessingSettings,
+  normalizeRemoveBgFailureMode,
+  isPostQCPipelineNoOp
+} = require('../../../src/utils/processing');
 
 describe('normalizeProcessingSettings', () => {
   it('clamps pngQuality to 1-100 and coerces string numbers', () => {
@@ -19,10 +23,13 @@ describe('normalizeProcessingSettings', () => {
     expect(normalizeProcessingSettings({ jpgQuality: '42' }).jpgQuality).toBe(42);
   });
 
-  it('clamps sharpening to 0-100 and rounds', () => {
+  it('clamps sharpening to 0-10 and snaps to 0.5 steps', () => {
     expect(normalizeProcessingSettings({ sharpening: -3 }).sharpening).toBe(0);
-    expect(normalizeProcessingSettings({ sharpening: 101 }).sharpening).toBe(100);
-    expect(normalizeProcessingSettings({ sharpening: 9.7 }).sharpening).toBe(10);
+    expect(normalizeProcessingSettings({ sharpening: 11 }).sharpening).toBe(10);
+    expect(normalizeProcessingSettings({ sharpening: 101 }).sharpening).toBe(10);
+    expect(normalizeProcessingSettings({ sharpening: 7.5 }).sharpening).toBe(7.5);
+    expect(normalizeProcessingSettings({ sharpening: 7.6 }).sharpening).toBe(7.5);
+    expect(normalizeProcessingSettings({ sharpening: 7.25 }).sharpening).toBe(7.5);
   });
 
   it('clamps saturation to 0-3 and preserves decimals', () => {
@@ -38,7 +45,41 @@ describe('normalizeProcessingSettings', () => {
     // convertToJpg forced false when imageConvert is false
     expect(out.convertToJpg).toBe(false);
     expect(out.removeBg).toBe(false);
-    expect(out.trimTransparentBackground).toBe(true);
+    // trim only allowed with remove.bg
+    expect(out.trimTransparentBackground).toBe(false);
+    const withBg = normalizeProcessingSettings({ removeBg: true, trimTransparentBackground: 123 });
+    expect(withBg.trimTransparentBackground).toBe(true);
+  });
+
+  it('forces trimTransparentBackground off when removeBg is off (trim only makes sense after remove.bg)', () => {
+    expect(
+      normalizeProcessingSettings({
+        removeBg: false,
+        trimTransparentBackground: true
+      }).trimTransparentBackground
+    ).toBe(false);
+    expect(
+      normalizeProcessingSettings({ trimTransparentBackground: true }).trimTransparentBackground
+    ).toBe(false);
+    const on = normalizeProcessingSettings({ removeBg: true, trimTransparentBackground: true });
+    expect(on.removeBg).toBe(true);
+    expect(on.trimTransparentBackground).toBe(true);
+  });
+
+  it('coerces string "false" / "true" from JSON/SQLite so flags are not inverted', () => {
+    const out = normalizeProcessingSettings({
+      imageEnhancement: 'false',
+      removeBg: 'false',
+      imageConvert: 'false',
+      trimTransparentBackground: 'false',
+      convertToWebp: 'false'
+    });
+    expect(out.imageEnhancement).toBe(false);
+    expect(out.removeBg).toBe(false);
+    expect(out.imageConvert).toBe(false);
+    expect(out.trimTransparentBackground).toBe(false);
+    expect(out.convertToWebp).toBe(false);
+    expect(normalizeProcessingSettings({ removeBg: 'true' }).removeBg).toBe(true);
   });
 
   it('forces convertToJpg=false when imageConvert=false', () => {
@@ -54,9 +95,12 @@ describe('normalizeProcessingSettings', () => {
     expect(normalizeProcessingSettings({}).removeBgSize).toBeUndefined();
   });
 
-  it('defaults jpgBackground to #FFFFFF if not a string', () => {
-    expect(normalizeProcessingSettings({ jpgBackground: 123 }).jpgBackground).toBe('#FFFFFF');
+  it('jpgBackground: non-string, empty, and legacy transparent map to white', () => {
+    expect(normalizeProcessingSettings({ jpgBackground: 123 }).jpgBackground).toBe('white');
     expect(normalizeProcessingSettings({ jpgBackground: 'white' }).jpgBackground).toBe('white');
+    expect(normalizeProcessingSettings({ jpgBackground: 'transparent' }).jpgBackground).toBe('white');
+    expect(normalizeProcessingSettings({ jpgBackground: '  TRANSPARENT  ' }).jpgBackground).toBe('white');
+    expect(normalizeProcessingSettings({ jpgBackground: '' }).jpgBackground).toBe('white');
   });
 
   it('ignores unknown keys', () => {
@@ -76,6 +120,28 @@ describe('normalizeProcessingSettings', () => {
     expect(normalizeProcessingSettings({ removeBgFailureMode: 'SOFT' }).removeBgFailureMode).toBe('approve');
     expect(normalizeProcessingSettings({ removeBgFailureMode: 'unknown' }).removeBgFailureMode).toBe('approve');
     expect(normalizeProcessingSettings({}).removeBgFailureMode).toBeUndefined();
+  });
+});
+
+describe('isPostQCPipelineNoOp', () => {
+  it('is true when no removeBg, trim, enhancement, or convert', () => {
+    expect(isPostQCPipelineNoOp({})).toBe(true);
+    expect(isPostQCPipelineNoOp(null)).toBe(true);
+    expect(
+      isPostQCPipelineNoOp({
+        removeBg: false,
+        trimTransparentBackground: false,
+        imageEnhancement: false,
+        imageConvert: false
+      })
+    ).toBe(true);
+  });
+
+  it('is false when any transformative flag is on', () => {
+    expect(isPostQCPipelineNoOp({ removeBg: true })).toBe(false);
+    expect(isPostQCPipelineNoOp({ trimTransparentBackground: true })).toBe(false);
+    expect(isPostQCPipelineNoOp({ imageEnhancement: true })).toBe(false);
+    expect(isPostQCPipelineNoOp({ imageConvert: true })).toBe(false);
   });
 });
 

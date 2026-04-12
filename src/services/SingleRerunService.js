@@ -59,9 +59,8 @@ class SingleRerunService {
       }
       let baseLabel = '';
       try {
-        const cfgLabel = String(
-          (configResult?.configuration?.settings?.parameters && configResult.configuration.settings.parameters.label) || ''
-        ).trim();
+        const params = configResult?.configuration?.settings?.parameters || {};
+        const cfgLabel = String(params.label ?? '').trim();
         if (cfgLabel) baseLabel = cfgLabel;
       } catch {
         // Ignore errors when extracting label from config

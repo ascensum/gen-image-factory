@@ -28,7 +28,7 @@ class ImageProcessorService {
 
     let sharpInstance = sharp(imageBuffer);
 
-    // 1. Trim (already handled if modular remover was used, but we keep it for pure processor usage)
+    // 1. Trim transparent edges (intended for alpha PNGs after remove.bg; normalizer clears trim when remove.bg is off)
     if (trimTransparentBackground) {
       this.logDebug('Trimming transparent background (processor)...');
       try {
@@ -50,15 +50,19 @@ class ImageProcessorService {
     // 2. Apply Image Enhancement Effects (optional)
     if (imageEnhancement) {
       this.logDebug('Applying image enhancement effects (processor)...');
-      
-      if (sharpening > 0) {
-        this.logDebug(`Applying sharpening with intensity: ${sharpening}`);
-        sharpInstance = sharpInstance.sharpen({ sigma: sharpening });
+
+      const sharpenSlider = Number(sharpening);
+      if (Number.isFinite(sharpenSlider) && sharpenSlider > 0) {
+        const sigma = sharpenSlider * 0.2;
+        this.logDebug(`Sharpening: slider=${sharpenSlider} → sharp.sharpen sigma=${sigma}`);
+        sharpInstance = sharpInstance.sharpen({ sigma });
       }
-      
-      if (saturation !== 1) {
-        this.logDebug(`Applying saturation adjustment: ${saturation}`);
-        sharpInstance = sharpInstance.modulate({ saturation: saturation });
+
+      const sat = Number(saturation);
+      if (Number.isFinite(sat) && Math.abs(sat - 1) > 1e-6) {
+        const satClamped = Math.min(3, Math.max(0, sat));
+        this.logDebug(`Saturation modulate: ${satClamped} (1 = unchanged)`);
+        sharpInstance = sharpInstance.modulate({ saturation: satClamped });
       }
 
       try {

@@ -38,7 +38,7 @@ describe('GeneratedImage Model', () => {
     });
 
     await dbRun(`CREATE TABLE IF NOT EXISTS job_configurations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL, settings TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    await dbRun(`CREATE TABLE IF NOT EXISTS job_executions (id INTEGER PRIMARY KEY AUTOINCREMENT, configuration_id INTEGER NOT NULL, started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, completed_at TIMESTAMP, status VARCHAR(50) DEFAULT 'running', total_images INTEGER DEFAULT 0, successful_images INTEGER DEFAULT 0, failed_images INTEGER DEFAULT 0, error_message TEXT, FOREIGN KEY (configuration_id) REFERENCES job_configurations(id) ON DELETE CASCADE)`);
+    await dbRun(`CREATE TABLE IF NOT EXISTS job_executions (id INTEGER PRIMARY KEY AUTOINCREMENT, configuration_id INTEGER NOT NULL, started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, completed_at TIMESTAMP, status VARCHAR(50) DEFAULT 'running', total_images INTEGER DEFAULT 0, successful_images INTEGER DEFAULT 0, failed_images INTEGER DEFAULT 0, error_message TEXT, label TEXT, configuration_snapshot TEXT, FOREIGN KEY (configuration_id) REFERENCES job_configurations(id) ON DELETE CASCADE)`);
     await dbRun(`INSERT OR REPLACE INTO job_configurations (id, name, settings) VALUES (1, 'test-config', '{"test": "settings"}')`);
     await dbRun(`INSERT OR REPLACE INTO job_executions (id, configuration_id, status) VALUES (1, 1, 'completed'), (2, 1, 'running')`);
   });
@@ -156,6 +156,7 @@ describe('GeneratedImage Model', () => {
       expect(result.images).toBeDefined();
       expect(result.images.length).toBe(2);
       expect(result.images.every(img => img.qcStatus === 'approved')).toBe(true);
+      expect(result.images[0].jobDisplayLabel).toBe('test-config');
     });
 
     test('should get image statistics', async () => {

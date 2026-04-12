@@ -61,6 +61,15 @@ export function useSingleJobSettings(
       } catch {}
       const result = await window.electronAPI.updateJobConfiguration(job.configurationId, payload);
       if (result.success) {
+        const labelRaw = (payload.parameters as { label?: string } | undefined)?.label;
+        const label = typeof labelRaw === 'string' ? labelRaw.trim() : '';
+        if (label && typeof window.electronAPI.updateJobConfigurationName === 'function') {
+          try {
+            await window.electronAPI.updateJobConfigurationName(job.configurationId, label);
+          } catch {
+            // non-fatal: settings JSON still has parameters.label for rerun
+          }
+        }
         try {
           const refreshed = await window.electronAPI.getJobConfigurationById(job.configurationId);
           if ((refreshed as any)?.success && (refreshed as any)?.configuration?.settings) {

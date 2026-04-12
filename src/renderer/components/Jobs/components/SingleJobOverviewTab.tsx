@@ -2,6 +2,7 @@
  * Overview tab content for SingleJobView — job info, stats, read-only settings summary (ADR-010).
  */
 import React from 'react';
+import { formatSaturationDisplay, formatSharpeningDisplay } from '../../../utils/formatProcessingDisplay';
 import StatusBadge from '../../Common/StatusBadge';
 import type { JobExecution } from '../../../../../types/job';
 
@@ -207,13 +208,13 @@ const SingleJobOverviewTab: React.FC<SingleJobOverviewTabProps> = ({
                 <div>
                   • Sharpening:{' '}
                   {overviewSettings?.processing?.imageEnhancement
-                    ? (overviewSettings?.processing?.sharpening || 0)
+                    ? formatSharpeningDisplay(overviewSettings?.processing?.sharpening ?? 0)
                     : 'Not applied (Image Enhancement OFF)'}
                 </div>
                 <div>
                   • Saturation:{' '}
                   {overviewSettings?.processing?.imageEnhancement
-                    ? (overviewSettings?.processing?.saturation || 1.4)
+                    ? formatSaturationDisplay(overviewSettings?.processing?.saturation ?? 1.4)
                     : 'Not applied (Image Enhancement OFF)'}
                 </div>
                 <div>• Image Convert: {overviewSettings?.processing?.imageConvert ? 'Yes' : 'No'}</div>

@@ -4,6 +4,8 @@
  * Related ADRs: 001 (< 400 lines), 003 (DI), 006, 009 (Repository)
  * Handles all DB operations for generated_images table
  */
+const { findImagesByQcStatus: findImagesByQcStatusQuery } = require('./findImagesByQcStatus');
+
 class ImageRepository {
   /**
    * @param {Object} generatedImageModel - GeneratedImage model instance (provides db connection)
@@ -176,39 +178,7 @@ class ImageRepository {
    * @returns {Promise<Object>} { success: true, images: [...] }
    */
   async findByQcStatus(qcStatus, opts = {}) {
-    const limit = opts.limit != null ? Math.max(0, parseInt(opts.limit, 10)) : null;
-    const offset = opts.offset != null ? Math.max(0, parseInt(opts.offset, 10)) : 0;
-    return new Promise((resolve, reject) => {
-      let sql = 'SELECT * FROM generated_images WHERE qc_status = ? ORDER BY created_at DESC';
-      const params = [qcStatus];
-      if (limit != null && limit > 0) {
-        sql += ' LIMIT ? OFFSET ?';
-        params.push(limit, offset);
-      }
-      this.db.all(sql, params, (err, rows) => {
-        if (err) {
-          console.error('Error getting images by QC status:', err);
-          reject(err);
-        } else {
-          // Parse JSON fields and convert timestamps
-          const images = rows.map(row => ({
-            id: row.id,
-            imageMappingId: row.image_mapping_id,
-            executionId: row.execution_id,
-            generationPrompt: row.generation_prompt,
-            seed: row.seed,
-            qcStatus: row.qc_status,
-            qcReason: row.qc_reason,
-            finalImagePath: row.final_image_path,
-            tempImagePath: row.temp_image_path,
-            metadata: row.metadata ? JSON.parse(row.metadata) : null,
-            processingSettings: row.processing_settings ? JSON.parse(row.processing_settings) : null,
-            createdAt: row.created_at ? new Date(row.created_at) : null
-          }));
-          resolve({ success: true, images });
-        }
-      });
-    });
+    return findImagesByQcStatusQuery(this.db, qcStatus, opts);
   }
 
   /**

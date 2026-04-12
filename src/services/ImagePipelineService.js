@@ -50,6 +50,15 @@ class ImagePipelineService {
     const processedImages = [];
     for (const item of successfulDownloads) {
       try {
+        if (config.skipLocalImageProcessing) {
+          processedImages.push({
+            outputPath: item.inputImagePath,
+            settings: { ...settings },
+            mappingId: item.mappingId
+          });
+          continue;
+        }
+
         config._softFailures = [];
 
         const outputPath = await this.processImage(item.inputImagePath, imgNameBase + item.imageSuffix, config);

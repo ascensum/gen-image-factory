@@ -69,6 +69,8 @@ export function useFailedImages() {
       const result = await (window as any).electronAPI.getRetryQueueStatus();
       if (result?.success && result.queueStatus) {
         setRetryQueueStatus(result.queueStatus);
+      } else if (result && typeof result.queueLength === 'number') {
+        setRetryQueueStatus(result as RetryQueueStatus);
       }
     } catch (e) {
       console.error('Failed to load retry queue status:', e);
@@ -87,21 +89,36 @@ export function useFailedImages() {
         (window as any).electronAPI.generatedImages.getImagesByQCStatus('processing'),
         (window as any).electronAPI.generatedImages.getImagesByQCStatus('retry_failed'),
       ]);
-      setFailedImages(extractImages(failed));
-      setRetryPendingImages(extractImages(pending));
-      setProcessingImages(extractImages(processing));
-      setRetryFailedImages(extractImages(retryFailed));
+      const failedArr = extractImages(failed);
+      const pendingArr = extractImages(pending);
+      const processingArr = extractImages(processing);
+      const retryFailedArr = extractImages(retryFailed);
+      setFailedImages(failedArr);
+      setRetryPendingImages(pendingArr);
+      setProcessingImages(processingArr);
+      setRetryFailedImages(retryFailedArr);
       try {
         const jobsResp = await (window as any).electronAPI?.jobManagement?.getAllJobExecutions?.({});
         let list: any[] = [];
-        if (Array.isArray((jobsResp as any)?.executions)) list = (jobsResp as any).executions;
+        if (Array.isArray(jobsResp)) list = jobsResp;
+        else if (Array.isArray((jobsResp as any)?.executions)) list = (jobsResp as any).executions;
         else if (Array.isArray((jobsResp as any)?.jobs)) list = (jobsResp as any).jobs;
         else if (Array.isArray((jobsResp as any)?.data)) list = (jobsResp as any).data;
         const pad = (n: number) => n.toString().padStart(2, '0');
         const map: Record<string, string> = {};
         list.forEach((j: any) => {
           const k = String(j?.id);
-          let label = (j?.label || j?.configurationName || j?.displayLabel || '').toString().trim();
+          const snapLabel = (typeof j?.configurationSnapshot?.parameters?.label === 'string'
+            ? j.configurationSnapshot.parameters.label
+            : '').toString().trim();
+          let label = (
+            j?.label
+            || j?.configurationLabel
+            || j?.configurationName
+            || j?.displayLabel
+            || snapLabel
+            || ''
+          ).toString().trim();
           if (!label) {
             const rawStarted = j?.startedAt ?? j?.started_at;
             const started = rawStarted instanceof Date ? rawStarted : (rawStarted ? new Date(rawStarted) : null);
@@ -109,14 +126,31 @@ export function useFailedImages() {
               label = `job_${started.getFullYear()}${pad(started.getMonth() + 1)}${pad(started.getDate())}_${pad(started.getHours())}${pad(started.getMinutes())}${pad(started.getSeconds())}`;
             }
           }
-          // Show "Job Label (Rerun xxxx)" in grid/list like Job History and Job Management (not just "Job Label (Rerun)")
           if (label && label.endsWith('(Rerun)')) {
             label = label.replace(/\s*\(Rerun\)$/, '') + ` (Rerun ${String(j?.id ?? k).slice(-6)})`;
           }
           if (k && label) map[k] = label;
         });
+        const allLoaded = [...failedArr, ...pendingArr, ...processingArr, ...retryFailedArr];
+        for (const img of allLoaded) {
+          const id = String((img as any).executionId ?? '');
+          if (!id || id === 'undefined') continue;
+          const jl = (img as any).jobDisplayLabel;
+          if (jl && String(jl).trim()) map[id] = String(jl).trim();
+        }
         setJobIdToLabel(map);
-      } catch {}
+      } catch (e) {
+        console.error('Failed to load job labels for Failed Images:', e);
+        const map: Record<string, string> = {};
+        const allLoaded = [...failedArr, ...pendingArr, ...processingArr, ...retryFailedArr];
+        for (const img of allLoaded) {
+          const id = String((img as any).executionId ?? '');
+          if (!id || id === 'undefined') continue;
+          const jl = (img as any).jobDisplayLabel;
+          if (jl && String(jl).trim()) map[id] = String(jl).trim();
+        }
+        setJobIdToLabel(map);
+      }
     } catch (e) {
       console.error('loadAllImageStatuses error:', e);
       if (!background) setError('Failed to load images');

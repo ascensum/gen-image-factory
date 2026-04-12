@@ -544,7 +544,7 @@ describe('JobRepository Unit Tests', () => {
       expect(result.success).toBe(true);
       expect(result.executions).toHaveLength(2);
       expect(mockDb.all).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT * FROM job_executions'),
+        expect.stringMatching(/FROM\s+job_executions[\s\S]*job_configurations/i),
         [],
         expect.any(Function)
       );
