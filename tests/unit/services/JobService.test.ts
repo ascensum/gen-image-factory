@@ -293,22 +293,30 @@ describe('JobService Unit Tests', () => {
     });
 
     it('should persist final results after executeJob returns (integration)', async () => {
+      const approvedRows = Array.from({ length: 5 }, (_, i) => ({
+        qcStatus: 'approved',
+        imageMappingId: `m${i}`,
+        tempImagePath: `/tmp/${i}.png`
+      }));
       mockJobEngine.executeJob.mockImplementation(async () => ({
         status: 'completed',
-        images: [],
-        totalImages: 10,
-        successfulImages: 8,
-        failedImages: 2
+        images: approvedRows,
+        totalImages: 5,
+        successfulImages: 5,
+        failedImages: 0
       }));
 
-      const config = { parameters: { count: 5 } };
+      const config = { parameters: { count: 5, variations: 1 } };
       await jobService.startJobAsync(config);
       await flushPromises();
 
       expect(mockJobRepository.updateJobExecution).toHaveBeenCalledWith(
         123,
         expect.objectContaining({
-          status: 'completed'
+          status: 'completed',
+          totalImages: 5,
+          successfulImages: 5,
+          failedImages: 0
         })
       );
     });

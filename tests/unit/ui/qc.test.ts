@@ -37,6 +37,7 @@ describe('formatQcLabel', () => {
     expect(formatQcLabel('qc_failed', 'processing_failed:convert')).toBe('Conversion failed');
     expect(formatQcLabel('qc_failed', 'processing_failed:save_final')).toBe('Save failed');
     expect(formatQcLabel('qc_failed', 'processing_failed:metadata')).toBe('Metadata failed');
+    expect(formatQcLabel('qc_failed', 'Metadata failed: read ETIMEDOUT')).toBe('Metadata failed');
   });
 
   it('returns "QC Failed" for unknown reason (fallback)', () => {

@@ -3,9 +3,10 @@
  *
  * Replaces the settings composition that lived in backendAdapter.js (pre–Story 5.3).
  * Contract: shallow-merge defaults with DB (`{ ...defaults, ...result.settings }`), same as
- * legacy `getSettings`. `prepareJobConfig` merges filePaths, apiKeys, then **processing** with
- * **processing** / **ai**: when saved settings load, use defaults + DB only (IPC ignored for those sections).
- * If `getSettings` fails, fall back to defaults + IPC. Boolean-like strings in stored JSON are normalized in `normalizeProcessingSettings`.
+ * legacy `getSettings`. `prepareJobConfig` merges filePaths, apiKeys, then **processing** and **ai** from
+ * defaults + DB; any **IPC keys present** on the incoming job config override saved for that run (snapshot +
+ * retry parity). If `getSettings` fails, fall back to defaults + IPC. Boolean-like strings in stored JSON are
+ * normalized in `normalizeProcessingSettings`.
  *
  * ADR-001: < 400 lines.  ADR-003: constructor injection.
  */
@@ -152,11 +153,18 @@ class SettingsComposer {
     }
 
     const baseAi = defaults.ai || {};
+    const ipcAi = normalizedConfig.ai && typeof normalizedConfig.ai === 'object' && normalizedConfig.ai !== null ? normalizedConfig.ai : {};
     if (saved) {
       const fromSavedAi = saved.ai && typeof saved.ai === 'object' && saved.ai !== null ? saved.ai : {};
       normalizedConfig.ai = { ...baseAi, ...fromSavedAi };
+      /** Per-job dashboard flags win over global saved (execution snapshot + retry rely on them). */
+      if (Object.prototype.hasOwnProperty.call(ipcAi, 'runMetadataGen')) {
+        normalizedConfig.ai.runMetadataGen = !!ipcAi.runMetadataGen;
+      }
+      if (Object.prototype.hasOwnProperty.call(ipcAi, 'runQualityCheck')) {
+        normalizedConfig.ai.runQualityCheck = !!ipcAi.runQualityCheck;
+      }
     } else {
-      const ipcAi = normalizedConfig.ai && typeof normalizedConfig.ai === 'object' ? normalizedConfig.ai : {};
       normalizedConfig.ai = { ...baseAi, ...ipcAi };
     }
 
@@ -170,7 +178,16 @@ class SettingsComposer {
         const fromSaved = saved.processing && typeof saved.processing === 'object' && saved.processing !== null
           ? saved.processing
           : {};
-        normalizedConfig.processing = normalizeProcessingSettings({ ...baseProc, ...fromSaved });
+        const mergedProc = { ...baseProc, ...fromSaved };
+        /** Same contract as `ai`: IPC carries this-run toggles from `job:start` (must match snapshot). */
+        if (ipcProc && typeof ipcProc === 'object') {
+          for (const key of Object.keys(ipcProc)) {
+            if (Object.prototype.hasOwnProperty.call(ipcProc, key)) {
+              mergedProc[key] = ipcProc[key];
+            }
+          }
+        }
+        normalizedConfig.processing = normalizeProcessingSettings(mergedProc);
       } else {
         normalizedConfig.processing = normalizeProcessingSettings({ ...baseProc, ...ipcProc });
       }

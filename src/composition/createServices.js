@@ -37,7 +37,12 @@ const { ErrorTranslationService: ErrorTranslation } = require(path.join(__dirnam
 
 const SettingsComposer = require(path.join(__dirname, './settingsComposer'));
 const { resolveRetryJobConfigurationForImage } = require(path.join(__dirname, '../utils/retryResolveJobConfiguration'));
-const { mergeRetryOriginalProcessing } = require(path.join(__dirname, '../utils/mergeRetryOriginalProcessing'));
+const {
+  mergeOriginalRetryProcessingUniform,
+  getExecutionSnapshotProcessing,
+} = require(path.join(__dirname, '../utils/mergeRetryOriginalProcessing'));
+const { readRunMetadataGenForRetry } = require(path.join(__dirname, '../utils/readRunMetadataGenForRetry'));
+const { buildCustomRetryJobConfiguration } = require(path.join(__dirname, '../utils/buildCustomRetryJobConfiguration'));
 
 /**
  * Initialize all database models (creates tables if missing).
@@ -143,11 +148,27 @@ async function createServices(opts = {}) {
 
   const retryQueueService = new RetryQueueService({
     processOneJob: async (job) => {
+      try {
+        await imageRepository.updateQCStatus(job.imageId, 'processing', null);
+      } catch (e) {
+        try { logDebug(`createServices: retry processing status update skipped: ${e?.message || e}`); } catch (_) { /* ignore */ }
+      }
       const retryProcessor = _buildRetryProcessor(
         imageRepository, generatedImage, jobConfig,
         createImagePipeline, settingsComposer, jobRepository
       );
-      return retryProcessor.processImage(job);
+      const result = await retryProcessor.processImage(job);
+      if (!result.success && job.imageId) {
+        const reason = result.qcReason
+          ? String(result.qcReason)
+          : (result.error ? String(result.error) : 'processing_failed:qc');
+        try {
+          await imageRepository.updateQCStatus(job.imageId, 'retry_failed', reason);
+        } catch (e) {
+          try { logDebug(`createServices: retry_failed status update failed: ${e?.message || e}`); } catch (_) { /* ignore */ }
+        }
+      }
+      return result;
     },
     emit: (event, payload) => webContentsSender(`retry-${event}`, payload)
   });
@@ -247,26 +268,42 @@ function _buildRetryProcessor(imageRepo, genImage, jobConfig, createPipeline, se
           imageProcessorService: { processFile: processImageFn }
         };
 
+        const useOrig = job.useOriginalSettings !== false;
+
         const jobConfiguration = await resolveRetryJobConfigurationForImage(
           imageRes.image,
           jobConfig,
           jobRepository
         );
 
-        const useOrig = job.useOriginalSettings !== false;
+        /** Custom retry: one modal config for the whole batch — ignore per-source-job paths/prompts. */
+        const jobConfigurationForRun = useOrig
+          ? jobConfiguration
+          : buildCustomRetryJobConfiguration(settings?.settings, jobConfiguration);
+
+        /** Prefer execution snapshot AI (frozen at job start); else linked job configuration. */
+        let executionSnapshot = null;
+        let snapshotRunMetadataGen = false;
+        if (useOrig && imageRes.image.executionId && jobRepository) {
+          try {
+            const exRes = await jobRepository.getJobExecution(imageRes.image.executionId);
+            if (exRes.success && exRes.execution?.configurationSnapshot && typeof exRes.execution.configurationSnapshot === 'object') {
+              executionSnapshot = exRes.execution.configurationSnapshot;
+            }
+          } catch (_) {}
+          snapshotRunMetadataGen = readRunMetadataGenForRetry(executionSnapshot, jobConfiguration);
+        }
+
         let processingSettingsPayload = {};
+        /** Modal can default includeMetadata to false; original-settings retry must follow the job snapshot. */
+        let includeMetadataEffective = !!job.includeMetadata;
         if (useOrig) {
-          let snapshotProcessing = null;
-          if (imageRes.image.executionId && jobRepository) {
-            try {
-              const exRes = await jobRepository.getJobExecution(imageRes.image.executionId);
-              if (exRes.success && exRes.execution?.configurationSnapshot && typeof exRes.execution.configurationSnapshot === 'object') {
-                const snap = exRes.execution.configurationSnapshot;
-                snapshotProcessing = snap.processing != null ? snap.processing : null;
-              }
-            } catch (_) {}
-          }
-          const merged = mergeRetryOriginalProcessing(snapshotProcessing, imageRes.image.processingSettings);
+          const snapshotProcessing = getExecutionSnapshotProcessing(executionSnapshot);
+          const merged = mergeOriginalRetryProcessingUniform(
+            snapshotProcessing,
+            jobConfiguration?.settings?.processing,
+            imageRes.image.processingSettings
+          );
           const psForOrig =
             merged && Object.keys(merged).length > 0
               ? JSON.stringify(merged)
@@ -278,9 +315,10 @@ function _buildRetryProcessor(imageRepo, genImage, jobConfig, createPipeline, se
           const imageForOrig = { ...imageRes.image, processingSettings: psForOrig };
           processingSettingsPayload = await RetryConfigService.getOriginalProcessingSettings({}, imageForOrig);
 
-          const includeMeta = !!job.includeMetadata;
+          includeMetadataEffective = snapshotRunMetadataGen || job.includeMetadata === true;
+
           const hasWork =
-            includeMeta ||
+            includeMetadataEffective ||
             (processingSettingsPayload &&
               (processingSettingsPayload.removeBg ||
                 processingSettingsPayload.imageConvert ||
@@ -306,10 +344,11 @@ function _buildRetryProcessor(imageRepo, genImage, jobConfig, createPipeline, se
           executor,
           imageRes.image.finalImagePath || imageRes.image.tempImagePath,
           processingSettingsPayload,
-          job.includeMetadata || false,
-          jobConfiguration,
+          includeMetadataEffective,
+          jobConfigurationForRun,
           useOrig,
-          job.failOptions || {}
+          job.failOptions || {},
+          apiKeys.openai
         );
       } catch (error) {
         return { success: false, error: error.message };

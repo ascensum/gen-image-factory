@@ -120,7 +120,10 @@ function normalizeProcessingSettings(input) {
 }
 
 function normalizeRemoveBgFailureMode(v) {
-  const val = String(v || '').toLowerCase();
+  const val = String(v || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
   return (val === 'fail' || val === 'mark_failed') ? 'mark_failed' : 'approve';
 }
 
@@ -145,7 +148,7 @@ function buildPostQCProcessingConfig(proc, perImage, tempDir, effectiveFailMode)
     saturation: (p.saturation !== undefined) ? p.saturation : (proc.saturation ?? 1),
     jpgBackground: p.jpgBackground || proc.jpgBackground || 'white',
     removeBgSize: p.removeBgSize || proc.removeBgSize || 'preview',
-    removeBgFailureMode: effectiveFailMode,
+    removeBgFailureMode: normalizeRemoveBgFailureMode(effectiveFailMode || 'approve'),
     jpgQuality: (p.jpgQuality !== undefined) ? p.jpgQuality : (proc.jpgQuality ?? 85),
     pngQuality: (p.pngQuality !== undefined) ? p.pngQuality : (proc.pngQuality ?? 100),
     webpQuality: (p.webpQuality !== undefined) ? p.webpQuality : (proc.webpQuality ?? 85)

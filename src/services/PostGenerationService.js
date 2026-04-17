@@ -8,7 +8,8 @@ const { moveImageToFinal } = require(path.join(__dirname, '../utils/moveImageToF
 const {
   buildPostQCProcessingConfig,
   isPostQCPipelineNoOp,
-  normalizeProcessingSettings
+  normalizeProcessingSettings,
+  normalizeRemoveBgFailureMode
 } = require(path.join(__dirname, '../utils/processing'));
 
 const QC_THROTTLE_MS = 2000;
@@ -73,6 +74,11 @@ class PostGenerationService {
       const image = images[i];
       const imagePath = image.finalImagePath || image.tempImagePath;
       const mId = image.imageMappingId;
+
+      if (String(image.qcReason || '').startsWith('Metadata failed') && image.qcStatus === 'qc_failed') {
+        failedCount++;
+        continue;
+      }
 
       if (!imagePath) {
         this._addLog('warn', `Skipping QC for image ${i + 1}/${images.length}: no file path`, {
@@ -281,6 +287,10 @@ class PostGenerationService {
               metadata: { imageMappingId: mId, error: dbError.message }
             });
             failCount++;
+            const msg = `Metadata failed: ${dbError.message}`;
+            await this.imageRepository.updateQCStatusByMappingId(mId, 'qc_failed', msg).catch(() => {});
+            image.qcStatus = 'qc_failed';
+            image.qcReason = msg;
           }
         } else {
           const reason = !result ? 'empty AI result' : 'no imageMappingId';
@@ -289,6 +299,12 @@ class PostGenerationService {
             metadata: { imageMappingId: mId, reason, hasResult: !!result }
           });
           failCount++;
+          if (mId) {
+            const msg = `Metadata failed: ${reason}`;
+            await this.imageRepository.updateQCStatusByMappingId(mId, 'qc_failed', msg).catch(() => {});
+            image.qcStatus = 'qc_failed';
+            image.qcReason = msg;
+          }
         }
       } catch (err) {
         failCount++;
@@ -302,6 +318,12 @@ class PostGenerationService {
           stepName: 'image_generation', subStep: 'metadata_error',
           metadata: { imageMappingId: mId, error: err.message }
         });
+        if (mId) {
+          const msg = `Metadata failed: ${err.message}`;
+          await this.imageRepository.updateQCStatusByMappingId(mId, 'qc_failed', msg).catch(() => {});
+          image.qcStatus = 'qc_failed';
+          image.qcReason = msg;
+        }
       }
     }
 
@@ -373,13 +395,14 @@ class PostGenerationService {
           abortSignal,
           pipelineStageLog: config.pipelineStageLog
         });
-        const isMarkFailed = processingConfig.removeBg === true && processingConfig.removeBgFailureMode === 'mark_failed';
+        const isMarkFailed = processingConfig.removeBg === true
+          && normalizeRemoveBgFailureMode(processingConfig.removeBgFailureMode) === 'mark_failed';
 
         if (isMarkFailed && !removeBgKey.trim()) {
           this._addLog('warn', 'Remove.bg API key missing with Mark Failed; marking qc_failed', {
             stepName: 'image_generation', subStep: 'post_qc_missing_key', metadata: { imageMappingId: mId }
           });
-          await this._markImageFailed(mId, image);
+          await this._markImageFailed(mId, image, sourcePath);
           continue;
         }
 
@@ -413,7 +436,7 @@ class PostGenerationService {
             stepName: 'image_generation', subStep: 'post_qc_catch',
             metadata: { imageMappingId: mId, error: procErr.message, stage: procErr.stage }
           });
-          if (isMarkFailed) { await this._markImageFailed(mId, image); continue; }
+          if (isMarkFailed) { await this._markImageFailed(mId, image, sourcePath); continue; }
           continue;
         }
 
@@ -422,7 +445,7 @@ class PostGenerationService {
           this._addLog('warn', 'Mark Failed override: forcing qc_failed', {
             stepName: 'image_generation', subStep: 'post_qc_mark_failed_override', metadata: { imageMappingId: mId }
           });
-          await this._markImageFailed(mId, image);
+          await this._markImageFailed(mId, image, sourcePath);
           continue;
         }
       } else if (runDeferredPipeline && !pipeline) {
@@ -456,9 +479,28 @@ class PostGenerationService {
     });
   }
 
-  async _markImageFailed(mappingId, image) {
-    try { await this.imageRepository.updateQCStatusByMappingId(mappingId, 'qc_failed', 'processing_failed:remove_bg'); } catch {}
-    try { Object.assign(image, { qcStatus: 'qc_failed', qcReason: 'processing_failed:remove_bg' }); } catch {}
+  /**
+   * @param {string} mappingId
+   * @param {Object} image
+   * @param {string|null} [fallbackTempPath] - QC-approved temp file before deferred remove.bg (keep for Failed Images Review)
+   */
+  async _markImageFailed(mappingId, image, fallbackTempPath = null) {
+    try {
+      if (fallbackTempPath && !image.tempImagePath) {
+        image.tempImagePath = fallbackTempPath;
+      }
+      await this.imageRepository.updateQCStatusByMappingId(mappingId, 'qc_failed', 'processing_failed:remove_bg');
+    } catch { /* ignore */ }
+    try {
+      if (mappingId && image.tempImagePath) {
+        await this.imageRepository.updateImagePathsByMappingId(
+          mappingId,
+          image.tempImagePath,
+          image.finalImagePath ?? null
+        );
+      }
+    } catch { /* ignore */ }
+    try { Object.assign(image, { qcStatus: 'qc_failed', qcReason: 'processing_failed:remove_bg' }); } catch { /* ignore */ }
   }
 }
 

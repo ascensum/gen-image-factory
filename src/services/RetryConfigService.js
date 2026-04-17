@@ -104,29 +104,18 @@ async function getOriginalProcessingSettings(executor, image) {
     let originalSettings = {};
     if (image.processingSettings) {
       try {
-        originalSettings = JSON.parse(image.processingSettings);
+        originalSettings =
+          typeof image.processingSettings === 'string'
+            ? JSON.parse(image.processingSettings)
+            : image.processingSettings;
       } catch (parseError) {
         console.warn(` RetryExecutor: Failed to parse processing settings for image, using defaults:`, parseError);
       }
     }
-    return {
-      imageEnhancement: originalSettings.imageEnhancement || false,
-      sharpening: originalSettings.sharpening || 0,
-      saturation: originalSettings.saturation || 1.0,
-      imageConvert: originalSettings.imageConvert || false,
-      convertToJpg: originalSettings.convertToJpg || false,
-      convertToWebp: originalSettings.convertToWebp || false,
-      jpgQuality: originalSettings.jpgQuality || 100,
-      pngQuality: originalSettings.pngQuality || 100,
-      webpQuality: originalSettings.webpQuality || 85,
-      removeBg: originalSettings.removeBg || false,
-      removeBgSize: originalSettings.removeBgSize || 'auto',
-      trimTransparentBackground: originalSettings.trimTransparentBackground || false,
-      jpgBackground: originalSettings.jpgBackground || 'white'
-    };
-  } catch (error) {
-    console.error(` RetryExecutor: Error getting original processing settings for image:`, error);
-    return {
+    const { normalizeProcessingSettings } = require('../utils/processing');
+    const normalized = normalizeProcessingSettings(originalSettings);
+    if (Object.keys(normalized).length > 0) return normalized;
+    return normalizeProcessingSettings({
       imageEnhancement: false,
       sharpening: 0,
       saturation: 1.0,
@@ -140,7 +129,25 @@ async function getOriginalProcessingSettings(executor, image) {
       removeBgSize: 'auto',
       trimTransparentBackground: false,
       jpgBackground: 'white'
-    };
+    });
+  } catch (error) {
+    console.error(` RetryExecutor: Error getting original processing settings for image:`, error);
+    const { normalizeProcessingSettings } = require('../utils/processing');
+    return normalizeProcessingSettings({
+      imageEnhancement: false,
+      sharpening: 0,
+      saturation: 1.0,
+      imageConvert: false,
+      convertToJpg: false,
+      convertToWebp: false,
+      jpgQuality: 100,
+      pngQuality: 100,
+      webpQuality: 85,
+      removeBg: false,
+      removeBgSize: 'auto',
+      trimTransparentBackground: false,
+      jpgBackground: 'white'
+    });
   }
 }
 

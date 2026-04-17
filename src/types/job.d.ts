@@ -105,7 +105,9 @@ export interface JobExecution {
   completedAt?: Date;
   status: 'running' | 'completed' | 'failed' | 'stopped' | 'pending';
   totalImages: number;
+  /** Slots with generated output (file or retryable post-gen failure), not only vision-QC approved */
   successfulImages: number;
+  /** Planned slots minus successfulImages (generation never produced a recoverable asset) */
   failedImages: number;
   errorMessage?: string;
   label?: string;

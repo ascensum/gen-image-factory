@@ -202,8 +202,27 @@ describe('JobEngine Unit Tests', () => {
       expect(result.status).toBe('completed');
       expect(result.failedImages).toBe(1);
       expect(result.successfulImages).toBe(1);
+      expect(result.plannedTotal).toBe(2);
+      expect(result.totalImages).toBe(2);
       expect(errorEvents.length).toBe(1);
       expect(errorEvents[0].step).toBe('image_generation');
+    });
+
+    it('should mark job failed when every generation fails (no successful images)', async () => {
+      const config = {
+        parameters: { count: 1, variations: 1 },
+        apiKeys: { test: 'key' }
+      };
+      mockParamsGeneratorModule.mockResolvedValue({ prompt: 'p' });
+      mockProducePictureModule.producePictureModule.mockRejectedValue(new Error('read ETIMEDOUT'));
+      jobEngine.on('error', () => {});
+
+      const result = await jobEngine.executeJob(config);
+
+      expect(result.status).toBe('failed');
+      expect(result.successfulImages).toBe(0);
+      expect(result.failedImages).toBe(1);
+      expect(result.plannedTotal).toBe(1);
     });
 
     it('should handle invalid configuration', async () => {
@@ -320,8 +339,13 @@ describe('JobEngine Unit Tests', () => {
           { path: '/test/image1.png', qcStatus: 'approved' }
         ],
         failedItems: [
-          { mappingId: 'failed-1', stage: 'processing', message: 'Processing failed' }
-        ]
+          {
+            mappingId: 'failed-1',
+            stage: 'remove_bg',
+            message: 'processing_failed:remove_bg',
+            inputImagePath: '/tmp/runware-download.png',
+          },
+        ],
       };
       const genParameters = { prompt: 'test prompt' };
 
@@ -333,6 +357,7 @@ describe('JobEngine Unit Tests', () => {
       expect(images[0].qcStatus).toBe('approved');
       expect(images[1].qcStatus).toBe('qc_failed');
       expect(images[1].qcReason).toContain('processing_failed');
+      expect(images[1].tempImagePath).toBe('/tmp/runware-download.png');
     });
   });
 
@@ -436,6 +461,40 @@ describe('JobEngine Unit Tests', () => {
       expect(moduleConfig.imageEnhancement).toBe(true);
       expect(moduleConfig.runMetadataGen).toBe(false);
       expect(typeof moduleConfig.pipelineStageLog).toBe('function');
+      expect(moduleConfig.generationRetryAttempts).toBe(1);
+      expect(moduleConfig.generationRetryBackoffMs).toBe(0);
+    });
+
+    it('forwards Runware generation retry settings (clamped)', () => {
+      const config = {
+        parameters: {
+          count: 1,
+          variations: 1,
+          generationRetryAttempts: 4,
+          generationRetryBackoffMs: 750,
+        },
+        processing: {},
+        ai: {},
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.generationRetryAttempts).toBe(4);
+      expect(moduleConfig.generationRetryBackoffMs).toBe(750);
+    });
+
+    it('clamps generationRetryAttempts to [1,5] and backoff to [0,60000]', () => {
+      const config = {
+        parameters: {
+          count: 1,
+          variations: 1,
+          generationRetryAttempts: 99,
+          generationRetryBackoffMs: 999999,
+        },
+        processing: {},
+        ai: {},
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.generationRetryAttempts).toBe(5);
+      expect(moduleConfig.generationRetryBackoffMs).toBe(60000);
     });
 
     it('defers local processing when QC and remove.bg are both on (remove.bg runs only after QC approves)', () => {

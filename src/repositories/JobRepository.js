@@ -290,10 +290,10 @@ class JobRepository {
   }
 
   /**
-   * Update job execution statistics (matches legacy JobExecution semantics).
-   * Uses calculateJobExecutionStatistics so total_images = expected (from row), successful_images = actual
-   * count in generated_images, failed_images = generation failed (expected - actual). Single Job View
-   * "Generation failed" uses this failed_images count.
+   * Update job execution statistics for Single Job View.
+   * Uses calculateJobExecutionStatistics: total_images = max(job row planned, row count),
+   * successful_images = approved rows,
+   * failed_images = generation-failed slots only (total − approved − qc/retry_failed rows that still have a file path).
    *
    * @param {number|string} executionId - Execution ID
    * @returns {Promise<Object>} { success: true, changes: number }
@@ -469,15 +469,50 @@ class JobRepository {
       this.db.get(jobSql, [executionId], (err, jobRow) => {
         if (err) { console.error('Error getting job execution:', err); reject(err); return; }
         const expectedTotal = jobRow?.total_images || 0;
-        const imagesSql = `SELECT COUNT(*) as actualImages, SUM(CASE WHEN qc_status = 'approved' THEN 1 ELSE 0 END) as approvedImages, SUM(CASE WHEN qc_status = 'qc_failed' THEN 1 ELSE 0 END) as qcFailedImages FROM generated_images WHERE execution_id = ?`;
+        const imagesSql = `
+          SELECT COUNT(*) as actualImages,
+            SUM(CASE WHEN qc_status = 'approved' THEN 1 ELSE 0 END) as approvedImages,
+            SUM(CASE WHEN qc_status = 'qc_failed' THEN 1 ELSE 0 END) as qcFailedImages,
+            SUM(CASE
+              WHEN qc_status IN ('qc_failed', 'retry_failed')
+                AND (
+                  (final_image_path IS NOT NULL AND TRIM(final_image_path) != '')
+                  OR (temp_image_path IS NOT NULL AND TRIM(temp_image_path) != '')
+                )
+              THEN 1 ELSE 0 END) as processingFailedWithPath,
+            SUM(CASE
+              WHEN qc_status = 'approved' THEN 1
+              WHEN (final_image_path IS NOT NULL AND TRIM(final_image_path) != '')
+                OR (temp_image_path IS NOT NULL AND TRIM(temp_image_path) != '') THEN 1
+              WHEN qc_status IN ('qc_failed', 'retry_failed')
+                AND (
+                  (
+                    LOWER(COALESCE(qc_reason, '')) LIKE 'processing_failed:%'
+                    AND LOWER(COALESCE(qc_reason, '')) NOT LIKE 'processing_failed:download%'
+                  )
+                  OR LOWER(COALESCE(qc_reason, '')) LIKE 'metadata failed%'
+                ) THEN 1
+              ELSE 0 END) as generatedSuccessfully
+          FROM generated_images WHERE execution_id = ?`;
         this.db.get(imagesSql, [executionId], (err, imageRow) => {
           if (err) { console.error('Error calculating job execution statistics:', err); reject(err); return; }
-          const actualImages = imageRow?.actualImages || 0;
+          const rowCount = imageRow?.actualImages || 0;
           const approvedImages = imageRow?.approvedImages || 0;
           const qcFailedImages = imageRow?.qcFailedImages || 0;
-          const failedImages = expectedTotal - actualImages;
-          const stats = { totalImages: expectedTotal, successfulImages: actualImages, failedImages: Math.max(0, failedImages), approvedImages, qcFailedImages };
-          console.log(`Job ${executionId} stats: expected=${expectedTotal}, actual=${actualImages}, approved=${approvedImages}, qcFailed=${qcFailedImages}, failed=${failedImages}`);
+          const processingFailedWithPath = imageRow?.processingFailedWithPath || 0;
+          const totalImages = Math.max(expectedTotal || 0, rowCount);
+          const generatedSuccessfully = Number(imageRow?.generatedSuccessfully) || 0;
+          const successfulImages = generatedSuccessfully;
+          const failedImages = Math.max(0, totalImages - generatedSuccessfully);
+          const stats = {
+            totalImages,
+            successfulImages,
+            failedImages,
+            approvedImages,
+            qcFailedImages,
+            processingFailedImages: processingFailedWithPath
+          };
+          console.log(`Job ${executionId} stats: planned=${expectedTotal}, rows=${rowCount}, total=${totalImages}, approved=${approvedImages}, qcFailed=${qcFailedImages}, processingFailed=${processingFailedWithPath}, generatedOk=${generatedSuccessfully}, genFailedSlots=${failedImages}`);
           resolve({ success: true, statistics: stats });
         });
       });

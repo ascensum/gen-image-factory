@@ -5,6 +5,7 @@
 const { EventEmitter } = require('events');
 const path = require('path');
 const { paramsGeneratorModule: defaultParamsGenerator } = require(path.join(__dirname, '../paramsGeneratorModule'));
+const { countImagesGeneratedSuccessfully } = require(path.join(__dirname, '../utils/jobExecutionOutcome'));
 
 class JobEngine extends EventEmitter {
   constructor(options = {}) {
@@ -26,8 +27,7 @@ class JobEngine extends EventEmitter {
       this.emit('progress', { step: 'initialization', progress: 0 });
       const validatedConfig = this._validateConfig(config);
 
-      const generations = Math.max(1, Number(validatedConfig.parameters?.count || 1));
-      const variations = Math.max(1, Number(validatedConfig.parameters?.variations || 1));
+      const { generations, effectiveVariations, plannedTotal } = this._getPlannedSlots(validatedConfig);
 
       // Load keywords file + system prompt from disk (was in old jobRunner)
       const fp = validatedConfig.filePaths || {};
@@ -57,19 +57,25 @@ class JobEngine extends EventEmitter {
       this._systemPromptContent = systemPromptContent;
       this._keywordsFilePath = keywordsFilePath;
 
-      this.emit('progress', { step: 'initialization', progress: 20, metadata: { generations, variations } });
-      this._emitLog('info', 'initialization', 'config_ready', `Job initialized: ${generations} generation(s), ${variations} variation(s)`, { generations, variations });
+      this.emit('progress', { step: 'initialization', progress: 20, metadata: { generations, variations: effectiveVariations } });
+      this._emitLog('info', 'initialization', 'config_ready', `Job initialized: ${generations} generation(s), ${effectiveVariations} variation(s) (planned slots: ${plannedTotal})`, { generations, variations: effectiveVariations, plannedTotal });
 
       const allImages = [];
-      let successfulImages = 0;
-      let failedImages = 0;
       const startTime = Date.now();
 
       for (let genIndex = 0; genIndex < generations; genIndex++) {
         if (this._shouldAbort()) {
           this._emitLog('warn', 'image_generation', 'aborted', 'Job aborted by user');
           this.emit('progress', { step: 'aborted', progress: 100 });
-          return this._buildResult({ status: 'aborted', images: allImages, successfulImages, failedImages, message: 'Job aborted by user' });
+          const generatedSoFar = countImagesGeneratedSuccessfully(allImages);
+          return this._buildResult({
+            status: 'aborted',
+            images: allImages,
+            successfulImages: generatedSoFar,
+            failedImages: Math.max(0, plannedTotal - generatedSoFar),
+            plannedTotal,
+            message: 'Job aborted by user'
+          });
         }
 
         let genParameters;
@@ -85,7 +91,6 @@ class JobEngine extends EventEmitter {
           console.error(`JobEngine: parameter generation failed (gen ${genIndex}):`, paramErr);
           this._emitLog('error', 'initialization', 'parameter_generation_per_gen_error', `Parameter generation failed for generation ${genIndex + 1}: ${paramErr.message}`, { generationIndex: genIndex });
           this.emit('error', { step: 'parameter_generation', error: paramErr.message, generationIndex: genIndex });
-          failedImages += variations;
           continue;
         }
 
@@ -94,8 +99,6 @@ class JobEngine extends EventEmitter {
           const result = await this._generateImages(validatedConfig, genParameters, genIndex);
           const processedImages = this._processGenerationResult(result, genParameters, genIndex);
           allImages.push(...processedImages);
-          successfulImages += processedImages.filter(img => img.qcStatus === 'approved').length;
-          failedImages += processedImages.filter(img => img.qcStatus !== 'approved').length;
 
           this.emit('progress', { step: 'image_generation', progress: 30 + ((genIndex + 1) / generations) * 60, metadata: { generationIndex: genIndex, generatedCount: processedImages.length, totalImages: allImages.length } });
           this._emitLog('info', 'image_generation', 'module_result', `Generation ${genIndex + 1} completed: ${processedImages.length} image(s) (${allImages.length} total)`, { generationIndex: genIndex, generatedCount: processedImages.length, totalImages: allImages.length });
@@ -103,21 +106,27 @@ class JobEngine extends EventEmitter {
           console.error(`JobEngine: image generation failed (gen ${genIndex}):`, genErr);
           this._emitLog('error', 'image_generation', 'generation_error', `Generation ${genIndex + 1} failed: ${genErr.message}`, { generationIndex: genIndex });
           this.emit('error', { step: 'image_generation', error: genErr.message, generationIndex: genIndex });
-          failedImages += variations;
           continue;
         }
       }
 
+      const successfulImages = countImagesGeneratedSuccessfully(allImages);
+      const failedImages = Math.max(0, plannedTotal - successfulImages);
+      const terminalStatus = successfulImages > 0 ? 'completed' : (plannedTotal > 0 ? 'failed' : 'completed');
+
       this.emit('progress', { step: 'finalization', progress: 95 });
       const durationMs = Date.now() - startTime;
-      this._emitLog('info', 'image_generation', 'complete', `Image generation completed: ${successfulImages}/${successfulImages + failedImages} images across ${generations} generation(s)`, { totalImages: successfulImages, failedImages, durationMs });
+      this._emitLog('info', 'image_generation', 'complete', `Image generation finished (${terminalStatus}): ${successfulImages} generated ok / ${plannedTotal} planned slots, ${failedImages} slot(s) without output`, { successfulImages, failedImages, plannedTotal, durationMs });
       
       const finalResult = this._buildResult({
-        status: 'completed',
+        status: terminalStatus,
         images: allImages,
         successfulImages,
         failedImages,
-        message: `Job completed: ${successfulImages} successful, ${failedImages} failed`
+        plannedTotal,
+        message: terminalStatus === 'completed'
+          ? `Job completed: ${successfulImages} with generated output, ${failedImages} slot(s) without output`
+          : `Job failed: no generated output (${failedImages} slot(s) without output of ${plannedTotal} planned)`
       });
 
       this.emit('progress', { step: 'completed', progress: 100 });
@@ -163,6 +172,19 @@ class JobEngine extends EventEmitter {
     return config;
   }
 
+  /** Planned image slots (matches per-generation caps in _buildModuleConfig). */
+  _getPlannedSlots(config) {
+    const generations = Math.max(1, Number(config.parameters?.count || 1));
+    const requestedVariations = Math.max(1, Math.min(20, Number(config.parameters?.variations || 1)));
+    const maxAllowed = Math.max(1, Math.min(20, Math.floor(10000 / Math.max(1, generations))));
+    const effectiveVariations = Math.min(requestedVariations, maxAllowed);
+    return {
+      generations,
+      effectiveVariations,
+      plannedTotal: generations * effectiveVariations
+    };
+  }
+
   async _generateParameters(config, genIndex) {
     const allKeywords = this._loadedKeywords || [];
     const keywordRandom = config.parameters?.keywordRandom ?? false;
@@ -188,7 +210,8 @@ class JobEngine extends EventEmitter {
       mjVersion: config.parameters?.mjVersion,
       appendMjVersion: config.parameters?.appendMjVersion ?? false,
       signal: this.abortController?.signal,
-      openaiApiKey: config.apiKeys?.openai
+      openaiApiKey: config.apiKeys?.openai,
+      parameters: config.parameters || {},
     };
 
     if (paramConfig.openaiApiKey) {
@@ -245,6 +268,11 @@ class JobEngine extends EventEmitter {
     // remove.bg is expensive: when QC is on, skip local processing until QC approves (see PostGenerationService.runPostQCProcessing).
     const skipLocalImageProcessing = hasQc && !!(proc.removeBg);
 
+    const rawGenRetryAttempts = Number(config.parameters?.generationRetryAttempts ?? 1);
+    const generationRetryAttempts = Math.max(1, Math.min(5, Number.isFinite(rawGenRetryAttempts) ? rawGenRetryAttempts : 1));
+    const rawGenRetryBackoff = Number(config.parameters?.generationRetryBackoffMs ?? 0);
+    const generationRetryBackoffMs = Math.max(0, Math.min(60000, Number.isFinite(rawGenRetryBackoff) ? rawGenRetryBackoff : 0));
+
     const shared = {
       generationIndex: genIndex,
       variations: effectiveVariations,
@@ -252,6 +280,8 @@ class JobEngine extends EventEmitter {
       removeBgFailureMode: proc.removeBgFailureMode || 'approve',
       failRetryEnabled: proc.failRetryEnabled || false,
       failOnSteps: Array.isArray(proc.failOnSteps) ? proc.failOnSteps : [],
+      generationRetryAttempts,
+      generationRetryBackoffMs,
       pollingTimeout: config.parameters?.enablePollingTimeout ? (config.parameters?.pollingTimeout || 15) : null,
       processMode: config.parameters?.processMode || 'single',
       runQualityCheck: config.ai?.runQualityCheck || false,
@@ -318,13 +348,14 @@ class JobEngine extends EventEmitter {
       
       if (Array.isArray(result.failedItems)) {
         result.failedItems.forEach((failedItem) => {
+          const failedPath = failedItem.inputImagePath || failedItem.tempPath || null;
           images.push({
             imageMappingId: failedItem.mappingId || `failed_${genIndex}_${Date.now()}`,
             generationPrompt: genParameters.prompt || 'Generated image',
             seed: null,
             qcStatus: 'qc_failed',
             qcReason: `processing_failed:${failedItem.stage || 'processing'}`,
-            tempImagePath: null,
+            tempImagePath: failedPath,
             finalImagePath: null,
             metadata: {
               failure: {
@@ -377,13 +408,15 @@ class JobEngine extends EventEmitter {
     };
   }
 
-  _buildResult({ status, images, successfulImages, failedImages, message, error }) {
+  _buildResult({ status, images, successfulImages, failedImages, plannedTotal, message, error }) {
+    const planned = typeof plannedTotal === 'number' ? plannedTotal : images.length;
     return {
       status,
       images,
       successfulImages,
       failedImages,
-      totalImages: images.length,
+      plannedTotal: planned,
+      totalImages: planned,
       message: message || null,
       error: error || null,
       timestamp: new Date().toISOString()

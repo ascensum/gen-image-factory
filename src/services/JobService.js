@@ -28,6 +28,18 @@ const { sanitizeConfigurationSnapshot } = require(path.join(__dirname, '../utils
 const { finalizeBackgroundRun } = require(path.join(__dirname, './jobServiceBackgroundFinalize'));
 const { startJobForExistingExecution } = require(path.join(__dirname, './jobServiceRerunStart'));
 const { attachPostEnginePipelineStageLog } = require(path.join(__dirname, '../utils/attachPostEnginePipelineStageLog'));
+const { countImagesGeneratedSuccessfully } = require(path.join(__dirname, '../utils/jobExecutionOutcome'));
+const {
+  isRunMetadataGenEnabledForJobConfig,
+  isRunQualityCheckEnabledForJobConfig,
+} = require(path.join(__dirname, '../utils/jobConfigAiFlags'));
+
+function plannedImageSlots(cfg) {
+  const gens = Math.max(1, Number(cfg?.parameters?.count || 1));
+  const req = Math.max(1, Math.min(20, Number(cfg?.parameters?.variations || 1)));
+  const maxAllowed = Math.max(1, Math.min(20, Math.floor(10000 / Math.max(1, gens))));
+  return gens * Math.min(req, maxAllowed);
+}
 
 /**
  * JobService
@@ -130,21 +142,10 @@ class JobService extends EventEmitter {
       this.emit('image-generated', data);
     });
 
-    this.jobEngine.on('error', async (errorData) => {
-      const errorMsg = errorData?.error || errorData?.message || 'Unknown error';
+    this.jobEngine.on('error', (errorData) => {
       this.emit('error', errorData);
-      if (this.currentExecutionId) {
-        try {
-          await this.jobRepository.updateJobExecutionStatus(
-            this.currentExecutionId,
-            'failed',
-            this.currentJobId,
-            errorMsg
-          );
-        } catch (err) {
-          console.error('JobService: Failed to update execution status:', err);
-        }
-      }
+      // Do not persist per-generation errors here — final execution status comes from
+      // _runJobInBackground after post-processing (partial success must stay completed).
     });
 
     // job-complete is emitted from _runJobInBackground after persist/move/metadata/QC so IPC matches final paths (not when JobEngine returns).
@@ -197,8 +198,8 @@ class JobService extends EventEmitter {
     let successResult = null;
     let lastError = null;
     try {
-      const hasMetadataGen = config.ai?.runMetadataGen === true;
-      const hasQC = config.ai?.runQualityCheck === true;
+      const hasMetadataGen = isRunMetadataGenEnabledForJobConfig(config);
+      const hasQC = isRunQualityCheckEnabledForJobConfig(config);
       this._backgroundPipelineActive = true;
 
       const result = await this.jobEngine.executeJob(config, this.abortController.signal);
@@ -215,10 +216,12 @@ class JobService extends EventEmitter {
 
       const hasImages = Array.isArray(result.images) && result.images.length > 0;
 
-      // When QC is off: move all images to final immediately and auto-approve (processing already ran during generation).
+      // When QC is off: move successful images to final and auto-approve (processing already ran during generation).
+      // Do not overwrite qc_failed / retry_failed (e.g. remove.bg mark_failed); those stay for Failed Images Review.
       if (!hasQC && hasImages && this.imageRepository) {
         const moveState = {};
         for (const image of result.images) {
+          if (image.qcStatus && image.qcStatus !== 'approved') continue;
           const sourcePath = image.tempImagePath || image.finalImagePath;
           const mId = image.imageMappingId;
           if (!sourcePath || !mId) continue;
@@ -234,9 +237,20 @@ class JobService extends EventEmitter {
       }
 
       // Metadata generation runs on ALL images regardless of QC outcome.
-      if (hasMetadataGen && hasImages && this.postGen) {
-        this.liveProgress = { ...this.liveProgress, state: 'running', progress: 95, currentStep: 'metadata_generation' };
-        await this.postGen.runMetadataGeneration(result.images, config, this.abortController?.signal);
+      if (hasImages && this.postGen) {
+        if (hasMetadataGen) {
+          this.liveProgress = { ...this.liveProgress, state: 'running', progress: 95, currentStep: 'metadata_generation' };
+          await this.postGen.runMetadataGeneration(result.images, config, this.abortController?.signal);
+        } else {
+          this._addLog('info', 'Skipping AI metadata generation (runMetadataGen not enabled in job config)', {
+            stepName: 'image_generation',
+            subStep: 'metadata_skipped',
+            metadata: {
+              runMetadataGen: config?.ai?.runMetadataGen,
+              aiKeys: config?.ai && typeof config.ai === 'object' ? Object.keys(config.ai) : [],
+            },
+          });
+        }
       }
 
       // QC (optional): vision QC on temp files. If remove.bg is on, it runs only after approval (generation skipped local processing; see JobEngine.skipLocalImageProcessing).
@@ -251,21 +265,38 @@ class JobService extends EventEmitter {
         }
       }
 
+      const planned = plannedImageSlots(config);
+      const generatedOkCount = countImagesGeneratedSuccessfully(result.images);
+      const successfulImages = generatedOkCount;
+      const failedImages = Math.max(0, planned - generatedOkCount);
+      let terminalStatus = result.status || 'completed';
+      if (terminalStatus !== 'aborted' && terminalStatus !== 'stopped') {
+        if (generatedOkCount > 0) terminalStatus = 'completed';
+        else if (failedImages > 0 && planned > 0) terminalStatus = 'failed';
+      }
+
       if (this.currentExecutionId) {
         await this.jobRepository.updateJobExecution(this.currentExecutionId, {
           configurationId: this.currentConfigurationId,
           startedAt: this.currentStartedAt,
           completedAt: new Date(),
-          status: result.status || 'completed',
-          totalImages: result.totalImages || 0,
-          successfulImages: result.successfulImages || 0,
-          failedImages: result.failedImages || 0,
+          status: terminalStatus,
+          totalImages: planned,
+          successfulImages,
+          failedImages,
           errorMessage: null,
           label: this.currentLabel
         }).catch(e => console.warn('JobService: Failed to update execution:', e.message));
       }
 
-      successResult = result;
+      successResult = {
+        ...result,
+        status: terminalStatus,
+        totalImages: planned,
+        successfulImages,
+        failedImages,
+        plannedTotal: planned
+      };
     } catch (error) {
       lastError = error;
       console.error('JobService: background job failed:', error);

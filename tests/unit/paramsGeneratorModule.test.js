@@ -5,8 +5,12 @@ const require = createRequire(import.meta.url);
 
 const mockCreateCompletion = vi.fn();
 
+/** Last options passed to `new OpenAI(opts)` (set by FakeOpenAI). */
+let lastOpenAIConstructorOpts;
+
 class FakeOpenAI {
-  constructor() {
+  constructor(opts) {
+    lastOpenAIConstructorOpts = opts;
     this.chat = {
       completions: {
         create: mockCreateCompletion,
@@ -48,6 +52,7 @@ const loadSut = () => {
 describe('paramsGeneratorModule', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    lastOpenAIConstructorOpts = undefined;
     // Also clear any queued `mockResolvedValueOnce` implementations between tests.
     mockCreateCompletion.mockReset();
   });
@@ -176,6 +181,36 @@ describe('paramsGeneratorModule', () => {
       ],
       temperature: 1,
     });
+  });
+
+  it('sets OpenAI client timeout to 30s when generation timeout is disabled (default)', async () => {
+    const paramsGeneratorModule = loadSut();
+    mockCreateCompletion.mockResolvedValueOnce({
+      choices: [{ message: { content: '{"prompt":"Hi"}' } }],
+    });
+
+    await paramsGeneratorModule('Kitten', null, '/tmp/keywords.txt', {
+      openaiModel: 'gpt-4o-mini',
+      appendMjVersion: false,
+      parameters: { enablePollingTimeout: false, pollingTimeout: 15 },
+    });
+
+    expect(lastOpenAIConstructorOpts).toMatchObject({ timeout: 30_000 });
+  });
+
+  it('sets OpenAI client timeout from pollingTimeout minutes when generation timeout is enabled', async () => {
+    const paramsGeneratorModule = loadSut();
+    mockCreateCompletion.mockResolvedValueOnce({
+      choices: [{ message: { content: '{"prompt":"Hi"}' } }],
+    });
+
+    await paramsGeneratorModule('Kitten', null, '/tmp/keywords.txt', {
+      openaiModel: 'gpt-4o-mini',
+      appendMjVersion: false,
+      parameters: { enablePollingTimeout: true, pollingTimeout: 2 },
+    });
+
+    expect(lastOpenAIConstructorOpts).toMatchObject({ timeout: 120_000 });
   });
 });
 

@@ -113,6 +113,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
     filteredImages,
     qcReasonFilters,
     failedProcessingCount,
+    approvedImagesCount,
+    generatedOkCount,
+    generationFailedCount,
     getImageUiStatus,
     getImageTitle,
   } = imagesState;
@@ -246,6 +249,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
             loadJobData={loadJobData}
             handleSettingsEdit={handleSettingsEdit}
             failedProcessingCount={failedProcessingCount}
+            approvedImagesCount={approvedImagesCount}
+            generatedOkCount={generatedOkCount}
+            generationFailedCount={generationFailedCount}
             formatDate={formatDate}
             formatDuration={formatDuration}
           />

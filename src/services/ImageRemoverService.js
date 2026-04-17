@@ -64,17 +64,8 @@ class ImageRemoverService {
       }
       throw new Error(`Failed to remove background: ${response.status} ${response.statusText}`);
     } catch (error) {
-      emitPipelineStage(
-        { pipelineStageLog: options.pipelineStageLog },
-        'remove_bg_http_error',
-        'remove.bg request failed',
-        {
-          phase: 'network',
-          generationIndex: options.generationIndex,
-          attempt: options.removeBgAttempt,
-          error: String(error && error.message || error)
-        }
-      );
+      // Do not emit remove_bg_http_error here — retryRemoveBackground emits once on final failure
+      // so structured logs are not polluted by intermediate retry attempts.
       try {
         const status = error?.response?.status;
         const statusText = error?.response?.statusText;
@@ -116,14 +107,39 @@ class ImageRemoverService {
       } catch (error) {
         const status = error?.response?.status;
         const isRetryable = !error.response || (status >= 500) || error.code === 'ECONNABORTED' || status === 429;
-        
+
         console.warn(`Attempt ${i + 1} for removeBg failed: ${error.message}${status ? ` (status ${status})` : ''}. ${isRetryable && i < retries - 1 ? `Retrying in ${currentDelay / 1000} seconds...` : 'Not retryable or no attempts left.'}`);
-        
+
         if (isRetryable && i < retries - 1) {
+          emitPipelineStage(
+            { pipelineStageLog },
+            'remove_bg_http_retry',
+            `remove.bg attempt ${i + 1}/${retries} failed; retrying`,
+            {
+              phase: 'network',
+              generationIndex,
+              attempt: i + 1,
+              maxAttempts: retries,
+              error: String(error?.message || error)
+            }
+          );
           await new Promise(resolve => setTimeout(resolve, currentDelay));
           currentDelay = Math.min(currentDelay * 2, 15000);
           continue;
         }
+
+        emitPipelineStage(
+          { pipelineStageLog },
+          'remove_bg_http_error',
+          'remove.bg request failed',
+          {
+            phase: 'network',
+            generationIndex: options.generationIndex,
+            attempt: i + 1,
+            maxAttempts: retries,
+            error: String(error?.message || error)
+          }
+        );
         throw error;
       }
     }

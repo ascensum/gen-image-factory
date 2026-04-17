@@ -30,9 +30,10 @@ function _getFallbackProcessImage() {
  * @param {Object} jobConfiguration
  * @param {boolean} useOriginalSettings
  * @param {Object} failOptions
+ * @param {string|null|undefined} openAiApiKey - From `settingsComposer.getSettings()` (retry does not run JobEngine env setup).
  * @returns {Promise<Object>}
  */
-async function run(executor, sourcePath, settings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions) {
+async function run(executor, sourcePath, settings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions, openAiApiKey) {
   try {
     try {
       await fs.access(sourcePath);
@@ -90,6 +91,9 @@ async function run(executor, sourcePath, settings, includeMetadata, jobConfigura
       } else if (stage === 'enhancement') {
         if (enabled && steps.includes('enhancement')) throw procErr;
         processedImagePath = sourcePath;
+      } else if (stage === 'remove_bg') {
+        if (enabled && steps.includes('remove_bg')) throw procErr;
+        processedImagePath = sourcePath;
       } else {
         throw procErr;
       }
@@ -140,11 +144,18 @@ async function run(executor, sourcePath, settings, includeMetadata, jobConfigura
             }
           }
         } catch (e) {}
+        const metaModel =
+          (jobConfiguration &&
+            jobConfiguration.settings &&
+            jobConfiguration.settings.parameters &&
+            jobConfiguration.settings.parameters.openaiModel) ||
+          'gpt-4o-mini';
         metadataResult = await aiVision.generateMetadata(
           processedImagePath,
           originalPrompt,
           (metadataPrompt && metadataPrompt.trim() !== '') ? metadataPrompt : null,
-          'gpt-4o-mini'
+          metaModel,
+          openAiApiKey
         );
       } catch (metadataError) {
         const enabled = !!(failOptions && failOptions.enabled);

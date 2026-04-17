@@ -74,10 +74,19 @@ async function runQualityCheck(imagePath, openaiModel = 'gpt-4o', customQualityC
  * @param {string} promptContext - The original keyword or context for the image.
  * @param {string} customMetadataPrompt - A custom system prompt for metadata generation.
  * @param {string} openaiModel - The OpenAI model to use.
+ * @param {string|null|undefined} openAiApiKey - When set (e.g. retry path), use instead of `process.env.OPENAI_API_KEY`.
+ *   Main job flow often sets env in JobEngine; retries must pass the key from Settings composer.
  * @returns {Promise<object>} - A promise that resolves to an object with new_title and uploadTags.
  */
-async function generateMetadata(imagePath, promptContext, customMetadataPrompt = null, openaiModel = 'gpt-4o') {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+async function generateMetadata(imagePath, promptContext, customMetadataPrompt = null, openaiModel = 'gpt-4o', openAiApiKey) {
+  const resolvedKey =
+    openAiApiKey !== undefined && openAiApiKey !== null && String(openAiApiKey).trim() !== ''
+      ? String(openAiApiKey).trim()
+      : process.env.OPENAI_API_KEY;
+  if (!resolvedKey || String(resolvedKey).trim() === '') {
+    throw new Error('OpenAI API key is missing: add it in Settings (required for AI metadata).');
+  }
+  const openai = new OpenAI({ apiKey: resolvedKey });
   logDebug('--- Starting Metadata Generation ---');
 
   try {

@@ -183,13 +183,24 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                 </svg>
                 <div className="flex-1">
                   <h4 className="text-sm font-medium text-blue-800">Metadata Regeneration</h4>
-                  <p className="text-sm text-blue-700 mt-1">
-                    Choose whether to regenerate metadata for the selected images during retry processing.
-                  </p>
+                  {useOriginalSettings ? (
+                    <p className="text-sm text-blue-700 mt-1">
+                      Retry with original settings uses the saved job configuration: if that job had metadata generation
+                      enabled, metadata runs automatically with remove.bg, convert, and other processing from that job.
+                      Use the toggle below only when the job did not originally include metadata and you want to add it
+                      on this retry.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-blue-700 mt-1">
+                      Choose whether to regenerate metadata for the selected images during retry processing.
+                    </p>
+                  )}
                   <div className="mt-3">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-blue-800 font-medium">
-                        Also regenerate metadata (titles, descriptions, tags)
+                        {useOriginalSettings
+                          ? 'Add metadata on retry (job did not use metadata originally)'
+                          : 'Also regenerate metadata (titles, descriptions, tags)'}
                       </span>
                       <Toggle
                         checked={includeMetadata}
@@ -197,7 +208,9 @@ const ProcessingSettingsModal: React.FC<ProcessingSettingsModalProps> = ({
                       />
                     </div>
                     <p className="text-xs text-blue-600 mt-1">
-                      This will regenerate AI-generated metadata for all selected images using the current AI model settings.
+                      {useOriginalSettings
+                        ? 'When off, metadata still runs if it was enabled for that job in settings.'
+                        : 'Regenerates AI metadata for all selected images using the current AI model settings.'}
                     </p>
                   </div>
                 </div>

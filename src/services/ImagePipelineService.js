@@ -14,6 +14,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { logDebug } = require(path.join(__dirname, '../utils/logDebug'));
 const { emitPipelineStage } = require(path.join(__dirname, '../utils/pipelineStageLog'));
+const { normalizeRemoveBgFailureMode } = require(path.join(__dirname, '../utils/processing'));
 
 class ImagePipelineService {
   /**
@@ -90,9 +91,11 @@ class ImagePipelineService {
           mappingId: item.mappingId,
           stage: (error && error.stage) ? String(error.stage) : 'processing',
           vendor: 'local',
-          message: String((error && error.message) || error)
+          message: String((error && error.message) || error),
+          /** Pre–post-process file (e.g. Runware download) for Failed Images Review & DB path */
+          inputImagePath: item.inputImagePath
         });
-        try { await fs.unlink(item.inputImagePath); } catch (_) { /* ignore */ }
+        // Keep temp input when post-processing fails so review UI still has a file path (do not unlink).
       }
     }
 
@@ -167,6 +170,7 @@ class ImagePipelineService {
    * Preserves normalizeRemoveBgFailureMode semantics from producePictureModule.
    */
   async _removeBackground(imageBuffer, inputImagePath, config, fsInstance) {
+    config._removeBgApplied = false;
     if (!this.remover) {
       logDebug('ImagePipelineService: No remover injected, skipping bg removal');
       return imageBuffer;
@@ -203,27 +207,19 @@ class ImagePipelineService {
    *   - 'mark_failed'  → hard (throw processing_failed:remove_bg)
    */
   _handleRemoveBgFailure(error, imageBuffer, inputImagePath, config, fsInstance) {
-    const rawMode = String(config?.removeBgFailureMode || 'approve').toLowerCase();
-    const failureMode = (rawMode === 'mark_failed') ? 'fail' : (rawMode === 'approve' ? 'soft' : rawMode);
+    const normalizedMode = normalizeRemoveBgFailureMode(config?.removeBgFailureMode);
     const enabled = !!config.failRetryEnabled;
     const steps = Array.isArray(config.failOnSteps)
       ? config.failOnSteps.map(s => String(s).toLowerCase())
       : [];
 
-    let unauthorized = false;
-    try {
-      const status = error?.response?.status;
-      const body = error?.response?.data;
-      const msg = String(error && error.message || '');
-      unauthorized = (!process.env.REMOVE_BG_API_KEY) || status === 401 || status === 403 ||
-        /unauthorized|forbidden|x-api-key|invalid api key/i.test(msg) ||
-        (typeof body === 'string' && /unauthorized|forbidden|x-api-key|invalid api key/i.test(body));
-    } catch {}
-
-    const hardFail = (enabled && steps.includes('remove_bg')) || failureMode === 'fail';
+    const hardFail = (enabled && steps.includes('remove_bg')) || normalizedMode === 'mark_failed';
 
     logDebug('ImagePipelineService: remove.bg failure decision', {
-      rawMode, failureMode, failRetryEnabled: enabled, hardFail, unauthorized
+      removeBgFailureMode: config?.removeBgFailureMode,
+      normalizedMode,
+      failRetryEnabled: enabled,
+      hardFail
     });
 
     if (hardFail) {

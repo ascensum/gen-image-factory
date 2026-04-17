@@ -120,6 +120,8 @@ describe('normalizeProcessingSettings', () => {
     expect(normalizeProcessingSettings({ removeBgFailureMode: 'SOFT' }).removeBgFailureMode).toBe('approve');
     expect(normalizeProcessingSettings({ removeBgFailureMode: 'unknown' }).removeBgFailureMode).toBe('approve');
     expect(normalizeProcessingSettings({}).removeBgFailureMode).toBeUndefined();
+    expect(normalizeProcessingSettings({ removeBgFailureMode: 'mark failed' }).removeBgFailureMode).toBe('mark_failed');
+    expect(normalizeProcessingSettings({ removeBgFailureMode: 'MARK-FAILED' }).removeBgFailureMode).toBe('mark_failed');
   });
 });
 

@@ -1,6 +1,10 @@
 const path = require('path');
 const { randomUUID } = require('node:crypto');
 const { emitPipelineStage } = require(path.join(__dirname, '../utils/pipelineStageLog'));
+const {
+  resolveRunwareRetryOptions,
+  withRunwareRetries
+} = require(path.join(__dirname, '../utils/runwareRetry'));
 
 console.log('LOADING ImageGeneratorService');
 
@@ -153,6 +157,8 @@ class ImageGeneratorService {
       ? Math.max(1000, Number(timeoutMinutesRaw) * 60 * 1000)
       : 30000;
 
+    const { maxAttempts: rwMaxAttempts, backoffMs: rwBackoffMs } = resolveRunwareRetryOptions(settings, config);
+
     const rwHeaders = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${this.apiKey || ''}`
@@ -171,11 +177,25 @@ class ImageGeneratorService {
     let rwResponse;
     try {
       this.logDebug('Runware payload (sanitized):', { ...body, positivePrompt: '[redacted]' });
-      rwResponse = await this.axios.post(
-        'https://api.runware.ai/v1/images/generate',
-        [body],
-        { headers: rwHeaders, timeout: httpTimeoutMs, signal: abortSignal }
-      );
+      rwResponse = await withRunwareRetries({
+        label: 'imageInference POST',
+        maxAttempts: rwMaxAttempts,
+        backoffMs: rwBackoffMs,
+        abortSignal,
+        logDebug: this.logDebug,
+        onRetry: (attempt, max, err) => {
+          emitPipelineStage(config, 'runware_api_retry', `Runware POST retry (${attempt}/${max})`, {
+            phase: 'network',
+            generationIndex: config.generationIndex,
+            error: String(err?.message || err),
+          });
+        },
+        fn: () => this.axios.post(
+          'https://api.runware.ai/v1/images/generate',
+          [body],
+          { headers: rwHeaders, timeout: httpTimeoutMs, signal: abortSignal }
+        ),
+      });
     } catch (err) {
       const status = err?.response?.status;
       const serverErrors = err?.response?.data?.errors;
@@ -211,11 +231,25 @@ class ImageGeneratorService {
             generationIndex: config.generationIndex
           });
           const extraBody = { ...body, taskUUID: randomUUID(), numberResults: Math.min(remaining, 20) };
-          const extraResp = await this.axios.post(
-            'https://api.runware.ai/v1/images/generate',
-            [extraBody],
-            { headers: rwHeaders, timeout: httpTimeoutMs, signal: abortSignal }
-          );
+          const extraResp = await withRunwareRetries({
+            label: 'imageInference POST (top-up)',
+            maxAttempts: rwMaxAttempts,
+            backoffMs: rwBackoffMs,
+            abortSignal,
+            logDebug: this.logDebug,
+            onRetry: (attempt, max, err) => {
+              emitPipelineStage(config, 'runware_api_extra_retry', `Runware top-up POST retry (${attempt}/${max})`, {
+                phase: 'network',
+                generationIndex: config.generationIndex,
+                error: String(err?.message || err),
+              });
+            },
+            fn: () => this.axios.post(
+              'https://api.runware.ai/v1/images/generate',
+              [extraBody],
+              { headers: rwHeaders, timeout: httpTimeoutMs, signal: abortSignal }
+            ),
+          });
           const extraUrls = this.extractRunwareImageUrls(extraResp?.data);
           if (Array.isArray(extraUrls) && extraUrls.length > 0) {
             for (const u of extraUrls) {
@@ -269,7 +303,24 @@ class ImageGeneratorService {
           mappingId,
           generationIndex: config.generationIndex
         });
-        const response = await this.axios.get(imageUrl, { responseType: 'arraybuffer', timeout: httpTimeoutMs, signal: abortSignal });
+        const response = await withRunwareRetries({
+          label: `GET result ${i + 1}/${imageUrls.length}`,
+          maxAttempts: rwMaxAttempts,
+          backoffMs: rwBackoffMs,
+          abortSignal,
+          logDebug: this.logDebug,
+          onRetry: (attempt, max, err) => {
+            emitPipelineStage(config, 'runware_download_retry', `Runware download retry (${attempt}/${max})`, {
+              phase: 'network',
+              index: i + 1,
+              host: downloadHost,
+              mappingId,
+              generationIndex: config.generationIndex,
+              error: String(err?.message || err),
+            });
+          },
+          fn: () => this.axios.get(imageUrl, { responseType: 'arraybuffer', timeout: httpTimeoutMs, signal: abortSignal }),
+        });
         
         let inferredExt = '';
         try {
