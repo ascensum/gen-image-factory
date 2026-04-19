@@ -1,6 +1,6 @@
 {
   "name": "gen-image-factory",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "AI-powered image generation application with Electron, React, and TypeScript",
   "main": "electron/main.js",
   "scripts": {
@@ -34,7 +34,7 @@
     "prepare": "husky install",
     "test:job-management": "vitest run tests/unit/logic/jobManagement.logic.test.ts tests/integration/backend/ExportExcel.integration.test.ts",
     "test:job-management:watch": "vitest tests/unit/logic/jobManagement.logic.test.ts tests/integration/backend/ExportExcel.integration.test.ts",
-    "test:retry": "vitest run tests/unit/services/RetryExecutor.test.ts tests/integration/backend/RetryFunctionality.integration.test.ts",
+    "test:retry": "vitest run tests/unit/services/RetryExecutor.test.ts tests/unit/services/RetryPostProcessingService.test.js tests/integration/backend/RetryFunctionality.integration.test.ts",
     "test:retry:watch": "vitest tests/unit/services/RetryExecutor.test.ts tests/integration/backend/RetryFunctionality.integration.test.ts",
     "test:security": "vitest run tests/unit/services/RetryExecutor.test.ts --reporter=verbose",
     "test:regression:retry": "npm run test:retry && npm run test:job-management",

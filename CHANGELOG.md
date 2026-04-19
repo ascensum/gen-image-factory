@@ -32,6 +32,12 @@ To ensure proper categorization in release notes, use Conventional Commits forma
 
 Dependabot PRs are automatically labeled with `dependencies` and `automated`, and will appear under "🛡️ Security & Dependencies" in release notes.
 
+## [1.3.1] - 2026-04-18
+
+### Fixed
+
+- **Retry / Remove.bg (decomposition Story 5.3):** On **retry with original settings**, a hard Remove.bg failure (`remove_bg` stage after `mark_failed` on the job) was incorrectly treated like a soft skip: the post-processing catch substituted the source file and the pipeline finished **approved**. Original-settings retries now **rethrow** Remove.bg failures so the image lands in **`retry_failed`** instead of the gallery. **Custom retry** without **Fail Retry** on Remove.bg is unchanged (best-effort skip). Added unit coverage in `tests/unit/services/RetryPostProcessingService.test.js`.
+
 ## [1.1.7] - 2026-01-05
 
 ### Fixed

@@ -92,7 +92,12 @@ async function run(executor, sourcePath, settings, includeMetadata, jobConfigura
         if (enabled && steps.includes('enhancement')) throw procErr;
         processedImagePath = sourcePath;
       } else if (stage === 'remove_bg') {
+        // Custom retry: modal "Fail Retry" on remove_bg → must surface failure (retry_failed), not approve.
         if (enabled && steps.includes('remove_bg')) throw procErr;
+        // Original-settings retry: re-run the same job policy (e.g. mark_failed). Any hard remove.bg
+        // failure must not be salvaged by skipping remove.bg — same as first run.
+        if (useOriginalSettings) throw procErr;
+        // Custom retry without Fail Retry on remove_bg: allow best-effort (continue with source file).
         processedImagePath = sourcePath;
       } else {
         throw procErr;
