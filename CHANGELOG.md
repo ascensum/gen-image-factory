@@ -32,6 +32,12 @@ To ensure proper categorization in release notes, use Conventional Commits forma
 
 Dependabot PRs are automatically labeled with `dependencies` and `automated`, and will appear under "🛡️ Security & Dependencies" in release notes.
 
+## [1.3.2] - 2026-04-19
+
+### Added
+
+- **Tests:** `ImagePipelineService` unit suite (`tests/unit/services/ImagePipelineService.test.js`) and inclusion in `npm run test:critical`. Follow-up to **v1.3.1** (tests were present locally but not shipped in that tag).
+
 ## [1.3.1] - 2026-04-18
 
 ### Fixed
