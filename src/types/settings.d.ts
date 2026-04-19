@@ -21,7 +21,9 @@ export interface SettingsObject {
     // Runware fields
     runwareModel?: string; // default runware:101@1
     runwareDimensionsCsv?: string; // e.g. 1024x1024,1280x720
-    runwareFormat?: 'png' | 'jpg' | 'webp';
+    runwareFormat?: 'png' | 'jpg' | 'webp' | 'svg';
+    /** Runware imageInference negative prompt (optional; model must support it on Runware). */
+    negativePrompt?: string;
     variations?: number; // 1–20, default 1
     runwareAdvanced?: {
       lora?: Array<{ model: string; weight?: number }>;

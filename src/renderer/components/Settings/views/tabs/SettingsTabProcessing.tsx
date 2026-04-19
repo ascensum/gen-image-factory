@@ -30,12 +30,23 @@ export function SettingsTabProcessing({
     setHasUnsavedChanges(true);
   }, [form.processing.jpgBackground]);
 
+  const runwareFmt = String(form.parameters?.runwareFormat || '').toLowerCase();
+
   return (
     <div className="space-y-6" data-testid="processing-section">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium text-gray-900">Image Processing</h3>
         <Cog className="h-5 w-5 text-gray-400" />
       </div>
+      {runwareFmt === 'svg' && (
+        <div
+          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          role="note"
+        >
+          We do not support any processing operation for .svg format images for now. AI metadata and vision quality
+          check are skipped for SVG jobs (those steps expect raster images).
+        </div>
+      )}
       <div className="space-y-6">
         <div className="space-y-4">
           <div className="flex items-center justify-between">

@@ -522,6 +522,33 @@ describe('JobEngine Unit Tests', () => {
       expect(moduleConfig.sharpening).toBe(4);
     });
 
+    it('skips local raster processing when Runware output format is SVG (Story 5.4)', () => {
+      const config = {
+        parameters: { count: 1, variations: 1, runwareFormat: 'svg' },
+        processing: { removeBg: false, imageEnhancement: true, sharpening: 4 },
+        ai: { runQualityCheck: false },
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.skipLocalImageProcessing).toBe(true);
+      expect(moduleConfig.imageEnhancement).toBe(false);
+    });
+
+    it('skips local raster processing for text-to-vector Runware models even when format is PNG', () => {
+      const config = {
+        parameters: {
+          count: 1,
+          variations: 1,
+          runwareFormat: 'png',
+          runwareModel: 'recraft:v4@vector',
+        },
+        processing: { removeBg: false, imageEnhancement: true, sharpening: 4 },
+        ai: { runQualityCheck: false },
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.skipLocalImageProcessing).toBe(true);
+      expect(moduleConfig.imageEnhancement).toBe(false);
+    });
+
     it('should clamp variations to max allowed (10000 total cap)', () => {
       // Arrange
       const config = {

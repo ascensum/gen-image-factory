@@ -5,6 +5,12 @@ const {
   resolveRunwareRetryOptions,
   withRunwareRetries
 } = require(path.join(__dirname, '../utils/runwareRetry'));
+const { isRunwareTextVectorizeModel } = require(path.join(__dirname, '../utils/runwareTextVectorizeModels'));
+const {
+  buildRunwareImageInferenceBody,
+  buildRunwareTextVectorizeBody
+} = require(path.join(__dirname, '../utils/runwareGenerateBody'));
+const { downloadRunwareResultUrls } = require(path.join(__dirname, '../utils/runwareDownloadResultUrls'));
 
 console.log('LOADING ImageGeneratorService');
 
@@ -124,6 +130,9 @@ class ImageGeneratorService {
     const variations = Math.max(1, Math.min(20, Number(config?.variations || settings?.parameters?.variations || 1)));
     const providerFormat = (settings?.parameters?.runwareFormat || 'png').toLowerCase();
     const outputFormat = providerFormat === 'jpeg' ? 'jpg' : providerFormat;
+    const trimmedNegative = typeof settings?.parameters?.negativePrompt === 'string'
+      ? settings.parameters.negativePrompt.trim()
+      : '';
     const advancedEnabled = settings?.parameters?.runwareAdvancedEnabled === true;
     const advanced = advancedEnabled ? (settings?.parameters?.runwareAdvanced || {}) : {};
 
@@ -132,24 +141,34 @@ class ImageGeneratorService {
       ? settings.parameters.lora
       : (Array.isArray(advanced?.lora) ? advanced.lora : []);
 
-    const body = {
-      taskType: 'imageInference',
-      taskUUID: randomUUID(),
-      model: runwareModel,
-      positivePrompt: this.sanitizePromptForRunware(prompt),
-      numberResults: variations,
-      outputType: 'URL',
-      outputFormat,
-      width,
-      height,
-      ...(loraEnabled && Array.isArray(loraList) && loraList.length > 0
-        ? { lora: loraList.filter(x => x && x.model).map(x => ({ model: x.model, weight: Number(x.weight) || 1 })) }
-        : {}),
-      ...(typeof advanced.checkNSFW === 'boolean' ? { checkNSFW: !!advanced.checkNSFW } : {}),
-      ...(advanced.scheduler ? { scheduler: String(advanced.scheduler) } : {}),
-      ...(Number.isFinite(Number(advanced.CFGScale)) ? { CFGScale: Number(advanced.CFGScale) } : {}),
-      ...(Number.isFinite(Number(advanced.steps)) ? { steps: Number(advanced.steps) } : {})
-    };
+    const useTextVectorize = isRunwareTextVectorizeModel(runwareModel);
+    const sanPos = this.sanitizePromptForRunware(prompt);
+    const sanNeg = trimmedNegative ? this.sanitizePromptForRunware(trimmedNegative) : '';
+
+    const body = useTextVectorize
+      ? buildRunwareTextVectorizeBody({
+        taskUUID: randomUUID(),
+        runwareModel,
+        positivePrompt: sanPos,
+        width,
+        height
+      })
+      : buildRunwareImageInferenceBody({
+        taskUUID: randomUUID(),
+        runwareModel,
+        positivePrompt: sanPos,
+        negativePromptSanitized: sanNeg || undefined,
+        numberResults: variations,
+        outputFormat,
+        width,
+        height,
+        loraEnabled,
+        loraList,
+        advanced
+      });
+
+    const effectiveOutputFormat = useTextVectorize ? 'svg' : outputFormat;
+    const runwareTaskLabel = useTextVectorize ? 'vectorize' : 'imageInference';
 
     const enableTimeoutFlag = (config && config.enablePollingTimeout === true) || (settings?.parameters?.enablePollingTimeout === true);
     const timeoutMinutesRaw = Number.isFinite(Number(config?.pollingTimeout)) ? Number(config.pollingTimeout) : (Number.isFinite(Number(settings?.parameters?.pollingTimeout)) ? Number(settings.parameters.pollingTimeout) : undefined);
@@ -167,7 +186,7 @@ class ImageGeneratorService {
       throw new Error('Runware API key is missing. Please set it in Settings → API Keys.');
     }
 
-    emitPipelineStage(config, 'runware_api_begin', 'POST https://api.runware.ai/v1/images/generate (imageInference)', {
+    emitPipelineStage(config, 'runware_api_begin', `POST https://api.runware.ai/v1/images/generate (${runwareTaskLabel})`, {
       phase: 'network',
       host: 'api.runware.ai',
       variations,
@@ -178,7 +197,7 @@ class ImageGeneratorService {
     try {
       this.logDebug('Runware payload (sanitized):', { ...body, positivePrompt: '[redacted]' });
       rwResponse = await withRunwareRetries({
-        label: 'imageInference POST',
+        label: `${runwareTaskLabel} POST`,
         maxAttempts: rwMaxAttempts,
         backoffMs: rwBackoffMs,
         abortSignal,
@@ -230,9 +249,17 @@ class ImageGeneratorService {
             remaining,
             generationIndex: config.generationIndex
           });
-          const extraBody = { ...body, taskUUID: randomUUID(), numberResults: Math.min(remaining, 20) };
+          const extraBody = useTextVectorize
+            ? buildRunwareTextVectorizeBody({
+              taskUUID: randomUUID(),
+              runwareModel,
+              positivePrompt: body.positivePrompt,
+              width: body.width,
+              height: body.height
+            })
+            : { ...body, taskUUID: randomUUID(), numberResults: Math.min(remaining, 20) };
           const extraResp = await withRunwareRetries({
-            label: 'imageInference POST (top-up)',
+            label: `${runwareTaskLabel} POST (top-up)`,
             maxAttempts: rwMaxAttempts,
             backoffMs: rwBackoffMs,
             abortSignal,
@@ -274,114 +301,23 @@ class ImageGeneratorService {
       }
     }
 
-    const successfulDownloads = [];
-    const failedItems = [];
     const tempDir = config.outputDirectory || config.tempDirectory || './pictures/generated';
 
-    emitPipelineStage(config, 'runware_download_phase_begin', 'Downloading result image URLs to disk', {
-      phase: 'network',
-      urlCount: imageUrls.length,
-      generationIndex: config.generationIndex
+    return downloadRunwareResultUrls({
+      imageUrls,
+      imgNameBase,
+      effectiveOutputFormat,
+      tempDir,
+      fs: this.fs,
+      axios: this.axios,
+      httpTimeoutMs,
+      rwMaxAttempts,
+      rwBackoffMs,
+      abortSignal,
+      logDebug: this.logDebug,
+      config,
+      generateImageMappingId: (u, idx, base) => this.generateImageMappingId(u, idx, base),
     });
-
-    for (let i = 0; i < imageUrls.length; i++) {
-      const imageUrl = imageUrls[i];
-      const imageSuffix = `_${i + 1}`;
-      const mappingId = this.generateImageMappingId(imageUrl, i + 1, imgNameBase);
-
-      let downloadHost = 'unknown';
-      try {
-        downloadHost = new URL(imageUrl).hostname;
-      } catch (_) { /* ignore */ }
-
-      try {
-        emitPipelineStage(config, 'runware_download_item_begin', `GET result image ${i + 1}/${imageUrls.length}`, {
-          phase: 'network',
-          index: i + 1,
-          total: imageUrls.length,
-          host: downloadHost,
-          mappingId,
-          generationIndex: config.generationIndex
-        });
-        const response = await withRunwareRetries({
-          label: `GET result ${i + 1}/${imageUrls.length}`,
-          maxAttempts: rwMaxAttempts,
-          backoffMs: rwBackoffMs,
-          abortSignal,
-          logDebug: this.logDebug,
-          onRetry: (attempt, max, err) => {
-            emitPipelineStage(config, 'runware_download_retry', `Runware download retry (${attempt}/${max})`, {
-              phase: 'network',
-              index: i + 1,
-              host: downloadHost,
-              mappingId,
-              generationIndex: config.generationIndex,
-              error: String(err?.message || err),
-            });
-          },
-          fn: () => this.axios.get(imageUrl, { responseType: 'arraybuffer', timeout: httpTimeoutMs, signal: abortSignal }),
-        });
-        
-        let inferredExt = '';
-        try {
-          const urlPath = new URL(imageUrl).pathname;
-          const fromUrl = path.extname(urlPath).toLowerCase();
-          if (fromUrl && ['.png', '.jpg', '.jpeg', '.webp'].includes(fromUrl)) inferredExt = fromUrl;
-        } catch (e) {
-           console.log('URL PARSE ERROR', e.message);
-        }
-        if (!inferredExt) {
-          const ct = String(response.headers?.['content-type'] || '').toLowerCase();
-          if (ct.includes('image/png')) inferredExt = '.png';
-          else if (ct.includes('image/jpeg') || ct.includes('image/jpg')) inferredExt = '.jpg';
-          else if (ct.includes('image/webp')) inferredExt = '.webp';
-        }
-        if (!inferredExt) inferredExt = '.png';
-
-        const inputImagePath = path.resolve(path.join(tempDir, `${imgNameBase}${imageSuffix}${inferredExt}`));
-        await this.fs.mkdir(path.dirname(inputImagePath), { recursive: true });
-        await this.fs.writeFile(inputImagePath, response.data);
-        
-        successfulDownloads.push({
-          inputImagePath,
-          mappingId,
-          imageUrl,
-          imageSuffix
-        });
-        emitPipelineStage(config, 'runware_download_item_end', `Saved result image ${i + 1}/${imageUrls.length}`, {
-          phase: 'network',
-          index: i + 1,
-          host: downloadHost,
-          mappingId,
-          inputImagePath,
-          generationIndex: config.generationIndex
-        });
-      } catch (err) {
-        emitPipelineStage(config, 'runware_download_item_error', `Download failed for image ${i + 1}/${imageUrls.length}`, {
-          phase: 'network',
-          index: i + 1,
-          host: downloadHost,
-          mappingId,
-          error: String(err && err.message || err),
-          generationIndex: config.generationIndex
-        });
-        failedItems.push({
-          mappingId,
-          stage: 'download',
-          vendor: 'runware',
-          message: String(err && err.message || err)
-        });
-      }
-    }
-
-    emitPipelineStage(config, 'runware_download_phase_end', 'Runware download phase finished', {
-      phase: 'network',
-      saved: successfulDownloads.length,
-      failed: failedItems.filter((f) => f.stage === 'download').length,
-      generationIndex: config.generationIndex
-    });
-
-    return { successfulDownloads, failedItems };
   }
 }
 

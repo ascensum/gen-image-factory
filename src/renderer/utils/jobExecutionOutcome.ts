@@ -1,6 +1,8 @@
 /**
  * Vite/ESM copy of `src/utils/jobExecutionOutcome.js` (main process uses CJS there).
  * Keep rules identical when changing either file.
+ *
+ * SVG-only: see `jobExecutionOutcome.js` — `.svg` + `processing_failed:download` never counts as successful generation.
  */
 
 function hasRenderableFile(img: unknown): boolean {
@@ -9,6 +11,23 @@ function hasRenderableFile(img: unknown): boolean {
   const fp = o.finalImagePath && String(o.finalImagePath).trim();
   const tp = o.tempImagePath && String(o.tempImagePath).trim();
   return !!(fp || tp);
+}
+
+function imagePathEndsWithSvg(img: unknown): boolean {
+  if (!img || typeof img !== 'object') return false;
+  const o = img as Record<string, unknown>;
+  const fp = String(o.finalImagePath || '').trim().toLowerCase();
+  const tp = String(o.tempImagePath || '').trim().toLowerCase();
+  return fp.endsWith('.svg') || tp.endsWith('.svg');
+}
+
+function isSvgRunwareGenerationLogisticsFailure(img: unknown): boolean {
+  if (!imagePathEndsWithSvg(img)) return false;
+  const o = img as Record<string, unknown>;
+  const s = String(o.qcStatus || '').toLowerCase();
+  if (s !== 'qc_failed' && s !== 'retry_failed') return false;
+  const r = String(o.qcReason || '').toLowerCase();
+  return r.startsWith('processing_failed:download');
 }
 
 function qcReasonImpliesPostGenerationFailure(img: unknown): boolean {
@@ -23,7 +42,10 @@ function qcReasonImpliesPostGenerationFailure(img: unknown): boolean {
 
 export function imageHadSuccessfulGeneration(img: unknown): boolean {
   if (!img || typeof img !== 'object') return false;
-  if (hasRenderableFile(img)) return true;
+  if (hasRenderableFile(img)) {
+    if (isSvgRunwareGenerationLogisticsFailure(img)) return false;
+    return true;
+  }
   const o = img as Record<string, unknown>;
   const s = String(o.qcStatus || '').toLowerCase();
   if (s === 'qc_failed' || s === 'retry_failed') {

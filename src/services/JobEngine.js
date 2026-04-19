@@ -6,6 +6,7 @@ const { EventEmitter } = require('events');
 const path = require('path');
 const { paramsGeneratorModule: defaultParamsGenerator } = require(path.join(__dirname, '../paramsGeneratorModule'));
 const { countImagesGeneratedSuccessfully } = require(path.join(__dirname, '../utils/jobExecutionOutcome'));
+const { isRunwareTextVectorizeModel } = require(path.join(__dirname, '../utils/runwareTextVectorizeModels'));
 
 class JobEngine extends EventEmitter {
   constructor(options = {}) {
@@ -266,7 +267,10 @@ class JobEngine extends EventEmitter {
     const proc = config.processing || {};
     const hasQc = config.ai?.runQualityCheck === true;
     // remove.bg is expensive: when QC is on, skip local processing until QC approves (see PostGenerationService.runPostQCProcessing).
-    const skipLocalImageProcessing = hasQc && !!(proc.removeBg);
+    const isSvgOutput = String(config.parameters?.runwareFormat || '').toLowerCase() === 'svg'
+      || isRunwareTextVectorizeModel(config.parameters?.runwareModel);
+    // Story 5.4: skip Sharp/remove.bg/convert on SVG (vector); full QC/metadata behavior on SVG is a follow-up if needed.
+    const skipLocalImageProcessing = (hasQc && !!(proc.removeBg)) || isSvgOutput;
 
     const rawGenRetryAttempts = Number(config.parameters?.generationRetryAttempts ?? 1);
     const generationRetryAttempts = Math.max(1, Math.min(5, Number.isFinite(rawGenRetryAttempts) ? rawGenRetryAttempts : 1));

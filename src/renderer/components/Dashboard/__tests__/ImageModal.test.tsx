@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import ImageModal from '../ImageModal';
 import { GeneratedImage } from '../DashboardPanel';
 
@@ -33,6 +33,28 @@ const mockImage: GeneratedImage = {
 };
 
 describe('ImageModal', () => {
+  const prevElectron = (globalThis as unknown as { window?: { electronAPI?: unknown } }).window?.electronAPI;
+
+  beforeEach(() => {
+    (window as unknown as { electronAPI?: { getJobExecutionByImageId?: ReturnType<typeof vi.fn> } }).electronAPI = {
+      getJobExecutionByImageId: vi.fn().mockResolvedValue({
+        success: true,
+        execution: {
+          configurationSnapshot: {
+            processing: {},
+            parameters: {},
+          },
+        },
+      }),
+    };
+  });
+
+  afterEach(() => {
+    const w = window as unknown as { electronAPI?: unknown };
+    if (prevElectron !== undefined) w.electronAPI = prevElectron;
+    else delete w.electronAPI;
+  });
+
   const defaultProps = {
     image: mockImage,
     isOpen: true,
@@ -42,6 +64,24 @@ describe('ImageModal', () => {
     hasPrevious: true,
     hasNext: true
   };
+
+  it('shows Negative prompt under Generation Prompt when job snapshot includes it', async () => {
+    (window as unknown as { electronAPI: { getJobExecutionByImageId: ReturnType<typeof vi.fn> } }).electronAPI = {
+      getJobExecutionByImageId: vi.fn().mockResolvedValue({
+        success: true,
+        execution: {
+          configurationSnapshot: {
+            parameters: { negativePrompt: '  no watermark  ' },
+          },
+        },
+      }),
+    };
+    render(<ImageModal {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText('Negative prompt')).toBeInTheDocument();
+    });
+    expect(screen.getByText('no watermark')).toBeInTheDocument();
+  });
 
   it('renders modal when open', () => {
     render(<ImageModal {...defaultProps} />);

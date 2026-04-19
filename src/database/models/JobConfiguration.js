@@ -408,6 +408,7 @@ class JobConfiguration {
         aspectRatios: ['1:1', '16:9', '9:16'],
         mjVersion: '6.1',
         openaiModel: 'gpt-4o',
+        negativePrompt: '',
         pollingTimeout: 15,
         pollingInterval: 1,
         enablePollingTimeout: true,

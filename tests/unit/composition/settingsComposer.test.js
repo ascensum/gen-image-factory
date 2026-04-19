@@ -45,6 +45,29 @@ const defaultShape = () => ({
 });
 
 describe('SettingsComposer (legacy backendAdapter parity)', () => {
+  it('getSettings normalizes parameters.negativePrompt to string when missing or non-string', async () => {
+    const configRepository = {
+      getSettings: vi.fn().mockResolvedValue({
+        success: true,
+        settings: {
+          ...defaultShape(),
+          parameters: { ...defaultShape().parameters, negativePrompt: null },
+        },
+      }),
+    };
+    const securityService = {
+      getSecret: vi.fn().mockResolvedValue({ success: false }),
+    };
+    const composer = new SettingsComposer({
+      configRepository,
+      securityService,
+      getDefaultSettings: defaultShape,
+    });
+    const r = await composer.getSettings();
+    expect(r.success).toBe(true);
+    expect(r.settings.parameters.negativePrompt).toBe('');
+  });
+
   it('getSettings shallow-merges: DB `processing` replaces defaults.processing wholesale', async () => {
     const configRepository = {
       getSettings: vi.fn().mockResolvedValue({

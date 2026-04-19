@@ -2,6 +2,10 @@ import React from 'react';
 import type { SettingsObject } from '../../../../../types/settings';
 import { Toggle } from '../../Toggle';
 import { parseLoraText } from '../../../../utils/lora';
+import {
+  isRunwareTextVectorizeModel,
+  RUNWARE_TEXT_VECTORIZE_SETTINGS_HELPER,
+} from '../../../../utils/runwareTextVectorizeModels';
 
 interface SettingsTabParametersProps {
   form: SettingsObject;
@@ -11,6 +15,8 @@ interface SettingsTabParametersProps {
 
 export function SettingsTabParameters({ form, setForm, setHasUnsavedChanges }: SettingsTabParametersProps) {
   const params = form.parameters;
+  const runwareModelId = String(params.runwareModel ?? 'runware:101@1').trim();
+  const showTextVectorizeHelper = isRunwareTextVectorizeModel(runwareModelId);
 
   const updateParams = (patch: Partial<SettingsObject['parameters']>) => {
     setForm((prev) => ({
@@ -72,6 +78,11 @@ export function SettingsTabParameters({ form, setForm, setHasUnsavedChanges }: S
             placeholder="runware:101@1"
           />
           <p className="text-xs text-gray-500 mt-1">Model id used for image generation. Default: runware:101@1.</p>
+          {showTextVectorizeHelper && (
+            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-2 mt-2">
+              {RUNWARE_TEXT_VECTORIZE_SETTINGS_HELPER}
+            </p>
+          )}
         </div>
         <div>
           <label htmlFor="runware-dimensions" className="block text-sm font-medium text-gray-700 mb-2">
@@ -95,13 +106,37 @@ export function SettingsTabParameters({ form, setForm, setHasUnsavedChanges }: S
           <select
             id="runware-format"
             value={params.runwareFormat ?? 'png'}
-            onChange={(e) => updateParams({ runwareFormat: e.target.value as 'png' | 'jpg' | 'webp' })}
+            onChange={(e) =>
+              updateParams({ runwareFormat: e.target.value as 'png' | 'jpg' | 'webp' | 'svg' })
+            }
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="png">PNG</option>
             <option value="jpg">JPG</option>
             <option value="webp">WebP</option>
+            <option value="svg">SVG</option>
           </select>
+        </div>
+        <div>
+          <label htmlFor="runware-negative-prompt" className="block text-sm font-medium text-gray-700 mb-2">
+            Negative prompt (Runware)
+          </label>
+          <p className="text-xs text-gray-500 mb-2">
+            The positive prompt is built at job run time from your keywords and system prompt. Use this field to
+            list concepts to avoid for Runware text-to-image (when the model supports it).
+          </p>
+          <textarea
+            id="runware-negative-prompt"
+            value={params.negativePrompt ?? ''}
+            onChange={(e) => updateParams({ negativePrompt: e.target.value })}
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Optional — e.g. blurry, watermark, text"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            NB! you must check if model you trying to use negative prompt with is supporting negative prompt on
+            Runware.com playground
+          </p>
         </div>
         <div className="flex items-center justify-between">
           <div>

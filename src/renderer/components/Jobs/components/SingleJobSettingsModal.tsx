@@ -8,6 +8,10 @@ import { ImageEnhancementSliders } from '../../Common/ImageEnhancementSliders';
 import styles from '../SingleJobView.module.css';
 import type { SettingsObject } from '../../../../../types/settings';
 import type { JobExecution } from '../../../../../types/job';
+import {
+  isRunwareTextVectorizeModel,
+  RUNWARE_TEXT_VECTORIZE_SETTINGS_HELPER,
+} from '../../../utils/runwareTextVectorizeModels';
 
 export interface SingleJobSettingsModalProps {
   isOpen: boolean;
@@ -150,6 +154,11 @@ const SingleJobSettingsModal: React.FC<SingleJobSettingsModalProps> = ({
               <div className="flex flex-col mb-4">
                 <label>Runware Model</label>
                 <input type="text" value={editedSettings.parameters?.runwareModel || ''} onChange={(e) => onSettingChange('parameters', 'runwareModel', e.target.value)} placeholder="e.g., runware:101@1" />
+                {isRunwareTextVectorizeModel(String(editedSettings.parameters?.runwareModel || '').trim()) && (
+                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-2 mt-2 leading-snug">
+                    {RUNWARE_TEXT_VECTORIZE_SETTINGS_HELPER}
+                  </p>
+                )}
               </div>
               <div className="flex flex-col mb-4">
                 <label>Dimensions (W×H or CSV)</label>
@@ -161,7 +170,22 @@ const SingleJobSettingsModal: React.FC<SingleJobSettingsModalProps> = ({
                   <option value="png">PNG</option>
                   <option value="jpg">JPG</option>
                   <option value="webp">WEBP</option>
+                  <option value="svg">SVG</option>
                 </select>
+              </div>
+              <div className="flex flex-col mb-4">
+                <label>Negative prompt (Runware)</label>
+                <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-snug mb-2">
+                  NB! you must check if model you trying to use negative prompt with is supporting negative prompt on
+                  Runware.com playground
+                </p>
+                <textarea
+                  value={(editedSettings.parameters as { negativePrompt?: string })?.negativePrompt ?? ''}
+                  onChange={(e) => onSettingChange('parameters', 'negativePrompt', e.target.value)}
+                  rows={3}
+                  className="w-full box-border py-2 px-3 border border-[var(--border)] rounded-[var(--radius)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:border-[var(--ring)] focus:ring-2 focus:ring-[var(--ring)]/20 resize-y"
+                  placeholder="Optional"
+                />
               </div>
               <div className="flex flex-col mb-4">
                 <label>Generations count</label>

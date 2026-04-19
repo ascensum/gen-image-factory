@@ -17,6 +17,8 @@ export interface JobConfiguration {
     openaiModel: string;
     pollingTimeout: number;
     keywordRandom: boolean;
+    runwareFormat?: string;
+    negativePrompt?: string;
   };
   processing: {
     removeBg: boolean;

@@ -32,6 +32,7 @@ const { countImagesGeneratedSuccessfully } = require(path.join(__dirname, '../ut
 const {
   isRunMetadataGenEnabledForJobConfig,
   isRunQualityCheckEnabledForJobConfig,
+  isRunwareSvgOutputJobConfig,
 } = require(path.join(__dirname, '../utils/jobConfigAiFlags'));
 
 function plannedImageSlots(cfg) {
@@ -200,6 +201,9 @@ class JobService extends EventEmitter {
     try {
       const hasMetadataGen = isRunMetadataGenEnabledForJobConfig(config);
       const hasQC = isRunQualityCheckEnabledForJobConfig(config);
+      const skipRasterAiStages = isRunwareSvgOutputJobConfig(config);
+      /** When QC is off, or QC is on but skipped for SVG, move to final like the no-QC path. */
+      const autoFinalizeWithoutVisionQc = !hasQC || skipRasterAiStages;
       this._backgroundPipelineActive = true;
 
       const result = await this.jobEngine.executeJob(config, this.abortController.signal);
@@ -216,10 +220,13 @@ class JobService extends EventEmitter {
 
       const hasImages = Array.isArray(result.images) && result.images.length > 0;
 
-      // When QC is off: move successful images to final and auto-approve (processing already ran during generation).
+      // When QC is off, or Runware SVG (vision QC / metadata skip): move successful images to final and auto-approve.
       // Do not overwrite qc_failed / retry_failed (e.g. remove.bg mark_failed); those stay for Failed Images Review.
-      if (!hasQC && hasImages && this.imageRepository) {
+      if (autoFinalizeWithoutVisionQc && hasImages && this.imageRepository) {
         const moveState = {};
+        const autoApproveReason = skipRasterAiStages && hasQC
+          ? 'Vision QC skipped for SVG output; auto-approved'
+          : 'QC disabled, auto-approved';
         for (const image of result.images) {
           if (image.qcStatus && image.qcStatus !== 'approved') continue;
           const sourcePath = image.tempImagePath || image.finalImagePath;
@@ -231,16 +238,22 @@ class JobService extends EventEmitter {
             await this.imageRepository.updateImagePathsByMappingId(mId, null, finalPath);
             image.finalImagePath = finalPath;
             image.tempImagePath = null;
-            await this.imageRepository.updateQCStatusByMappingId(mId, 'approved', 'QC disabled, auto-approved').catch(() => {});
+            await this.imageRepository.updateQCStatusByMappingId(mId, 'approved', autoApproveReason).catch(() => {});
           }
         }
       }
 
-      // Metadata generation runs on ALL images regardless of QC outcome.
+      // Metadata generation runs on ALL images regardless of QC outcome (except SVG — raster/OpenAI image path).
       if (hasImages && this.postGen) {
-        if (hasMetadataGen) {
+        if (hasMetadataGen && !skipRasterAiStages) {
           this.liveProgress = { ...this.liveProgress, state: 'running', progress: 95, currentStep: 'metadata_generation' };
           await this.postGen.runMetadataGeneration(result.images, config, this.abortController?.signal);
+        } else if (hasMetadataGen && skipRasterAiStages) {
+          this._addLog('info', 'Skipping AI metadata generation (SVG output — metadata path expects raster)', {
+            stepName: 'image_generation',
+            subStep: 'metadata_skipped_svg',
+            metadata: { runwareFormat: config?.parameters?.runwareFormat },
+          });
         } else {
           this._addLog('info', 'Skipping AI metadata generation (runMetadataGen not enabled in job config)', {
             stepName: 'image_generation',
@@ -253,8 +266,16 @@ class JobService extends EventEmitter {
         }
       }
 
-      // QC (optional): vision QC on temp files. If remove.bg is on, it runs only after approval (generation skipped local processing; see JobEngine.skipLocalImageProcessing).
-      if (hasQC && hasImages && this.postGen) {
+      if (hasQC && skipRasterAiStages) {
+        this._addLog('info', 'Skipping vision QC (SVG output — QC path expects raster)', {
+          stepName: 'image_generation',
+          subStep: 'qc_skipped_svg',
+          metadata: { runwareFormat: config?.parameters?.runwareFormat },
+        });
+      }
+
+      // QC (optional): vision QC on temp files. If remove.bg is on, it runs only after approval (generation skipped local processing; see JobEngine.skipLocalImageProcessing). Skipped for SVG output.
+      if (hasQC && !skipRasterAiStages && hasImages && this.postGen) {
         this.liveProgress = { ...this.liveProgress, state: 'running', progress: 95, currentStep: 'quality_check' };
         await this.postGen.runQualityChecks(result.images, config, this.abortController?.signal);
 

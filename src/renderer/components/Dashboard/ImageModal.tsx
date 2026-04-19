@@ -139,6 +139,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
   // Prefer execution snapshot processing settings for as-run display when available
   // Must be declared before early returns to satisfy Rules of Hooks
   const [snapshotProcessing, setSnapshotProcessing] = useState<any | null>(null);
+  const [snapshotNegativePrompt, setSnapshotNegativePrompt] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     async function fetchExecutionSnapshot() {
@@ -151,13 +152,19 @@ const ImageModal: React.FC<ImageModalProps> = ({
         try { console.log('ImageModal: execution id:', exec?.id, 'hasSnapshot:', !!exec?.configurationSnapshot); } catch {}
         const proc = exec?.configurationSnapshot?.processing || null;
         try { console.log('ImageModal: snapshotProcessing keys:', proc ? Object.keys(proc) : 'null'); } catch {}
-        if (!cancelled) setSnapshotProcessing(proc);
+        const snapParams = exec?.configurationSnapshot?.parameters;
+        const negRaw = snapParams && typeof snapParams.negativePrompt === 'string' ? snapParams.negativePrompt.trim() : '';
+        if (!cancelled) {
+          setSnapshotProcessing(proc);
+          setSnapshotNegativePrompt(negRaw || null);
+        }
       } catch {}
     }
     if (isOpen && image?.id) {
       fetchExecutionSnapshot();
     } else {
       setSnapshotProcessing(null);
+      setSnapshotNegativePrompt(null);
     }
     return () => { cancelled = true; };
   }, [isOpen, image?.id]);
@@ -475,7 +482,14 @@ const ImageModal: React.FC<ImageModalProps> = ({
                       <label className="block text-sm font-medium text-gray-700 mb-1">Generation Prompt</label>
                       <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md border">{image.generationPrompt}</p>
                     </div>
-                    
+                    {snapshotNegativePrompt && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Negative prompt</label>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md border whitespace-pre-wrap">
+                          {snapshotNegativePrompt}
+                        </p>
+                      </div>
+                    )}
                     {image.seed && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Seed</label>

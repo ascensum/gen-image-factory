@@ -482,8 +482,18 @@ class JobRepository {
               THEN 1 ELSE 0 END) as processingFailedWithPath,
             SUM(CASE
               WHEN qc_status = 'approved' THEN 1
-              WHEN (final_image_path IS NOT NULL AND TRIM(final_image_path) != '')
-                OR (temp_image_path IS NOT NULL AND TRIM(temp_image_path) != '') THEN 1
+              WHEN (
+                (final_image_path IS NOT NULL AND TRIM(final_image_path) != '')
+                OR (temp_image_path IS NOT NULL AND TRIM(temp_image_path) != '')
+              )
+              AND NOT (
+                (
+                  LOWER(TRIM(COALESCE(final_image_path, ''))) LIKE '%.svg'
+                  OR LOWER(TRIM(COALESCE(temp_image_path, ''))) LIKE '%.svg'
+                )
+                AND qc_status IN ('qc_failed', 'retry_failed')
+                AND LOWER(COALESCE(qc_reason, '')) LIKE 'processing_failed:download%'
+              ) THEN 1
               WHEN qc_status IN ('qc_failed', 'retry_failed')
                 AND (
                   (

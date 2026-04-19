@@ -71,6 +71,28 @@ describe('jobExecutionOutcome', () => {
     ).toBe(false);
   });
 
+  it('SVG: rejects logistics/download failure even when a .svg path exists (generation failed, not salvage)', () => {
+    expect(
+      imageHadSuccessfulGeneration({
+        qcStatus: 'qc_failed',
+        qcReason: 'processing_failed:download',
+        tempImagePath: '/tmp/partial.svg',
+        finalImagePath: null,
+      })
+    ).toBe(false);
+  });
+
+  it('PNG: download failure with path still counts as successful generation (legacy raster salvage)', () => {
+    expect(
+      imageHadSuccessfulGeneration({
+        qcStatus: 'qc_failed',
+        qcReason: 'processing_failed:download',
+        tempImagePath: '/tmp/partial.png',
+        finalImagePath: null,
+      })
+    ).toBe(true);
+  });
+
   it('countImagesGeneratedSuccessfully sums list', () => {
     const n = countImagesGeneratedSuccessfully([
       { qcStatus: 'approved', finalImagePath: '/f/1.png' },

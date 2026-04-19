@@ -54,6 +54,9 @@ class SettingsComposer {
       settings.parameters.runwareModel = settings.parameters.runwareModel || 'runware:101@1';
       settings.parameters.runwareDimensionsCsv = settings.parameters.runwareDimensionsCsv || '';
       settings.parameters.runwareFormat = settings.parameters.runwareFormat || 'png';
+      if (typeof settings.parameters.negativePrompt !== 'string') {
+        settings.parameters.negativePrompt = '';
+      }
       settings.parameters.variations = Math.max(1, Math.min(20, Number(settings.parameters.variations || 1)));
 
       return { success: true, settings };
