@@ -1,7 +1,6 @@
 /**
  * RetryQueueService - Queue management and orchestration for retry jobs (ADR-012).
- * Extracted from retryExecutor.js lines ~19-340. Logic copied EXACTLY for 1:1 parity.
- * Used via Shadow Bridge when FEATURE_MODULAR_RETRY_QUEUE === 'true'.
+ * ADR-003: DI pattern.  Story 5.3: standalone (retryExecutor deleted).
  *
  * Dependencies (DI): processOneJob(job), emit(event, payload)
  */
@@ -38,7 +37,7 @@ class RetryQueueService {
   }
 
   /**
-   * Add a batch retry job to the queue (exact copy of retryExecutor.js addBatchRetryJob).
+   * Add a batch retry job to the queue.
    * @param {Object} batchRetryJob - Batch retry job object
    * @returns {Promise<Object>} Queued job result
    */
@@ -109,7 +108,7 @@ class RetryQueueService {
   }
 
   /**
-   * Get current queue status (exact copy of retryExecutor getQueueStatus).
+   * Get current queue status.
    * @returns {Object} Queue status
    */
   getQueueStatus() {
@@ -124,7 +123,7 @@ class RetryQueueService {
   }
 
   /**
-   * Process the queue (exact copy of retryExecutor processQueue loop).
+   * Process the queue sequentially.
    * Uses injected processOneJob(job) for each job.
    */
   async startProcessing() {
@@ -135,6 +134,7 @@ class RetryQueueService {
     this.isProcessing = true;
 
     try {
+      let processed = 0;
       while (this.queue.length > 0) {
         const job = this.queue.shift();
 
@@ -179,9 +179,10 @@ class RetryQueueService {
           });
         }
 
+        processed += 1;
         this.emit('progress', {
-          processed: this.processedCount + 1,
-          total: this.totalCount,
+          processed,
+          total: processed + this.queue.length,
           currentJob: job,
           timestamp: new Date(),
           context: 'retry'
@@ -195,7 +196,7 @@ class RetryQueueService {
   }
 
   /**
-   * Clear completed jobs from queue (exact copy of retryExecutor clearCompletedJobs).
+   * Clear completed jobs from the queue.
    */
   clearCompletedJobs() {
     this.queue = this.queue.filter(job => job.status !== 'completed');
@@ -205,7 +206,7 @@ class RetryQueueService {
   }
 
   /**
-   * Stop processing and clear queue (exact copy of retryExecutor stop).
+   * Stop processing and clear the queue.
    */
   stopProcessing() {
     this.isProcessing = false;

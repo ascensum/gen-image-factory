@@ -51,10 +51,13 @@ function useDashboardWithPolling() {
     setShowSingleExportModal: state.setShowSingleExportModal,
     setJobConfiguration: state.setJobConfiguration,
     setGalleryHasMore: state.setGalleryHasMore,
+    logIpcMode: state.logIpcMode,
+    setLogIpcMode: state.setLogIpcMode,
   });
   useDashboardPolling({
     jobStatus: state.jobStatus,
     jobHistory: state.jobHistory,
+    logIpcMode: state.logIpcMode,
     setJobStatus: state.setJobStatus,
     loadJobHistory: actions.loadJobHistory,
     loadStatistics: actions.loadStatistics,

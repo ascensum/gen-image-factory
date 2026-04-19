@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./src/test/keytar-block.ts', './src/test/setup.ts'],
     // Characterization tests share a single SQLite file (createRequire bypasses vi.mock).
     // Running files in parallel causes SQLITE_BUSY. Sequential execution is required.
     fileParallelism: false,

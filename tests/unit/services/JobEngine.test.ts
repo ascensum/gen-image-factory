@@ -33,9 +33,7 @@ describe('JobEngine Unit Tests', () => {
       producePictureModule: vi.fn()
     };
 
-    mockParamsGeneratorModule = {
-      generateParameters: vi.fn()
-    };
+    mockParamsGeneratorModule = vi.fn();
 
     // Load JobEngine
     const module = req('../../../src/services/JobEngine.js');
@@ -75,7 +73,7 @@ describe('JobEngine Unit Tests', () => {
         ai: {}
       };
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt',
         promptContext: 'test context'
       });
@@ -92,7 +90,7 @@ describe('JobEngine Unit Tests', () => {
       expect(result.images).toHaveLength(1);
       expect(result.successfulImages).toBe(1);
       expect(result.failedImages).toBe(0);
-      expect(mockParamsGeneratorModule.generateParameters).toHaveBeenCalledTimes(1);
+      expect(mockParamsGeneratorModule).toHaveBeenCalledTimes(1);
       expect(mockProducePictureModule.producePictureModule).toHaveBeenCalledTimes(1);
     });
 
@@ -106,7 +104,7 @@ describe('JobEngine Unit Tests', () => {
         apiKeys: { test: 'key' }
       };
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt'
       });
 
@@ -121,7 +119,7 @@ describe('JobEngine Unit Tests', () => {
       // Assert
       expect(result.status).toBe('completed');
       expect(result.images).toHaveLength(6); // 3 generations × 2 images each
-      expect(mockParamsGeneratorModule.generateParameters).toHaveBeenCalledTimes(3);
+      expect(mockParamsGeneratorModule).toHaveBeenCalledTimes(3);
       expect(mockProducePictureModule.producePictureModule).toHaveBeenCalledTimes(3);
     });
 
@@ -132,7 +130,7 @@ describe('JobEngine Unit Tests', () => {
         apiKeys: { test: 'key' }
       };
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt'
       });
 
@@ -159,7 +157,7 @@ describe('JobEngine Unit Tests', () => {
         apiKeys: { test: 'key' }
       };
 
-      mockParamsGeneratorModule.generateParameters
+      mockParamsGeneratorModule
         .mockRejectedValueOnce(new Error('Parameter generation failed'))
         .mockResolvedValueOnce({ prompt: 'test prompt' });
 
@@ -186,7 +184,7 @@ describe('JobEngine Unit Tests', () => {
         apiKeys: { test: 'key' }
       };
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt'
       });
 
@@ -204,8 +202,27 @@ describe('JobEngine Unit Tests', () => {
       expect(result.status).toBe('completed');
       expect(result.failedImages).toBe(1);
       expect(result.successfulImages).toBe(1);
+      expect(result.plannedTotal).toBe(2);
+      expect(result.totalImages).toBe(2);
       expect(errorEvents.length).toBe(1);
       expect(errorEvents[0].step).toBe('image_generation');
+    });
+
+    it('should mark job failed when every generation fails (no successful images)', async () => {
+      const config = {
+        parameters: { count: 1, variations: 1 },
+        apiKeys: { test: 'key' }
+      };
+      mockParamsGeneratorModule.mockResolvedValue({ prompt: 'p' });
+      mockProducePictureModule.producePictureModule.mockRejectedValue(new Error('read ETIMEDOUT'));
+      jobEngine.on('error', () => {});
+
+      const result = await jobEngine.executeJob(config);
+
+      expect(result.status).toBe('failed');
+      expect(result.successfulImages).toBe(0);
+      expect(result.failedImages).toBe(1);
+      expect(result.plannedTotal).toBe(1);
     });
 
     it('should handle invalid configuration', async () => {
@@ -241,7 +258,7 @@ describe('JobEngine Unit Tests', () => {
         apiKeys: { test: 'key' }
       };
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt'
       });
 
@@ -270,7 +287,7 @@ describe('JobEngine Unit Tests', () => {
 
       const abortController = new AbortController();
 
-      mockParamsGeneratorModule.generateParameters.mockResolvedValue({
+      mockParamsGeneratorModule.mockResolvedValue({
         prompt: 'test prompt'
       });
 
@@ -322,8 +339,13 @@ describe('JobEngine Unit Tests', () => {
           { path: '/test/image1.png', qcStatus: 'approved' }
         ],
         failedItems: [
-          { mappingId: 'failed-1', stage: 'processing', message: 'Processing failed' }
-        ]
+          {
+            mappingId: 'failed-1',
+            stage: 'remove_bg',
+            message: 'processing_failed:remove_bg',
+            inputImagePath: '/tmp/runware-download.png',
+          },
+        ],
       };
       const genParameters = { prompt: 'test prompt' };
 
@@ -335,6 +357,7 @@ describe('JobEngine Unit Tests', () => {
       expect(images[0].qcStatus).toBe('approved');
       expect(images[1].qcStatus).toBe('qc_failed');
       expect(images[1].qcReason).toContain('processing_failed');
+      expect(images[1].tempImagePath).toBe('/tmp/runware-download.png');
     });
   });
 
@@ -422,7 +445,7 @@ describe('JobEngine Unit Tests', () => {
           variations: 5,
           runwareDimensionsCsv: '512x512'
         },
-        processing: { sharpening: 1 },
+        processing: { sharpening: 1, imageEnhancement: true },
         ai: { metadataPrompt: 'test' }
       };
       const genParameters = { prompt: 'test' };
@@ -434,8 +457,96 @@ describe('JobEngine Unit Tests', () => {
       expect(moduleConfig.generationIndex).toBe(0);
       expect(moduleConfig.variations).toBe(5);
       expect(moduleConfig.runwareDimensionsCsv).toBe('512x512');
-      expect(moduleConfig.processing.sharpening).toBe(1);
-      expect(moduleConfig.ai.metadataPrompt).toBe('test');
+      expect(moduleConfig.sharpening).toBe(1);
+      expect(moduleConfig.imageEnhancement).toBe(true);
+      expect(moduleConfig.runMetadataGen).toBe(false);
+      expect(typeof moduleConfig.pipelineStageLog).toBe('function');
+      expect(moduleConfig.generationRetryAttempts).toBe(1);
+      expect(moduleConfig.generationRetryBackoffMs).toBe(0);
+    });
+
+    it('forwards Runware generation retry settings (clamped)', () => {
+      const config = {
+        parameters: {
+          count: 1,
+          variations: 1,
+          generationRetryAttempts: 4,
+          generationRetryBackoffMs: 750,
+        },
+        processing: {},
+        ai: {},
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.generationRetryAttempts).toBe(4);
+      expect(moduleConfig.generationRetryBackoffMs).toBe(750);
+    });
+
+    it('clamps generationRetryAttempts to [1,5] and backoff to [0,60000]', () => {
+      const config = {
+        parameters: {
+          count: 1,
+          variations: 1,
+          generationRetryAttempts: 99,
+          generationRetryBackoffMs: 999999,
+        },
+        processing: {},
+        ai: {},
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.generationRetryAttempts).toBe(5);
+      expect(moduleConfig.generationRetryBackoffMs).toBe(60000);
+    });
+
+    it('defers local processing when QC and remove.bg are both on (remove.bg runs only after QC approves)', () => {
+      const config = {
+        parameters: { count: 1, variations: 1 },
+        processing: { removeBg: true, imageEnhancement: true, sharpening: 7 },
+        ai: { runQualityCheck: true }
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.skipLocalImageProcessing).toBe(true);
+      expect(moduleConfig.removeBg).toBe(false);
+      expect(moduleConfig.imageEnhancement).toBe(false);
+      expect(moduleConfig.sharpening).toBe(0);
+    });
+
+    it('keeps processing during generation when QC is on but remove.bg is off', () => {
+      const config = {
+        parameters: { count: 1, variations: 1 },
+        processing: { removeBg: false, imageEnhancement: true, sharpening: 4 },
+        ai: { runQualityCheck: true }
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.skipLocalImageProcessing).toBe(false);
+      expect(moduleConfig.imageEnhancement).toBe(true);
+      expect(moduleConfig.sharpening).toBe(4);
+    });
+
+    it('skips local raster processing when Runware output format is SVG (Story 5.4)', () => {
+      const config = {
+        parameters: { count: 1, variations: 1, runwareFormat: 'svg' },
+        processing: { removeBg: false, imageEnhancement: true, sharpening: 4 },
+        ai: { runQualityCheck: false },
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.skipLocalImageProcessing).toBe(true);
+      expect(moduleConfig.imageEnhancement).toBe(false);
+    });
+
+    it('skips local raster processing for text-to-vector Runware models even when format is PNG', () => {
+      const config = {
+        parameters: {
+          count: 1,
+          variations: 1,
+          runwareFormat: 'png',
+          runwareModel: 'recraft:v4@vector',
+        },
+        processing: { removeBg: false, imageEnhancement: true, sharpening: 4 },
+        ai: { runQualityCheck: false },
+      };
+      const moduleConfig = jobEngine._buildModuleConfig(config, { prompt: 'x' }, 0);
+      expect(moduleConfig.skipLocalImageProcessing).toBe(true);
+      expect(moduleConfig.imageEnhancement).toBe(false);
     });
 
     it('should clamp variations to max allowed (10000 total cap)', () => {

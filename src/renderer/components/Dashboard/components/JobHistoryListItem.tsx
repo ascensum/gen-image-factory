@@ -38,10 +38,14 @@ function getJobLabel(job: JobExecution & { displayLabel?: string; label?: string
 function formatDuration(startedAt: Date | null, completedAt?: Date | null): string {
   if (!startedAt) return 'Unknown';
   if (!completedAt) return 'In Progress';
-  const duration = new Date(completedAt).getTime() - new Date(startedAt).getTime();
-  const minutes = Math.floor(duration / (1000 * 60));
-  const hours = Math.floor(minutes / 60);
-  return hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  const totalSec = Math.round(ms / 1000);
+  const hours = Math.floor(totalSec / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
 }
 
 function formatDate(date: Date | null): string {

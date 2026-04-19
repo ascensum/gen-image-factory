@@ -1,0 +1,4 @@
+{
+  "textVectorizeModelIds": ["recraft:v4@vector"],
+  "settingsHelperText": "This model uses Runware vectorize (text-to-SVG). Negative prompt, LoRA, and advanced inference options are not applied."
+}

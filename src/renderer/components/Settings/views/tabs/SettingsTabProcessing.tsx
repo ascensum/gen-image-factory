@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Cog } from 'lucide-react';
 import { Toggle } from '../../Toggle';
+import { ImageEnhancementSliders } from '../../../Common/ImageEnhancementSliders';
 import type { SettingsObject } from '../../../../../types/settings';
 
 interface SettingsTabProcessingProps {
@@ -20,12 +21,32 @@ export function SettingsTabProcessing({
 }: SettingsTabProcessingProps) {
   const showRemoveBgSize = form.processing.removeBg;
 
+  useEffect(() => {
+    if (form.processing.jpgBackground !== 'transparent') return;
+    setForm((prev) => ({
+      ...prev,
+      processing: { ...prev.processing, jpgBackground: 'white' },
+    }));
+    setHasUnsavedChanges(true);
+  }, [form.processing.jpgBackground]);
+
+  const runwareFmt = String(form.parameters?.runwareFormat || '').toLowerCase();
+
   return (
     <div className="space-y-6" data-testid="processing-section">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium text-gray-900">Image Processing</h3>
         <Cog className="h-5 w-5 text-gray-400" />
       </div>
+      {runwareFmt === 'svg' && (
+        <div
+          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          role="note"
+        >
+          We do not support any processing operation for .svg format images for now. AI metadata and vision quality
+          check are skipped for SVG jobs (those steps expect raster images).
+        </div>
+      )}
       <div className="space-y-6">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -35,7 +56,17 @@ export function SettingsTabProcessing({
             </div>
             <Toggle
               checked={form.processing.removeBg}
-              onChange={handleToggleChange('processing', 'removeBg')}
+              onChange={(checked) => {
+                setForm((prev) => ({
+                  ...prev,
+                  processing: {
+                    ...prev.processing,
+                    removeBg: checked,
+                    ...(checked ? {} : { trimTransparentBackground: false }),
+                  },
+                }));
+                setHasUnsavedChanges(true);
+              }}
             />
           </div>
           {showRemoveBgSize && (
@@ -100,8 +131,43 @@ export function SettingsTabProcessing({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Image Enhancement</label>
+              <p className="text-xs text-gray-500">Apply sharpening and saturation (works with or without format conversion)</p>
+            </div>
+            <Toggle
+              ariaLabel="Toggle image enhancement"
+              checked={form.processing.imageEnhancement}
+              onChange={handleToggleChange('processing', 'imageEnhancement')}
+            />
+          </div>
+          {form.processing.imageEnhancement && (
+            <ImageEnhancementSliders
+              variant="settings"
+              idSuffix="settings"
+              sharpening={form.processing.sharpening}
+              saturation={form.processing.saturation}
+              onSharpeningChange={(v) => {
+                setForm((prev) => ({
+                  ...prev,
+                  processing: { ...prev.processing, sharpening: v },
+                }));
+                setHasUnsavedChanges(true);
+              }}
+              onSaturationChange={(v) => {
+                setForm((prev) => ({
+                  ...prev,
+                  processing: { ...prev.processing, saturation: v },
+                }));
+                setHasUnsavedChanges(true);
+              }}
+            />
+          )}
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Image Convert</label>
-              <p className="text-xs text-gray-500">Enable image conversion and processing</p>
+              <p className="text-xs text-gray-500">Re-encode to a chosen format (PNG, JPG, or WebP)</p>
             </div>
             <Toggle
               ariaLabel="Toggle image conversion"
@@ -169,15 +235,16 @@ export function SettingsTabProcessing({
                     </label>
                     <select
                       id="jpg-background"
-                      value={form.processing.jpgBackground}
+                      value={form.processing.jpgBackground || 'white'}
                       onChange={handleInputChange('processing', 'jpgBackground')}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="white">White</option>
                       <option value="black">Black</option>
-                      <option value="transparent">Transparent</option>
                     </select>
-                    <p className="text-xs text-gray-500 mt-1">Background for transparent areas when saving as JPG</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      JPEG cannot store transparency—transparent pixels are flattened to this solid color.
+                    </p>
                   </div>
                 </>
               )}
@@ -205,70 +272,6 @@ export function SettingsTabProcessing({
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-              )}
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Image Enhancement</label>
-                  <p className="text-xs text-gray-500">Apply sharpening and saturation effects</p>
-                </div>
-                <Toggle
-                  checked={form.processing.imageEnhancement}
-                  onChange={handleToggleChange('processing', 'imageEnhancement')}
-                />
-              </div>
-              {form.processing.imageEnhancement && (
-                <>
-                  <div>
-                    <label htmlFor="sharpening" className="block text-sm font-medium text-gray-700 mb-2">
-                      Sharpening (0–10)
-                    </label>
-                    <input
-                      id="sharpening"
-                      type="range"
-                      min={0}
-                      max={10}
-                      step={0.5}
-                      value={form.processing.sharpening}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        if (!isNaN(v)) {
-                          setForm((prev) => ({
-                            ...prev,
-                            processing: { ...prev.processing, sharpening: v },
-                          }));
-                          setHasUnsavedChanges(true);
-                        }
-                      }}
-                      className="w-full"
-                    />
-                    <span className="text-xs text-gray-500">{form.processing.sharpening}</span>
-                  </div>
-                  <div>
-                    <label htmlFor="saturation" className="block text-sm font-medium text-gray-700 mb-2">
-                      Saturation (0–2)
-                    </label>
-                    <input
-                      id="saturation"
-                      type="range"
-                      min={0}
-                      max={2}
-                      step={0.1}
-                      value={form.processing.saturation}
-                      onChange={(e) => {
-                        const v = parseFloat(e.target.value);
-                        if (!isNaN(v)) {
-                          setForm((prev) => ({
-                            ...prev,
-                            processing: { ...prev.processing, saturation: v },
-                          }));
-                          setHasUnsavedChanges(true);
-                        }
-                      }}
-                      className="w-full"
-                    />
-                    <span className="text-xs text-gray-500">{form.processing.saturation}</span>
-                  </div>
-                </>
               )}
             </>
           )}

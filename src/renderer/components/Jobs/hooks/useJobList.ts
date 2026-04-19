@@ -129,7 +129,15 @@ export function useJobList() {
 
   const sortedJobs = useMemo(() => {
     if (!filteredJobs.length) return [];
+    const isActiveJob = (j: JobExecution) => {
+      const s = String((j as any).status || '').toLowerCase();
+      return s === 'running' || s === 'processing' || s === 'pending';
+    };
     const sorted = [...filteredJobs].sort((a, b) => {
+      const aActive = isActiveJob(a);
+      const bActive = isActiveJob(b);
+      if (aActive !== bActive) return aActive ? -1 : 1;
+
       let aValue: any = a[sortField];
       let bValue: any = b[sortField];
       if (sortField === 'startedAt' || sortField === 'completedAt') {

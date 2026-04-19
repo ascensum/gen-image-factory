@@ -10,6 +10,7 @@ export function formatQcLabel(status?: string | null, reason?: string | null): s
   if (r.startsWith('processing_failed:convert')) return 'Conversion failed';
   if (r.startsWith('processing_failed:save_final')) return 'Save failed';
   if (r.startsWith('processing_failed:metadata')) return 'Metadata failed';
+  if (r.startsWith('metadata failed')) return 'Metadata failed';
   if (r.startsWith('processing_failed:qc')) return 'QC analysis failed';
   return 'QC Failed';
 }
@@ -25,6 +26,7 @@ export function formatQcFailureReason(status?: string | null, reason?: string | 
   if (r.startsWith('processing_failed:convert')) return 'The system couldn’t encode to the target format (JPG/WEBP/PNG). When possible, the image was saved in its original format.';
   if (r.startsWith('processing_failed:save_final')) return 'The system failed to save the final image output.';
   if (r.startsWith('processing_failed:metadata')) return 'The system failed to generate the metadata for this image.';
+  if (r.startsWith('metadata failed')) return 'The system failed to generate the metadata for this image.';
   if (r.startsWith('processing_failed:qc')) return 'The system failed to receive QC analysis response for this image.';
   // For genuine QC failures with a model-provided explanation, return undefined
   // so callers can display the original qcReason from the model.

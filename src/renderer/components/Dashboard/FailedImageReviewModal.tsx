@@ -4,6 +4,9 @@ import './FailedImageReviewModal.css';
 import StatusBadge from '../Common/StatusBadge';
 import type { GeneratedImage } from '../../../types/generatedImage';
 import { formatQcLabel, formatQcFailureReason } from '../../utils/qc';
+import { mergeImageProcessingForDisplay } from '../../utils/mergeImageProcessingForDisplay';
+import { coerceProcessingBoolean } from '../../utils/coerceProcessingBoolean';
+import { formatSaturationDisplay, formatSharpeningDisplay } from '../../utils/formatProcessingDisplay';
 
 type TabType = 'details' | 'metadata' | 'processing';
 
@@ -541,45 +544,32 @@ const FailedImageReviewModal: React.FC<FailedImageReviewModalProps> = ({
               {activeTab === 'processing' && (
                 <div className="space-y-4">
                   {(() => {
-                    // Prefer per-image settings only when they differ from snapshot (custom retry),
-                    // otherwise prefer execution snapshot (as-run).
-                    const toObject = (val: any) => {
-                      if (!val) return null;
-                      if (typeof val === 'string') {
-                        try { return JSON.parse(val); } catch { return null; }
-                      }
-                      if (typeof val === 'object') return val;
-                      return null;
-                    };
-                    const pickProcessingKeys = (obj: any) => {
-                      if (!obj || typeof obj !== 'object') return null;
-                      const keys = [
-                        'imageEnhancement','sharpening','saturation','imageConvert','convertToJpg',
-                        'jpgQuality','pngQuality','removeBg','trimTransparentBackground','jpgBackground','removeBgSize'
-                      ];
-                      const out: any = {};
-                      keys.forEach(k => { if (k in obj) out[k] = obj[k]; });
-                      return out;
-                    };
-                    const perImageProc = pickProcessingKeys(toObject((image as any)?.processingSettings));
-                    const snapshotProc = pickProcessingKeys(snapshotProcessing);
-                    const isCustomRetry = !!(perImageProc && snapshotProc && JSON.stringify(perImageProc) !== JSON.stringify(snapshotProc));
-                    const ps = isCustomRetry
-                      ? (toObject((image as any)?.processingSettings) || snapshotProcessing || {})
-                      : (snapshotProcessing || toObject((image as any)?.processingSettings) || {});
+                    const ps = mergeImageProcessingForDisplay(
+                      snapshotProcessing,
+                      (image as any)?.processingSettings
+                    ) as Record<string, any>;
+                    const enhancementOn = coerceProcessingBoolean(ps.imageEnhancement);
                     return (
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Image Enhancement</label>
-                          <p className="text-sm text-gray-900">{ps.imageEnhancement ? 'Yes' : 'No'}</p>
+                          <p className="text-sm text-gray-900">{enhancementOn ? 'Yes' : 'No'}</p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Sharpening</label>
-                          <p className="text-sm text-gray-900">{ps.imageEnhancement ? (ps.sharpening || 0) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}</p>
+                          <p className="text-sm text-gray-900">
+                            {enhancementOn
+                              ? formatSharpeningDisplay(ps.sharpening)
+                              : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
+                          </p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Saturation</label>
-                          <p className="text-sm text-gray-900">{ps.imageEnhancement ? (ps.saturation || 1.4) : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}</p>
+                          <p className="text-sm text-gray-900">
+                            {enhancementOn
+                              ? formatSaturationDisplay(ps.saturation)
+                              : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
+                          </p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Image Convert</label>

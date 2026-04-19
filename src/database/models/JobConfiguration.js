@@ -13,12 +13,9 @@ let sqlite3;
  */
 class JobConfiguration {
   constructor() {
-    // Cross-platform database path resolution
     this.dbPath = this.resolveDatabasePath();
-    
-    // Initialize JobConfigurationRepository (Shadow Bridge - ADR-006, ADR-009, Story 3.2 Phase 3)
-    // Always available but only active if FEATURE_MODULAR_CONFIG_REPOSITORY = 'true'
-    this.configRepository = null;  // Lazy-initialized in init()
+    // configRepository always initialized in init() — flag removed per ADR-015 (Story 5.2)
+    this.configRepository = null;
     
     // Constructor is used in many contexts that don't await init(); prevent unhandled rejections.
     if (process.env.SMOKE_TEST === 'true') {
@@ -153,15 +150,13 @@ class JobConfiguration {
           // NOTE: use configure() (sync) to avoid async PRAGMA on closing handles.
           try { this.db.configure('busyTimeout', 5000); } catch (_) {}
           this.createTables().then(() => {
-            // Initialize JobConfigurationRepository (Shadow Bridge - ADR-006, ADR-009)
-            if (process.env.FEATURE_MODULAR_CONFIG_REPOSITORY === 'true') {
-              try {
-                const { JobConfigurationRepository } = require('../../repositories/JobConfigurationRepository');
-                this.configRepository = new JobConfigurationRepository(this);
-                console.log(' JobConfigurationRepository initialized (modular mode)');
-              } catch (err) {
-                console.warn('Failed to initialize JobConfigurationRepository:', err.message);
-              }
+            // Always initialize JobConfigurationRepository — flag removed per ADR-015 (Story 5.2)
+            try {
+              const { JobConfigurationRepository } = require('../../repositories/JobConfigurationRepository');
+              this.configRepository = new JobConfigurationRepository(this);
+              console.log(' JobConfigurationRepository initialized');
+            } catch (err) {
+              console.warn('Failed to initialize JobConfigurationRepository:', err.message);
             }
             resolve();
           }).catch(reject);
@@ -413,6 +408,7 @@ class JobConfiguration {
         aspectRatios: ['1:1', '16:9', '9:16'],
         mjVersion: '6.1',
         openaiModel: 'gpt-4o',
+        negativePrompt: '',
         pollingTimeout: 15,
         pollingInterval: 1,
         enablePollingTimeout: true,

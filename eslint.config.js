@@ -307,15 +307,6 @@ module.exports = [
       'no-empty': 'warn',
     },
   },
-  // Legacy panels (frozen per ADR-010): avoid refactors; relax hooks and no-empty
-  {
-    files: ['**/*.legacy.{tsx,jsx}'],
-    rules: {
-      'react-hooks/rules-of-hooks': 'off',
-      'react-hooks/exhaustive-deps': 'off',
-      'no-empty': ['warn', { allowEmptyCatch: true }],
-    },
-  },
   {
     ignores: [
       'node_modules/**',

@@ -1,6 +1,5 @@
 /**
- * Story 3.4 Phase 5b: SingleJobView – decomposed view using hooks + tab components.
- * Same UI and behavior as SingleJobView.legacy.tsx.
+ * SingleJobView — decomposed view using hooks + tab components (ADR-010).
  */
 import React from 'react';
 import ExportFileModal from '../../Common/ExportFileModal';
@@ -29,15 +28,20 @@ function formatDuration(startTime: string | Date, endTime?: string | Date): stri
   if (!endTime) return 'In Progress';
   const start = startTime instanceof Date ? startTime : new Date(startTime);
   const end = endTime instanceof Date ? endTime : new Date(endTime);
-  const duration = end.getTime() - start.getTime();
-  const hours = Math.floor(duration / 3600000);
-  const minutes = Math.floor((duration % 3600000) / 60000);
-  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+  const ms = end.getTime() - start.getTime();
+  const totalSec = Math.round(ms / 1000);
+  const hours = Math.floor(totalSec / 3600);
+  const minutes = Math.floor((totalSec % 3600) / 60);
+  const seconds = totalSec % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
 }
 
 const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, onDelete }) => {
   const data = useSingleJobData(jobId);
-  const actions = useSingleJobActions(jobId, onBack, onRerun, onDelete, data.refreshLogs);
+  const [logIpcMode, setLogIpcMode] = React.useState<'standard' | 'debug'>('standard');
+  const actions = useSingleJobActions(jobId, onBack, onRerun, onDelete, () => data.refreshLogs(logIpcMode));
   const settings = useSingleJobSettings(data.job, data.jobConfiguration, data.setJobConfiguration);
   const imagesState = useSingleJobImages(data.images, data.job);
 
@@ -50,7 +54,32 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
     jobConfiguration,
     overviewSettings,
     logs,
+    refreshLogs,
   } = data;
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res: unknown = await (window as any).electronAPI.getSettings?.();
+        const s = res as { settings?: { advanced?: { debugMode?: boolean } } } | undefined;
+        if (cancelled) return;
+        if (!s?.settings?.advanced?.debugMode && logIpcMode === 'debug') {
+          setLogIpcMode('standard');
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [logIpcMode]);
+
+  React.useEffect(() => {
+    if (String(job?.status).toLowerCase() !== 'running') return;
+    void refreshLogs(logIpcMode);
+  }, [logIpcMode, job?.status, refreshLogs]);
   const {
     activeTab,
     handleTabChange,
@@ -84,6 +113,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
     filteredImages,
     qcReasonFilters,
     failedProcessingCount,
+    approvedImagesCount,
+    generatedOkCount,
+    generationFailedCount,
     getImageUiStatus,
     getImageTitle,
   } = imagesState;
@@ -217,6 +249,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
             loadJobData={loadJobData}
             handleSettingsEdit={handleSettingsEdit}
             failedProcessingCount={failedProcessingCount}
+            approvedImagesCount={approvedImagesCount}
+            generatedOkCount={generatedOkCount}
+            generationFailedCount={generationFailedCount}
             formatDate={formatDate}
             formatDuration={formatDuration}
           />
@@ -247,7 +282,9 @@ const SingleJobView: React.FC<SingleJobViewProps> = ({ jobId, onBack, onRerun, o
               <LogViewer
                 logs={logs}
                 jobStatus="running"
-                onRefresh={data.refreshLogs}
+                ipcLogMode={logIpcMode}
+                onIpcLogModeChange={setLogIpcMode}
+                onRefresh={() => refreshLogs(logIpcMode)}
                 minHeight={320}
                 maxHeight="70vh"
               />

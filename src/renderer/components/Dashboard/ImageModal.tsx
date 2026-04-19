@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { buildLocalFileUrl } from '../../utils/urls';
+import { mergeImageProcessingForDisplay } from '../../utils/mergeImageProcessingForDisplay';
+import { coerceProcessingBoolean } from '../../utils/coerceProcessingBoolean';
+import { formatSaturationDisplay, formatSharpeningDisplay } from '../../utils/formatProcessingDisplay';
 import './FailedImageReviewModal.css';
 import type { GeneratedImageWithStringId as GeneratedImage } from '../../../types/generatedImage';
 import StatusBadge from '../Common/StatusBadge';
@@ -136,6 +139,7 @@ const ImageModal: React.FC<ImageModalProps> = ({
   // Prefer execution snapshot processing settings for as-run display when available
   // Must be declared before early returns to satisfy Rules of Hooks
   const [snapshotProcessing, setSnapshotProcessing] = useState<any | null>(null);
+  const [snapshotNegativePrompt, setSnapshotNegativePrompt] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     async function fetchExecutionSnapshot() {
@@ -148,13 +152,19 @@ const ImageModal: React.FC<ImageModalProps> = ({
         try { console.log('ImageModal: execution id:', exec?.id, 'hasSnapshot:', !!exec?.configurationSnapshot); } catch {}
         const proc = exec?.configurationSnapshot?.processing || null;
         try { console.log('ImageModal: snapshotProcessing keys:', proc ? Object.keys(proc) : 'null'); } catch {}
-        if (!cancelled) setSnapshotProcessing(proc);
+        const snapParams = exec?.configurationSnapshot?.parameters;
+        const negRaw = snapParams && typeof snapParams.negativePrompt === 'string' ? snapParams.negativePrompt.trim() : '';
+        if (!cancelled) {
+          setSnapshotProcessing(proc);
+          setSnapshotNegativePrompt(negRaw || null);
+        }
       } catch {}
     }
     if (isOpen && image?.id) {
       fetchExecutionSnapshot();
     } else {
       setSnapshotProcessing(null);
+      setSnapshotNegativePrompt(null);
     }
     return () => { cancelled = true; };
   }, [isOpen, image?.id]);
@@ -232,34 +242,12 @@ const ImageModal: React.FC<ImageModalProps> = ({
     try { console.log('ImageModal - Final metadata object:', metadata); } catch {}
   }
   
-  // Ensure processingSettings is always defined for the Processing tab
-  // Logic: if per-image settings differ from execution snapshot, treat as "retry with custom settings" and prefer per-image.
-  // Otherwise prefer execution snapshot (as-run) for regular flow.
-  const toObject = (val: any) => {
-    if (!val) return null;
-    if (typeof val === 'string') {
-      try { return JSON.parse(val); } catch { return null; }
-    }
-    if (typeof val === 'object') return val;
-    return null;
-  };
-  const pickProcessingKeys = (obj: any) => {
-    if (!obj || typeof obj !== 'object') return null;
-    const keys = [
-      'imageEnhancement','sharpening','saturation','imageConvert','convertToJpg',
-      'jpgQuality','pngQuality','removeBg','trimTransparentBackground','jpgBackground','removeBgSize'
-    ];
-    const out: any = {};
-    keys.forEach(k => { if (k in obj) out[k] = obj[k]; });
-    return out;
-  };
-  const perImageProc = pickProcessingKeys(toObject((image as any)?.processingSettings));
-  const snapshotProc = pickProcessingKeys(snapshotProcessing);
-  const isCustomRetry = !!(perImageProc && snapshotProc && JSON.stringify(perImageProc) !== JSON.stringify(snapshotProc));
-  const processingSettings: any = isCustomRetry
-    ? (toObject((image as any)?.processingSettings) || snapshotProcessing || {})
-    : (snapshotProcessing || toObject((image as any)?.processingSettings) || {});
-
+  // Processing tab: prefer persisted per-image processing_settings (as-processed after retry) over job snapshot; see mergeImageProcessingForDisplay.
+  const processingSettings: any = mergeImageProcessingForDisplay(
+    snapshotProcessing,
+    (image as any)?.processingSettings
+  );
+  const enhancementOn = coerceProcessingBoolean(processingSettings.imageEnhancement);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -494,7 +482,14 @@ const ImageModal: React.FC<ImageModalProps> = ({
                       <label className="block text-sm font-medium text-gray-700 mb-1">Generation Prompt</label>
                       <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md border">{image.generationPrompt}</p>
                     </div>
-                    
+                    {snapshotNegativePrompt && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Negative prompt</label>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-md border whitespace-pre-wrap">
+                          {snapshotNegativePrompt}
+                        </p>
+                      </div>
+                    )}
                     {image.seed && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Seed</label>
@@ -624,26 +619,24 @@ const ImageModal: React.FC<ImageModalProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Image Enhancement</label>
-                        <p className="text-sm text-gray-900">{processingSettings.imageEnhancement ? 'Yes' : 'No'}</p>
+                        <p className="text-sm text-gray-900">{enhancementOn ? 'Yes' : 'No'}</p>
                       </div>
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Sharpening</label>
                         <p className="text-sm text-gray-900">
-                          {processingSettings.imageEnhancement ? 
-                            (processingSettings.sharpening || 0) : 
-                            <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>
-                          }
+                          {enhancementOn
+                            ? formatSharpeningDisplay(processingSettings.sharpening)
+                            : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
                         </p>
                       </div>
                       
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Saturation</label>
                         <p className="text-sm text-gray-900">
-                          {processingSettings.imageEnhancement ? 
-                            (processingSettings.saturation || 1.4) : 
-                            <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>
-                          }
+                          {enhancementOn
+                            ? formatSaturationDisplay(processingSettings.saturation)
+                            : <span className="text-gray-500 italic">Not applied (Image Enhancement OFF)</span>}
                         </p>
                       </div>
                       

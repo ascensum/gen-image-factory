@@ -1,10 +1,6 @@
 /**
- * RetryProcessorService - Single-image retry processing (ADR-012).
- * Logic copied EXACTLY from retryExecutor.js processSingleImage (~350-525).
- * Used via Shadow Bridge when FEATURE_MODULAR_RETRY_PROCESSOR === 'true'.
- *
- * Dependencies (DI): getImage, updateImageStatus, getOriginalJobConfiguration,
- * getFallbackConfiguration, getOriginalProcessingSettings, runPostProcessing, emit
+ * RetryProcessorService - Process individual retry jobs.
+ * ADR-003: DI pattern.  ADR-012: Retry Executor Decomposition.
  */
 
 const path = require('path');

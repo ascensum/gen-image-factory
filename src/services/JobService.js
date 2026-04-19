@@ -16,13 +16,31 @@
  * Related ADRs:
  * - ADR-001: File Size Guardrail (< 400 lines)
  * - ADR-003: Dependency Injection
- * - ADR-006: Shadow Bridge Pattern
  * - ADR-009: Persistence Repository Layer
- * 
- * Feature Toggle: FEATURE_MODULAR_JOB_SERVICE
  */
 
 const { EventEmitter } = require('events');
+const path = require('path');
+const fsSync = require('fs');
+const { PostGenerationService } = require(path.join(__dirname, './PostGenerationService'));
+const { moveImageToFinal } = require(path.join(__dirname, '../utils/moveImageToFinal'));
+const { sanitizeConfigurationSnapshot } = require(path.join(__dirname, '../utils/sanitizeConfigurationSnapshot'));
+const { finalizeBackgroundRun } = require(path.join(__dirname, './jobServiceBackgroundFinalize'));
+const { startJobForExistingExecution } = require(path.join(__dirname, './jobServiceRerunStart'));
+const { attachPostEnginePipelineStageLog } = require(path.join(__dirname, '../utils/attachPostEnginePipelineStageLog'));
+const { countImagesGeneratedSuccessfully } = require(path.join(__dirname, '../utils/jobExecutionOutcome'));
+const {
+  isRunMetadataGenEnabledForJobConfig,
+  isRunQualityCheckEnabledForJobConfig,
+  isRunwareSvgOutputJobConfig,
+} = require(path.join(__dirname, '../utils/jobConfigAiFlags'));
+
+function plannedImageSlots(cfg) {
+  const gens = Math.max(1, Number(cfg?.parameters?.count || 1));
+  const req = Math.max(1, Math.min(20, Number(cfg?.parameters?.variations || 1)));
+  const maxAllowed = Math.max(1, Math.min(20, Math.floor(10000 / Math.max(1, gens))));
+  return gens * Math.min(req, maxAllowed);
+}
 
 /**
  * JobService
@@ -41,182 +59,279 @@ class JobService extends EventEmitter {
   constructor(options = {}) {
     super();
     
-    if (!options.jobEngine) {
-      throw new Error('JobService requires jobEngine dependency');
-    }
-    if (!options.jobRepository) {
-      throw new Error('JobService requires jobRepository dependency');
-    }
+    if (!options.jobEngine) throw new Error('JobService requires jobEngine dependency');
+    if (!options.jobRepository) throw new Error('JobService requires jobRepository dependency');
     
-    // Dependency Injection (ADR-003)
     this.jobEngine = options.jobEngine;
     this.jobRepository = options.jobRepository;
+    this.imageRepository = options.imageRepository || null;
+    this._createImagePipeline = options.createImagePipeline || null;
+
+    this.postGen = this.imageRepository
+      ? new PostGenerationService({ imageRepository: this.imageRepository, addLog: this._addLog.bind(this), createImagePipeline: this._createImagePipeline })
+      : null;
     
-    // Internal state
     this.currentExecutionId = null;
     this.currentJobId = null;
+    this.currentLabel = null;
+    this.currentConfigurationId = null;
+    this.currentStartedAt = null;
     this.abortController = null;
+    /** Set by SingleRerunService / BulkRerunService before startJob() — existing execution row, no new INSERT. */
+    this.databaseExecutionId = null;
+    this.configurationId = null;
+    this.persistedLabel = null;
+    this.isRerun = false;
+    /** True while _runJobInBackground is in flight (after executeJob returns, persist/move/postGen still run). Caps JobEngine progress at 95 so UI never treats the job as completed until paths are final. */
+    this._backgroundPipelineActive = false;
+    this.liveProgress = { state: 'idle', progress: 0, currentStep: '', totalImages: 0, totalGenerations: 1, variations: 1, gensDone: 0 };
+    this._logBuffer = [];
     
-    // Wire up JobEngine event listeners
     this._setupJobEngineListeners();
   }
 
-  /**
-   * Setup event listeners for JobEngine
-   * Pattern: JobEngine emits → JobService persists → JobService re-emits
-   */
+  _addLog(level, message, opts = {}) {
+    const entry = {
+      id: Date.now().toString() + '_' + this._logBuffer.length,
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      source: opts.source || 'job-service',
+      stepName: opts.stepName || '',
+      subStep: opts.subStep || '',
+      metadata: opts.metadata || {}
+    };
+    this._logBuffer.push(entry);
+    if (this._logBuffer.length > 500) this._logBuffer.shift();
+  }
+
+  getLogs(mode) {
+    if (mode === 'debug') return [...this._logBuffer];
+    return this._logBuffer.filter(l => l.level !== 'debug');
+  }
+
   _setupJobEngineListeners() {
-    // Progress events - forward to consumers
     this.jobEngine.on('progress', (data) => {
+      const step = data.step || '';
+      const meta = data.metadata || {};
+      const gensDone = step === 'image_generation' ? (meta.generationIndex != null ? meta.generationIndex + 1 : this.liveProgress.gensDone) : this.liveProgress.gensDone;
+      let progress = data.progress || 0;
+      if (this._backgroundPipelineActive && progress > 95) progress = 95;
+      this.liveProgress = {
+        ...this.liveProgress,
+        state: 'running',
+        progress,
+        currentStep: step,
+        totalImages: meta.totalImages || this.liveProgress.totalImages,
+        totalGenerations: meta.generations || this.liveProgress.totalGenerations,
+        variations: meta.variations || this.liveProgress.variations,
+        gensDone
+      };
       this.emit('progress', data);
     });
 
-    // Image generation events - persist + forward
+    this.jobEngine.on('log', (logEntry) => {
+      this._addLog(logEntry.level || 'info', logEntry.message || '', {
+        source: logEntry.source || 'job-engine',
+        stepName: logEntry.stepName || '',
+        subStep: logEntry.subStep || '',
+        metadata: logEntry.metadata || {}
+      });
+    });
+
     this.jobEngine.on('image-generated', async (data) => {
-      // Forward event to consumers immediately
       this.emit('image-generated', data);
-      
-      // Persist image result (non-blocking)
-      if (this.currentExecutionId && data.image) {
-        try {
-          // Note: Image persistence is handled by ImageRepository
-          // This is a placeholder for future integration
-          // await this.imageRepository.saveGeneratedImage(data.image);
-        } catch (err) {
-          console.warn('JobService: Failed to persist image:', err.message);
-        }
-      }
     });
 
-    // Error events - persist + forward
-    this.jobEngine.on('error', async (error) => {
-      this.emit('error', error);
-      
-      // Update job execution status to failed
-      if (this.currentExecutionId) {
-        try {
-          await this.jobRepository.updateJobExecutionStatus(
-            this.currentExecutionId,
-            'failed',
-            this.currentJobId,
-            error.message || 'Unknown error'
-          );
-        } catch (err) {
-          console.error('JobService: Failed to update execution status:', err);
-        }
-      }
+    this.jobEngine.on('error', (errorData) => {
+      this.emit('error', errorData);
+      // Do not persist per-generation errors here — final execution status comes from
+      // _runJobInBackground after post-processing (partial success must stay completed).
     });
 
-    // Job completion events - persist final results
-    this.jobEngine.on('job-complete', async (result) => {
-      this.emit('job-complete', result);
-      
-      // Update job execution with final statistics
-      if (this.currentExecutionId) {
-        try {
-          await this.jobRepository.updateJobExecution(this.currentExecutionId, {
-            status: result.status || 'completed',
-            endedAt: new Date().toISOString(),
-            totalImages: result.totalImages || 0,
-            successfulImages: result.successfulImages || 0,
-            failedImages: result.failedImages || 0,
-            errorMessage: result.error || null
-          });
-        } catch (err) {
-          console.error('JobService: Failed to update final execution:', err);
-        }
-      }
-    });
+    // job-complete is emitted from _runJobInBackground after persist/move/metadata/QC so IPC matches final paths (not when JobEngine returns).
+  }
+
+  async startJobAsync(config, options = {}) {
+    const configurationSnapshot = sanitizeConfigurationSnapshot(config);
+    const execution = {
+      configurationId: options.configurationId || null,
+      label: options.label || 'Untitled Job',
+      status: 'running',
+      startedAt: new Date().toISOString(),
+      totalImages: 0, successfulImages: 0, failedImages: 0, errorMessage: null,
+      configurationSnapshot
+    };
+    const saveResult = await this.jobRepository.saveJobExecution(execution);
+    if (!saveResult.success) throw new Error('Failed to create job execution record');
+
+    this.currentExecutionId = saveResult.id;
+    this.currentJobId = saveResult.jobId || null;
+    this.currentLabel = options.label || 'Untitled Job';
+    this.currentConfigurationId = options.configurationId || null;
+    this.currentStartedAt = new Date(execution.startedAt);
+    this.abortController = new AbortController();
+    this._logBuffer = [];
+    const gens = Math.max(1, Number(config?.parameters?.count || 1));
+    const vars = Math.max(1, Math.min(20, Number(config?.parameters?.variations || 1)));
+    this.liveProgress = { state: 'running', progress: 0, currentStep: 'starting', totalImages: 0, totalGenerations: gens, variations: vars, gensDone: 0 };
+    this._addLog('info', `Job started: ${gens} generation(s), ${vars} variation(s)`, { stepName: 'initialization', subStep: 'job_start', metadata: { generations: gens, variations: vars } });
+
+    // Fire-and-forget: run job in background so IPC returns immediately
+    this._runJobInBackground(config);
+
+    return this.currentExecutionId;
   }
 
   /**
-   * Start job execution
-   * 
-   * Flow:
-   * 1. Create job execution record (JobRepository)
-   * 2. Delegate orchestration to JobEngine
-   * 3. Listen to events and persist incrementally
-   * 4. Return execution ID for tracking
-   * 
-   * @param {Object} config - Job configuration
-   * @param {Object} options - Execution options
-   * @param {string} options.configurationId - Configuration ID for tracking
-   * @param {string} options.label - Human-readable job label
-   * @returns {Promise<Object>} { success: true, executionId, jobId }
+   * Legacy JobRunner API for SingleRerunService / BulkRerunService (pre–Story 5.3 parity).
+   * @returns {Promise<{ success: boolean, jobId?: string, error?: string }>}
    */
-  async startJob(config, options = {}) {
+  async startJob(config) {
     try {
-      // Validate configuration
-      if (!config) {
-        throw new Error('Job configuration is required');
-      }
-
-      // Step 1: Create job execution record
-      const execution = {
-        configurationId: options.configurationId || null,
-        label: options.label || 'Untitled Job',
-        status: 'running',
-        startedAt: new Date().toISOString(),
-        totalImages: 0,
-        successfulImages: 0,
-        failedImages: 0,
-        errorMessage: null
-      };
-
-      const saveResult = await this.jobRepository.saveJobExecution(execution);
-      if (!saveResult.success) {
-        throw new Error('Failed to create job execution record');
-      }
-
-      this.currentExecutionId = saveResult.id;
-      this.currentJobId = saveResult.jobId || null;
-
-      // Step 2: Create abort controller for cancellation
-      this.abortController = new AbortController();
-
-      // Step 3: Execute job via JobEngine
-      // JobEngine will emit events that we're listening to
-      const result = await this.jobEngine.executeJob(config, this.abortController.signal);
-
-      // Step 4: Return execution tracking info
-      return {
-        success: true,
-        executionId: this.currentExecutionId,
-        jobId: this.currentJobId,
-        result: result
-      };
-    } catch (error) {
-      console.error('JobService.startJob failed:', error);
-      
-      // Update execution status to failed
-      if (this.currentExecutionId) {
-        try {
-          await this.jobRepository.updateJobExecutionStatus(
-            this.currentExecutionId,
-            'failed',
-            this.currentJobId,
-            error.message
-          );
-        } catch (updateErr) {
-          console.error('Failed to update execution status:', updateErr);
-        }
-      }
-      
-      throw error;
-    } finally {
-      // Cleanup
-      this.currentExecutionId = null;
-      this.currentJobId = null;
-      this.abortController = null;
+      return await startJobForExistingExecution(this, config);
+    } catch (e) {
+      return { success: false, error: e.message };
     }
   }
 
-  /**
-   * Stop current job execution
-   * Delegates to JobEngine's stop mechanism
-   * 
-   * @returns {Promise<Object>} { success: true, message }
-   */
+  async _runJobInBackground(config) {
+    let successResult = null;
+    let lastError = null;
+    try {
+      const hasMetadataGen = isRunMetadataGenEnabledForJobConfig(config);
+      const hasQC = isRunQualityCheckEnabledForJobConfig(config);
+      const skipRasterAiStages = isRunwareSvgOutputJobConfig(config);
+      /** When QC is off, or QC is on but skipped for SVG, move to final like the no-QC path. */
+      const autoFinalizeWithoutVisionQc = !hasQC || skipRasterAiStages;
+      this._backgroundPipelineActive = true;
+
+      const result = await this.jobEngine.executeJob(config, this.abortController.signal);
+
+      attachPostEnginePipelineStageLog(config, this._addLog.bind(this));
+
+      if (this.imageRepository && Array.isArray(result.images)) {
+        for (const img of result.images) {
+          try {
+            await this.imageRepository.saveGeneratedImage({ ...img, executionId: this.currentExecutionId });
+          } catch (e) { console.warn('JobService: Failed to persist image:', e.message); }
+        }
+      }
+
+      const hasImages = Array.isArray(result.images) && result.images.length > 0;
+
+      // When QC is off, or Runware SVG (vision QC / metadata skip): move successful images to final and auto-approve.
+      // Do not overwrite qc_failed / retry_failed (e.g. remove.bg mark_failed); those stay for Failed Images Review.
+      if (autoFinalizeWithoutVisionQc && hasImages && this.imageRepository) {
+        const moveState = {};
+        const autoApproveReason = skipRasterAiStages && hasQC
+          ? 'Vision QC skipped for SVG output; auto-approved'
+          : 'QC disabled, auto-approved';
+        for (const image of result.images) {
+          if (image.qcStatus && image.qcStatus !== 'approved') continue;
+          const sourcePath = image.tempImagePath || image.finalImagePath;
+          const mId = image.imageMappingId;
+          if (!sourcePath || !mId) continue;
+          try { fsSync.accessSync(sourcePath); } catch { continue; }
+          const finalPath = await moveImageToFinal(sourcePath, mId, config, moveState);
+          if (finalPath) {
+            await this.imageRepository.updateImagePathsByMappingId(mId, null, finalPath);
+            image.finalImagePath = finalPath;
+            image.tempImagePath = null;
+            await this.imageRepository.updateQCStatusByMappingId(mId, 'approved', autoApproveReason).catch(() => {});
+          }
+        }
+      }
+
+      // Metadata generation runs on ALL images regardless of QC outcome (except SVG — raster/OpenAI image path).
+      if (hasImages && this.postGen) {
+        if (hasMetadataGen && !skipRasterAiStages) {
+          this.liveProgress = { ...this.liveProgress, state: 'running', progress: 95, currentStep: 'metadata_generation' };
+          await this.postGen.runMetadataGeneration(result.images, config, this.abortController?.signal);
+        } else if (hasMetadataGen && skipRasterAiStages) {
+          this._addLog('info', 'Skipping AI metadata generation (SVG output — metadata path expects raster)', {
+            stepName: 'image_generation',
+            subStep: 'metadata_skipped_svg',
+            metadata: { runwareFormat: config?.parameters?.runwareFormat },
+          });
+        } else {
+          this._addLog('info', 'Skipping AI metadata generation (runMetadataGen not enabled in job config)', {
+            stepName: 'image_generation',
+            subStep: 'metadata_skipped',
+            metadata: {
+              runMetadataGen: config?.ai?.runMetadataGen,
+              aiKeys: config?.ai && typeof config.ai === 'object' ? Object.keys(config.ai) : [],
+            },
+          });
+        }
+      }
+
+      if (hasQC && skipRasterAiStages) {
+        this._addLog('info', 'Skipping vision QC (SVG output — QC path expects raster)', {
+          stepName: 'image_generation',
+          subStep: 'qc_skipped_svg',
+          metadata: { runwareFormat: config?.parameters?.runwareFormat },
+        });
+      }
+
+      // QC (optional): vision QC on temp files. If remove.bg is on, it runs only after approval (generation skipped local processing; see JobEngine.skipLocalImageProcessing). Skipped for SVG output.
+      if (hasQC && !skipRasterAiStages && hasImages && this.postGen) {
+        this.liveProgress = { ...this.liveProgress, state: 'running', progress: 95, currentStep: 'quality_check' };
+        await this.postGen.runQualityChecks(result.images, config, this.abortController?.signal);
+
+        const approvedImages = result.images.filter(img => img.qcStatus === 'approved');
+        if (approvedImages.length > 0) {
+          this.liveProgress = { ...this.liveProgress, progress: 95, currentStep: 'finalize_approved' };
+          await this.postGen.runPostQCProcessing(approvedImages, config, this.abortController?.signal);
+        }
+      }
+
+      const planned = plannedImageSlots(config);
+      const generatedOkCount = countImagesGeneratedSuccessfully(result.images);
+      const successfulImages = generatedOkCount;
+      const failedImages = Math.max(0, planned - generatedOkCount);
+      let terminalStatus = result.status || 'completed';
+      if (terminalStatus !== 'aborted' && terminalStatus !== 'stopped') {
+        if (generatedOkCount > 0) terminalStatus = 'completed';
+        else if (failedImages > 0 && planned > 0) terminalStatus = 'failed';
+      }
+
+      if (this.currentExecutionId) {
+        await this.jobRepository.updateJobExecution(this.currentExecutionId, {
+          configurationId: this.currentConfigurationId,
+          startedAt: this.currentStartedAt,
+          completedAt: new Date(),
+          status: terminalStatus,
+          totalImages: planned,
+          successfulImages,
+          failedImages,
+          errorMessage: null,
+          label: this.currentLabel
+        }).catch(e => console.warn('JobService: Failed to update execution:', e.message));
+      }
+
+      successResult = {
+        ...result,
+        status: terminalStatus,
+        totalImages: planned,
+        successfulImages,
+        failedImages,
+        plannedTotal: planned
+      };
+    } catch (error) {
+      lastError = error;
+      console.error('JobService: background job failed:', error);
+      if (this.currentExecutionId) {
+        await this.jobRepository.updateJobExecutionStatus(
+          this.currentExecutionId, 'failed', this.currentJobId, error.message
+        ).catch(e => console.error('Failed to update execution status:', e));
+      }
+      this.liveProgress = { state: 'failed', progress: 0, currentStep: 'failed', totalImages: 0 };
+    } finally {
+      finalizeBackgroundRun(this, { successResult, lastError });
+    }
+  }
+
   async stopJob() {
     try {
       if (!this.abortController) {
@@ -244,12 +359,17 @@ class JobService extends EventEmitter {
   }
 
   /**
-   * Get job execution status
-   * 
-   * @param {string|number} executionId - Execution ID
-   * @returns {Promise<Object>} Execution details
+   * Get job execution status from DB, or legacy no-arg probe for rerun services.
+   *
+   * @param {string|number} [executionId] - When omitted, returns { status: 'running'|'idle' } for in-process runner.
+   * @returns {Promise<Object>}
    */
   async getJobStatus(executionId) {
+    if (arguments.length === 0) {
+      const busy =
+        this.currentExecutionId != null || this._backgroundPipelineActive === true;
+      return { status: busy ? 'running' : 'idle' };
+    }
     try {
       const result = await this.jobRepository.getJobExecution(executionId);
       return result;

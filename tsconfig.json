@@ -31,6 +31,7 @@
     "src/renderer/**/*",
     "src/types/**/*",
     "src/renderer/types/**/*",
+    "src/constants/runwareTextVectorize.json",
     "vite.config.ts"
   ],
   "exclude": [

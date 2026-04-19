@@ -3,6 +3,7 @@
  */
 import React from 'react';
 import { Toggle } from '../../Settings/Toggle';
+import { ImageEnhancementSliders } from '../../Common/ImageEnhancementSliders';
 import type { ProcessingSettings } from '../../../../types/processing';
 
 interface ProcessingSettingsModalContentProps {
@@ -43,7 +44,6 @@ const ProcessingSettingsModalContent: React.FC<ProcessingSettingsModalContentPro
   removeBgSizeRef,
 }) => {
   const showSharpening = batchSettings.imageEnhancement;
-  const showSaturation = batchSettings.imageEnhancement;
   const showConvertFormat = batchSettings.imageConvert;
   const showQualitySettings = batchSettings.imageConvert;
   const showJpgQuality = batchSettings.imageConvert && batchSettings.convertToJpg;
@@ -122,18 +122,31 @@ const ProcessingSettingsModalContent: React.FC<ProcessingSettingsModalContentPro
             </svg>
             <div className="flex-1">
               <h4 className="text-sm font-medium text-blue-800">Metadata Regeneration</h4>
-              <p className="text-sm text-blue-700 mt-1">
-                Choose whether to regenerate metadata for the selected images during retry processing.
-              </p>
+              {useOriginalSettings ? (
+                <p className="text-sm text-blue-700 mt-1">
+                  Retry with original settings uses the saved job configuration: if that job had metadata generation
+                  enabled, metadata runs automatically with remove.bg, convert, and other processing from that job.
+                  Use the toggle below only when the job did not originally include metadata and you want to add it
+                  on this retry.
+                </p>
+              ) : (
+                <p className="text-sm text-blue-700 mt-1">
+                  Choose whether to regenerate metadata for the selected images during retry processing.
+                </p>
+              )}
               <div className="mt-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-blue-800 font-medium">
-                    Also regenerate metadata (titles, descriptions, tags)
+                    {useOriginalSettings
+                      ? 'Add metadata on retry (job did not use metadata originally)'
+                      : 'Also regenerate metadata (titles, descriptions, tags)'}
                   </span>
                   <Toggle checked={includeMetadata} onChange={setIncludeMetadata} />
                 </div>
                 <p className="text-xs text-blue-600 mt-1">
-                  This will regenerate AI-generated metadata for all selected images using the current AI model settings.
+                  {useOriginalSettings
+                    ? 'When off, metadata still runs if it was enabled for that job in settings.'
+                    : 'Regenerates AI metadata for all selected images using the current AI model settings.'}
                 </p>
               </div>
             </div>
@@ -217,35 +230,15 @@ const ProcessingSettingsModalContent: React.FC<ProcessingSettingsModalContentPro
               />
             </div>
             {showSharpening && (
-              <div ref={sharpeningRef} className="scroll-mt-4">
-                <label htmlFor="sharpening" className="block text-sm font-medium text-gray-700 mb-2">Sharpening Level (0-10)</label>
-                <input
-                  id="sharpening"
-                  type="number"
-                  value={batchSettings.sharpening}
-                  onChange={(e) => updateSetting('sharpening', parseInt(e.target.value, 10))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  min={0}
-                  max={10}
-                />
-                <p className="text-xs text-gray-500 mt-1">Sharpening intensity for image enhancement</p>
-              </div>
-            )}
-            {showSaturation && (
-              <div>
-                <label htmlFor="saturation" className="block text-sm font-medium text-gray-700 mb-2">Saturation Level (0.0-2.0)</label>
-                <input
-                  id="saturation"
-                  type="number"
-                  value={batchSettings.saturation}
-                  onChange={(e) => updateSetting('saturation', parseFloat(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  min={0}
-                  max={2}
-                  step={0.1}
-                />
-                <p className="text-xs text-gray-500 mt-1">Saturation adjustment for image enhancement</p>
-              </div>
+              <ImageEnhancementSliders
+                variant="dashboard"
+                idSuffix="batch-retry-content"
+                sharpening={batchSettings.sharpening}
+                saturation={batchSettings.saturation}
+                onSharpeningChange={(v) => updateSetting('sharpening', v)}
+                onSaturationChange={(v) => updateSetting('saturation', v)}
+                sharpeningSectionRef={sharpeningRef}
+              />
             )}
           </div>
 
@@ -254,7 +247,7 @@ const ProcessingSettingsModalContent: React.FC<ProcessingSettingsModalContentPro
             <div className="flex items-center justify-between">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Image Convert</label>
-                <p className="text-xs text-gray-500">Enable image conversion and processing</p>
+                <p className="text-xs text-gray-500">Re-encode to a chosen format (PNG, JPG, or WebP)</p>
               </div>
               <Toggle
                 ariaLabel="Enable image conversion"

@@ -1,5 +1,4 @@
 /**
- * Story 3.4 Phase 5b: SingleJobView – thin wrapper; implementation in views/SingleJobView.
- * Legacy backup: SingleJobView.legacy.tsx
+ * SingleJobView — thin wrapper; implementation in views/SingleJobView (ADR-010).
  */
 export { SingleJobView as default } from './views/SingleJobView';

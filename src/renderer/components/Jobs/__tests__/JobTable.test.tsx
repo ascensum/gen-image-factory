@@ -239,7 +239,7 @@ describe('JobTable', () => {
     render(<JobTable {...defaultProps} />);
     
     // Completed job should show duration
-    expect(screen.getByText('5m')).toBeInTheDocument();
+    expect(screen.getByText(/5m(?:\s+0s)?/)).toBeInTheDocument();
     
     // Processing job should show "In Progress"
     expect(screen.getByText('In Progress')).toBeInTheDocument();

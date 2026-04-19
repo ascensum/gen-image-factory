@@ -464,20 +464,24 @@ describe('ExportService Unit Tests', () => {
     });
   });
 
-  describe('_formatSettingLabel (private helper)', () => {
+  describe('formatSettingLabel (exported from exportHelpers)', () => {
+    const { formatSettingLabel } = require(path.join(process.cwd(), 'src/utils/exportHelpers'));
+
     it('should format known parameter keys', () => {
-      expect(exportService._formatSettingLabel('parameters.runwareModel')).toBe('Runware Model');
-      expect(exportService._formatSettingLabel('processing.removeBg')).toBe('Remove Background');
-      expect(exportService._formatSettingLabel('ai.runQualityCheck')).toBe('Run Quality Check');
+      expect(formatSettingLabel('parameters.runwareModel')).toBe('Runware Model');
+      expect(formatSettingLabel('processing.removeBg')).toBe('Remove Background');
+      expect(formatSettingLabel('ai.runQualityCheck')).toBe('Run Quality Check');
     });
 
     it('should format unknown keys by humanizing camelCase', () => {
-      expect(exportService._formatSettingLabel('customSetting')).toBe('Custom Setting');
-      expect(exportService._formatSettingLabel('parameters.customValue')).toBe('Custom Value');
+      expect(formatSettingLabel('customSetting')).toBe('Custom Setting');
+      expect(formatSettingLabel('parameters.customValue')).toBe('Custom Value');
     });
   });
 
-  describe('_flattenSettings (private helper)', () => {
+  describe('flattenSettings (exported from exportHelpers)', () => {
+    const { flattenSettings } = require(path.join(process.cwd(), 'src/utils/exportHelpers'));
+
     it('should flatten nested objects', () => {
       const settings = {
         parameters: {
@@ -491,7 +495,7 @@ describe('ExportService Unit Tests', () => {
         }
       };
 
-      const flattened = exportService._flattenSettings(settings);
+      const flattened = flattenSettings(settings);
 
       expect(flattened).toContainEqual(['parameters.runwareModel', 'test-model']);
       expect(flattened).toContainEqual(['parameters.runwareAdvanced.CFGScale', 7]);
@@ -499,7 +503,7 @@ describe('ExportService Unit Tests', () => {
     });
 
     it('should handle empty objects', () => {
-      const flattened = exportService._flattenSettings({});
+      const flattened = flattenSettings({});
       expect(flattened).toEqual([]);
     });
 
@@ -508,7 +512,7 @@ describe('ExportService Unit Tests', () => {
         items: [1, 2, 3]
       };
 
-      const flattened = exportService._flattenSettings(settings);
+      const flattened = flattenSettings(settings);
       expect(flattened).toContainEqual(['items', [1, 2, 3]]);
     });
   });

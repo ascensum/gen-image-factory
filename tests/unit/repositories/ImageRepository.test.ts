@@ -293,29 +293,23 @@ describe('ImageRepository Unit Tests', () => {
         }
       }));
 
-      mockModel.getGeneratedImage.mockImplementation((id) => 
-        Promise.resolve(mockImages.find(img => img.image.id === id))
-      );
+      // Spy on the repository's own getGeneratedImage (BUG-002 fix: no longer calls model.getGeneratedImage)
+      const getGeneratedImageSpy = vi.spyOn(repository, 'getGeneratedImage')
+        .mockImplementation((id: number) =>
+          Promise.resolve(mockImages.find(img => img.image.id === id))
+        );
 
-      mockDb.run.mockImplementation(function(sql, params, callback) {
+      mockDb.run.mockImplementation(function(sql: string, params: unknown[], callback: Function) {
         // Use function() to preserve 'this' context
-        this.changes = 3;
+        (this as any).changes = 3;
         callback.call(this, null);
       });
-
-      // Mock fs.promises.unlink
-      const mockUnlink = vi.fn().mockResolvedValue(undefined);
-      vi.doMock('fs', () => ({
-        promises: {
-          unlink: mockUnlink
-        }
-      }));
 
       // Act
       const result = await repository.bulkDeleteGeneratedImages(imageIds);
 
       // Assert
-      expect(mockModel.getGeneratedImage).toHaveBeenCalledTimes(3);
+      expect(getGeneratedImageSpy).toHaveBeenCalledTimes(3);
       expect(mockDb.run).toHaveBeenCalledWith(
         expect.stringContaining('DELETE FROM generated_images WHERE id IN'),
         imageIds,
@@ -346,13 +340,14 @@ describe('ImageRepository Unit Tests', () => {
 
     it('should continue even if file deletion fails', async () => {
       // Arrange
-      mockModel.getGeneratedImage.mockResolvedValue({
+      // Spy on the repository's own getGeneratedImage (BUG-002 fix: no longer calls model.getGeneratedImage)
+      vi.spyOn(repository, 'getGeneratedImage').mockResolvedValue({
         success: true,
         image: { id: 1, finalImagePath: '/test/1.png' }
       });
 
-      mockDb.run.mockImplementation(function(sql, params, callback) {
-        this.changes = 1;
+      mockDb.run.mockImplementation(function(sql: string, params: unknown[], callback: Function) {
+        (this as any).changes = 1;
         callback.call(this, null);
       });
 
@@ -381,7 +376,11 @@ describe('ImageRepository Unit Tests', () => {
           temp_image_path: null,
           metadata: null,
           processing_settings: null,
-          created_at: '2024-01-01T00:00:00Z'
+          created_at: '2024-01-01T00:00:00Z',
+          je_label: null,
+          je_started_at: null,
+          je_configuration_snapshot: null,
+          jc_configuration_name: null,
         }
       ];
 
@@ -394,13 +393,14 @@ describe('ImageRepository Unit Tests', () => {
 
       // Assert
       expect(mockDb.all).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE qc_status = ?'),
+        expect.stringMatching(/FROM\s+generated_images\s+gi[\s\S]*job_executions/i),
         ['approved'],
         expect.any(Function)
       );
       expect(result.success).toBe(true);
       expect(result.images).toHaveLength(1);
       expect(result.images[0].qcStatus).toBe('approved');
+      expect(result.images[0].jobDisplayLabel).toBe('Job exec-1');
     });
 
     it('should return empty array for non-matching status', async () => {

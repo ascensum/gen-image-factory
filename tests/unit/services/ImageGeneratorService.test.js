@@ -66,6 +66,41 @@ describe('ImageGeneratorService', () => {
       });
       await expect(service.generateImages({ prompt: 'test' }, 'test', {}))
         .rejects.toThrow(/Runware request failed \(400\)/);
+      expect(mockAxios.post).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries Runware POST on retryable errors when generationRetryAttempts > 1', async () => {
+      mockAxios.post
+        .mockRejectedValueOnce({ response: { status: 503 } })
+        .mockResolvedValueOnce({ data: { data: [{ imageURL: 'https://example.com/img1.png' }] } });
+      mockAxios.get.mockResolvedValue({
+        status: 200,
+        data: Buffer.from('fake-data'),
+        headers: { 'content-type': 'image/png' },
+      });
+
+      const result = await service.generateImages(
+        { prompt: 'test' },
+        'test-job',
+        { generationRetryAttempts: 2, generationRetryBackoffMs: 0 },
+      );
+
+      expect(result.successfulDownloads).toHaveLength(1);
+      expect(mockAxios.post).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not retry Runware POST on 400 even with higher generationRetryAttempts', async () => {
+      mockAxios.post.mockRejectedValue({
+        response: { status: 400, data: { errors: ['bad'] } },
+      });
+      await expect(
+        service.generateImages(
+          { prompt: 'test' },
+          'test',
+          { generationRetryAttempts: 3, generationRetryBackoffMs: 0 },
+        ),
+      ).rejects.toThrow(/Runware request failed \(400\)/);
+      expect(mockAxios.post).toHaveBeenCalledTimes(1);
     });
 
     it('should implement top-up mechanism if provider returns fewer images', async () => {
@@ -96,6 +131,110 @@ describe('ImageGeneratorService', () => {
       expect(result.successfulDownloads).toHaveLength(0);
       expect(result.failedItems).toHaveLength(1);
       expect(result.failedItems[0].stage).toBe('download');
+    });
+
+    it('uses vectorize body for recraft:v4@vector (no negativePrompt, outputFormat SVG)', async () => {
+      mockAxios.post.mockResolvedValue({
+        data: { data: [{ imageURL: 'https://cdn.example.com/out.svg' }] },
+      });
+      mockAxios.get.mockResolvedValue({
+        status: 200,
+        data: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
+        headers: { 'content-type': 'image/svg+xml' },
+      });
+
+      await service.generateImages(
+        {
+          prompt: 'vector tea emblem',
+          parameters: {
+            runwareModel: 'recraft:v4@vector',
+            runwareFormat: 'png',
+            negativePrompt: 'should not apply',
+            runwareAdvancedEnabled: true,
+            runwareAdvanced: { CFGScale: 7, steps: 30 },
+            loraEnabled: true,
+            lora: [{ model: 'x:lora@1', weight: 1 }],
+          },
+        },
+        'vec-job',
+        {},
+      );
+
+      expect(mockAxios.post).toHaveBeenCalled();
+      const body = mockAxios.post.mock.calls[0][1][0];
+      expect(body.taskType).toBe('vectorize');
+      expect(body.model).toBe('recraft:v4@vector');
+      expect(body.outputFormat).toBe('SVG');
+      expect(body).not.toHaveProperty('negativePrompt');
+      expect(body).not.toHaveProperty('numberResults');
+      expect(body).not.toHaveProperty('lora');
+      const writtenTo = mockFs.writeFile.mock.calls[0][0];
+      expect(String(writtenTo)).toMatch(/\.svg$/i);
+    });
+
+    it('sends outputFormat svg and negativePrompt in Runware body when parameters request them', async () => {
+      mockAxios.post.mockResolvedValue({
+        data: { data: [{ imageURL: 'https://cdn.example.com/result.svg' }] },
+      });
+      mockAxios.get.mockResolvedValue({
+        status: 200,
+        data: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
+        headers: { 'content-type': 'image/svg+xml' },
+      });
+
+      await service.generateImages(
+        {
+          prompt: 'vector icon',
+          parameters: { runwareFormat: 'svg', negativePrompt: '  watermark  ' },
+        },
+        'svg-job',
+        {},
+      );
+
+      expect(mockAxios.post).toHaveBeenCalled();
+      const body = mockAxios.post.mock.calls[0][1][0];
+      expect(body.outputFormat).toBe('svg');
+      expect(body.negativePrompt).toBe('watermark');
+      const writtenTo = mockFs.writeFile.mock.calls[0][0];
+      expect(String(writtenTo)).toMatch(/\.svg$/i);
+    });
+
+    it('omits negativePrompt from Runware body when empty or whitespace', async () => {
+      mockAxios.post.mockResolvedValue({ data: { data: [{ imageURL: 'https://example.com/img1.png' }] } });
+      mockAxios.get.mockResolvedValue({
+        status: 200,
+        data: Buffer.from('x'),
+        headers: { 'content-type': 'image/png' },
+      });
+      await service.generateImages(
+        { prompt: 'x', parameters: { negativePrompt: '   \n\t  ' } },
+        'job',
+        {},
+      );
+      const body = mockAxios.post.mock.calls[0][1][0];
+      expect(body.negativePrompt).toBeUndefined();
+    });
+
+    it('retries CDN GET on retryable errors when generationRetryAttempts > 1', async () => {
+      mockAxios.post.mockResolvedValue({
+        data: { data: [{ imageURL: 'https://cdn.example.com/img1.png' }] },
+      });
+      mockAxios.get
+        .mockRejectedValueOnce({ response: { status: 503 } })
+        .mockResolvedValueOnce({
+          status: 200,
+          data: Buffer.from('ok'),
+          headers: { 'content-type': 'image/png' },
+        });
+
+      const result = await service.generateImages(
+        { prompt: 'test' },
+        'test',
+        { generationRetryAttempts: 2, generationRetryBackoffMs: 0 },
+      );
+
+      expect(result.successfulDownloads).toHaveLength(1);
+      expect(mockAxios.get).toHaveBeenCalledTimes(2);
     });
   });
 

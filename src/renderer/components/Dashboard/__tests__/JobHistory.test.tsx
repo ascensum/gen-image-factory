@@ -109,7 +109,7 @@ describe('JobHistory', () => {
     
     render(<JobHistory {...defaultProps} jobs={jobsWithDuration} />);
     
-    expect(screen.getByText('5m')).toBeInTheDocument();
+    expect(screen.getByText(/5m(?:\s+0s)?/)).toBeInTheDocument();
   });
 
   it('applies correct status colors', () => {

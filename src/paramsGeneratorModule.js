@@ -3,6 +3,20 @@ const path = require('path');
 const { logDebug } = require(path.join(__dirname, './utils/logDebug'));
 try { require('dotenv').config(); } catch (_e) {}
 
+/**
+ * Match ImageGeneratorService / PostGenerationService: when generation timeout is enabled,
+ * use pollingTimeout (minutes); otherwise 30s default (avoids OpenAI SDK ~10m hang on bad network).
+ */
+function resolveOpenAiRequestTimeoutMs(cfg = {}) {
+  const p = cfg.parameters || {};
+  const enable = p.enablePollingTimeout === true || cfg.enablePollingTimeout === true;
+  const minutes = Number(p.pollingTimeout ?? cfg.pollingTimeout);
+  if (enable && Number.isFinite(minutes)) {
+    return Math.max(1000, minutes * 60 * 1000);
+  }
+  return 30_000;
+}
+
 async function paramsGeneratorModule(
   keywordsData,
   customSystemPrompt,
@@ -13,6 +27,7 @@ async function paramsGeneratorModule(
 
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
+    timeout: resolveOpenAiRequestTimeoutMs(config),
   });
 
   try {
@@ -80,17 +95,17 @@ async function paramsGeneratorModule(
 
     // Some models (e.g., gpt-5 family) only support default temperature (1). Fallback to 1.
     const safeTemperature = (openaiModel && /^gpt-5/i.test(openaiModel)) ? 1 : 0.7;
-    const completion = await openai.chat.completions.create({
+    const requestBody = {
       model: openaiModel,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ],
       temperature: safeTemperature,
-      // Abort support: OpenAI SDK (v4+) accepts signal in fetch options via second param.
-    });
-    // Note: official OpenAI SDK doesn't surface signal in this call signature across all versions.
-    // If using a version that supports it, wire the signal via client options; otherwise this is a no-op.
+    };
+    const completion = signal
+      ? await openai.chat.completions.create(requestBody, { signal })
+      : await openai.chat.completions.create(requestBody);
 
     const response = completion.choices[0].message.content;
     logDebug('OpenAI response:', response);

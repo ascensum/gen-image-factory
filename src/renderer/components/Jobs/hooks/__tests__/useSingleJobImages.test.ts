@@ -85,14 +85,57 @@ describe('useSingleJobImages', () => {
     expect(result.current.viewMode).toBe('list');
   });
 
-  it('failedProcessingCount counts qc_failed and retry_failed', () => {
+  it('failedProcessingCount counts qc_failed/retry_failed only when a file path exists (post-gen failures)', () => {
     const images = [
       { ...baseImage, id: '1', qcStatus: 'approved' },
-      { ...baseImage, id: '2', qcStatus: 'qc_failed' },
-      { ...baseImage, id: '3', qcStatus: 'retry_failed' },
+      { ...baseImage, id: '2', qcStatus: 'qc_failed', finalImagePath: '/out/2.png' },
+      { ...baseImage, id: '3', qcStatus: 'retry_failed', tempImagePath: '/tmp/3.png' },
+      {
+        ...baseImage,
+        id: '4',
+        qcStatus: 'qc_failed',
+        finalImagePath: null,
+        tempImagePath: null,
+        qcReason: 'processing_failed:download',
+      },
     ];
     const { result } = renderHook(() => useSingleJobImages(images, null));
 
     expect(result.current.failedProcessingCount).toBe(2);
+    expect(result.current.approvedImagesCount).toBe(1);
+    expect(result.current.generatedOkCount).toBe(3);
+    expect(result.current.generationFailedCount).toBe(1);
+  });
+
+  it('counts planned slots without rows as generation failed (e.g. WiFi cut mid-job)', () => {
+    const images = [
+      {
+        ...baseImage,
+        id: '1',
+        qcStatus: 'processing',
+        finalImagePath: null,
+        tempImagePath: '/tmp/pending-remove-bg.png',
+      },
+    ];
+    const job = { totalImages: 5, successfulImages: 1, failedImages: 4 };
+    const { result } = renderHook(() => useSingleJobImages(images as any, job));
+
+    expect(result.current.generatedOkCount).toBe(1);
+    expect(result.current.generationFailedCount).toBe(4);
+  });
+
+  it('treats remove.bg / QC / metadata post-pipeline failures as failed processing even without file paths', () => {
+    const noPath = { finalImagePath: null as string | null, tempImagePath: null as string | null };
+    const images = [
+      { ...baseImage, ...noPath, id: '1', qcStatus: 'qc_failed', qcReason: 'processing_failed:remove_bg' },
+      { ...baseImage, ...noPath, id: '2', qcStatus: 'qc_failed', qcReason: 'processing_failed:download' },
+      { ...baseImage, ...noPath, id: '3', qcStatus: 'qc_failed', qcReason: 'processing_failed:download' },
+      { ...baseImage, ...noPath, id: '4', qcStatus: 'qc_failed', qcReason: 'processing_failed:download' },
+      { ...baseImage, ...noPath, id: '5', qcStatus: 'qc_failed', qcReason: 'processing_failed:download' },
+    ];
+    const { result } = renderHook(() => useSingleJobImages(images as any, null));
+
+    expect(result.current.failedProcessingCount).toBe(1);
+    expect(result.current.generationFailedCount).toBe(4);
   });
 });

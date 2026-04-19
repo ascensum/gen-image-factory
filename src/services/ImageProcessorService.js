@@ -1,6 +1,7 @@
 const sharp = require('sharp');
 const fs = require('fs').promises;
 const path = require('path');
+const { emitPipelineStage } = require(path.join(__dirname, '../utils/pipelineStageLog'));
 
 class ImageProcessorService {
   constructor(dependencies = {}) {
@@ -26,9 +27,18 @@ class ImageProcessorService {
       inputImagePath // for cleanup
     } = config;
 
+    emitPipelineStage(config, 'sharp_local_begin', 'Sharp encode/write (local CPU, no network)', {
+      phase: 'local',
+      imgName,
+      generationIndex: config.generationIndex,
+      imageConvert: !!imageConvert,
+      trim: !!trimTransparentBackground,
+      enhancement: !!imageEnhancement
+    });
+
     let sharpInstance = sharp(imageBuffer);
 
-    // 1. Trim (already handled if modular remover was used, but we keep it for pure processor usage)
+    // 1. Trim transparent edges (intended for alpha PNGs after remove.bg; normalizer clears trim when remove.bg is off)
     if (trimTransparentBackground) {
       this.logDebug('Trimming transparent background (processor)...');
       try {
@@ -50,15 +60,19 @@ class ImageProcessorService {
     // 2. Apply Image Enhancement Effects (optional)
     if (imageEnhancement) {
       this.logDebug('Applying image enhancement effects (processor)...');
-      
-      if (sharpening > 0) {
-        this.logDebug(`Applying sharpening with intensity: ${sharpening}`);
-        sharpInstance = sharpInstance.sharpen({ sigma: sharpening });
+
+      const sharpenSlider = Number(sharpening);
+      if (Number.isFinite(sharpenSlider) && sharpenSlider > 0) {
+        const sigma = sharpenSlider * 0.2;
+        this.logDebug(`Sharpening: slider=${sharpenSlider} → sharp.sharpen sigma=${sigma}`);
+        sharpInstance = sharpInstance.sharpen({ sigma });
       }
-      
-      if (saturation !== 1) {
-        this.logDebug(`Applying saturation adjustment: ${saturation}`);
-        sharpInstance = sharpInstance.modulate({ saturation: saturation });
+
+      const sat = Number(saturation);
+      if (Number.isFinite(sat) && Math.abs(sat - 1) > 1e-6) {
+        const satClamped = Math.min(3, Math.max(0, sat));
+        this.logDebug(`Saturation modulate: ${satClamped} (1 = unchanged)`);
+        sharpInstance = sharpInstance.modulate({ saturation: satClamped });
       }
 
       try {
@@ -94,7 +108,8 @@ class ImageProcessorService {
     // 4. Encode and Save
     try {
       if (finalExtension === '.jpg') {
-        const backgroundColor = jpgBackground === 'black' ? '#000000' : '#ffffff';
+        const BLACK_VALUES = ['black', '#000000', '#000'];
+        const backgroundColor = BLACK_VALUES.includes(String(jpgBackground || '').toLowerCase()) ? '#000000' : '#ffffff';
         await sharpInstance
           .flatten({ background: backgroundColor })
           .jpeg({ quality: jpgQuality || 80, chromaSubsampling: '4:4:4' })
@@ -125,6 +140,12 @@ class ImageProcessorService {
     } catch (error) {
       console.error(`Error deleting original downloaded image:`, error);
     }
+
+    emitPipelineStage(config, 'sharp_local_end', 'Sharp pipeline finished', {
+      phase: 'local',
+      outputPath,
+      generationIndex: config.generationIndex
+    });
 
     return outputPath;
   }

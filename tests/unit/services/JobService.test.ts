@@ -19,6 +19,8 @@ import { EventEmitter } from 'events';
 
 const req = createRequire(import.meta.url);
 
+const flushPromises = () => new Promise(resolve => setTimeout(resolve, 50));
+
 describe('JobService Unit Tests', () => {
   let JobService: any;
   let jobService: any;
@@ -102,11 +104,12 @@ describe('JobService Unit Tests', () => {
       expect(mockJobEngine.listenerCount('progress')).toBeGreaterThan(0);
       expect(mockJobEngine.listenerCount('image-generated')).toBeGreaterThan(0);
       expect(mockJobEngine.listenerCount('error')).toBeGreaterThan(0);
-      expect(mockJobEngine.listenerCount('job-complete')).toBeGreaterThan(0);
+      // job-complete is emitted by JobService after persist/post-processing, not forwarded from JobEngine
+      expect(mockJobEngine.listenerCount('job-complete')).toBe(0);
     });
   });
 
-  describe('startJob()', () => {
+  describe('startJobAsync()', () => {
     beforeEach(() => {
       jobService = new JobService({
         jobEngine: mockJobEngine,
@@ -114,29 +117,29 @@ describe('JobService Unit Tests', () => {
       });
     });
 
-    it('should validate configuration is required', async () => {
-      await expect(jobService.startJob(null)).rejects.toThrow('Job configuration is required');
-    });
-
     it('should create job execution record via JobRepository', async () => {
       const config = { parameters: { count: 5 } };
       const options = { configurationId: 'cfg-1', label: 'Test Job' };
 
-      await jobService.startJob(config, options);
+      await jobService.startJobAsync(config, options);
 
       expect(mockJobRepository.saveJobExecution).toHaveBeenCalledWith(
         expect.objectContaining({
           configurationId: 'cfg-1',
           label: 'Test Job',
-          status: 'running'
+          status: 'running',
+          configurationSnapshot: expect.objectContaining({
+            parameters: expect.objectContaining({ count: 5 })
+          })
         })
       );
     });
 
-    it('should execute job via JobEngine', async () => {
+    it('should fire background execution via JobEngine', async () => {
       const config = { parameters: { count: 5 } };
 
-      await jobService.startJob(config);
+      await jobService.startJobAsync(config);
+      await flushPromises();
 
       expect(mockJobEngine.executeJob).toHaveBeenCalledWith(
         config,
@@ -144,15 +147,12 @@ describe('JobService Unit Tests', () => {
       );
     });
 
-    it('should return execution tracking info', async () => {
+    it('should return execution ID', async () => {
       const config = { parameters: { count: 5 } };
 
-      const result = await jobService.startJob(config);
+      const result = await jobService.startJobAsync(config);
 
-      expect(result.success).toBe(true);
-      expect(result.executionId).toBe(123);
-      expect(result.jobId).toBe('job-456');
-      expect(result.result).toBeDefined();
+      expect(result).toBe(123);
     });
 
     it('should handle JobRepository save failure', async () => {
@@ -160,21 +160,69 @@ describe('JobService Unit Tests', () => {
 
       const config = { parameters: { count: 5 } };
 
-      await expect(jobService.startJob(config)).rejects.toThrow('Failed to create job execution record');
+      await expect(jobService.startJobAsync(config)).rejects.toThrow('Failed to create job execution record');
     });
 
-    it('should update execution status on error', async () => {
+    it('should update execution status on background error', async () => {
       mockJobEngine.executeJob.mockRejectedValue(new Error('Execution failed'));
 
       const config = { parameters: { count: 5 } };
 
-      await expect(jobService.startJob(config)).rejects.toThrow('Execution failed');
+      await jobService.startJobAsync(config);
+      await flushPromises();
+
       expect(mockJobRepository.updateJobExecutionStatus).toHaveBeenCalledWith(
         123,
         'failed',
         'job-456',
         'Execution failed'
       );
+    });
+
+    it('should set liveProgress to running state', async () => {
+      const config = { parameters: { count: 5, variations: 2 } };
+
+      await jobService.startJobAsync(config);
+
+      expect(jobService.liveProgress.state).toBe('running');
+      expect(jobService.liveProgress.totalGenerations).toBe(5);
+      expect(jobService.liveProgress.variations).toBe(2);
+    });
+  });
+
+  describe('startJob() rerun API', () => {
+    beforeEach(() => {
+      jobService = new JobService({
+        jobEngine: mockJobEngine,
+        jobRepository: mockJobRepository
+      });
+      mockJobRepository.getJobExecution.mockResolvedValue({
+        success: true,
+        execution: {
+          id: 77,
+          configurationId: 'cfg-r',
+          label: 'Prior',
+          startedAt: new Date('2020-01-01')
+        }
+      });
+    });
+
+    it('should fail when databaseExecutionId is not set', async () => {
+      const r = await jobService.startJob({ parameters: { count: 1 } });
+      expect(r.success).toBe(false);
+      expect(mockJobEngine.executeJob).not.toHaveBeenCalled();
+    });
+
+    it('should start without saveJobExecution and call JobEngine', async () => {
+      jobService.databaseExecutionId = 77;
+      jobService.persistedLabel = 'My (Rerun)';
+
+      const r = await jobService.startJob({ parameters: { count: 2 } });
+      expect(r.success).toBe(true);
+      expect(r.jobId).toBe('77');
+      expect(mockJobRepository.saveJobExecution).not.toHaveBeenCalled();
+      await flushPromises();
+      expect(mockJobEngine.executeJob).toHaveBeenCalled();
     });
   });
 
@@ -224,22 +272,18 @@ describe('JobService Unit Tests', () => {
     });
 
     it('should update execution status on JobEngine error (integration)', async () => {
-      // Attach error listener to prevent unhandled 'error' event when JobService re-emits
       jobService.on('error', () => {});
 
-      // Configure mock to emit error during execution
       mockJobEngine.executeJob.mockImplementation(async () => {
-        // Simulate error during execution
-        mockJobEngine.emit('error', new Error('Pipeline error'));
+        mockJobEngine.emit('error', { error: 'Pipeline error' });
         throw new Error('Pipeline error');
       });
 
       const config = { parameters: { count: 5 } };
 
-      // Start job (will fail)
-      await jobService.startJob(config).catch(() => {});
+      await jobService.startJobAsync(config);
+      await flushPromises();
 
-      // Verify status update was called with failed status
       expect(mockJobRepository.updateJobExecutionStatus).toHaveBeenCalledWith(
         123,
         'failed',
@@ -248,30 +292,31 @@ describe('JobService Unit Tests', () => {
       );
     });
 
-    it('should persist final results on job-complete event (integration)', async () => {
-      // Configure mock to emit job-complete during execution
-      mockJobEngine.executeJob.mockImplementation(async () => {
-        const result = {
-          status: 'completed',
-          totalImages: 10,
-          successfulImages: 8,
-          failedImages: 2
-        };
-        mockJobEngine.emit('job-complete', result);
-        return result;
-      });
+    it('should persist final results after executeJob returns (integration)', async () => {
+      const approvedRows = Array.from({ length: 5 }, (_, i) => ({
+        qcStatus: 'approved',
+        imageMappingId: `m${i}`,
+        tempImagePath: `/tmp/${i}.png`
+      }));
+      mockJobEngine.executeJob.mockImplementation(async () => ({
+        status: 'completed',
+        images: approvedRows,
+        totalImages: 5,
+        successfulImages: 5,
+        failedImages: 0
+      }));
 
-      const config = { parameters: { count: 5 } };
-      await jobService.startJob(config);
+      const config = { parameters: { count: 5, variations: 1 } };
+      await jobService.startJobAsync(config);
+      await flushPromises();
 
-      // Verify final update
       expect(mockJobRepository.updateJobExecution).toHaveBeenCalledWith(
         123,
         expect.objectContaining({
           status: 'completed',
-          totalImages: 10,
-          successfulImages: 8,
-          failedImages: 2
+          totalImages: 5,
+          successfulImages: 5,
+          failedImages: 0
         })
       );
     });
@@ -293,22 +338,14 @@ describe('JobService Unit Tests', () => {
     });
 
     it('should abort job execution and update status', async () => {
-      // Configure mock to delay execution so we can stop it
-      let abortSignal: any;
-      mockJobEngine.executeJob.mockImplementation(async (config, signal) => {
-        abortSignal = signal;
-        // Delay execution
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      mockJobEngine.executeJob.mockImplementation(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200));
         return { status: 'completed' };
       });
 
-      // Start a job (non-blocking)
-      const startPromise = jobService.startJob({ parameters: { count: 5 } });
-
-      // Wait a bit for job to start
+      await jobService.startJobAsync({ parameters: { count: 5 } });
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      // Stop the job
       const stopResult = await jobService.stopJob();
 
       expect(stopResult.success).toBe(true);
@@ -319,8 +356,7 @@ describe('JobService Unit Tests', () => {
         'Job stopped by user'
       );
 
-      // Clean up
-      await startPromise.catch(() => {});
+      await flushPromises();
     });
   });
 
@@ -330,6 +366,16 @@ describe('JobService Unit Tests', () => {
         jobEngine: mockJobEngine,
         jobRepository: mockJobRepository
       });
+    });
+
+    it('should return running/idle when called with no args (rerun services)', async () => {
+      const idle = await jobService.getJobStatus();
+      expect(idle).toEqual({ status: 'idle' });
+      expect(mockJobRepository.getJobExecution).not.toHaveBeenCalled();
+
+      (jobService as any).currentExecutionId = 99;
+      const running = await jobService.getJobStatus();
+      expect(running).toEqual({ status: 'running' });
     });
 
     it('should delegate to JobRepository', async () => {
@@ -410,17 +456,19 @@ describe('JobService Unit Tests', () => {
     });
 
     it('should abort active job if running', async () => {
-      // Start a job
-      const config = { parameters: { count: 5 } };
-      const startPromise = jobService.startJob(config);
+      mockJobEngine.executeJob.mockImplementation(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return { status: 'completed' };
+      });
 
-      // Cleanup
+      const config = { parameters: { count: 5 } };
+      await jobService.startJobAsync(config);
+
       const result = await jobService.cleanup();
 
       expect(result.success).toBe(true);
 
-      // Clean up
-      await startPromise.catch(() => {});
+      await flushPromises();
     });
 
     it('should remove all event listeners', async () => {

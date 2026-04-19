@@ -78,7 +78,15 @@ const JobManagementTable: React.FC<JobManagementTableProps> = ({
                 <td><span className="timestamp">{job.startedAt ? new Date(job.startedAt).toLocaleDateString() : 'Unknown'}</span></td>
                 <td>
                   {job.startedAt && job.completedAt
-                    ? `${Math.round((new Date(job.completedAt).getTime() - new Date(job.startedAt).getTime()) / (1000 * 60))}m`
+                    ? (() => {
+                        const totalSec = Math.round((new Date(job.completedAt).getTime() - new Date(job.startedAt).getTime()) / 1000);
+                        const h = Math.floor(totalSec / 3600);
+                        const m = Math.floor((totalSec % 3600) / 60);
+                        const s = totalSec % 60;
+                        if (h > 0) return `${h}h ${m}m ${s}s`;
+                        if (m > 0) return `${m}m ${s}s`;
+                        return `${s}s`;
+                      })()
                     : 'N/A'}
                 </td>
                 <td>

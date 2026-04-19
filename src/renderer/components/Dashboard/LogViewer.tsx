@@ -4,6 +4,9 @@ import { LogEntry } from './DashboardPanel';
 interface LogViewerProps {
   logs: LogEntry[];
   jobStatus: 'idle' | 'starting' | 'running' | 'completed' | 'failed' | 'stopped';
+  /** Which slice of the job log buffer to fetch from main (`standard` = no debug-level; `debug` = full). */
+  ipcLogMode: 'standard' | 'debug';
+  onIpcLogModeChange: (mode: 'standard' | 'debug') => void;
   isLoading?: boolean;
   onRefresh?: () => void;
   // Optional sizing controls for the scrollable log area
@@ -17,6 +20,8 @@ interface LogViewerProps {
 const LogViewer: React.FC<LogViewerProps> = ({
   logs,
   jobStatus,
+  ipcLogMode,
+  onIpcLogModeChange,
   isLoading = false,
   onRefresh,
   // Defaults match original Dashboard behavior so other panels aren't impacted
@@ -25,7 +30,6 @@ const LogViewer: React.FC<LogViewerProps> = ({
   height,
   disableInternalScroll = false
 }) => {
-  const [logMode, setLogMode] = useState<'standard' | 'debug'>('standard');
   const [autoScroll, setAutoScroll] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState<'all' | 'info' | 'warn' | 'error' | 'debug'>('all');
@@ -34,7 +38,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
   const logContainerRef = useRef<HTMLDivElement>(null);
 
   const handleModeChange = (mode: 'standard' | 'debug') => {
-    setLogMode(mode);
+    onIpcLogModeChange(mode);
   };
 
   // Auto-scroll to bottom when new logs arrive
@@ -46,8 +50,8 @@ const LogViewer: React.FC<LogViewerProps> = ({
 
   // Filter logs based on mode and search
   const filteredLogs = logs.filter(log => {
-    // Filter by mode
-    if (logMode === 'standard' && log.level === 'debug') {
+    // Filter by mode (main process already filtered for standard IPC; keep client filter for mixed loads)
+    if (ipcLogMode === 'standard' && log.level === 'debug') {
       return false;
     }
     
@@ -167,8 +171,13 @@ const LogViewer: React.FC<LogViewerProps> = ({
       {/* Log Header */}
       <div className="px-6 py-4 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-4">
-            <h3 className="text-lg font-medium text-gray-900">Logs</h3>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:space-x-4">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Logs</h3>
+              <p className="text-xs text-gray-500 mt-0.5 max-w-xl">
+                Logs stay in an in-memory buffer (last 500 entries), not temp files. Pipeline stages show an amber left border. Turn on <strong>Settings → Advanced → Debug logs</strong> when you need debug-level rows; then use Standard / Debug here to fetch the full buffer or info+ only.
+              </p>
+            </div>
             {/* Mode Toggle */}
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-700">Mode:</span>
@@ -176,10 +185,10 @@ const LogViewer: React.FC<LogViewerProps> = ({
                 <button
                   onClick={() => handleModeChange('standard')}
                   role="tab"
-                  aria-selected={logMode === 'standard'}
+                  aria-selected={ipcLogMode === 'standard'}
                   aria-label="Standard log mode"
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                    logMode === 'standard'
+                    ipcLogMode === 'standard'
                       ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
@@ -189,10 +198,10 @@ const LogViewer: React.FC<LogViewerProps> = ({
                 <button
                   onClick={() => handleModeChange('debug')}
                   role="tab"
-                  aria-selected={logMode === 'debug'}
+                  aria-selected={ipcLogMode === 'debug'}
                   aria-label="Debug log mode"
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                    logMode === 'debug'
+                    ipcLogMode === 'debug'
                       ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
@@ -273,7 +282,7 @@ const LogViewer: React.FC<LogViewerProps> = ({
               <input
                 id="log-search"
                 type="text"
-                placeholder="Search logs..."
+                placeholder="Search logs (e.g. runware, image_pipeline, remove_bg)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 aria-label="Search logs"
@@ -323,11 +332,15 @@ const LogViewer: React.FC<LogViewerProps> = ({
             </div>
           ) : (
             <div className="space-y-1">
-              {filteredLogs.map((log, index) => (
+              {filteredLogs.map((log, index) => {
+                const isPipeline = log.stepName === 'image_pipeline';
+                return (
                 <div
                   key={`${log.id}-${index}`}
                   aria-label={`Log entry ${index + 1}: ${log.level} level message`}
                   className={`flex items-start space-x-3 p-2 rounded-md border ${
+                    isPipeline ? 'border-l-4 border-l-amber-500 ' : ''
+                  }${
                     log.level === 'error' ? 'bg-red-50 border-red-200' :
                     log.level === 'warn' ? 'bg-yellow-50 border-yellow-200' :
                     log.level === 'info' ? 'bg-blue-50 border-blue-200' :
@@ -422,7 +435,8 @@ const LogViewer: React.FC<LogViewerProps> = ({
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

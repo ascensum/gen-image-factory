@@ -60,6 +60,8 @@ export const useDashboardProgress = (config: any, jobStatus: JobStatus, generate
 
     const jobState = jobStatus?.state;
     const qcEnabled = !!(config?.ai?.runQualityCheck);
+    const metadataEnabled = !!(config?.ai?.runMetadataGen);
+    const hasPostGenStep = qcEnabled || metadataEnabled;
 
     let singleProgress = 0;
     if (jobState === 'completed') singleProgress = 100;
@@ -80,7 +82,7 @@ export const useDashboardProgress = (config: any, jobStatus: JobStatus, generate
           gensDone = Math.floor((imagesForExec.length || 0) / variations);
           overallGenerationProgress = Math.round(Math.min(100, (gensDone / count) * 100));
         }
-        if (qcEnabled && jobState !== 'completed') overallGenerationProgress = Math.min(overallGenerationProgress, 95);
+        if (hasPostGenStep && jobState !== 'completed') overallGenerationProgress = Math.min(overallGenerationProgress, 95);
         if (jobState === 'completed') overallGenerationProgress = 100;
         currentGeneration = Math.min(count, Math.max(1, gensDone + 1));
       } else {

@@ -1,13 +1,25 @@
 /**
- * RetryPostProcessingService - Run post-processing pipeline for retry (Story 3.5, same pattern as 3.1).
- * Logic copied from retryExecutor.runPostProcessing; used via Shadow Bridge when FEATURE_MODULAR_RETRY_POST_PROCESSING === 'true'.
- * No "Legacy" in name; legacy remains in retryExecutor.js.
+ * RetryPostProcessingService - Run post-processing pipeline for retry.
+ * Handles image processing, metadata, file move, and DB update for retry flow.
+ * ADR-003: DI pattern.  Story 5.3: standalone (retryExecutor deleted).
  */
 
 const path = require('path');
 const fs = require('fs').promises;
-const { processImage } = require(path.join(__dirname, '../producePictureModule'));
 const aiVision = require(path.join(__dirname, '../aiVision'));
+
+// Story 5.3: producePictureModule deleted. processImage is now resolved via
+// executor.imageProcessorService (injected by DI wiring in createServices.js).
+// Fallback creates a minimal ImageProcessorService on the fly if nothing was injected.
+function _getFallbackProcessImage() {
+  const ImageProcessorService = require(path.join(__dirname, './ImageProcessorService'));
+  const svc = new ImageProcessorService({ logDebug: () => {} });
+  return async (inputPath, imgName, config) => {
+    const fsProm = require('fs').promises;
+    const buf = await fsProm.readFile(inputPath);
+    return svc.process(buf, imgName, { ...config, inputImagePath: inputPath });
+  };
+}
 
 /**
  * Run post-processing on an image (processImage, metadata, move, DB update).
@@ -18,9 +30,10 @@ const aiVision = require(path.join(__dirname, '../aiVision'));
  * @param {Object} jobConfiguration
  * @param {boolean} useOriginalSettings
  * @param {Object} failOptions
+ * @param {string|null|undefined} openAiApiKey - From `settingsComposer.getSettings()` (retry does not run JobEngine env setup).
  * @returns {Promise<Object>}
  */
-async function run(executor, sourcePath, settings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions) {
+async function run(executor, sourcePath, settings, includeMetadata, jobConfiguration, useOriginalSettings, failOptions, openAiApiKey) {
   try {
     try {
       await fs.access(sourcePath);
@@ -58,6 +71,10 @@ async function run(executor, sourcePath, settings, includeMetadata, jobConfigura
       Object.assign(processingConfig, normalizeProcessingSettings(processingConfig));
     } catch (e) {}
 
+    const processImage = (executor.imageProcessorService && typeof executor.imageProcessorService.processFile === 'function')
+      ? (src, name, cfg) => executor.imageProcessorService.processFile(src, name, cfg)
+      : _getFallbackProcessImage();
+
     let processedImagePath;
     try {
       processedImagePath = await processImage(sourcePath, sourceFileName, processingConfig);
@@ -73,6 +90,9 @@ async function run(executor, sourcePath, settings, includeMetadata, jobConfigura
         processedImagePath = sourcePath;
       } else if (stage === 'enhancement') {
         if (enabled && steps.includes('enhancement')) throw procErr;
+        processedImagePath = sourcePath;
+      } else if (stage === 'remove_bg') {
+        if (enabled && steps.includes('remove_bg')) throw procErr;
         processedImagePath = sourcePath;
       } else {
         throw procErr;
@@ -124,11 +144,18 @@ async function run(executor, sourcePath, settings, includeMetadata, jobConfigura
             }
           }
         } catch (e) {}
+        const metaModel =
+          (jobConfiguration &&
+            jobConfiguration.settings &&
+            jobConfiguration.settings.parameters &&
+            jobConfiguration.settings.parameters.openaiModel) ||
+          'gpt-4o-mini';
         metadataResult = await aiVision.generateMetadata(
           processedImagePath,
           originalPrompt,
           (metadataPrompt && metadataPrompt.trim() !== '') ? metadataPrompt : null,
-          'gpt-4o-mini'
+          metaModel,
+          openAiApiKey
         );
       } catch (metadataError) {
         const enabled = !!(failOptions && failOptions.enabled);

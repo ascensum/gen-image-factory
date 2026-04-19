@@ -13,10 +13,8 @@
  * Related ADRs:
  * - ADR-001: File Size Guardrail (< 400 lines)
  * - ADR-003: Dependency Injection
- * - ADR-006: Shadow Bridge Pattern
+ * - ADR-006
  * - ADR-009: Persistence Repository Layer
- * 
- * Feature Toggle: FEATURE_MODULAR_CONFIG_REPOSITORY
  */
 
 /**

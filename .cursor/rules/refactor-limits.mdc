@@ -27,10 +27,10 @@ alwaysApply: true
 **CRITICAL:** The following files are **FROZEN** - no new logic may be added:
 
 ### Backend/Services
-- `src/services/jobRunner.js` (3,381 lines) - *Extraction: ADR-002, ADR-003*
-- `src/adapter/backendAdapter.js` (3,407 lines) - *Extraction: ADR-002, ADR-003*
-- `src/producePictureModule.js` (799 lines) - *Extraction: ADR-008 (Image Production Layer)*
-- `src/services/retryExecutor.js` (1,160 lines) - *Extraction: ADR-012 (Retry Executor Decomposition)*
+- ~~`src/services/jobRunner.js`~~ — **DELETED** (Story 5.3)
+- ~~`src/adapter/backendAdapter.js`~~ — **DELETED** (Story 5.3)
+- ~~`src/producePictureModule.js`~~ — **DELETED** (Story 5.3, replaced by `ImagePipelineService`)
+- ~~`src/services/retryExecutor.js`~~ — **DELETED** (Story 5.3)
 - `src/database/models/JobExecution.js` (1,100 lines) - *Extraction: ADR-009 (Repository Layer)*
 - `src/database/models/GeneratedImage.js` (1,000 lines) - *Extraction: ADR-009 (Repository Layer)*
 
@@ -41,7 +41,7 @@ alwaysApply: true
 - `src/renderer/components/Jobs/JobManagementPanel.tsx` (1,100 lines) - *Extraction: ADR-010 (Frontend Decomposition)*
 
 ### Infrastructure/Tests
-- `tests/integration/backend/BackendAdapter.integration.test.ts` (1,000 lines) - *Extraction: ADR-011 (Modular Testing)*
+- ~~`tests/integration/backend/BackendAdapter.integration.test.ts`~~ — **DELETED** (Story 5.3)
 
 ### Component Styling
 - `src/renderer/components/Jobs/SingleJobView.css` (1,300 lines) - *Must refactor to Tailwind (see CSS Standards)*
@@ -123,40 +123,34 @@ alwaysApply: true
 
 ## Extraction Proposals
 
-When proposing extractions, follow these service boundaries:
+When proposing extractions, follow these service boundaries.
+**Note:** Many of these have been completed in Stories 5.1–5.3. Entries marked **DONE** exist as standalone services.
 
-### SecurityService (Infrastructure)
-- **Extract from:** BackendAdapter (lines ~50-150)
+### SecurityService (Infrastructure) — **DONE**
+- **Location:** `src/services/SecurityService.js`
 - **Responsibility:** API Key management, encryption/decryption, keytar interaction
-- **Interface:** `getSecret(key)`, `setSecret(key, val)`, `getPublicSettings()`
 
-### JobRepository (Persistence)
-- **Extract from:** BackendAdapter (lines ~1000-2000)
-- **Responsibility:** CRUD operations for JobConfiguration, JobExecution, GeneratedImage
-- **Goal:** Isolate database logic. Services call `JobRepository.save(job)`, not build raw DB objects.
+### JobRepository (Persistence) — **DONE**
+- **Location:** `src/repositories/JobRepository.js`
+- **Responsibility:** CRUD operations for JobExecution, GeneratedImage
 
-### ExportService (Feature)
-- **Extract from:** BackendAdapter (lines ~2200-2600)
+### ExportService (Feature) — **DONE**
+- **Location:** `src/services/ExportService.js`
 - **Responsibility:** Generating Excel reports and ZIP archives
-- **Logic:** Pure functional transformation of Data → File
 
-### IPCController (Presentation)
-- **Extract from:** BackendAdapter (lines ~300-900)
-- **Responsibility:** Mapping Electron IPC events to Service calls
-- **Structure:** `src/controllers/[Feature]Controller.js` per feature domain
-- **Rule:** Handlers must be < 5 lines
+### IPC Controllers (Presentation) — **DONE**
+- **Location:** `src/controllers/{Job,Settings,Export,Security}Controller.js`
+- **Rule:** Handlers must be < 5 lines, delegate to services
 
-### JobEngine (Core Domain)
-- **Extract from:** JobRunner
-- **Responsibility:** Pure orchestration of generation pipeline (Init → ParamGen → ImageGen → QC → Metadata)
-- **Refactoring:** Strip out all direct DB calls. Return "Result Objects" that JobService persists via JobRepository.
+### JobEngine (Core Domain) — **DONE**
+- **Location:** `src/services/JobEngine.js`
+- **Responsibility:** Pure orchestration of generation pipeline
 
-### Image Production Services (ADR-008)
-- **Extract from:** producePictureModule.js (799 lines)
-- **ImageGeneratorService:** Runware API integration (lines ~223-519)
-- **ImageRemoverService:** remove.bg API + alpha trimming (lines ~21-87, ~584-692)
-- **ImageProcessorService:** Sharp-based manipulation (lines ~694-798)
-- **Interface:** All services accept Buffer/string, return Buffer (pipeline-ready)
+### Image Production Services (ADR-008) — **DONE**
+- **ImageGeneratorService:** `src/services/ImageGeneratorService.js`
+- **ImageRemoverService:** `src/services/ImageRemoverService.js`
+- **ImageProcessorService:** `src/services/ImageProcessorService.js`
+- **ImagePipelineService:** `src/services/ImagePipelineService.js` (orchestrator, replaces producePictureModule)
 
 ## Enforcement Examples
 

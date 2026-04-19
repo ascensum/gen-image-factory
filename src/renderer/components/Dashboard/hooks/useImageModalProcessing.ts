@@ -1,35 +1,9 @@
 /**
  * Story 3.4 Phase 5c: Execution snapshot and merged processing settings for ImageModal.
- * Extracted from ImageModal.tsx to keep modal < 400 lines.
+ * Merge rules: see mergeImageProcessingForDisplay (per-image as-processed wins when present).
  */
 import { useState, useEffect } from 'react';
-
-function toObject(val: unknown): Record<string, unknown> | null {
-  if (!val) return null;
-  if (typeof val === 'string') {
-    try {
-      return JSON.parse(val) as Record<string, unknown>;
-    } catch {
-      return null;
-    }
-  }
-  if (typeof val === 'object' && val !== null) return val as Record<string, unknown>;
-  return null;
-}
-
-const PROCESSING_KEYS = [
-  'imageEnhancement', 'sharpening', 'saturation', 'imageConvert', 'convertToJpg',
-  'jpgQuality', 'pngQuality', 'removeBg', 'trimTransparentBackground', 'jpgBackground', 'removeBgSize', 'convertToWebp', 'webpQuality',
-];
-
-function pickProcessingKeys(obj: Record<string, unknown> | null): Record<string, unknown> | null {
-  if (!obj || typeof obj !== 'object') return null;
-  const out: Record<string, unknown> = {};
-  PROCESSING_KEYS.forEach(k => {
-    if (k in obj) out[k] = obj[k];
-  });
-  return out;
-}
+import { mergeImageProcessingForDisplay } from '../../../utils/mergeImageProcessingForDisplay';
 
 export interface UseImageModalProcessingOptions {
   imageId: string | null;
@@ -64,12 +38,5 @@ export function useImageModalProcessing({ imageId, imageProcessingSettings, isOp
     return () => { cancelled = true; };
   }, [isOpen, imageId]);
 
-  const perImageProc = pickProcessingKeys(toObject(imageProcessingSettings));
-  const snapshotProc = pickProcessingKeys(snapshotProcessing);
-  const isCustomRetry = !!(perImageProc && snapshotProc && JSON.stringify(perImageProc) !== JSON.stringify(snapshotProc));
-  const processingSettings: Record<string, unknown> = isCustomRetry
-    ? (toObject(imageProcessingSettings) || snapshotProcessing || {})
-    : (snapshotProcessing || toObject(imageProcessingSettings) || {});
-
-  return processingSettings;
+  return mergeImageProcessingForDisplay(snapshotProcessing, imageProcessingSettings);
 }

@@ -243,16 +243,18 @@ Configure job execution parameters for image generation:
   - External vendor models include OpenAI, Google, X, Midjourney, and other leading Gen Image vendors
   - Different models may have different capabilities and styles
   - **Note**: External vendor models (OpenAI, Google, X, Midjourney, etc.) usually do not support Runware Advanced settings. LoRA models are supported by open-source image generation models (like SD, Flux dev, Qwen, Wan, SDXL), not by external vendor models.
+  - **Text-to-vector (Runware `vectorize`)**: Some AIR ids (for example `recraft:v4@vector`) use Runware’s **`vectorize`** task type instead of **`imageInference`**. The app sends the correct task body automatically. Output from these models is **SVG**. The Parameters tab shows an amber notice when such a model is selected: negative prompt, LoRA, and Runware Advanced options are **not** sent for that path. Optional Recraft `providerSettings` (palette, background) are not implemented in the app yet.
 - **Runware Dimensions** - Comma-separated dimensions for image size (e.g., `1024x1024,1280x720`)
   - Multiple dimensions can be specified, separated by commas
   - Format: `WIDTHxHEIGHT` (e.g., `1024x1024` for square, `1280x720` for landscape)
   - **Multiple Generations**: When multiple generations are enabled (Count > 1), each generation uses one dimension sequentially
   - Example: If dimensions are `1024x1024,1280x720` and Count is 2 with 1 variation, the first image will be `1024x1024` and the second image will be `1280x720`
   - If there are more generations than dimensions, dimensions cycle back to the beginning
-- **Runware Format** - Output format: PNG, JPG, or WEBP
+- **Runware Format** - Output format: PNG, JPG, WebP, or SVG (for standard `imageInference` models)
   - PNG: Lossless format, supports transparency
   - JPG: Compressed format, smaller file size
-  - WEBP: Modern format with good compression and quality
+  - WebP: Modern format with good compression and quality
+  - SVG: Vector output for supported models; for configured text-to-vector models, generation is always SVG regardless of this control
 - **OpenAI Model** - Model for prompt generation, quality checks, and metadata generation (default: `gpt-4o`)
   - Can use any OpenAI vision-capable model that supports chat completions (e.g., `gpt-4o`, `gpt-4o-mini`, or other OpenAI vision-capable models)
   - Used for generating image prompts from keywords

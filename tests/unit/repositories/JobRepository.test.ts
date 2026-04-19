@@ -347,7 +347,13 @@ describe('JobRepository Unit Tests', () => {
         })
         .mockImplementationOnce((sql, params, callback) => {
           expect(sql).toContain('generated_images');
-          callback(null, { actualImages: 8, approvedImages: 5, qcFailedImages: 3 });
+          callback(null, {
+            actualImages: 8,
+            approvedImages: 5,
+            qcFailedImages: 3,
+            processingFailedWithPath: 3,
+            generatedSuccessfully: 8,
+          });
         });
       mockDb.run.mockImplementation(function(sql, params, callback) {
         this.changes = 1;
@@ -369,7 +375,15 @@ describe('JobRepository Unit Tests', () => {
     it('should handle non-existent execution (0 changes)', async () => {
       mockDb.get
         .mockImplementationOnce((_s, _p, cb) => cb(null, null))
-        .mockImplementationOnce((_s, _p, cb) => cb(null, { actualImages: 0, approvedImages: 0, qcFailedImages: 0 }));
+        .mockImplementationOnce((_s, _p, cb) =>
+          cb(null, {
+            actualImages: 0,
+            approvedImages: 0,
+            qcFailedImages: 0,
+            processingFailedWithPath: 0,
+            generatedSuccessfully: 0,
+          })
+        );
       mockDb.run.mockImplementation(function(sql, params, callback) {
         this.changes = 0;
         callback.call(this, null);
@@ -544,7 +558,7 @@ describe('JobRepository Unit Tests', () => {
       expect(result.success).toBe(true);
       expect(result.executions).toHaveLength(2);
       expect(mockDb.all).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT * FROM job_executions'),
+        expect.stringMatching(/FROM\s+job_executions[\s\S]*job_configurations/i),
         [],
         expect.any(Function)
       );
@@ -698,11 +712,13 @@ describe('JobRepository Unit Tests', () => {
           // First call: get total_images from job_executions
           callback(null, { total_images: 100 });
         } else {
-          // Second call: get image statistics
+          // Second call: get image statistics (mirrors SQL aggregates)
           callback(null, {
             actualImages: 95,
             approvedImages: 85,
-            qcFailedImages: 10
+            qcFailedImages: 10,
+            processingFailedWithPath: 0,
+            generatedSuccessfully: 85,
           });
         }
       });
@@ -710,13 +726,13 @@ describe('JobRepository Unit Tests', () => {
       // Act
       const result = await repository.calculateJobExecutionStatistics('exec-123');
 
-      // Assert
+      // Assert — total = planned (job row), successful = generated outputs (aligned with job_executions.successful_images)
       expect(result.success).toBe(true);
       expect(result.statistics.totalImages).toBe(100);
-      expect(result.statistics.successfulImages).toBe(95);
+      expect(result.statistics.successfulImages).toBe(85);
       expect(result.statistics.approvedImages).toBe(85);
       expect(result.statistics.qcFailedImages).toBe(10);
-      expect(result.statistics.failedImages).toBe(5); // 100 - 95 = 5
+      expect(result.statistics.failedImages).toBe(15);
     });
 
     it('should handle NULL statistics with defaults', async () => {

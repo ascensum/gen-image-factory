@@ -62,6 +62,9 @@ const ImageGalleryList: React.FC<ImageGalleryListProps> = ({
           const displayTitle = safeTitle || image.generationPrompt || 'Untitled';
           const thumbAlt = typeof displayTitle === 'string' ? displayTitle : 'Generated Image';
           const jobLabel = jobIdToLabel[String(image.executionId)] || `Job ${String(image.executionId)}`;
+          const listThumbPath = image.finalImagePath || image.tempImagePath || '';
+          const listThumbSrc = listThumbPath ? buildLocalFileUrl(listThumbPath) : '';
+          const listThumbSvg = listThumbPath.toLowerCase().endsWith('.svg');
 
           return (
             <div
@@ -88,16 +91,28 @@ const ImageGalleryList: React.FC<ImageGalleryListProps> = ({
               </div>
 
               <div className="col-span-2">
-                <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
-                  <img
-                    src={(image.finalImagePath || image.tempImagePath) ? buildLocalFileUrl(image.finalImagePath || image.tempImagePath!) : ''}
-                    alt={thumbAlt}
-                    className="w-full h-full object-cover cursor-pointer"
-                    onClick={() => onOpenModal(image)}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = LIST_PLACEHOLDER_SVG;
-                    }}
-                  />
+                <div
+                  className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-100 cursor-pointer flex items-center justify-center"
+                  onClick={() => onOpenModal(image)}
+                  role="presentation"
+                >
+                  {listThumbSvg ? (
+                    <object
+                      type="image/svg+xml"
+                      data={listThumbSrc}
+                      aria-label={thumbAlt}
+                      className="w-full h-full object-cover pointer-events-none"
+                    />
+                  ) : (
+                    <img
+                      src={listThumbSrc}
+                      alt={thumbAlt}
+                      className="w-full h-full object-cover pointer-events-none"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = LIST_PLACEHOLDER_SVG;
+                      }}
+                    />
+                  )}
                 </div>
               </div>
 

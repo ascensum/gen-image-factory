@@ -4,6 +4,7 @@ import type { JobStatus, JobExecution } from './useDashboardState';
 interface DashboardPollingProps {
   jobStatus: JobStatus;
   jobHistory: JobExecution[];
+  logIpcMode: 'standard' | 'debug';
   setJobStatus: (status: JobStatus) => void;
   loadJobHistory: (silent?: boolean) => Promise<void>;
   loadStatistics: () => Promise<void>;
@@ -17,6 +18,7 @@ interface DashboardPollingProps {
 export const useDashboardPolling = ({
   jobStatus,
   jobHistory,
+  logIpcMode,
   setJobStatus,
   loadJobHistory,
   loadStatistics,
@@ -84,9 +86,14 @@ export const useDashboardPolling = ({
     if (jobStatus.state !== 'running' && jobStatus.state !== 'starting') return;
     const interval = setInterval(() => {
       loadLogs(jobStatus.state);
-    }, 2000);
+    }, 800);
     return () => clearInterval(interval);
   }, [jobStatus.state, loadLogs]);
+
+  // Refetch logs when Standard/Debug IPC mode changes (so UI toggle matches buffer content)
+  useEffect(() => {
+    void loadLogs(jobStatus.state);
+  }, [logIpcMode, loadLogs, jobStatus.state]);
 
   // Refresh while running
   useEffect(() => {
@@ -115,20 +122,23 @@ export const useDashboardPolling = ({
   useEffect(() => {
     if (jobStatus.state === 'completed') {
       lastCompletionRef.current = Date.now();
-      loadJobHistory(true);  // silent: keep history list visible, no spinner flash
+      loadJobHistory(true);
       loadStatistics();
+      loadLogs('completed');
       setTimeout(() => {
         loadGeneratedImages();
+        loadLogs('completed');
       }, 500);
     } else if (jobStatus.state === 'failed') {
       lastCompletionRef.current = Date.now();
-      loadJobHistory(true);  // silent: keep history list visible, no spinner flash
+      loadJobHistory(true);
       loadStatistics();
+      loadLogs('failed');
     } else if (jobStatus.state === 'running') {
       lastCompletionRef.current = null;
       loadJobHistory(true);
     }
-  }, [jobStatus.state, loadJobHistory, loadStatistics, loadGeneratedImages]);
+  }, [jobStatus.state, loadJobHistory, loadStatistics, loadGeneratedImages, loadLogs]);
 
   return { lastCompletionRef };
 };

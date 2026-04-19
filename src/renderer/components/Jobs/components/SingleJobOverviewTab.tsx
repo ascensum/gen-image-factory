@@ -1,8 +1,8 @@
 /**
- * Story 3.4 Phase 5b: Overview tab content for SingleJobView.
- * Extracted from SingleJobView.legacy.tsx – job info, stats, read-only settings summary.
+ * Overview tab content for SingleJobView — job info, stats, read-only settings summary (ADR-010).
  */
 import React from 'react';
+import { formatSaturationDisplay, formatSharpeningDisplay } from '../../../utils/formatProcessingDisplay';
 import StatusBadge from '../../Common/StatusBadge';
 import type { JobExecution } from '../../../../../types/job';
 
@@ -17,6 +17,10 @@ export interface SingleJobOverviewTabProps {
   loadJobData: () => Promise<void>;
   handleSettingsEdit: () => void;
   failedProcessingCount: number;
+  approvedImagesCount: number;
+  generatedOkCount: number;
+  /** Slots where generation did not produce a successful pipeline outcome (excludes post-gen-only failures with file). */
+  generationFailedCount: number;
   formatDate: FormatDateFn;
   formatDuration: FormatDurationFn;
 }
@@ -29,6 +33,9 @@ const SingleJobOverviewTab: React.FC<SingleJobOverviewTabProps> = ({
   loadJobData,
   handleSettingsEdit,
   failedProcessingCount,
+  approvedImagesCount,
+  generatedOkCount,
+  generationFailedCount,
   formatDate,
   formatDuration,
 }) => (
@@ -60,7 +67,7 @@ const SingleJobOverviewTab: React.FC<SingleJobOverviewTabProps> = ({
         <div className="text-sm text-[var(--muted-foreground)] mb-2">Success Rate</div>
         <div className="text-lg font-medium text-[var(--foreground)]">
           {job.totalImages
-            ? `${Math.round(((job.successfulImages || 0) / job.totalImages) * 100)}% (${job.successfulImages || 0}/${job.totalImages})`
+            ? `${Math.round((generatedOkCount / job.totalImages) * 100)}% (${generatedOkCount}/${job.totalImages})`
             : 'N/A'}
         </div>
       </div>
@@ -74,12 +81,12 @@ const SingleJobOverviewTab: React.FC<SingleJobOverviewTabProps> = ({
       </div>
       <div className="stats-card p-4 border border-[var(--border)] rounded-[var(--radius)] bg-[var(--card)] text-center">
         <div className="stats-label text-[0.813rem] text-[var(--muted-foreground)] mb-1 uppercase tracking-wide">Successful</div>
-        <div className="stats-value success text-[1.375rem] font-bold text-[var(--status-completed)]">{job.successfulImages || 0}</div>
-        {(job.successfulImages || 0) > 0 && (
+        <div className="stats-value success text-[1.375rem] font-bold text-[var(--status-completed)]">{generatedOkCount}</div>
+        {(approvedImagesCount > 0 || failedProcessingCount > 0) && (
           <div className="mt-3 pt-3 border-t border-[var(--border)] flex flex-col gap-2">
             <div className="breakdown-item flex justify-between items-center text-sm py-1">
               <span className="breakdown-label text-[var(--muted-foreground)] font-medium">Approved:</span>
-              <span className="breakdown-value font-semibold text-[var(--status-completed)]">{(job as any).approvedImages || 0}</span>
+              <span className="breakdown-value font-semibold text-[var(--status-completed)]">{approvedImagesCount}</span>
             </div>
             <div className="breakdown-item flex justify-between items-center text-sm py-1">
               <span className="breakdown-label text-[var(--muted-foreground)] font-medium">Failed Processing:</span>
@@ -90,7 +97,9 @@ const SingleJobOverviewTab: React.FC<SingleJobOverviewTabProps> = ({
       </div>
       <div className="stats-card p-4 border border-[var(--border)] rounded-[var(--radius)] bg-[var(--card)] text-center">
         <div className="stats-label text-[0.813rem] text-[var(--muted-foreground)] mb-1 uppercase tracking-wide">Failed</div>
-        <div className="stats-value failed text-[1.375rem] font-bold text-[var(--status-failed)]">{job.failedImages || 0}</div>
+        <div className="stats-value failed text-[1.375rem] font-bold text-[var(--status-failed)]">
+          {typeof generationFailedCount === 'number' ? generationFailedCount : (job.failedImages || 0)}
+        </div>
         <div className="text-xs text-[var(--muted-foreground)] mt-2 italic">Generation failed</div>
       </div>
     </div>
@@ -208,13 +217,13 @@ const SingleJobOverviewTab: React.FC<SingleJobOverviewTabProps> = ({
                 <div>
                   • Sharpening:{' '}
                   {overviewSettings?.processing?.imageEnhancement
-                    ? (overviewSettings?.processing?.sharpening || 0)
+                    ? formatSharpeningDisplay(overviewSettings?.processing?.sharpening ?? 0)
                     : 'Not applied (Image Enhancement OFF)'}
                 </div>
                 <div>
                   • Saturation:{' '}
                   {overviewSettings?.processing?.imageEnhancement
-                    ? (overviewSettings?.processing?.saturation || 1.4)
+                    ? formatSaturationDisplay(overviewSettings?.processing?.saturation ?? 1.4)
                     : 'Not applied (Image Enhancement OFF)'}
                 </div>
                 <div>• Image Convert: {overviewSettings?.processing?.imageConvert ? 'Yes' : 'No'}</div>

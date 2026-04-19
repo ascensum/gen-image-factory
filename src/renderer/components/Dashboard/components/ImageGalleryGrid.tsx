@@ -66,7 +66,7 @@ interface ImageGalleryGridProps {
   hasMore?: boolean;
 }
 
-function GalleryCard({
+const GalleryCard = React.memo(function GalleryCard({
   image,
   selectedImages,
   onImageSelect,
@@ -90,6 +90,9 @@ function GalleryCard({
   const tags = (image.metadata && typeof image.metadata === 'object' && 'tags' in image.metadata && Array.isArray((image.metadata as { tags?: string[] }).tags))
     ? (image.metadata as { tags: string[] }).tags
     : [];
+  const thumbPath = image.finalImagePath || image.tempImagePath || '';
+  const thumbSrc = thumbPath ? buildLocalFileUrl(thumbPath) : '';
+  const isThumbSvg = thumbPath.toLowerCase().endsWith('.svg');
 
   return (
     <div
@@ -114,15 +117,29 @@ function GalleryCard({
           <StatusBadge variant="qc" status="approved" />
         </div>
         {(image.finalImagePath || image.tempImagePath) ? (
-          <img
-            src={buildLocalFileUrl(image.finalImagePath || image.tempImagePath!)}
-            alt={image.generationPrompt}
-            className="w-full h-full object-contain cursor-pointer"
+          <div
+            className="absolute inset-0 flex items-center justify-center cursor-pointer"
             onClick={() => onOpenModal(image)}
-            onError={(e) => {
-              e.currentTarget.src = PLACEHOLDER_SVG;
-            }}
-          />
+            role="presentation"
+          >
+            {isThumbSvg ? (
+              <object
+                type="image/svg+xml"
+                data={thumbSrc}
+                aria-label={image.generationPrompt}
+                className="max-h-full max-w-full object-contain pointer-events-none"
+              />
+            ) : (
+              <img
+                src={thumbSrc}
+                alt={image.generationPrompt}
+                className="w-full h-full object-contain pointer-events-none"
+                onError={(e) => {
+                  e.currentTarget.src = PLACEHOLDER_SVG;
+                }}
+              />
+            )}
+          </div>
         ) : (
           <div className="w-full h-full bg-gray-100 flex items-center justify-center">
             <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,7 +221,7 @@ function GalleryCard({
       </div>
     </div>
   );
-}
+});
 
 const ImageGalleryGrid: React.FC<ImageGalleryGridProps> = ({
   images,

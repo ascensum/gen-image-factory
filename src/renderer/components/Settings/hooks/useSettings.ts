@@ -30,6 +30,7 @@ export const defaultSettings = {
     runwareModel: 'runware:101@1',
     runwareDimensionsCsv: '',
     runwareFormat: 'png',
+    negativePrompt: '',
     variations: 1,
     runwareAdvancedEnabled: false,
     loraEnabled: false,
