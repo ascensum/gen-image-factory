@@ -48,8 +48,8 @@ class ImageGeneratorService {
     if (!Number.isFinite(Number(value))) return null;
     let v = Math.round(Number(value));
     v = Math.max(128, Math.min(2048, v));
-    // round to nearest multiple of 64 within bounds
-    v = Math.round(v / 64) * 64;
+    // round to nearest multiple of 8 within bounds
+    v = Math.round(v / 8) * 8;
     v = Math.max(128, Math.min(2048, v));
     return v;
   }

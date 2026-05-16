@@ -239,9 +239,12 @@ describe('ImageGeneratorService', () => {
   });
 
   describe('Utility Methods', () => {
-    it('normalizeRunwareDimension should round to nearest 64', () => {
+    it('normalizeRunwareDimension should round to nearest 8', () => {
       expect(service.normalizeRunwareDimension(100)).toBe(128);
-      expect(service.normalizeRunwareDimension(500)).toBe(512);
+      expect(service.normalizeRunwareDimension(500)).toBe(504);
+      expect(service.normalizeRunwareDimension(1200)).toBe(1200);
+      expect(service.normalizeRunwareDimension(896)).toBe(896);
+      expect(service.normalizeRunwareDimension(510)).toBe(512);
     });
 
     it('sanitizePromptForRunware should remove MJ flags', () => {
