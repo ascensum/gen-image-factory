@@ -126,3 +126,8 @@ docs
 
 # MCP configuration (user-specific local Qdrant setup)
 .cursor/mcp_config.json
+
+# BMAD method tooling (user-specific, reproducible)
+_bmad/
+.agents/
+.roo/
